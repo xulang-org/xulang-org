@@ -38,7 +38,7 @@ make build BASE_PATH=/xulang-org # GitHub 项目站点路径
 编译器下载入口指向 [Xu GitHub Releases](https://github.com/xulang-org/xu/releases)。
 编译器二进制和本地 `www/releases/` 不提交，也不会打包到官网。
 
-Pages workflow 使用校验和固定的公开 Xu 0.8.3 产品发行包。
+Pages workflow 在 macOS 15 ARM64 上，使用校验和固定的公开 Xu 0.8.3 产品发行包。
 Xu 编译器先编译 `playground/compiler/emit_wasm.xu`（隔离的驱动扩展），
 再将 `playground/runtime/*.xu` 和产品 Xu 前端编译成 `xu-play.wasm`。
 解析器、类型与借用检查器、MIR 解释器、信道调度及内存/字符串支持均为 Xu 源码；
