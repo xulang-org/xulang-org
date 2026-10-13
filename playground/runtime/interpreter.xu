@@ -1,0 +1,459 @@
+@main
+
+#xu/types
+
+// A checked-MIR interpreter written in Xu. Frames and channel payloads retain
+// the compiler's slot layout. A cooperative scheduler executes `xu` tasks;
+// blocked sends/receives yield without blocking the browser worker forever.
+struct Eval {
+    strings []string
+    tasks []int
+    channels []int
+    steps int
+    exit_code int
+    failed bool
+}
+
+fn vm_error(e &mut Eval, message string) {
+    if !e.failed { eprintln(message) }
+    e.failed = true
+    e.exit_code = 1
+}
+fn vm_local(m &types.Mir, fp int, lid int) int {
+    fi := wasm_mem_load(fp)
+    mut off := 0
+    for i in 0:lid { off += types.mir_local_nslots(m, fi, i) * 8 }
+    << wasm_mem_load(fp + 40) - off
+}
+fn vm_temp(m &types.Mir, fp int, tid int) int {
+    fi := wasm_mem_load(fp)
+    mut off := 0
+    for i in 0:tid { off += types.mir_temp_nslots(m, fi, i) * 8 }
+    << wasm_mem_load(fp + 48) - off
+}
+fn vm_value(m &types.Mir, fp int, v int, slot int) int {
+    if v >= 0 { << wasm_mem_load(vm_temp(m, fp, v) - slot * 8) }
+    if slot == 0 && v <= -2 { << types.mir_const_at(m, wasm_mem_load(fp), -v - 2) }
+    << 0
+}
+fn vm_put(m &types.Mir, fp int, v int, slot int, value int) {
+    wasm_mem_store(vm_temp(m, fp, v) - slot * 8, value)
+}
+fn vm_copy(m &types.Mir, fp int, dest int, src int, n int) {
+    for s in 0:n { wasm_mem_store(dest - s * 8, vm_value(m, fp, src, s)) }
+}
+fn vm_frame(m &types.Mir, fi int, parent int, ret int) int {
+    mut locals := 0
+    mut temps := 0
+    for i in 0:types.mir_nlocals(m, fi) { locals += types.mir_local_nslots(m, fi, i) }
+    for i in 0:types.mir_ntemps(m, fi) { temps += types.mir_temp_nslots(m, fi, i) }
+    fp := wasm_rt_alloc(56 + (locals + temps) * 8)
+    wasm_mem_store(fp, fi)
+    wasm_mem_store(fp + 8, 0)
+    wasm_mem_store(fp + 16, types.mir_bhead(m, fi, 0))
+    wasm_mem_store(fp + 24, parent)
+    wasm_mem_store(fp + 32, ret)
+    wasm_mem_store(fp + 40, fp + 56 + (locals + temps) * 8 - 8)
+    wasm_mem_store(fp + 48, fp + 56 + temps * 8 - 8)
+    << fp
+}
+fn vm_find(m &types.Mir, label string) int {
+    for i in 0:m.fns.len { if types.mir_fn_label(m, i) == label { << i } }
+    << -1
+}
+fn vm_string(e &mut Eval, m &types.Mir, fp int, dest int, value string) {
+    id := e.strings.len
+    n := value.len
+    e.strings.push(value)
+    vm_put(m, fp, dest, 0, id)
+    vm_put(m, fp, dest, 1, n)
+    vm_put(m, fp, dest, 2, 0)
+}
+fn vm_text(e &Eval, id int) string {
+    if id < 0 || id >= e.strings.len { << "" }
+    << e.strings[id] + ""
+}
+fn vm_binary(op int, x int, y int) int {
+    if op == 1 { << x + y }
+    if op == 2 { << x - y }
+    if op == 3 { << x * y }
+    if op == 4 { << x / y }
+    if op == 5 { << x % y }
+    if op == 6 { if x == y { << 1 }
+        << 0 }
+    if op == 7 { if x != y { << 1 }
+        << 0 }
+    if op == 8 { if x < y { << 1 }
+        << 0 }
+    if op == 9 { if x <= y { << 1 }
+        << 0 }
+    if op == 10 { if x > y { << 1 }
+        << 0 }
+    if op == 11 { if x >= y { << 1 }
+        << 0 }
+    if op == 12 || op == 14 { << x & y }
+    if op == 13 || op == 15 { << x | y }
+    if op == 16 { << x ^ y }
+    if op == 17 { << x << y }
+    if op == 18 { << x >> y }
+    << 0
+}
+fn vm_call(e &mut Eval, m &types.Mir, task int, fp int, ii int, spawn bool) {
+    fi := wasm_mem_load(fp)
+    to := vm_find(m, types.mir_isval(m, fi, ii))
+    if to < 0 { vm_error(e, "unknown Xu function")
+        << }
+    mut ret := 0
+    dest := types.mir_ia(m, fi, ii)
+    if !spawn && dest >= 0 { ret = vm_temp(m, fp, dest) }
+    mut parent := fp
+    if spawn { parent = 0 }
+    child := vm_frame(m, to, parent, ret)
+    mut at := types.mir_ic(m, fi, ii)
+    for p in 0:types.mir_fn_nparams(m, to) {
+        if at < 0 { vm_error(e, "missing Xu function argument")
+            << }
+        v := types.mir_marg_v(m, fi, at)
+        mut indirect := types.mir_type_abi_class(types.mir_local_ty(m, to, p)) == types.ty_abi_pointer
+        if p == 0 && types.mir_fn_receiver(m, to) { indirect = false }
+        target := vm_local(m, child, p)
+        if indirect {
+            source := vm_value(m, fp, v, 0)
+            for s in 0:types.mir_local_nslots(m, to, p) { wasm_mem_store(target - s * 8, wasm_mem_load(source - s * 8)) }
+        } else { vm_copy(m, fp, target, v, types.mir_local_nslots(m, to, p)) }
+        at = types.mir_marg_next(m, fi, at)
+    }
+    wasm_mem_store(fp + 16, types.mir_inext(m, fi, ii))
+    if spawn { e.tasks.push(child) } else { e.tasks[task] = child }
+}
+fn vm_builtin(e &mut Eval, m &types.Mir, task int, fp int, ii int) {
+    fi := wasm_mem_load(fp)
+    k := types.mir_ib(m, fi, ii)
+    a := types.mir_ia(m, fi, ii)
+    if k == 22 || k == 23 { vm_error(e, "floating-point output is not supported by this playground")
+        << }
+    if k == 1 { vm_call(e, m, task, fp, ii, false)
+        << }
+    mut args := []int{}
+    mut at := types.mir_ic(m, fi, ii)
+    while at >= 0 { args.push(types.mir_marg_v(m, fi, at))
+        at = types.mir_marg_next(m, fi, at) }
+    mut v := 0
+    if args.len > 0 { v = vm_value(m, fp, args[0], 0) }
+    if k == 2 || k == 3 || k == 4 || k == 7 || k == 8 || k == 9 || k == 22 || k == 23 {
+        mut s := str(v)
+        if k == 3 || k == 8 { s = str(v != 0) }
+        if k == 4 || k == 9 || k == 23 { s = vm_text(&*e, v) }
+        mut err := 0
+        if k == 7 || k == 8 || k == 9 { err = 1 }
+        mut nl := 1
+        if k == 22 || k == 23 { nl = 0 }
+        wasm_rt_output(s, err, nl)
+    } else if k == 6 { vm_string(e, m, fp, a, str(v)) }
+    else if k == 21 { vm_string(e, m, fp, a, str(v != 0)) }
+    else if k == 10 { vm_string(e, m, fp, a, string_from_byte(v)) }
+    else if k == 11 {
+        mut values := []int{}
+        fixed := types.mir_id(m, fi, ii)
+        mut n := fixed
+        if fixed == 0 { n = vm_value(m, fp, args[0], 1) }
+        for i in 0:n {
+            mut offset := i * 8
+            if fixed > 0 { offset = -offset }
+            values.push(wasm_mem_load(v + offset))
+        }
+        vm_string(e, m, fp, a, string_from_bytes(values))
+    }
+    else if k == 20 {
+        s := vm_text(&*e, v)
+        start := vm_value(m, fp, args[1], 0)
+        end := vm_value(m, fp, args[2], 0)
+        if start < 0 || end < start || end > s.len { vm_error(e, "string index out of bounds") }
+        else { vm_string(e, m, fp, a, s[start:end]) }
+    } else if k == 24 {
+        if v == 0 { vm_error(e, "assertion failed") }
+    } else if k == 15 {
+        e.exit_code = v
+        for i in 0:e.tasks.len { e.tasks[i] = 0 }
+    } else { vm_error(e, "unsupported playground builtin: " + str(k)) }
+    wasm_mem_store(fp + 16, types.mir_inext(m, fi, ii))
+}
+
+// Channel header: cap, element slots, count, head, closed, data ptr.
+// Waiting tasks leave their instruction pointer on the blocked operation.
+// Every scheduler pass retries after other tasks have made progress.
+fn vm_channel(e &mut Eval, m &types.Mir, fp int, ii int) bool {
+    fi := wasm_mem_load(fp)
+    k := types.mir_ikind(m, fi, ii)
+    a := types.mir_ia(m, fi, ii)
+    b := types.mir_ib(m, fi, ii)
+    c := types.mir_ic(m, fi, ii)
+    d := types.mir_id(m, fi, ii)
+    if k == 30 {
+        cap := vm_value(m, fp, c, 0)
+        if cap < 0 || cap > 65536 { vm_error(e, "invalid channel capacity")
+            << true }
+        ch := wasm_rt_alloc(48)
+        wasm_mem_store(ch, cap)
+        wasm_mem_store(ch + 8, b)
+        mut storage := cap
+        if storage == 0 { storage = 1 }
+        wasm_mem_store(ch + 40, wasm_rt_alloc(storage * b * 8))
+        e.channels.push(ch)
+        vm_put(m, fp, a, 0, ch)
+        << true
+    }
+    mut ch := vm_value(m, fp, a, 0)
+    if k == 32 { ch = vm_value(m, fp, b, 0) }
+    if k == 35 { ch = vm_value(m, fp, b, 0) }
+    if k == 36 { ch = vm_value(m, fp, c, 0) }
+    if ch == 0 { vm_error(e, "invalid channel")
+        << true }
+    if k == 34 {
+        if wasm_mem_load(ch + 32) != 0 { vm_error(e, "close of closed channel")
+            << true }
+        wasm_mem_store(ch + 32, 1)
+        << true }
+    cap := wasm_mem_load(ch)
+    n := wasm_mem_load(ch + 16)
+    head := wasm_mem_load(ch + 24)
+    slots := wasm_mem_load(ch + 8)
+    data := wasm_mem_load(ch + 40)
+    mut storage := cap
+    if storage == 0 { storage = 1 }
+    if k == 31 || k == 35 {
+        if wasm_mem_load(ch + 32) != 0 { vm_error(e, "send on closed channel")
+            << true }
+        if cap == 0 {
+            mut src := b
+            if k == 35 { src = c }
+            for t in 0:e.tasks.len {
+                other := e.tasks[t]
+                if other == 0 || other == fp { -> }
+                ofi := wasm_mem_load(other)
+                oii := wasm_mem_load(other + 16)
+                if oii < 0 || types.mir_ikind(m, ofi, oii) != 32 { -> }
+                oc := types.mir_ib(m, ofi, oii)
+                if vm_value(m, other, oc, 0) != ch { -> }
+                dest := types.mir_ia(m, ofi, oii)
+                for s in 0:slots { vm_put(m, other, dest, s, vm_value(m, fp, src, s)) }
+                status := types.mir_id(m, ofi, oii)
+                if status >= 0 { vm_put(m, other, status, 0, 1) }
+                wasm_mem_store(other + 16, types.mir_inext(m, ofi, oii))
+                if k == 35 { vm_put(m, fp, a, 0, 1) }
+                << true
+            }
+            if k == 35 { vm_put(m, fp, a, 0, 0)
+                << true }
+            << false
+        }
+        if n >= cap {
+            if k == 35 { vm_put(m, fp, a, 0, 0)
+                << true }
+            << false
+        }
+        mut src := b
+        if k == 35 { src = c }
+        pos := (head + n) % storage
+        for s in 0:slots { wasm_mem_store(data + (pos * slots + s) * 8, vm_value(m, fp, src, s)) }
+        wasm_mem_store(ch + 16, n + 1)
+        if k == 35 { vm_put(m, fp, a, 0, 1) }
+        << true
+    }
+    if k == 32 || k == 36 {
+        if n == 0 && wasm_mem_load(ch + 32) == 0 {
+            if k == 36 { vm_put(m, fp, a, 0, 0)
+                << true }
+            << false
+        }
+        mut dest := a
+        if k == 36 { dest = b }
+        for s in 0:slots {
+            mut v := 0
+            if n > 0 { v = wasm_mem_load(data + (head * slots + s) * 8) }
+            vm_put(m, fp, dest, s, v)
+        }
+        mut status := 2
+        if n > 0 {
+            wasm_mem_store(ch + 16, n - 1)
+            wasm_mem_store(ch + 24, (head + 1) % storage)
+            status = 1
+        }
+        if k == 32 && d >= 0 { vm_put(m, fp, d, 0, status) }
+        if k == 36 { vm_put(m, fp, a, 0, status) }
+        << true
+    }
+    vm_error(e, "unsupported channel operation")
+    << true
+}
+
+fn vm_step(e &mut Eval, m &types.Mir, task int) bool {
+    fp := e.tasks[task]
+    fi := wasm_mem_load(fp)
+    bi := wasm_mem_load(fp + 8)
+    ii := wasm_mem_load(fp + 16)
+    if ii < 0 {
+        tk := types.mir_btkind(m, fi, bi)
+        if tk == 1 || tk == 2 {
+            mut next := types.mir_bta(m, fi, bi)
+            if tk == 2 {
+                next = types.mir_btc(m, fi, bi)
+                if vm_value(m, fp, types.mir_bta(m, fi, bi), 0) != 0 { next = types.mir_btb(m, fi, bi) }
+            }
+            wasm_mem_store(fp + 8, next)
+            wasm_mem_store(fp + 16, types.mir_bhead(m, fi, next))
+        } else if tk == 3 {
+            v := types.mir_bta(m, fi, bi)
+            ret := wasm_mem_load(fp + 32)
+            parent := wasm_mem_load(fp + 24)
+            if ret != 0 { vm_copy(m, fp, ret, v, types.mir_fn_ret_nslots(m, fi)) }
+            if parent == 0 && task == 0 && v != -1 { e.exit_code = vm_value(m, fp, v, 0) }
+            e.tasks[task] = parent
+        } else { vm_error(e, "invalid MIR terminator") }
+        << true
+    }
+    k := types.mir_ikind(m, fi, ii)
+    a := types.mir_ia(m, fi, ii)
+    b := types.mir_ib(m, fi, ii)
+    c := types.mir_ic(m, fi, ii)
+    d := types.mir_id(m, fi, ii)
+    if k == 7 { vm_builtin(e, m, task, fp, ii)
+        << true }
+    if k == 33 { vm_call(e, m, task, fp, ii, true)
+        << true }
+    if k >= 30 && k <= 36 {
+        if !vm_channel(e, m, fp, ii) { << false }
+    } else if k == 1 || k == 9 { vm_copy(m, fp, vm_temp(m, fp, a), b, types.mir_temp_nslots(m, fi, a)) }
+    else if k == 2 {
+        src := vm_local(m, fp, b)
+        for s in 0:types.mir_temp_nslots(m, fi, a) { vm_put(m, fp, a, s, wasm_mem_load(src - s * 8)) }
+    } else if k == 3 { vm_copy(m, fp, vm_local(m, fp, a), b, types.mir_local_nslots(m, fi, a)) }
+    else if k == 4 {
+        if types.mir_temp_ty(m, fi, a) == 4 || (c >= 0 && types.mir_temp_ty(m, fi, c) == 4) || (d >= 0 && types.mir_temp_ty(m, fi, d) == 4) { vm_error(e, "floating-point arithmetic is not supported by this playground")
+            << true }
+        x := vm_value(m, fp, c, 0)
+        y := vm_value(m, fp, d, 0)
+        if c >= 0 && types.mir_temp_ty(m, fi, c) == 3 {
+            lhs := vm_text(&*e, x)
+            rhs := vm_text(&*e, y)
+            if b == 1 { vm_string(e, m, fp, a, lhs + rhs) }
+            else if b == 6 || b == 7 {
+                mut equal := lhs == rhs
+                if b == 7 { equal = !equal }
+                mut value := 0
+                if equal { value = 1 }
+                vm_put(m, fp, a, 0, value)
+            } else { vm_error(e, "unsupported string operation") }
+        } else if (b == 4 || b == 5) && y == 0 { vm_error(e, "division by zero") }
+        else { vm_put(m, fp, a, 0, vm_binary(b, x, y)) }
+    } else if k == 5 {
+        if types.mir_temp_ty(m, fi, a) == 4 { vm_error(e, "floating-point operations are not supported by this playground")
+            << true }
+        x := vm_value(m, fp, c, 0)
+        mut v := -x
+        if b == 2 { v = 0
+            if x == 0 { v = 1 } }
+        vm_put(m, fp, a, 0, v)
+    } else if k == 6 { vm_string(e, m, fp, a, m.strings[b] + "") }
+    else if k == 10 || k == 11 {
+        for s in 0:d {
+            if k == 10 { vm_put(m, fp, a, s, wasm_mem_load(vm_temp(m, fp, b) - c - s * 8)) }
+            else { wasm_mem_store(vm_temp(m, fp, b) - c - s * 8, vm_value(m, fp, a, s)) }
+        }
+    } else if k == 16 {
+        mut ptr := 0
+        if c == 1 { ptr = vm_temp(m, fp, b) } else { ptr = vm_local(m, fp, b) }
+        vm_put(m, fp, a, 0, ptr)
+    } else if k == 17 || k == 18 || k == 25 || k == 26 {
+        ptr := vm_value(m, fp, b, 0)
+        for s in 0:d {
+            mut off := c + s * 8
+            if k == 17 || k == 18 { off = -off }
+            if k == 17 || k == 26 { vm_put(m, fp, a, s, wasm_mem_load(ptr + off)) }
+            else { wasm_mem_store(ptr + off, vm_value(m, fp, a, s)) }
+        }
+    } else if k == 12 {
+        ptr := wasm_rt_alloc(b * d)
+        vm_put(m, fp, a, 0, ptr)
+        vm_put(m, fp, a, 1, b)
+        vm_put(m, fp, a, 2, b)
+        mut at := c
+        for j in 0:b {
+            src := types.mir_marg_v(m, fi, at)
+            for s in 0:d / 8 { wasm_mem_store(ptr + j * d + s * 8, vm_value(m, fp, src, s)) }
+            at = types.mir_marg_next(m, fi, at)
+        }
+    } else if k == 13 { wasm_rt_push(vm_value(m, fp, a, 0), vm_temp(m, fp, b), d) }
+    else if k == 48 {
+        ptr := vm_value(m, fp, a, 0)
+        mut offset := types.mir_iline(m, fi, ii)
+        if b == 0 { offset = -offset }
+        value := vm_binary(types.mir_icol(m, fi, ii), wasm_mem_load(ptr + offset), vm_value(m, fp, c, 0))
+        wasm_mem_store(ptr + offset, value)
+    }
+    else if k == 14 || k == 20 || k == 23 || k == 47 {
+        mut base := b
+        mut idx := c
+        if k == 20 || k == 47 { base = a
+            idx = b }
+        mut desc := 0
+        if base >= 1073741824 { desc = vm_local(m, fp, base - 1073741824) }
+        else { desc = vm_temp(m, fp, base) }
+        index := vm_value(m, fp, idx, 0)
+        n := wasm_mem_load(desc - 8)
+        mut width := d
+        if width < 0 { width = -width }
+        if index < 0 || index >= n { vm_error(e, "index out of bounds")
+            << true }
+        if width == 1 {
+            id := wasm_mem_load(desc)
+            mut text := vm_text(&*e, id)
+            if k == 14 { vm_put(m, fp, a, 0, text[index]) }
+            else if k == 20 { text[index] = vm_value(m, fp, c, 0)
+                e.strings[id] = text }
+            else { vm_error(e, "string byte addresses are unavailable") }
+            wasm_mem_store(fp + 16, types.mir_inext(m, fi, ii))
+            << true
+        }
+        ptr := wasm_mem_load(desc) + index * width
+        if k == 47 { wasm_mem_store(ptr, vm_binary(types.mir_icol(m, fi, ii), wasm_mem_load(ptr), vm_value(m, fp, c, 0))) }
+        else if k == 23 { vm_put(m, fp, a, 0, ptr) }
+        else {
+            for s in 0:width / 8 {
+                if k == 14 { vm_put(m, fp, a, s, wasm_mem_load(ptr + s * 8)) }
+                else { wasm_mem_store(ptr + s * 8, vm_value(m, fp, c, s)) }
+            }
+        }
+    } else if k != 0 && k != 8 && k != 21 && k != 22 && k != 24 && k != 37 {
+        vm_error(e, "unsupported playground MIR instruction: " + str(k))
+    }
+    wasm_mem_store(fp + 16, types.mir_inext(m, fi, ii))
+    << true
+}
+
+fn vm_run(m &types.Mir) int {
+    main := vm_find(m, "_xu_main")
+    if main < 0 { eprintln("missing main function")
+        << 1 }
+    mut e := Eval{strings: []string{}, tasks: []int{}, channels: []int{}, steps: 0, exit_code: 0, failed: false}
+    e.tasks.push(vm_frame(m, main, 0, 0))
+    while !e.failed {
+        mut live := false
+        mut progress := false
+        ntasks := e.tasks.len
+        for t in 0:ntasks {
+            for _ in 0:64 {
+                if e.tasks[t] == 0 || e.failed { <- }
+                live = true
+                e.steps += 1
+                if e.steps > 2000000 { vm_error(mut &e, "execution step limit exceeded")
+                    <- }
+                if !vm_step(mut &e, m, t) { <- }
+                progress = true
+            }
+        }
+        if !live { <- }
+        if !progress { vm_error(mut &e, "channel deadlock: all tasks are blocked") }
+    }
+    << e.exit_code
+}

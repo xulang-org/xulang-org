@@ -19,7 +19,7 @@ async function mount() {
   let nextTimer = 0;
   class Worker {
     constructor(url, options) {
-      assert.equal(String(url), 'https://example.org/repo/xu-play-worker.js');
+      assert.equal(String(url), 'https://example.org/repo/xu-play-worker.js?v=fixture');
       assert.equal(options.type, 'module');
       this.messages = [];
       workers.push(this);
@@ -33,19 +33,19 @@ async function mount() {
   }
   const context = {
     document: {
-      currentScript: {src: 'https://example.org/repo/xu-play.js', getAttribute: () => 'true'},
+      currentScript: {src: 'https://example.org/repo/xu-play.js?v=fixture', getAttribute: () => 'true'},
       documentElement: {lang: 'zh-CN'}, readyState: 'complete',
       getElementById: id => elements[id]
     },
     window: {Worker, WebAssembly, addEventListener() {}}, Worker, URL,
     fetch: async url => {
-      assert.equal(String(url), 'https://example.org/repo/xu-play-examples.json');
-      return {ok: true, json: async () => ({hello: '@main'})};
+      assert.equal(String(url), 'https://example.org/repo/xu-play-examples.json?v=fixture');
+      return {ok: true, json: async () => ({hello: {source: '@main', description: {zh: 'Hello', en: 'Hello'}}})};
     },
     setTimeout(handler, delay) { const id = ++nextTimer; timers.set(id, {handler, delay}); return id; },
     clearTimeout(id) { timers.delete(id); }
   };
-  vm.runInNewContext(readFileSync(new URL('../www/xu-play.js', import.meta.url), 'utf8'), context);
+  vm.runInNewContext(readFileSync(new URL('../www/xu-play.js?v=fixture', import.meta.url), 'utf8'), context);
   await new Promise(setImmediate);
   return {elements, workers, timers};
 }

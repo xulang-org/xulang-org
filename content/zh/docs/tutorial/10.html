@@ -1,18 +1,66 @@
-<!--title: 10 并发-->
-<p class='crumb'><a href='/docs/start'>文档</a> / 教程</p><h1>10 · 并发</h1><p><code>xu f(args)</code> 启动协程。<code>xu.pkg.f</code> 带点号是包路径调用。Channel 转移所有权，不要把借用送进协程。</p><h2>源码</h2><pre><code>@main
+<!--title: 10 · 协程与 chan-->
+<p class="crumb"><a href="/docs/start">文档</a> / Tutorial</p>
+<h1>10 · 协程与 chan</h1>
+<p>通过协程执行独立任务，用 <code>chan</code> 传递值和汇总结果。这些完整程序使用本机 Xu 编译器运行。</p><p><code>chan int{cap: 2}</code> 创建缓冲容量为 2 的信道。<code>ch &lt;- value</code> 发送值，<code>&lt;-ch</code> 接收值；这与单独使用的 <code>&lt;-</code>（退出循环）不同。</p><p><code>xu f(args)</code> 启动协程。不要把局部变量的借用传入协程；本例通过信道传递整数值。</p><p>这三个完整程序也已加入首页在线示例，可在 Xu 编写并编译的 WASM 运行器中直接运行。</p>
+<h2>1 · 带缓冲的发送与接收</h2><pre><code>@main
 
-fn worker(id int, ch chan int) {
-    ch &lt;- id * 10
+fn main() int {
+    messages := chan int{cap: 2}
+    messages &lt;- 7
+    messages &lt;- 35
+    first := &lt;-messages
+    second := &lt;-messages
+    println(first + second)
+    &lt;&lt; 0
+}
+</code></pre><p><a href="/examples/chan-buffered/main.xu" download="chan-buffered.xu">下载源码</a></p><h3>运行</h3><pre><code>xu run chan-buffered.xu</code></pre><h3>输出</h3><pre><code>42</code></pre><h2>2 · 多个 worker 汇总结果</h2><pre><code>@main
+
+fn worker(id int, results chan int) {
+    results &lt;- id * 10
 }
 
 fn main() int {
-    ch := chan int{cap: 1}
-    xu worker(1, ch)
-    x := &lt;-ch
-    println(x)
+    results := chan int{cap: 3}
+    xu worker(1, results)
+    xu worker(2, results)
+    xu worker(3, results)
+
+    mut total := 0
+    for i in 0:3 {
+        value := &lt;-results
+        total += value
+    }
+    println(total)
     &lt;&lt; 0
-}</code></pre><p>编译（examples 仓库根，使用已安装的 xu）：</p>
-<pre><code>xu run examples/10_concurrency/main.xu
-# 或：xu build examples/10_concurrency/main.xu
-# mac/linux 默认写出 ./main ；Windows 为 ./main.exe</code></pre>
-<p class="note">在独立的 <a href="https://github.com/xulang-org/examples">examples</a> 仓库根执行；源码位于 examples/。</p>
+}
+</code></pre><p><a href="/examples/chan-workers/main.xu" download="chan-workers.xu">下载源码</a></p><h3>运行</h3><pre><code>xu run chan-workers.xu</code></pre><h3>输出</h3><pre><code>60</code></pre><h2>3 · 生产者与处理流水线</h2><pre><code>@main
+
+fn produce(output chan int) {
+    for value in 1:6 {
+        output &lt;- value
+    }
+}
+
+fn square(input chan int, output chan int) {
+    for i in 0:5 {
+        value := &lt;-input
+        output &lt;- value * value
+    }
+}
+
+fn main() int {
+    numbers := chan int{cap: 2}
+    squares := chan int{cap: 2}
+    xu produce(numbers)
+    xu square(numbers, squares)
+    for i in 0:5 {
+        value := &lt;-squares
+        println(value)
+    }
+    &lt;&lt; 0
+}
+</code></pre><p><a href="/examples/chan-pipeline/main.xu" download="chan-pipeline.xu">下载源码</a></p><h3>运行</h3><pre><code>xu run chan-pipeline.xu</code></pre><h3>输出</h3><pre><code>1
+4
+9
+16
+25</code></pre><p>多个 worker 的完成顺序不保证固定，因此先接收三个结果再求和；流水线则按生产者的发送顺序处理五个输入。主函数接收完预定数量的结果后退出，不依赖 sleep 等待协程。</p>

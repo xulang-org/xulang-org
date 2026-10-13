@@ -4,6 +4,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import hashlib
 from html import escape, unescape
 from html.parser import HTMLParser
 from pathlib import Path
@@ -17,6 +19,30 @@ ROOT = Path(__file__).resolve().parents[1]
 RELEASES_URL = 'https://github.com/xulang-org/xu/releases'
 URL_ATTR = re.compile(r'''(\s(?:href|src|action|poster)\s*=\s*)(["'])(.*?)\2''', re.IGNORECASE | re.DOTALL)
 TITLE = re.compile(r'\A<!--title:\s*(.*?)-->\s*', re.DOTALL)
+
+
+def playground_options(root: Path, body: str, lang: str) -> str:
+    if 'id="xu-play-ex"' not in body:
+        return body
+    examples = json.loads((root / 'www/xu-play-examples.json').read_text(encoding='utf-8'))
+    groups = {
+        'basics': ('起步与基本类型', 'Getting started'),
+        'flow': ('控制流', 'Control flow'),
+        'data': ('函数与数据结构', 'Functions & data'),
+        'checks': ('断言与编译诊断', 'Assertions & diagnostics'),
+        'concurrency': ('协程与 chan', 'Coroutines & chan'),
+        'combined': ('综合示例', 'Combined example'),
+    }
+    options = []
+    for group, titles in groups.items():
+        options.append('<optgroup label="' + escape(titles[lang == 'en']) + '">')
+        for key, example in examples.items():
+            if example['group'] == group:
+                selected = ' selected' if key == 'hello' else ''
+                options.append(f'<option value="{escape(key)}"{selected}>{escape(example["title"][lang])}</option>')
+        options.append('</optgroup>')
+    return re.sub(r'(<select id="xu-play-ex">).*?(</select>)',
+                  lambda match: match[1] + ''.join(options) + match[2], body, flags=re.DOTALL)
 
 
 def normalize_base(value: str) -> str:
@@ -40,9 +66,10 @@ def content_route(relative: Path, lang: str) -> str:
 class RewriteHTML(HTMLParser):
     """Rewrite real URL attributes without altering examples or inline scripts."""
 
-    def __init__(self, base: str, routes: set[str], playground: bool):
+    def __init__(self, base: str, routes: set[str], playground: bool, asset_key: str = ""):
         super().__init__(convert_charrefs=False)
         self.base, self.routes, self.playground = base, routes, playground
+        self.asset_key = asset_key
         self.parts: list[str] = []
 
     def rewrite_url(self, raw: str) -> str:
@@ -66,6 +93,8 @@ class RewriteHTML(HTMLParser):
         raw = self.get_starttag_text()
         raw = URL_ATTR.sub(lambda m: m[1] + m[2] + self.rewrite_url(m[3]) + m[2], raw)
         if tag == 'script' and re.search(r'''src\s*=\s*["'][^"']*/xu-play\.js["']''', raw):
+            if self.asset_key:
+                raw = raw.replace("xu-play.js", "xu-play.js?v=" + self.asset_key)
             end = '/>' if closed else '>'
             raw = raw[:-len(end)] + f' data-wasm-available="{str(self.playground).lower()}"' + end
         self.parts.append(raw)
@@ -158,6 +187,13 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     if not match:
         raise ValueError('missing Xu version in xu.xun')
     xu_version = match[1]
+    digest = hashlib.sha256()
+    for name in ('xu-play.js', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
+        asset = root / 'www' / name
+        if asset.exists():
+            digest.update(name.encode())
+            digest.update(asset.read_bytes())
+    asset_key = digest.hexdigest()[:16]
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
@@ -173,14 +209,16 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     for route, source in pages.items():
         raw = source.read_text(encoding='utf-8')
         title = TITLE.match(raw)
-        html = render(root, title[1].strip() if title else 'Xu', route, raw[title.end():] if title else raw, xu_version)
-        parser = RewriteHTML(base, set(pages), playground)
+        body = raw[title.end():] if title else raw
+        body = playground_options(root, body, 'en' if route == '/en' else 'zh')
+        html = render(root, title[1].strip() if title else 'Xu', route, body, xu_version)
+        parser = RewriteHTML(base, set(pages), playground, asset_key)
         parser.feed(html)
         target = output / route.strip('/') / 'index.html'
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(''.join(parser.parts), encoding='utf-8')
     body = '<h1>没有这一页 / Page not found</h1><p><a href="/">回首页</a> · <a href="/en">Home</a></p>'
-    parser = RewriteHTML(base, set(pages), playground)
+    parser = RewriteHTML(base, set(pages), playground, asset_key)
     parser.feed(render(root, '404 · Xu', '/404', body, xu_version))
     (output / '404.html').write_text(''.join(parser.parts), encoding='utf-8')
     (output / '.nojekyll').touch()

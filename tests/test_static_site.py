@@ -51,7 +51,7 @@ class StaticSiteTests(unittest.TestCase):
         site.build(self.source, output, '/xulang-org/')
         home = (output / 'en/index.html').read_text()
         self.assertIn('href="/xulang-org/en/docs/start/"', home)
-        self.assertIn('src="/xulang-org/xu-play.js"', home)
+        self.assertRegex(home, r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}"')
         self.assertIn('href="/xulang-org/site.css"', home)
         self.assertIn('href="/xulang-org/"', home)
         (output / 'stale.html').write_text('old page')

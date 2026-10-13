@@ -28,7 +28,7 @@
 </section>
 
 <h2><i class="xi xi-play xi-brand"></i> 在浏览器中体验 XU (WebAssembly Playground)</h2>
-<p class="play-note">选择示例或修改代码，点击「运行代码」查看结果。代码通过 Xu 的语法解析器、类型与借用检查器，在浏览器中执行；无需安装或上传到服务器。</p>
+<p class="play-note">选择示例或修改代码，点击「运行代码」查看结果。运行器由 Xu 编写并编译为 WASM，代码通过 Xu 的语法解析器、类型与借用检查器，在浏览器中执行；无需安装或上传到服务器。</p>
 
 <div class="xu-play code-block-wrapper">
   <div class="code-block-header">
@@ -47,6 +47,7 @@
     <button type="button" class="btn pri" id="xu-play-run"><i class="xi xi-play"></i> 运行代码</button>
     <span class="xu-play-meta" id="xu-play-meta"></span>
   </div>
+  <p class="play-note" id="xu-play-help" aria-live="polite">从入口函数和标准输出开始，修改文本后再次运行。</p>
   <textarea id="xu-play-src" spellcheck="false" aria-label="XU source">@main
 
 fn main() int {
@@ -58,7 +59,47 @@ fn main() int {
 </div>
 <script src="/xu-play.js"></script>
 
-<p>沙盒支持基础类型、<code>println</code>、条件与循环、<code>match</code>、函数及简单结构体和方法。文件、网络、协程及完整标准库请在本机使用 Xu。运行中可点击「停止运行」；单次运行最多 10 秒。</p>
+<p>19 个在线示例涵盖基本类型、字符串、分支与循环、函数与递归、基本数组、枚举、结构体、断言、借用诊断，以及 chan 缓冲收发、worker 汇总和流水线。单次运行最多 10 秒，运行中可点击「停止运行」。</p>
+<section>
+<h2>chan：用信道连接协程</h2>
+<p><code>chan T{cap: n}</code> 创建带缓冲的信道；<code>ch &lt;- value</code> 发送，<code>&lt;-ch</code> 接收；<code>xu f(args)</code> 启动协程。下面的三个 worker 将结果送回主函数，汇总后输出 <code>60</code>。</p>
+<p>这三个 chan 示例已可在上方浏览器运行器中执行，也可下载源码在本机运行。浏览器通过协作调度模拟协程。</p>
+<pre><code>@main
+
+fn worker(id int, results chan int) {
+    results &lt;- id * 10
+}
+
+fn main() int {
+    results := chan int{cap: 3}
+    xu worker(1, results)
+    xu worker(2, results)
+    xu worker(3, results)
+
+    mut total := 0
+    for i in 0:3 {
+        value := &lt;-results
+        total += value
+    }
+    println(total)
+    &lt;&lt; 0
+}
+</code></pre>
+<div class="ctas">
+<a class="btn ghost" href="/docs/tutorial/10">查看 3 个 chan 示例与运行方法</a>
+<a class="btn ghost" href="/examples/chan-workers/main.xu" download="chan-workers.xu">下载源码</a>
+</div>
+</section>
+<h2>继续学习：完整 Xu 示例</h2>
+<p>使用本机编译器继续体验完整标准库和原生运行能力。</p>
+<div class="ctas">
+<a class="btn ghost" href="/docs/tutorial/05">错误处理</a>
+<a class="btn ghost" href="/docs/tutorial/06">所有权与借用</a>
+<a class="btn ghost" href="/docs/tutorial/09">泛型</a>
+<a class="btn ghost" href="/docs/tutorial/10">协程与 chan</a>
+<a class="btn ghost" href="/docs/tutorial/13">HTTP 服务</a>
+<a class="btn ghost" href="/docs/tutorial/16">UI / WebView</a>
+</div>
 
 <div class="targets">
   <span>macos arm64 (Native)</span><span>macos x64</span>

@@ -1,18 +1,66 @@
-<!--title: 10 Concurrency-->
-<p class='crumb'><a href='/en/docs/start'>Docs</a> / Tutorial</p><h1>10 · Concurrency</h1><p><code>xu f(args)</code> spawns a coroutine. <code>xu.pkg.f</code> with a dot is a package path. Channels move ownership; do not send borrows into a coroutine.</p><h2>Source</h2><pre><code>@main
+<!--title: 10 · Coroutines and chan-->
+<p class="crumb"><a href="/en/docs/start">Docs</a> / Tutorial</p>
+<h1>10 · Coroutines and chan</h1>
+<p>Run independent tasks as coroutines and use <code>chan</code> to send values and collect results. These complete programs run with the local Xu compiler.</p><p><code>chan int{cap: 2}</code> creates a channel with capacity 2. <code>ch &lt;- value</code> sends a value and <code>&lt;-ch</code> receives it; a standalone <code>&lt;-</code> instead breaks a loop.</p><p><code>xu f(args)</code> spawns a coroutine. Do not pass borrows of local variables into coroutines; these examples send integer values.</p><p>These three complete programs are also available in the homepage playground, whose WASM runner is written and compiled in Xu.</p>
+<h2>1 · Buffered send and receive</h2><pre><code>@main
 
-fn worker(id int, ch chan int) {
-    ch &lt;- id * 10
+fn main() int {
+    messages := chan int{cap: 2}
+    messages &lt;- 7
+    messages &lt;- 35
+    first := &lt;-messages
+    second := &lt;-messages
+    println(first + second)
+    &lt;&lt; 0
+}
+</code></pre><p><a href="/examples/chan-buffered/main.xu" download="chan-buffered.xu">Download source</a></p><h3>Run</h3><pre><code>xu run chan-buffered.xu</code></pre><h3>Output</h3><pre><code>42</code></pre><h2>2 · Collect results from multiple workers</h2><pre><code>@main
+
+fn worker(id int, results chan int) {
+    results &lt;- id * 10
 }
 
 fn main() int {
-    ch := chan int{cap: 1}
-    xu worker(1, ch)
-    x := &lt;-ch
-    println(x)
+    results := chan int{cap: 3}
+    xu worker(1, results)
+    xu worker(2, results)
+    xu worker(3, results)
+
+    mut total := 0
+    for i in 0:3 {
+        value := &lt;-results
+        total += value
+    }
+    println(total)
     &lt;&lt; 0
-}</code></pre><p>Build (from the language repo root; swap the binary for your platform):</p>
-<pre><code>xu run examples/10_concurrency/main.xu
-# or: xu build examples/10_concurrency/main.xu
-# default artifact is ./main on mac/linux, ./main.exe on Windows</code></pre>
-<p class="note">Run from the separate <a href="https://github.com/xulang-org/examples">examples</a> repository root; source files live under examples/.</p>
+}
+</code></pre><p><a href="/examples/chan-workers/main.xu" download="chan-workers.xu">Download source</a></p><h3>Run</h3><pre><code>xu run chan-workers.xu</code></pre><h3>Output</h3><pre><code>60</code></pre><h2>3 · Producer and processing pipeline</h2><pre><code>@main
+
+fn produce(output chan int) {
+    for value in 1:6 {
+        output &lt;- value
+    }
+}
+
+fn square(input chan int, output chan int) {
+    for i in 0:5 {
+        value := &lt;-input
+        output &lt;- value * value
+    }
+}
+
+fn main() int {
+    numbers := chan int{cap: 2}
+    squares := chan int{cap: 2}
+    xu produce(numbers)
+    xu square(numbers, squares)
+    for i in 0:5 {
+        value := &lt;-squares
+        println(value)
+    }
+    &lt;&lt; 0
+}
+</code></pre><p><a href="/examples/chan-pipeline/main.xu" download="chan-pipeline.xu">Download source</a></p><h3>Run</h3><pre><code>xu run chan-pipeline.xu</code></pre><h3>Output</h3><pre><code>1
+4
+9
+16
+25</code></pre><p>Worker completion order is not fixed, so the program receives all three results before summing them. The pipeline processes five inputs in their send order. Main waits for the expected results instead of relying on sleep.</p>

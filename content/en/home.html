@@ -28,7 +28,7 @@
 </section>
 
 <h2><i class="xi xi-play xi-brand"></i> Try XU in Browser (WebAssembly Playground)</h2>
-<p class="play-note">Choose an example or edit the code, then click Run Code to see the result. Xu parses and checks your program, then executes it in your browser. No installation or server upload is needed.</p>
+<p class="play-note">The runner is written in Xu and compiled to WASM. Choose an example or edit the code, then click Run Code to see the result. Xu parses and checks your program, then executes it in your browser. No installation or server upload is needed.</p>
 
 <div class="xu-play code-block-wrapper">
   <div class="code-block-header">
@@ -47,6 +47,7 @@
     <button type="button" class="btn pri" id="xu-play-run"><i class="xi xi-play"></i> Run Code</button>
     <span class="xu-play-meta" id="xu-play-meta"></span>
   </div>
+  <p class="play-note" id="xu-play-help" aria-live="polite">Start with the entry function and standard output. Edit the message and run again.</p>
   <textarea id="xu-play-src" spellcheck="false" aria-label="XU source">@main
 
 fn main() int {
@@ -58,7 +59,47 @@ fn main() int {
 </div>
 <script src="/xu-play.js"></script>
 
-<p>The sandbox supports basic types, <code>println</code>, conditions and loops, <code>match</code>, functions, and simple structs and methods. Use Xu locally for files, networking, coroutines, and the full standard library. Click Stop to cancel execution; each run has a 10-second limit.</p>
+<p>19 online examples cover basic types, strings, branches and loops, functions and recursion, basic arrays, enums, structs, assertions, borrow diagnostics, and chan send / receive, worker fan-in, and pipelines. Each run has a 10-second limit; click Stop to cancel execution.</p>
+<section>
+<h2>chan: connect coroutines with channels</h2>
+<p><code>chan T{cap: n}</code> creates a buffered channel; <code>ch &lt;- value</code> sends, <code>&lt;-ch</code> receives, and <code>xu f(args)</code> spawns a coroutine. These three workers send their results to main, which prints their sum: <code>60</code>.</p>
+<p>Run these three chan examples in the browser above, or download their sources to run locally. The browser uses cooperative coroutine scheduling.</p>
+<pre><code>@main
+
+fn worker(id int, results chan int) {
+    results &lt;- id * 10
+}
+
+fn main() int {
+    results := chan int{cap: 3}
+    xu worker(1, results)
+    xu worker(2, results)
+    xu worker(3, results)
+
+    mut total := 0
+    for i in 0:3 {
+        value := &lt;-results
+        total += value
+    }
+    println(total)
+    &lt;&lt; 0
+}
+</code></pre>
+<div class="ctas">
+<a class="btn ghost" href="/en/docs/tutorial/10">Explore 3 chan examples and run instructions</a>
+<a class="btn ghost" href="/examples/chan-workers/main.xu" download="chan-workers.xu">Download source</a>
+</div>
+</section>
+<h2>Continue learning: full Xu examples</h2>
+<p>Use the local compiler for the full standard library and native runtime.</p>
+<div class="ctas">
+<a class="btn ghost" href="/en/docs/tutorial/05">Error handling</a>
+<a class="btn ghost" href="/en/docs/tutorial/06">Ownership &amp; borrowing</a>
+<a class="btn ghost" href="/en/docs/tutorial/09">Generics</a>
+<a class="btn ghost" href="/en/docs/tutorial/10">Coroutines &amp; chan</a>
+<a class="btn ghost" href="/en/docs/tutorial/13">HTTP server</a>
+<a class="btn ghost" href="/en/docs/tutorial/16">UI / WebView</a>
+</div>
 
 <div class="targets">
   <span>macos arm64 (Native)</span><span>macos x64</span>

@@ -1,0 +1,114 @@
+@main
+
+// Runtime support is Xu too. The backend only lowers memory instructions.
+// Arena/control memory is private to a disposable WebAssembly instance.
+fn wasm_rt_alloc(n int) int {
+    p := wasm_mem_load(1040)
+    next := (p + n + 7) & -8
+    if n < 0 || next < p || next > 67108864 { wasm_mem_store(1048, n)
+        <<< 1 }
+    wasm_mem_store(1040, next)
+    for i in 0:n / 8 { wasm_mem_store(p + i * 8, 0) }
+    for i in n / 8 * 8:n { wasm_mem_store8(p + i, 0) }
+    << p
+}
+
+fn wasm_rt_copy(to int, from int, n int) {
+    for i in 0:n { wasm_mem_store8(to + i, wasm_mem_load8(from + i)) }
+}
+
+fn wasm_rt_push(desc int, src int, width int) {
+    mut data := wasm_mem_load(desc)
+    n := wasm_mem_load(desc - 8)
+    cap := wasm_mem_load(desc - 16)
+    if n >= cap {
+        mut next := cap * 2
+        if next < 8 { next = 8 }
+        fresh := wasm_rt_alloc(next * width)
+        wasm_rt_copy(fresh, data, n * width)
+        data = fresh
+        wasm_mem_store(desc, data)
+        wasm_mem_store(desc - 16, next)
+    }
+    for s in 0:width / 8 { wasm_mem_store(data + n * width + s * 8, wasm_mem_load(src - s * 8)) }
+    wasm_mem_store(desc - 8, n + 1)
+}
+
+fn wasm_rt_byte(c int) string {
+    mut s := make_string(1)
+    s[0] = c
+    << s
+}
+fn wasm_rt_from_bytes(a []int) string {
+    mut s := make_string(a.len)
+    for i in 0:a.len { s[i] = a[i] }
+    << s
+}
+fn wasm_rt_bytes(s string) []int {
+    mut a := make_ints(s.len)
+    for i in 0:s.len { a[i] = s[i] }
+    << a
+}
+fn wasm_rt_slice(s string, start int, end int) string {
+    if start < 0 || end < start || end > s.len { <<< 1 }
+    mut out := make_string(end - start)
+    for i in start:end { out[i - start] = s[i] }
+    << out
+}
+fn wasm_rt_concat(a string, b string) string {
+    mut out := make_string(a.len + b.len)
+    for i in 0:a.len { out[i] = a[i] }
+    for i in 0:b.len { out[a.len + i] = b[i] }
+    << out
+}
+fn wasm_rt_eq(a string, b string) bool {
+    if a.len != b.len { << false }
+    for i in 0:a.len { if a[i] != b[i] { << false } }
+    << true
+}
+fn wasm_rt_push_str(s &mut string, b string) { *s = wasm_rt_concat(*s, b) }
+fn wasm_rt_push_byte(s &mut string, c int) { *s = wasm_rt_concat(*s, wasm_rt_byte(c)) }
+fn wasm_rt_bool(v bool) string { if v { << "true" }
+    << "false" }
+fn wasm_rt_str(v int) string {
+    if v == (-9223372036854775807 - 1) { << "-9223372036854775808" }
+    mut n := v
+    if n < 0 { n = -n }
+    mut count := 1
+    mut k := n
+    while k >= 10 { count += 1
+        k = k / 10 }
+    if v < 0 { count += 1 }
+    mut s := make_string(count)
+    mut i := count - 1
+    while i >= 0 {
+        s[i] = 48 + n % 10
+        n = n / 10
+        i -= 1
+    }
+    if v < 0 { s[0] = 45 }
+    << s
+}
+fn wasm_rt_output(s string, err int, nl int) {
+    mut slot := 1024
+    mut base := 150000
+    if err != 0 { slot = 1032
+        base = 450000 }
+    mut n := wasm_mem_load(slot)
+    for i in 0:s.len {
+        if n < 262144 { wasm_mem_store8(base + n, s[i])
+            n += 1 }
+    }
+    if nl != 0 && n < 262144 { wasm_mem_store8(base + n, 10)
+        n += 1 }
+    wasm_mem_store(slot, n)
+}
+fn wasm_rt_print_str(s string, err int, nl int) { wasm_rt_output(s, err, nl) }
+fn wasm_rt_print_int(v int, err int, nl int) { wasm_rt_output(wasm_rt_str(v), err, nl) }
+fn wasm_rt_print_bool(v bool, err int, nl int) { wasm_rt_output(wasm_rt_bool(v), err, nl) }
+fn wasm_rt_assert(v bool) { if !v { wasm_rt_output("assertion failed", 1, 1)
+        <<< 1 } }
+fn wasm_rt_class_16(c int) bool { << c >= 48 && c <= 57 }
+fn wasm_rt_class_17(c int) bool { << c >= 65 && c <= 90 || c >= 97 && c <= 122 || c == 95 }
+fn wasm_rt_class_18(c int) bool { << wasm_rt_class_16(c) || wasm_rt_class_17(c) }
+fn wasm_rt_class_19(c int) bool { << c == 32 || c == 9 || c == 10 || c == 13 }

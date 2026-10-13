@@ -3,6 +3,7 @@
   var script = document.currentScript;
   var workerUrl = new URL('xu-play-worker.js', script.src);
   var examplesUrl = new URL('xu-play-examples.json', script.src);
+  workerUrl.search = examplesUrl.search = new URL(script.src).search;
   var available = script.getAttribute('data-wasm-available') !== 'false';
   var en = document.documentElement.lang === 'en';
   function text(zh, english) { return en ? english : zh; }
@@ -13,6 +14,7 @@
     var button = document.getElementById('xu-play-run');
     var output = document.getElementById('xu-play-out');
     var meta = document.getElementById('xu-play-meta');
+    var help = document.getElementById('xu-play-help');
     if (!source || !button || !output) return;
     var examples = {};
     var worker = null;
@@ -100,7 +102,12 @@
     if (select) {
       select.disabled = true;
       select.addEventListener('change', function () {
-        if (examples[select.value]) source.value = examples[select.value];
+        var example = examples[select.value];
+        if (!example) return;
+        source.value = example.source;
+        if (help) help.textContent = example.description[en ? 'en' : 'zh'];
+        show(text('点击「运行代码」查看结果。', 'Click Run Code to see the result.'), false);
+        if (ready && !running) status(text('就绪 · Ctrl/⌘ + Enter 运行', 'Ready · Ctrl/⌘ + Enter to run'));
       });
     }
     function load() {
@@ -114,6 +121,8 @@
         .then(function (loaded) {
           examples = loaded;
           if (select) select.disabled = false;
+          var current = examples[select && select.value] || examples.hello;
+          if (help && current) help.textContent = current.description[en ? 'en' : 'zh'];
           startWorker();
         })
         .catch(function () {
