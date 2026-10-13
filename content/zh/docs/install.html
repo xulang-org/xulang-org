@@ -1,22 +1,35 @@
 <!--title: 安装-->
-
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>安装</h1>
-<p>面向用户的二进制名叫 <code>xu</code>。各平台预编译文件：</p>
-<table>
-<tr><th>文件</th><th><code>--target</code></th><th>格式</th></tr>
-<tr><td><code>xu.macos.arm64</code></td><td><code>macos-arm64</code></td><td>Mach-O arm64</td></tr>
-<tr><td><code>xu.macos.x64</code></td><td><code>macos-x64</code></td><td>Mach-O x86_64</td></tr>
-<tr><td><code>xu.linux.arm64</code></td><td><code>linux-arm64</code></td><td>ELF aarch64</td></tr>
-<tr><td><code>xu.linux.x64</code></td><td><code>linux-x64</code></td><td>ELF x86_64</td></tr>
-<tr><td><code>xu.linux.loongarch64</code></td><td><code>linux-loongarch64</code></td><td>ELF LoongArch</td></tr>
-<tr><td><code>xu.linux.riscv64</code></td><td><code>linux-riscv64</code></td><td>ELF RISC-V</td></tr>
-<tr><td><code>xu.windows.x64.exe</code></td><td><code>windows-x64</code></td><td>PE32+ x86-64</td></tr>
-<tr><td><code>xu.windows.arm64.exe</code></td><td><code>windows-arm64</code></td><td>PE32+ ARM64</td></tr>
-</table>
-<p>下载页：<a href="/download">/download</a>。放到 <code>PATH</code> 后即可：</p>
-<pre><code>xu build hello.xu
-./hello</code></pre>
-<p>mac/linux 默认产物无后缀，已带可执行位，不必再 <code>chmod +x</code>。Windows 为 <code>.exe</code>。PowerShell 请用 <code>--output</code>（<code>-o</code> 会被吞）。</p>
-<h2>从源码编（次要路径）</h2>
-<p>在语言仓库根：<code>make xu</code>，得到 <code>./bin/xu</code>。日常把下载页对应平台的文件改名为 <code>xu</code> 放进 PATH。</p>
+<p class="banner">本文对应 Xu 0.8.4。安装包是否可下载，以 <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a> 的实际附件为准。</p>
+<p>使用包含 <code>bin/</code>、<code>src/</code> 和工具的完整 SDK。标准库源码是编译导入的必要输入；单独把编译器改名放进 PATH 不构成完整开发环境。</p>
+<h2>安装 SDK</h2>
+<p>从 <a href="/download">下载页</a> 进入 Releases，选择匹配本机的已发布归档。Unix 归档通常为 <code>xu-v&lt;版本&gt;-&lt;目标&gt;.tar.gz</code>，Windows 为 <code>.zip</code>。解压后在 SDK 根目录执行：</p>
+<pre><code># macOS / Linux
+./install.sh
+# 在新终端验证
+xu --version
+xu doctor</code></pre>
+<pre><code># Windows PowerShell
+.\install.ps1
+# 重启 PowerShell 后验证
+xu --version
+xu doctor</code></pre>
+<p>默认安装目录为 <code>~/.xu</code>。Unix 可用 <code>./install.sh --prefix /absolute/path</code> 指定目录，或用 <code>source env.sh</code> 临时激活解压后的 SDK；PowerShell 对应 <code>. .\env.ps1</code>。</p>
+<h2>更新已安装版本</h2>
+<p>安装 Python 3.9+ 后执行 <code>xu up</code> 或 <code>xu update</code>，从 GitHub 下载正式版本源码并编译更新。<code>xu up --check</code> 只检查，<code>xu update --ref main</code> 选择最新开发源码。源码构建及运行验证成功后，才替换本机编译器、配套工具与标准库；更多选项见 <a href="/docs/cli">命令行</a>。</p>
+<h2>目标平台</h2>
+<table><tr><th>系统</th><th><code>--target</code></th><th>默认产物</th></tr>
+<tr><td>macOS</td><td><code>macos-arm64</code>、<code>macos-x64</code></td><td>Mach-O，无后缀</td></tr>
+<tr><td>Linux</td><td><code>linux-arm64</code>、<code>linux-x64</code>、<code>linux-loongarch64</code>、<code>linux-riscv64</code>、<code>linux-arm32</code></td><td>ELF，无后缀</td></tr>
+<tr><td>Windows</td><td><code>windows-x64</code>、<code>windows-arm64</code></td><td>PE，<code>.exe</code></td></tr>
+<tr><td>裸机</td><td><code>thumbv7em-none</code>、<code>riscv32imac-none</code></td><td>裸机目标产物</td></tr></table>
+<p>目标支持不等于已有该平台的发行附件，也不代表所有标准库和桌面功能均可用；详见 <a href="/docs/status">限制与现状</a>。</p>
+<h2>验证编译</h2>
+<pre><code>xu check hello.xu
+xu run hello.xu
+xu build hello.xu --output hello</code></pre>
+<p>macOS / Linux 的可执行产物已有执行权限。PowerShell 中建议使用 <code>--output</code> 指定路径。</p>
+<h2>环境与源码构建</h2>
+<p><code>XU_ROOT</code> 指向 SDK 或编译器仓库；<code>XU_STDLIB_ROOT</code> 可显式指定标准库 <code>src/</code>。<code>XUPATH</code> 追加搜索目录，不能替代外部模块的 <code>require:</code> 声明。工具 <code>xu-fmt</code>、<code>xu-doc</code>、<code>xu-map</code>、<code>xu-doctor</code>、<code>xu-desktop</code> 应与 <code>xu</code> 放在同一个 bin 目录。</p>
+<p>源码位于 <a href="https://github.com/xulang-org/xu">xu 仓库</a>。<code>make xu</code> 使用已有 hosted 产品种子自举，并重建工具；清洁检出需要先准备产品种子及 bootstrap 伴随仓库，不能只凭源码直接执行编译器。packages、examples、vscode 分别维护在独立仓库。</p>

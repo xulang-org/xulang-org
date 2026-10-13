@@ -1,0 +1,38 @@
+<!--title: Modules and dependencies-->
+<p class="crumb"><a href="/en/docs/start">Docs</a></p>
+<h1>Modules and dependencies</h1>
+<p class="banner">Xu 0.8.4 · slash paths since 0.8.1 · offline/frozen since 0.8.2 · MVS and proxies since 0.8.3 · signed checksum logs since 0.8.4</p>
+<p>A directory project uses <code>xu.xun</code>. <code>module:</code> is the module identity, <code>version:</code> its own version, and <code>xu:</code> the Xu version it targets. External imports require an explicit alias and a matching root module in <code>require:</code>.</p>
+<h2>Local development</h2>
+<p>With packages beside your app, write app/xu.xun:</p>
+<pre><code>module: app
+version: !ver 0.1.0
+xu: !ver 0.8.4
+require:
+  "github.com/xulang-org/packages": file:../packages</code></pre>
+<pre><code>@main
+mysql #github.com/xulang-org/packages/mysql
+
+fn main() {
+    _ := mysql.driver()
+}</code></pre>
+<p><code>file:</code> is relative to the declaring manifest. Use the root module in require; select mysql, postgres, or other subpackages in the import. Neither XUPATH nor a short import such as #mysql substitutes for this declaration.</p><h2>Remote modules and version selection</h2><p>Use a reviewed immutable Git commit, or an exact SemVer minimum requirement when the matching version tag is available:</p>
+<pre><code>require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit&gt;
+
+# Alternative, when this version is available:
+require:
+  "github.com/xulang-org/packages": v0.1.1</code></pre>
+<p>Choose one require block and replace &lt;commit&gt; with an actual commit. MVS reads all reachable version manifests and selects the highest minimum requirement for each module. It does not query latest or interpret version ranges. v2+ modules use a matching /vN path suffix. Explicit file/Git/tar sources remain supported; conflicting sources fail.</p><h2>Install, lock, and build offline</h2><pre><code>xu install app
+xu check app/main.xu --offline
+xu build app/main.xu --frozen --output app/program</code></pre>
+<table><tr><th>Mode</th><th>Behavior</th></tr><tr><td>Default</td><td>May download and establish lock entries; existing content mismatches fail.</td></tr>
+<tr><td><code>--offline</code></td><td>No downloads. Uses local sources, verified cache, or vendor; may create lock entries.</td></tr>
+<tr><td><code>--frozen</code></td><td>Offline, existing matching lock entries required; no dependency cache or lock writes. Local file dependencies require an installed vendor snapshot.</td></tr></table>
+<p>Commit the reviewed <code>xu.lock</code>. Explicit sources use v2 locks; version graphs use v3. <code>xu install</code> retains all reachable version snapshots in vendor for offline MVS replay. Frozen dependency policy does not freeze your app sources or build output. <code>install --frozen</code> and <code>build --desktop</code> with these modes are rejected.</p><h2>Proxy and private modules</h2><pre><code>XUPROXY='https://proxy.example.com,direct' xu install app
+XUPRIVATE='example.com/private/*' xu install app</code></pre><p><code>XUPROXY</code> accepts HTTP(S), absolute file:// URLs, direct, and off; the default is direct. A comma falls back only on 404/410; a vertical bar allows fallback on request errors. Identity or integrity mismatches always fail. Direct version discovery supports GitHub repositories; other hosts need an explicit source or a configured Xu proxy.</p>
+<p><code>XUPRIVATE</code> is a comma-separated module-prefix glob list. <code>XUNOPROXY</code> defaults to it and controls proxy bypass. No public Xu proxy is assumed; Go module proxy manifests are not Xu manifests.</p>
+<h2>Checksum verification in 0.8.4</h2>
+<p><code>XUSUMDB</code> accepts a trusted Ed25519 verifier key and optional service URL. For SemVer modules, the client verifies the signed tree head, module digest, inclusion proof, and append consistency before accepting dependencies. With it unset or off, first-use trust remains in effect. <code>XUNOSUMDB</code> controls checksum bypass independently and defaults to XUPRIVATE.</p>
+<p>Configured verification failures do not fall back to first-use trust. Offline/frozen builds require previously verified proofs. A public Xu checksum service and independent cross-client witnesses are still pending; configure a service and public key that you trust.</p>
+<h2>Migrate from older versions</h2><p>Change old dotted package paths to slash paths; preserve dots in domain names, version numbers, and field/method access. Review changed module identities and legacy lock files before reinstalling. Do not delete a current lock merely to suppress a mismatch.</p><p><a href="/en/docs/packages">Use external packages</a></p>

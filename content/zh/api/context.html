@@ -1,26 +1,31 @@
 <!--title: #context-->
 <p class="crumb">API</p>
 <h1><code>#context</code></h1>
+<p class="banner">Xu 0.8.4 API</p>
 <p class="meta">import: <code>#context</code></p>
-<p class="meta">counts: 5 函数, 1 方法, 2 类型, 0 常量, 0 方法集</p>
+<p class="meta">counts: 9 函数, 2 方法, 2 类型, 0 常量, 0 方法集</p>
 <p class="lead">Background / WithCancel / WithTimeout；Done 为 chan。无 WithValue。</p>
 <article class="api-item" id="struct-Context">
 <h2><code>struct Context</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Context {
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Context {
     <span class="syn-kw">pub</span> done <span class="syn-kw">chan</span> <span class="syn-type">int</span>
     <span class="syn-kw">pub</span> deadline_ns <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> keys []<span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> vals []<span class="syn-type">string</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>`context` 最小面：Background / WithCancel / WithTimeout。 Done 是 chan；cancel 即 close。副本共享同一条 chan（与 sync.Mutex 相同）。</p>
+<p>`context` 最小面：Background / WithCancel / WithTimeout。 Done 是 chan；cancel 即 close。副本共享同一条 chan（与 sync.Mutex 相同）。 `with_cancel_parent` adds cancellation propagation without requiring a runtime interface value: a small watcher goroutine waits on the parent&#x27;s done channel and closes the child exactly once.</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>done</code> <span class="type">chan int</span></dt><dd>字段（通道；类型 chan int）</dd>
 <dt><code>deadline_ns</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>keys</code> <span class="type">[]string</span></dt><dd>字段（[]string）</dd>
+<dt><code>vals</code> <span class="type">[]string</span></dt><dd>字段（[]string）</dd>
 </dl>
 </article>
 <article class="api-item" id="struct-Cancel">
 <h2><code>struct Cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cancel {
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cancel {
     <span class="syn-kw">pub</span> ctx Context
 }</code></pre></div>
 <h3>用途</h3>
@@ -32,7 +37,7 @@
 </article>
 <article class="api-item" id="background">
 <h2><code>background</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> background() Context</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> background() Context</code></pre></div>
 <h3>用途</h3>
 <p>根上下文。</p>
 <h3>参数</h3>
@@ -42,7 +47,7 @@
 </article>
 <article class="api-item" id="with_cancel">
 <h2><code>with_cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel() Cancel</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel() Cancel</code></pre></div>
 <h3>用途</h3>
 <p>派生一个带 cancel 的新值。</p>
 <h3>参数</h3>
@@ -52,7 +57,7 @@
 </article>
 <article class="api-item" id="-mut-Cancel-cancel">
 <h2><code>(&amp;mut Cancel) cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cancel) cancel()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cancel) cancel()</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Cancel` 上的方法：取消。</p>
 <h3>参数</h3>
@@ -60,9 +65,21 @@
 <dt><code>c</code> <span class="type">&amp;mut Cancel</span></dt><dd>接收者 &amp;mut Cancel（可变借用）</dd>
 </dl>
 </article>
+<article class="api-item" id="with_cancel_parent">
+<h2><code>with_cancel_parent</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel_parent(parent &amp;Context) Cancel</code></pre></div>
+<h3>用途</h3>
+<p>派生一个带 cancel parent 的新值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent（借用，调用方仍持有；类型 &amp;Context）</dd>
+</dl>
+<h3>返回</h3>
+<p>Cancel — 该类型的值</p>
+</article>
 <article class="api-item" id="with_timeout">
 <h2><code>with_timeout</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_timeout(timeout_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_timeout(timeout_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
 <h3>用途</h3>
 <p>派生一个带 timeout 的新值。</p>
 <h3>参数</h3>
@@ -74,7 +91,7 @@
 </article>
 <article class="api-item" id="with_deadline">
 <h2><code>with_deadline</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_deadline(deadline_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_deadline(deadline_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
 <h3>用途</h3>
 <p>派生一个带 deadline 的新值。</p>
 <h3>参数</h3>
@@ -84,15 +101,66 @@
 <h3>返回</h3>
 <p>Cancel — 该类型的值</p>
 </article>
+<article class="api-item" id="Context-deadline">
+<h2><code>(Context) deadline</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c Context) deadline() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`Context` 上的方法：截止时间。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">Context</span></dt><dd>接收者 Context（值接收者）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
 <article class="api-item" id="err">
 <h2><code>err</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> err(c Context) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> err(c &amp;Context) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>err，返回 int。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">Context</span></dt><dd>字节或字符码（Context）</dd>
+<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>字节或字符码（借用，调用方仍持有；类型 &amp;Context）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="with_value">
+<h2><code>with_value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_value(parent &amp;Context, key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) Context</code></pre></div>
+<h3>用途</h3>
+<p>派生一个带 value 的新值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent（借用，调用方仍持有；类型 &amp;Context）</dd>
+<dt><code>key</code> <span class="type">string</span></dt><dd>键（string）</dd>
+<dt><code>val</code> <span class="type">string</span></dt><dd>值（string）</dd>
+</dl>
+<h3>返回</h3>
+<p>Context — 该类型的值</p>
+</article>
+<article class="api-item" id="value">
+<h2><code>value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> value(c &amp;Context, key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>值。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>字节或字符码（借用，调用方仍持有；类型 &amp;Context）</dd>
+<dt><code>key</code> <span class="type">string</span></dt><dd>键（string）</dd>
+</dl>
+<h3>返回</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="without_cancel">
+<h2><code>without_cancel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> without_cancel(parent &amp;Context) Context</code></pre></div>
+<h3>用途</h3>
+<p>without取消。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent（借用，调用方仍持有；类型 &amp;Context）</dd>
+</dl>
+<h3>返回</h3>
+<p>Context — 该类型的值</p>
 </article>

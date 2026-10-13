@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Generate xu-site stdlib API HTML from Xu src.
+"""Generate public Xu and external-package API HTML from companion sources.
 
 Reads packages with mod.xu under --src (default ../xu/src).
 Writes content/{zh,en}/api/**.html under --site.
-Does not touch the language repo. Skips src/cmd/** and test_*.xu.
+Does not touch companion repositories. Excludes compiler internals and tests.
 """
 from __future__ import annotations
 
 import argparse
 import html
 import os
+from pathlib import Path
 import re
 import sys
 from dataclasses import dataclass, field
@@ -170,6 +171,8 @@ class Item:
 class Package:
     path: str  # fmt, path/filepath
     import_path: str
+    module: str = ""
+    version: str = ""
     items: list[Item] = field(default_factory=list)
     file_comment: str = ""
     n_fn: int = 0
@@ -344,10 +347,10 @@ def parse_fn_sig(sig: str) -> dict:
         out["recv_name"] = rn
         out["recv_type"] = rt
     # name#generic(
-    m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)(#([^(\s]+))?\s*\(", s)
+    m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)([#@]([^()]+?))?\s*\(", s)
     if not m:
         # iface: maybe already "name(...)"
-        m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)(#([^(\s]+))?\s*\(", s)
+        m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)([#@]([^()]+?))?\s*\(", s)
     if not m:
         return out
     out["name"] = m.group(1)
@@ -386,8 +389,12 @@ def parse_struct_fields(block: str) -> list[Field]:
         if inner.rstrip().endswith("}"):
             inner = inner.rstrip()[:-1]
     pending_cmt: list[str] = []
+    public_section = False
     for line in inner.splitlines():
         t = line.strip()
+        if t == "pub:":
+            public_section = True
+            continue
         if t.startswith("//"):
             pending_cmt.append(t)
             continue
@@ -395,7 +402,7 @@ def parse_struct_fields(block: str) -> list[Field]:
             pending_cmt = []
             continue
         # pub name type  OR  name type
-        pub = False
+        pub = public_section
         if t.startswith("pub "):
             pub = True
             t = t[4:].strip()
@@ -453,7 +460,7 @@ def parse_iface_methods(block: str, iface_name: str, comment: str, file: str) ->
 
 
 def parse_xu_file(path: str) -> tuple[list[Item], str]:
-    text = open(path, encoding="utf-8", errors="replace").read()
+    text = Path(path).read_text(encoding="utf-8", errors="replace")
     lines = text.splitlines()
     items: list[Item] = []
     file_comment_lines: list[str] = []
@@ -529,12 +536,20 @@ def parse_xu_file(path: str) -> tuple[list[Item], str]:
                     continue
                 i += 1
                 continue
-            if stripped.startswith("pub struct ") or stripped.startswith("struct@ "):
-                is_iface = stripped.startswith("struct@ ")
+            if stripped.startswith("pub enum "):
+                sig, bidx, has_b = signature_until_brace(lines, i)
+                block = capture_block(lines, bidx) if has_b else stripped
+                name = sig.removeprefix("pub enum ").strip()
+                items.append(Item(kind="enum", name=name, sig=block, comment=cmt, file=path))
+                i = bidx + block.count("\n") + 1 if has_b else i + 1
+                depth = 0
+                continue
+            if stripped.startswith(("pub struct ", "struct@ ", "pub struct@ ")):
+                is_iface = stripped.startswith(("struct@ ", "pub struct@ "))
                 sig, bidx, has_b = signature_until_brace(lines, i)
                 block = capture_block(lines, bidx) if has_b else stripped
                 if is_iface:
-                    name = stripped.split("{")[0].replace("struct@", "").strip()
+                    name = stripped.split("{")[0].removeprefix("pub ").replace("struct@", "").strip()
                     _f, meths = parse_iface_methods(block, name, cmt, path)
                     it = Item(
                         kind="iface",
@@ -618,7 +633,7 @@ def parse_xu_file(path: str) -> tuple[list[Item], str]:
 def list_packages(src_root: str) -> list[str]:
     pkgs = []
     for root, dirs, files in os.walk(src_root):
-        dirs[:] = [d for d in dirs if d != "cmd"]
+        dirs[:] = [d for d in dirs if d not in ("cmd", "internal", "dummy_pkg", ".git", "vendor", "native")]
         rel = os.path.relpath(root, src_root)
         if rel == "cmd" or rel.startswith("cmd" + os.sep):
             continue
@@ -638,7 +653,7 @@ def load_package(src_root: str, pkg: str) -> Package:
     for fn in sorted(os.listdir(folder)):
         if not fn.endswith(".xu"):
             continue
-        if fn.startswith("test_"):
+        if fn.startswith(("test_", "test.", "bench_", "bench.")):
             continue
         files.append(fn)
     # mod.xu first
@@ -659,7 +674,7 @@ def load_package(src_root: str, pkg: str) -> Package:
             p.n_fn += 1
         elif it.kind == "method":
             p.n_method += 1
-        elif it.kind == "struct":
+        elif it.kind in ("struct", "enum"):
             p.n_type += 1
         elif it.kind == "const":
             p.n_const += 1
@@ -1497,6 +1512,8 @@ def purpose_for(pkg: str, item: Item, lang: str) -> str:
     if item.kind == "struct":
         base = c or (f"公开结构体 `{item.name}`。" if zh else f"Public struct `{item.name}`.")
         return base
+    if item.kind == "enum":
+        return c or (f"公开枚举 `{item.name}`；变体与载荷见声明。" if zh else f"Public enum `{item.name}`; see the declaration for variants and payloads.")
     if item.kind == "iface":
         base = c or (
             f"方法集约束 `{item.name}`。实现类型须提供下列方法。不是接口值。"
@@ -1626,9 +1643,9 @@ BLURB_ZH = {
     "path": "POSIX 斜杠路径：join/clean/split/base/dir/ext/matches。",
     "path/filepath": "本地路径（含盘符与斜杠转换）、glob、walk。",
     "os": "进程、文件、环境。hosted 下 File：open/create/read/write/close。getwd 失败返空串。",
-    "io": "Buffer / Cursor 与 copy、read_all、EOF。另有 multi/tee/section/pipe。",
+    "io": "Buffer / Cursor、流复制、带数据的 EOF/错误结果与写入进度契约；另有 multi/tee/section/pipe。",
     "io/fs": "目录树视图。实现钉死 os.DirFS；包级函数吃 &os.DirFS。valid_path 检查未加根的斜杠路径。",
-    "bufio": "绑 io.Buffer 的 Reader/Writer 与 Scanner（行/词/字节）。",
+    "bufio": "Reader/Writer、Scanner（行/词/字节）与泛型借用流包装。",
     "log": "owning Logger：print/printf/fatal；可带文件位置。",
     "log/slog": "结构化日志。无包级默认 logger。文本或 JSON 一行一条。",
     "flag": "FlagSet，无全局状态：define_* + parse + print_defaults。",
@@ -1700,7 +1717,7 @@ BLURB_ZH = {
     "crypto/sm9": "SM9 标识密码：签名/加密/密钥交换。零 C、非商密认证。",
     "crypto/zuc": "ZUC-128 与 128-EEA3/EIA3。零 C、非商密认证。",
     "crypto/gmtls": "GMTLS 1.1 子集（SM2 双证 + SM4）。进程内 net.pipe，无 Listen。零 C、非商密认证。",
-    "net": "IP/端口解析与 TCP IPv4 Dial/Listen/Accept。Windows 上 TCP 返回错误占位。",
+    "net": "IP/端口解析、Unix 上 TCP/UDP IPv4/IPv6 与 Unix 域套接字；Windows TCP 仍有平台限制。",
     "net/http": "HTTP/1.1 Client 与 Server、Header、Cookie。本包无 TLS。",
     "net/http/httptest": "进程内 ResponseRecorder 与测试用 Request。不做真实 listen。",
     "net/http/cookiejar": "内存 Cookie Jar。带 Domain 属性的 cookie 忽略（无公共后缀表）。",
@@ -1722,9 +1739,9 @@ BLURB_ZH = {
     "container/heap": "IntHeap / StrHeap 最小堆。",
     "container/ring": "环形链表，值钉死 owning string。",
     "index/suffixarray": "后缀数组 lookup / find_all_index。",
-    "database/sql": "数据库用户面：open、Conn、事务、Rows。",
+    "database/sql": "数据库用户 API：open、连接池、Conn、事务、Stmt 与 Rows；具体驱动由外部 packages 提供。",
     "database/sql/driver": "驱动快照 RowsResult 与 Conn/Stmt/Tx/Driver。",
-    "os/exec": "Command / Run / Output。v1 经宿主 os_system；无管道 Start/Wait。",
+    "os/exec": "进程执行：参数数组、run/output/combined_output、start/wait 与标准输入输出管道。",
     "os/signal": "Unix 信号编号。notify 未接到内核，调用即 throw，避免静默丢信号。",
     "os/user": "当前用户（uid/gid + USER/HOME）。Lookup 只认当前用户。",
     "testing/iotest": "一次一字节 / 半量 Reader，以及每次都 throw 的 err_reader。",
@@ -1743,9 +1760,9 @@ BLURB_EN = {
     "path": "POSIX slash paths: join/clean/split/base/dir/ext/matches.",
     "path/filepath": "Host paths (volume, slash conversion), glob, and walk.",
     "os": "Process, files, environment. Hosted File: open/create/read/write/close. getwd returns empty on failure.",
-    "io": "Buffer / Cursor plus copy, read_all, EOF. Also multi/tee/section/pipe.",
+    "io": "Buffer / Cursor, stream copying, EOF/error results with data, and write-progress contracts; also multi/tee/section/pipe.",
     "io/fs": "Directory-tree view. Implementation is concrete os.DirFS; package functions take &os.DirFS. valid_path checks unrooted slash paths.",
-    "bufio": "Reader/Writer bound to io.Buffer, plus Scanner (lines/words/bytes).",
+    "bufio": "Reader/Writer, Scanner (lines/words/bytes), and generic borrowed-stream wrappers.",
     "log": "Owning Logger: print/printf/fatal; optional file location.",
     "log/slog": "Structured logging. No package-level default logger. Text or one JSON object per line.",
     "flag": "FlagSet with no globals: define_* + parse + print_defaults.",
@@ -1817,7 +1834,7 @@ BLURB_EN = {
     "crypto/sm9": "SM9 identity-based sign/encrypt/exchange. Pure Xu, not commercial-crypto certified.",
     "crypto/zuc": "ZUC-128 and 128-EEA3/EIA3. Pure Xu, not commercial-crypto certified.",
     "crypto/gmtls": "GMTLS 1.1 subset (dual SM2 certs + SM4). In-process net.pipe; no Listen. Pure Xu, not commercial-crypto certified.",
-    "net": "IP/port parsing and TCP IPv4 Dial/Listen/Accept. On Windows, TCP returns an error placeholder.",
+    "net": "IP/port parsing, TCP/UDP IPv4/IPv6 and Unix sockets on Unix; Windows TCP remains limited.",
     "net/http": "HTTP/1.1 Client and Server, Header, Cookie. No TLS in this package.",
     "net/http/httptest": "In-process ResponseRecorder and test Request. No real listen.",
     "net/http/cookiejar": "In-memory cookie Jar. Domain-attribute cookies are ignored (no public suffix list).",
@@ -1839,9 +1856,9 @@ BLURB_EN = {
     "container/heap": "IntHeap / StrHeap min-heaps.",
     "container/ring": "Ring list; values are owning strings.",
     "index/suffixarray": "Suffix array lookup / find_all_index.",
-    "database/sql": "Database user API: open, Conn, transactions, Rows.",
+    "database/sql": "Database API: open, pooling, Conn, transactions, Stmt, and Rows; concrete drivers come from external packages.",
     "database/sql/driver": "Driver snapshot RowsResult plus Conn/Stmt/Tx/Driver.",
-    "os/exec": "Command / Run / Output. v1 uses hosted os_system; no piped Start/Wait.",
+    "os/exec": "Process execution with argument arrays, run/output/combined_output, start/wait, and stdin/stdout pipes.",
     "os/signal": "Unix signal numbers. notify is not hooked to the kernel and throws so signals are not silently dropped.",
     "os/user": "Current user from uid/gid + USER/HOME. Lookup only succeeds for the current user.",
     "testing/iotest": "One-byte / half-size readers, plus err_reader that always throws.",
@@ -1862,6 +1879,9 @@ def package_blurb(pkg: Package, lang: str) -> str:
             return c
         if lang == "en" and not is_cjk(c):
             return c
+    if pkg.module:
+        return (f"扩展包 `{pkg.import_path}`，由模块 {pkg.module} 提供。"
+                if lang == "zh" else f"External package `{pkg.import_path}`, provided by {pkg.module}.")
     if lang == "zh":
         return f"标准库包 `{pkg.import_path}`。"
     return f"Standard library package `{pkg.import_path}`."
@@ -1930,7 +1950,7 @@ def highlight_xu(sig: str) -> str:
 def code_block(sig: str) -> str:
     return (
         '<div class="code-block-wrapper">'
-        '<div class="code-block-header"><span>XU</span><span>v0.1.0</span></div>'
+        '<div class="code-block-header"><span>Xu</span><span>API</span></div>'
         f"<pre><code>{highlight_xu(sig)}</code></pre>"
         "</div>"
     )
@@ -1943,6 +1963,8 @@ def item_id(item: Item, used: dict) -> str:
         base = f"{item.recv_type}-{item.name}"
     elif item.kind == "struct":
         base = f"struct-{item.name}"
+    elif item.kind == "enum":
+        base = f"enum-{item.name}"
     elif item.kind == "const":
         base = f"const-{item.name}"
     elif item.kind == "iface":
@@ -1970,6 +1992,8 @@ def render_item(pkg: Package, item: Item, lang: str, used_ids: dict) -> str:
         heading = f"const {item.name}"
     elif item.kind == "struct":
         heading = f"struct {item.name}"
+    elif item.kind == "enum":
+        heading = f"enum {item.name}"
     elif item.kind == "iface":
         heading = f"struct@ {item.name}"
     parts = [
@@ -1997,7 +2021,7 @@ def render_item(pkg: Package, item: Item, lang: str, used_ids: dict) -> str:
     return "\n".join(parts)
 
 
-def render_page(pkg: Package, lang: str) -> str:
+def render_page(pkg: Package, lang: str, xu_version: str = "") -> str:
     L = LABELS[lang]
     blurb = package_blurb(pkg, lang)
     counts = (
@@ -2006,13 +2030,19 @@ def render_page(pkg: Package, lang: str) -> str:
     )
     used: dict = {}
     body = [
-        f"<!--title: #{pkg.path}-->",
+        f"<!--title: #{pkg.import_path.split('#', 1)[1]}-->",
         f'<p class="crumb">{L["crumb"]}</p>',
-        f"<h1><code>#{esc(pkg.path)}</code></h1>",
+        f"<h1><code>#{esc(pkg.import_path.split('#', 1)[1])}</code></h1>",
         f'<p class="meta">{L["import"]}: <code>{esc(pkg.import_path)}</code></p>',
         f'<p class="meta">{L["counts"]}: {esc(counts)}</p>',
         f'<p class="lead">{esc(blurb)}</p>',
     ]
+    if xu_version:
+        body.insert(3, f'<p class="banner">Xu {esc(xu_version)} API</p>')
+    if pkg.module:
+        prefix = "/en" if lang == "en" else ""
+        body.append(f'<p class="note">{esc(pkg.module)} · {esc(pkg.version)} · '
+                    f'<a href="{prefix}/docs/packages">{"安装与使用" if lang == "zh" else "Install and use"}</a></p>')
     # stable order: consts, ifaces, structs, fns, methods, iface methods
     # Keep source order — more honest than regrouping.
     for it in pkg.items:
@@ -2021,7 +2051,36 @@ def render_page(pkg: Package, lang: str) -> str:
     return "\n".join(body)
 
 
-def write_packages(site: str, packages: list[Package]) -> None:
+def render_index(packages: list[Package], lang: str, xu_version: str) -> str:
+    prefix = "/en" if lang == "en" else ""
+    standard = [p for p in packages if not p.module]
+    external = [p for p in packages if p.module]
+    title = "API 索引" if lang == "zh" else "API index"
+    intro = (f"Xu {xu_version}：{len(standard)} 个标准库与 UI 包、{len(external)} 个扩展包。"
+             if lang == "zh" else f"Xu {xu_version}: {len(standard)} standard-library and UI packages, {len(external)} external packages.")
+    body = [f"<!--title: {title}-->", f"<h1>{title}</h1>", f'<p class="banner">{esc(intro)}</p>',
+            ('<p>声明与统计从当前源码生成，仅包含公开 API；具体支持范围见各包说明。</p>'
+             if lang == "zh" else '<p>Declarations and counts are generated from current sources and include public API only. See each package for its supported scope.</p>'),
+            f'<p><a href="{prefix}/docs/modules">{"模块与依赖" if lang == "zh" else "Modules and dependencies"}</a> · '
+            f'<a href="{prefix}/docs/packages">{"扩展包" if lang == "zh" else "External packages"}</a></p>']
+    groups: dict[str, list[Package]] = {}
+    for pkg in standard:
+        group = pkg.path.split("/", 1)[0] if "/" in pkg.path else ("核心" if lang == "zh" else "Core")
+        groups.setdefault(group, []).append(pkg)
+    if external:
+        groups["扩展包" if lang == "zh" else "External packages"] = external
+    for group, members in groups.items():
+        body.extend([f"<h2>{esc(group)}</h2>", "<ul>"])
+        for pkg in members:
+            count = len(pkg.items)
+            label = pkg.import_path.split("#", 1)[1]
+            body.append(f'<li><a href="{prefix}/api/{esc(pkg.path)}"><code>#{esc(label)}</code></a> — {count} '
+                        + ("项公开声明" if lang == "zh" else "public declarations") + "</li>")
+        body.append("</ul>")
+    return "\n".join(body) + "\n"
+
+
+def write_packages(site: str, packages: list[Package], xu_version: str = "") -> None:
     for lang in ("zh", "en"):
         root = os.path.join(site, "content", lang, "api")
         os.makedirs(root, exist_ok=True)
@@ -2029,9 +2088,11 @@ def write_packages(site: str, packages: list[Package]) -> None:
             rel = pkg.path + ".html"
             dest = os.path.join(root, rel)
             os.makedirs(os.path.dirname(dest), exist_ok=True)
-            html_text = render_page(pkg, lang)
+            html_text = render_page(pkg, lang, xu_version)
             with open(dest, "w", encoding="utf-8") as f:
                 f.write(html_text)
+        with open(os.path.join(root, "index.html"), "w", encoding="utf-8") as f:
+            f.write(render_index(packages, lang, xu_version))
 
 
 CSS_BLOCK = """
@@ -2138,21 +2199,20 @@ def ensure_css(site: str) -> None:
     if not os.path.isfile(path):
         print("warn: no www/site.css", file=sys.stderr)
         return
-    text = open(path, encoding="utf-8").read()
+    text = Path(path).read_text(encoding="utf-8")
     marker = "/* —— stdlib API pages —— */"
     if marker in text:
-        pre = text[: text.find(marker)]
-        text = pre.rstrip() + "\n" + CSS_BLOCK
-    else:
-        text = text.rstrip() + "\n" + CSS_BLOCK
-    open(path, "w", encoding="utf-8").write(text)
+        # Existing styles may be followed by hand-maintained site rules.
+        return
+    text = text.rstrip() + "\n" + CSS_BLOCK
+    Path(path).write_text(text, encoding="utf-8")
 
 
 def parse_extract_counts(extract_path: str) -> dict:
     out = {}
     if not os.path.isfile(extract_path):
         return out
-    text = open(extract_path, encoding="utf-8").read()
+    text = Path(extract_path).read_text(encoding="utf-8")
     for m in re.finditer(
         r"### `([^`]+)`\n\nimport:.*\nmodule id:.*\ncounts: (\d+) fns, (\d+) methods, (\d+) types, (\d+) consts, (\d+) ifaces",
         text,
@@ -2162,12 +2222,13 @@ def parse_extract_counts(extract_path: str) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Generate Xu stdlib API HTML")
+    ap = argparse.ArgumentParser(description="Generate Xu public API HTML and index")
     here = os.path.dirname(os.path.abspath(__file__))
     default_site = os.path.abspath(os.path.join(here, ".."))
     default_src = os.environ.get("XU_SRC") or os.path.abspath(os.path.join(default_site, "..", "xu", "src"))
     ap.add_argument("--src", default=default_src, help="Xu src root (packages with mod.xu)")
     ap.add_argument("--site", default=os.environ.get("XU_SITE_ROOT") or default_site, help="xu-site root")
+    ap.add_argument("--packages", default=os.environ.get("XU_PACKAGES_ROOT"), help="external packages checkout (default: sibling packages when present)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
 
@@ -2179,6 +2240,22 @@ def main(argv: list[str] | None = None) -> int:
 
     names = list_packages(src)
     packages = [load_package(src, n) for n in names]
+    version_path = os.path.join(os.path.dirname(src), "VERSION")
+    xu_version = Path(version_path).read_text(encoding="utf-8").strip() if os.path.isfile(version_path) else ""
+    external_root = args.packages or os.path.join(os.path.dirname(os.path.dirname(src)), "packages")
+    if args.packages and not os.path.isdir(external_root):
+        print(f"packages not found: {external_root}", file=sys.stderr)
+        return 1
+    if os.path.isdir(external_root):
+        manifest = Path(external_root, "xu.xun").read_text(encoding="utf-8")
+        module = re.search(r'^module:\s*"?([^"\n]+)"?\s*$', manifest, re.M).group(1)
+        module_version = re.search(r'^version:\s*!ver\s+(\S+)', manifest, re.M).group(1)
+        for name in list_packages(external_root):
+            pkg = load_package(external_root, name)
+            pkg.path = "packages/" + name
+            pkg.import_path = name.rsplit("/", 1)[-1] + " #" + module + "/" + name
+            pkg.module, pkg.version = module, module_version
+            packages.append(pkg)
     extract = parse_extract_counts(os.path.join(site, "xu-api-extract.md"))
 
     missing_docs = []
@@ -2210,7 +2287,7 @@ def main(argv: list[str] | None = None) -> int:
         f"{sum(p.n_iface for p in packages)} ifaces"
     )
     if mismatches:
-        print(f"  count mismatches vs extract: {len(mismatches)}")
+        print(f"  changes since historical local extraction: {len(mismatches)} packages")
         for row in mismatches[:20]:
             print(f"    {row[0]} extract={row[1]} got={row[2]} items={row[3]}")
     if missing_docs:
@@ -2221,7 +2298,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         return 0
 
-    write_packages(site, packages)
+    write_packages(site, packages, xu_version)
     ensure_css(site)
     print(f"  wrote content/{{zh,en}}/api for {len(packages)} packages")
     return 0

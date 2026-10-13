@@ -1,12 +1,13 @@
 <!--title: #os/exec-->
 <p class="crumb">API</p>
 <h1><code>#os/exec</code></h1>
+<p class="banner">Xu 0.8.4 API</p>
 <p class="meta">import: <code>#os/exec</code></p>
-<p class="meta">counts: 3 fns, 3 methods, 1 types, 0 consts, 0 ifaces</p>
-<p class="lead">Command / Run / Output. v1 uses hosted os_system; no piped Start/Wait.</p>
+<p class="meta">counts: 3 fns, 9 methods, 1 types, 0 consts, 0 ifaces</p>
+<p class="lead">Process execution with argument arrays, run/output/combined_output, start/wait, and stdin/stdout pipes.</p>
 <article class="api-item" id="struct-Cmd">
 <h2><code>struct Cmd</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cmd {
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cmd {
     <span class="syn-kw">pub</span> path <span class="syn-type">string</span>
     <span class="syn-kw">pub</span> args []<span class="syn-type">string</span>
     <span class="syn-kw">pub</span> dir <span class="syn-type">string</span>
@@ -14,7 +15,7 @@
     <span class="syn-kw">pub</span> has_ctx <span class="syn-type">int</span>
 }</code></pre></div>
 <h3>Purpose</h3>
-<p>`os/exec` subset: Command / Run / Output / CombinedOutput CommandContext. v1 runs via hosted os_system (macOS system(3) other targets return 127 → &quot;not available&quot;). No Start/Wait pipes</p>
+<p>`os/exec` subset: command / run / output / combined_output command_context / start / wait / stdout_pipe / stdin_pipe. Run is direct exec, not a shell. PATH lookup is look_path. stdout_pipe / stdin_pipe are Unix-only (Windows throws). stdin must be written and the write end closed before start.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>path</code> <span class="type">string</span></dt><dd>filesystem path</dd>
@@ -24,9 +25,20 @@
 <dt><code>has_ctx</code> <span class="type">int</span></dt><dd>field (int)</dd>
 </dl>
 </article>
+<article class="api-item" id="-mut-Cmd-set_dir">
+<h2><code>(&amp;mut Cmd) set_dir</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cmd) set_dir(dir <span class="syn-type">string</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>Method on `&amp;mut Cmd`: set dir.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;mut Cmd</span></dt><dd>receiver &amp;mut Cmd (exclusive borrow)</dd>
+<dt><code>dir</code> <span class="type">string</span></dt><dd>directory (string)</dd>
+</dl>
+</article>
 <article class="api-item" id="command">
 <h2><code>command</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> command(name <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; <span class="syn-type">string</span>) Cmd</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> command(name <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; <span class="syn-type">string</span>) Cmd</code></pre></div>
 <h3>Purpose</h3>
 <p>command; returns Cmd.</p>
 <h3>Parameters</h3>
@@ -39,9 +51,9 @@
 </article>
 <article class="api-item" id="command_context">
 <h2><code>command_context</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> command_context(ctx context.Context, name <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; <span class="syn-type">string</span>) Cmd</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> command_context(ctx context.Context, name <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; <span class="syn-type">string</span>) Cmd</code></pre></div>
 <h3>Purpose</h3>
-<p>Command context. Throws on failure.</p>
+<p>Command context.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>ctx</code> <span class="type">context.Context</span></dt><dd>ctx (context.Context)</dd>
@@ -53,7 +65,7 @@
 </article>
 <article class="api-item" id="look_path">
 <h2><code>look_path</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> look_path(file <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> look_path(file <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Look path. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -65,7 +77,7 @@
 </article>
 <article class="api-item" id="-Cmd-run">
 <h2><code>(&amp;Cmd) run</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cmd) run() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cmd) run() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `run` on `&amp;Cmd`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -77,7 +89,7 @@
 </article>
 <article class="api-item" id="-Cmd-output">
 <h2><code>(&amp;Cmd) output</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cmd) output() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cmd) output() <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `output` on `&amp;Cmd`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -87,9 +99,67 @@
 <h3>Returns</h3>
 <p>string — result string</p>
 </article>
+<article class="api-item" id="-mut-Cmd-close_unstarted_pipes">
+<h2><code>(&amp;mut Cmd) close_unstarted_pipes</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cmd) close_unstarted_pipes()</code></pre></div>
+<h3>Purpose</h3>
+<p>Release pipe endpoints when setup fails before start. Once started, the runtime owns the child endpoints; closing those stale fd numbers is unsafe.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;mut Cmd</span></dt><dd>receiver &amp;mut Cmd (exclusive borrow)</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-Cmd-stdout_pipe">
+<h2><code>(&amp;mut Cmd) stdout_pipe</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cmd) stdout_pipe() os.File</code></pre></div>
+<h3>Purpose</h3>
+<p>Method on `&amp;mut Cmd`: stdout pipe. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;mut Cmd</span></dt><dd>receiver &amp;mut Cmd (exclusive borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>os.File — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Cmd-stdin_pipe">
+<h2><code>(&amp;mut Cmd) stdin_pipe</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cmd) stdin_pipe() os.File</code></pre></div>
+<h3>Purpose</h3>
+<p>Method on `&amp;mut Cmd`: stdin pipe. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;mut Cmd</span></dt><dd>receiver &amp;mut Cmd (exclusive borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>os.File — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Cmd-start">
+<h2><code>(&amp;mut Cmd) start</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cmd) start() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Call `start` on `&amp;mut Cmd`. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;mut Cmd</span></dt><dd>receiver &amp;mut Cmd (exclusive borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Cmd-wait">
+<h2><code>(&amp;mut Cmd) wait</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cmd) wait() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Call `wait` on `&amp;mut Cmd`. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;mut Cmd</span></dt><dd>receiver &amp;mut Cmd (exclusive borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
 <article class="api-item" id="-Cmd-combined_output">
 <h2><code>(&amp;Cmd) combined_output</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cmd) combined_output() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cmd) combined_output() <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;Cmd`: combined output. Throws on failure.</p>
 <h3>Parameters</h3>

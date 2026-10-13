@@ -1,0 +1,37 @@
+<!--title: 模块与依赖-->
+<p class="crumb"><a href="/docs/start">文档</a></p>
+<h1>模块与依赖</h1>
+<p class="banner">Xu 0.8.4 · 0.8.1 统一斜杠路径 · 0.8.2 离线与冻结构建 · 0.8.3 MVS 与代理 · 0.8.4 签名校验日志</p>
+<p>目录项目使用 <code>xu.xun</code>。<code>module:</code> 是模块身份，<code>version:</code> 是模块自身版本，<code>xu:</code> 是所用 Xu 版本。外部导入必须明确别名，并在 <code>require:</code> 中声明所属根模块。</p>
+<h2>本机开发</h2><p>让 app 与 packages 目录同级，在 app/xu.xun 中写：</p>
+<pre><code>module: app
+version: !ver 0.1.0
+xu: !ver 0.8.4
+require:
+  "github.com/xulang-org/packages": file:../packages</code></pre>
+<pre><code>@main
+mysql #github.com/xulang-org/packages/mysql
+
+fn main() {
+    _ := mysql.driver()
+}</code></pre>
+<p><code>file:</code> 相对于声明它的清单。require 写根模块，导入再选择 mysql、postgres 等子包；XUPATH 和 <code>#mysql</code> 短路径不能替代这份声明。</p><h2>远程模块与版本选择</h2><p>可选择审查过的不可变 Git 提交；来源中已有对应版本标签时，也可声明精确 SemVer 最低要求：</p>
+<pre><code>require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit&gt;
+
+# Alternative, when this version is available:
+require:
+  "github.com/xulang-org/packages": v0.1.1</code></pre>
+<p>以上 require 块二选一，&lt;commit&gt; 须换成真实提交。MVS 读取全部可达版本的清单，为每个模块选择图中最高的最低要求，不查询 latest，也不接受版本范围。v2 及以上模块使用匹配的 <code>/vN</code> 路径后缀。显式 file/Git/tar 来源继续支持，来源冲突会报错。</p><h2>安装、锁定与离线构建</h2><pre><code>xu install app
+xu check app/main.xu --offline
+xu build app/main.xu --frozen --output app/program</code></pre>
+<table><tr><th>模式</th><th>行为</th></tr><tr><td>默认</td><td>允许下载并建立锁条目；已锁定内容不匹配时失败。</td></tr>
+<tr><td><code>--offline</code></td><td>不下载，只使用本地来源、已校验缓存或 vendor；仍可建立锁条目。</td></tr>
+<tr><td><code>--frozen</code></td><td>隐含离线，要求已有匹配锁条目，不写依赖缓存或补锁；本地 file 依赖须先安装为 vendor 快照。</td></tr></table>
+<p>审查并提交 <code>xu.lock</code>。显式来源使用 v2 锁，版本图使用 v3 锁。<code>xu install</code> 在 vendor 中保留全部可达版本快照，支持离线重放 MVS 图。冻结依赖不冻结主项目源码或编译产物。<code>install --frozen</code>、<code>build --desktop</code> 搭配这两种模式会被拒绝。</p><h2>代理与私有模块</h2><pre><code>XUPROXY='https://proxy.example.com,direct' xu install app
+XUPRIVATE='example.com/private/*' xu install app</code></pre><p><code>XUPROXY</code> 支持 HTTP(S)、绝对 file://、direct 与 off，默认 direct。逗号仅在 404/410 后回退；竖线允许请求错误后回退。身份或完整性不匹配始终失败。直接版本发现支持 GitHub 仓库，其他主机使用显式来源或配置的 Xu 代理。</p>
+<p><code>XUPRIVATE</code> 是逗号分隔的模块前缀 glob 列表；<code>XUNOPROXY</code> 默认沿用它并控制代理绕过。不假定公共 Xu 代理已上线，Go 模块代理中的清单不能作为 Xu 清单。</p>
+<h2>0.8.4 独立校验</h2>
+<p><code>XUSUMDB</code> 接受可信 Ed25519 verifier 公钥及可选服务 URL。对 SemVer 模块，客户端验证签名树头、模块摘要、包含证明和日志追加一致性后才接受依赖；未设置或设为 off 时仍是首次使用信任。<code>XUNOSUMDB</code> 独立控制校验绕过，默认沿用 XUPRIVATE。</p>
+<p>配置校验后，认证失败不会退回首次使用信任；离线与冻结构建要求已有已验证证明。公共 Xu 校验服务和跨客户端独立见证仍待发布，需要自行配置可信服务与公钥。</p>
+<h2>旧版本迁移</h2><p>旧点式包路径改为斜杠路径，保留域名、版本号和字段/方法访问中的点。模块身份或旧锁格式发生变化时，审查后重新安装。不能为跳过内容不匹配而直接删除当前锁文件。</p><p><a href="/docs/packages">使用扩展包</a></p>

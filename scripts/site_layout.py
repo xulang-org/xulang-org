@@ -7,6 +7,7 @@ from string import Template
 DOC_GROUPS = [
     ('xi-bookmark', '起步', 'Start', [
         ('start', '起步', 'Get started'), ('install', '安装', 'Install'), ('hello', 'Hello', 'Hello'),
+        ('modules', '模块与依赖', 'Modules and dependencies'), ('packages', '扩展包', 'External packages'),
     ]),
     ('xi-code', '教程', 'Tutorial', [
         (f'tutorial/{i:02}', f'{i:02} {label}', f'{i:02} {label}')
@@ -35,6 +36,8 @@ API_GROUPS = [
     ('xi-shield-check', '密码与国密', 'Crypto', 'crypto/sm2 crypto/sm3 crypto/sm4 crypto/sm9 crypto/zuc crypto/gmtls crypto/tls crypto/rand crypto/x509/pkix crypto/sha256'.split()),
     ('xi-package', '压缩 / 图像 / 数学', 'Compress / image / math', 'compress/gzip image math'.split()),
     ('xi-database', '数据库', 'Database', 'database/sql database/sql/driver'.split()),
+    ('xi-package', '扩展包', 'External packages', ['packages/' + name for name in
+        'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite websocket zookeeper'.split()]),
     ('xi-xuui', 'UI', 'UI', 'ui ui/webview ui/draw'.split()),
 ]
 
@@ -57,11 +60,17 @@ def sidebar(route: str, en: bool) -> str:
     elif rest == '/api' or rest.startswith('/api/'):
         for icon, zh, english, packages in API_GROUPS:
             groups.append((icon, english if en else zh, [
-                (prefix + '/api' + ('/' + package if package else ''), '#' + package if package else 'Index')
+                (prefix + '/api' + ('/' + package if package else ''),
+                 '#' + package.removeprefix('packages/') if package else 'Index')
                 for package in packages
             ]))
     elif rest == '/blog' or rest.startswith('/blog/'):
-        groups.append(('xi-chat', 'Blog', [(prefix + '/blog', 'Index'), (prefix + '/blog/xu-0-1-0', 'Xu 0.1.0')]))
+        groups.append(('xi-chat', 'Blog', [
+            (prefix + '/blog', 'Index' if en else '博客索引'),
+            (prefix + '/blog/xu-0-8-4', 'Xu 0.8.x · 0.8.4'),
+            (prefix + '/blog/packages-0-1-1', 'packages 0.1.1'),
+            (prefix + '/blog/xu-0-1-0', 'Xu 0.1.0'),
+        ]))
     if not groups:
         return ''
     sections = []

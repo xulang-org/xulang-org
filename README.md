@@ -62,11 +62,14 @@ make build
 ## 内容维护
 
 ```sh
-make api XU_ROOT=/path/to/xu    # 从 Xu 源码重建 API 正文；构建官网无需执行
+make api XU_ROOT=/path/to/xu XU_PACKAGES_ROOT=/path/to/packages
+# 从编译器与扩展包源码重建 API 正文、索引和统计；构建官网无需执行
 ```
 
-`scripts/gen-api.py` 提取公开声明，跳过 `src/cmd/**` 和 `test_*.xu`，
-不覆盖手写的 API 索引。中文与英文页面都应保留。
+`scripts/gen-api.py` 提取标准库、UI 与 packages 的公开声明，跳过编译器内部包、
+测试夹具和测试源码。中英文 API 正文、索引与统计一起生成，扩展包使用完整导入路径。
+`docs/modules`、`docs/packages` 说明模块依赖及驱动范围；教程命令在独立 examples
+仓库根执行。源码文档版本与实际已发布的下载附件分别说明。
 
 `xu.xun` 的 `version:` 和根 `VERSION` 是官网版本，`xu:` 记录内容对应的 Xu 版本。
 官网头部与页脚从 `xu:` 读取语言版本。

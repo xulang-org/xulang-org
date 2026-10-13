@@ -1,0 +1,35 @@
+<!--title: packages 0.1.1: 29 packages, one root module-->
+<p class="crumb"><a href="/en/blog">Blog</a> / Ecosystem progress</p>
+<p class="meta">2026-10-13 · External packages</p>
+<h1>packages 0.1.1: 29 packages, one root module</h1>
+<p class="banner"><code>github.com/xulang-org/packages</code> · module 0.1.1 · targets Xu 0.8.3. Module and compiler versions are managed separately.</p>
+<p>Concrete drivers for databases, messaging, search, and object storage now live in the separate <a href="https://github.com/xulang-org/packages">packages repository</a>. The standard library retains shared contracts such as database/sql pooling, transactions, and driver interfaces. Each application declares the services it needs.</p>
+<h2>Versions belong to the root module; imports select packages</h2>
+<p>The root xu.xun manages the entire <code>github.com/xulang-org/packages</code> module. mysql, postgres, and other directories are internal packages with no independent module manifests. Declare the root module in require and import the full subpackage path with an explicit alias.</p>
+<pre><code>module: app
+version: !ver 0.1.0
+xu: !ver 0.8.4
+require:
+  "github.com/xulang-org/packages": file:../packages</code></pre>
+<pre><code>@main
+mysql #github.com/xulang-org/packages/mysql
+postgres #github.com/xulang-org/packages/postgres
+
+fn main() {
+    _ := mysql.driver()
+    _ := postgres.driver()
+}</code></pre>
+<p>This example places app beside a local packages checkout. Remote sources can use a reviewed Git commit or an exact SemVer minimum requirement when the matching version tag is available. See <a href="/en/docs/modules">Modules and dependencies</a> for installation, MVS, and locking.</p>
+<h2>Services covered by the 29 packages</h2>
+<ul>
+<li>Databases and caches: mysql, postgres, sqlite, clickhouse, mongodb, cassandra, neo4j, redis, memcached.</li>
+<li>Messaging and coordination: nats, mqtt, rabbitmq, kafka, etcd, consul, zookeeper, nacos.</li>
+<li>Search, vectors, and observability: elasticsearch, meilisearch, milvus, qdrant, chroma, influxdb, prometheus.</li>
+<li>Storage and protocols: s3, grpc, websocket, dns, smtp.</li>
+</ul>
+<p>The <a href="/en/docs/packages">package catalog</a> now links to bilingual API pages with public declarations extracted from current sources.</p>
+<h2>Support is defined per package</h2>
+<p>The catalog does not imply every protocol feature is complete. MySQL supports mysql_native_password and rejects TLS and caching_sha2_password. PostgreSQL does not negotiate TLS. gRPC supports bounded cleartext unary calls; higher-level pool reuse remains pending.</p>
+<p>SQLite uses the C API through xu-c-1. Run <code>make native</code> in a local packages checkout to generate native slices for the target. The configured targets are macOS arm64/x64. Git sources exclude the generated sqlite.xulib, so remote distribution requires a module archive containing native resources.</p>
+<p>These documented boundaries help applications choose suitable drivers. The full contract remains in each package’s API and source README.</p>
+<p><a href="/en/docs/packages">Use packages</a> · <a href="/en/api/packages/mysql">MySQL API</a> · <a href="/en/api/packages/postgres">PostgreSQL API</a> · <a href="/en/docs/status">Status &amp; Limitations</a></p>

@@ -1,0 +1,25 @@
+<!--title: Xu 0.8.x：模块、离线构建与校验日志-->
+<p class="crumb"><a href="/blog">博客</a> / 版本进展</p>
+<p class="meta">2026-10-13 · 开发进展</p>
+<h1>Xu 0.8.x：模块、离线构建与校验日志</h1>
+<p class="banner">本文记录当前 Xu 0.8.4 源码与本机产品编译器的进展。Xu 继续使用 0.8.x；可下载版本以 <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a> 的实际附件为准。</p>
+<p>从 0.1.0 的第一份快照到现在，Xu 的变化已经不止于语言语法。近期工作集中在模块身份、可复现的依赖安装、离线构建，以及独立于下载来源的内容校验。官网的中英文文档与 API 也已按当前源码同步。</p>
+<h2>0.8.1：包路径统一使用斜杠</h2>
+<p>包声明、导入和模块清单统一使用 <code>/</code>。本地路径写作 <code>@team/util</code>、<code>#net/http</code>；域名中的点保留，外部声明可以写作 <code>@"example.com/team/my-lib"</code>。导入别名与完整路径身份分别管理。</p>
+<p>这是一项需要迁移的变化：旧点式路径应改为斜杠路径，域名、字段访问和版本号中的点保持原样。模块名称变化也会影响内容锁的身份，需要审查后重新建立锁，不能只改源码里的拼写。</p>
+<h2>0.8.2：安装快照与冻结构建</h2>
+<p><code>xu install</code> 收集传递依赖并生成可校验的 vendor 快照。<code>--offline</code> 禁止下载，使用本地来源、已有缓存或 vendor；<code>--frozen</code> 进一步要求已有匹配锁条目，不补锁、不更新依赖缓存。本地 <code>file:</code> 依赖须先安装为 vendor 快照。</p>
+<pre><code>xu install app
+xu check app/main.xu --offline
+xu build app/main.xu --frozen --output app/program</code></pre>
+<p>依赖冻结约束的是依赖内容，主项目源码和本次编译产物仍可修改。审查后的 <code>xu.lock</code> 应随项目保存，内容不匹配时需要调查原因。</p>
+<h2>0.8.3：MVS、代理与并发事务</h2>
+<p>外部模块可以声明精确 SemVer 最低要求。编译器读取全部可达版本清单，通过 MVS 为每个模块选择图中最高的最低要求；它不自动查询 latest，也不解释版本范围。版本图使用 v3 锁，并在 vendor 中保留全部可达版本快照，供离线重放。</p>
+<p><code>XUPROXY</code> 支持 HTTP(S)、绝对 file://、direct 和 off。逗号只在 404/410 后回退，竖线允许请求错误后回退；身份或完整性不匹配始终失败。<code>XUPRIVATE</code> 与 <code>XUNOPROXY</code> 控制私有路径的代理绕过。依赖解析、锁文件合并和共享下载由内核锁保护。</p>
+<h2>0.8.4：固定公钥的校验日志客户端</h2>
+<p><code>XUSUMDB</code> 配置可信 Ed25519 verifier 公钥及可选服务地址。对规范 SemVer 模块，客户端在接受缓存或写入锁之前验证签名树头、模块树摘要、记录包含证明和日志追加一致性。已有缓存、vendor 与版本快照也遵守相同认证策略。</p>
+<p><code>XUNOSUMDB</code> 独立控制校验绕过，默认沿用 XUPRIVATE。未配置 XUSUMDB 或设置 off 时仍采用首次使用信任；配置后认证失败不会自动降级。离线与冻结构建需要已有已验证证明。</p>
+<p>公共 Xu 校验服务、跨客户端独立见证、vanity 仓库发现及断电持久性仍待继续。客户端的本机一致性校验不能替代这些服务，也不证明模块源码没有恶意行为。</p>
+<h2>文档与生态一起跟进</h2>
+<p>本轮官网同步了安装、CLI、模块依赖、教程路径和平台边界。API 索引包含 128 个标准库/UI 包和 29 个扩展包；声明、索引和统计现在由同一生成流程维护。具体服务驱动位于独立的 packages 根模块，版本继续与 Xu 分别管理。</p>
+<p><a href="/docs/modules">模块与依赖</a> · <a href="/blog/packages-0-1-1">packages 0.1.1</a> · <a href="/api">API 索引</a> · <a href="/docs/status">限制与现状</a></p>

@@ -1,29 +1,35 @@
 <!--title: 命令行-->
-
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>命令行</h1>
-<p>产品入口是 <code>xu</code>。产品命令：<code>build</code> <code>run</code> <code>check</code> <code>test</code> <code>fmt</code> <code>map</code> <code>doc</code> <code>doctor</code> <code>up</code>。</p>
-<table>
-<tr><th>命令</th><th>作用</th></tr>
-<tr><td><code>xu build &lt;file|dir&gt;</code></td><td>AOT 编译。目录编全部 *.xu（不递归）。macOS / Linux 默认无后缀，Windows 默认 .exe</td></tr>
-<tr><td><code>xu run &lt;file|dir&gt; [-- args]</code></td><td>编译后执行，仅本机 target</td></tr>
-<tr><td><code>xu check</code></td><td>解析+类型+借用；末尾列死循环风险与退出位点</td></tr>
-<tr><td><code>xu test</code></td><td>只跑 test.* .xu 里的 fn test_*</td></tr>
-<tr><td><code>xu fmt [-w]</code></td><td>格式化</td></tr>
-<tr><td><code>xu map</code></td><td>源码流程图（默认 Mermaid；--graph 给画布）</td></tr>
-<tr><td><code>xu doc [path...] [-o file] [--public] [--serve] [--addr A]</code></td><td>生成 Markdown 声明文档；<code>--public</code> 过滤私有 API，<code>--serve</code> 启动本地 XUDOCS 页面</td></tr>
-<tr><td><code>xu doctor</code></td><td>检查本机桌面打包工具</td></tr>
-<tr><td><code>xu up</code></td><td>打印工具链版本</td></tr>
-</table>
-<pre><code>xu build file.xu
-xu build file.xu --output out
-xu build file.xu -O0
-xu build dir/
-xu run dir -- args
-xu test file.xu -v
-xu doc src/net --public -o net.md
-xu doc src/net --public --serve --addr 127.0.0.1:6060
-</code></pre>
-<p>PowerShell 请用 <code>--output</code>。测试旗标：-run -v -count -failfast -list -short -bench。目录 build/check 跳过 test.*.xu。</p>
-<p class="note"><code>xu doc --serve</code> 提供 <code>/</code>、<code>/docs.md</code> 与 <code>/health</code>；语言服务器仍未实现。诊断请用 <code>xu check</code>。</p>
-<p>目标优先级：--target &gt; XUOS+XUARCH &gt; 二进制名暗示的本机。</p>
+<p class="banner">Xu 0.8.4 · <code>xu --help</code></p>
+<table><tr><th>命令</th><th>作用</th></tr><tr><td><code>xu build &lt;file|dir&gt;</code></td><td>AOT 编译；目录须有 xu.xun，合并当前目录的源码，不递归</td></tr>
+<tr><td><code>xu run &lt;file|dir&gt; [-- args]</code></td><td>编译并运行，仅本机目标；默认清理临时产物，--output 保留产物</td></tr>
+<tr><td><code>xu check &lt;file|dir&gt;</code></td><td>解析、类型与借用检查，不生成可执行文件</td></tr>
+<tr><td><code>xu test &lt;file|dir&gt;</code></td><td>构建测试程序并执行 test.&lt;name&gt;.xu 中的 fn test_*</td></tr>
+<tr><td><code>xu install [dir]</code></td><td>解析 require:，校验依赖并生成 vendor；默认当前目录</td></tr>
+<tr><td><code>xu fmt [path...] [-w]</code></td><td>格式化；-w 原地写回</td></tr>
+<tr><td><code>xu map [path...]</code></td><td>生成流程图；默认 Mermaid，--graph 打开画布</td></tr>
+<tr><td><code>xu doc [path...] [--public] [--serve]</code></td><td>提取 Markdown 声明文档，或启动本地 XUDOCS 预览</td></tr>
+<tr><td><code>xu doctor [--target T]</code></td><td>检查本机工具链与桌面打包环境</td></tr>
+<tr><td><code>xu up</code> / <code>xu update</code></td><td>从 GitHub 下载源码，自举编译并更新编译器、工具和标准库；需要 Python 3.9+</td></tr>
+<tr><td><code>xu --version</code></td><td>显示实际编译器版本与本机目标</td></tr></table>
+<h2>构建选项</h2><p>build、run、test 默认自动优化。<code>--no-opt</code> 关闭优化；<code>--debug-build</code> 生成不优化且带 DWARF 行号的产物。<code>--debug</code> 保持优化并添加调试信息，<code>--timings</code> 打印阶段统计。</p>
+<pre><code>xu build hello.xu --output hello
+xu run hello.xu -- arg1
+xu build hello.xu --debug-build --output hello-debug
+xu check app/main.xu --offline
+xu build app/main.xu --frozen --output app/program
+xu test app/ -v
+xu doc src/net --public --output net.md
+xu doc src/net --public --serve --addr 127.0.0.1:6060</code></pre>
+<p>目录 build/check 跳过测试文件。测试选项包括 <code>-run</code>、<code>-v</code>、<code>-count</code>、<code>-failfast</code>、<code>-list</code>、<code>-short</code>、<code>-bench</code> 与 <code>--cover</code>。<code>xu lsp</code> 仍未实现。</p>
+<h2>更新工具链</h2>
+<pre><code>xu up --check
+xu up
+xu update --ref main
+xu update --version 0.8.4
+xu update --source /path/to/xu --prefix /path/to/sdk</code></pre>
+<p>默认选择 GitHub 最新正式版本；没有正式版本时选择 main。更新先锁定源码提交，再用当前产品编译器自举、验证定点并构建配套工具，全部通过后才替换安装。<code>--check</code> 只检查版本，<code>--force</code> 允许同版本重建或降级。开发仓库须用 <code>--prefix</code> 安装到独立目录，以免覆盖研发源码。Windows 在当前 xu.exe 退出后完成替换，结果见安装目录的 <code>.xu-update.log</code>。</p>
+<p><code>--target</code> &gt; <code>XUOS</code> + <code>XUARCH</code> &gt; 当前编译器的本机目标。PowerShell 建议用 <code>--output</code>。</p>
+<p><code>--offline</code> / <code>--frozen</code>: <a href="/docs/modules">模块与依赖</a>。<code>--desktop</code>: <a href="/docs/ui">UI / WebView</a>。</p>
+<p class="note"><code>xu doc --serve</code> 提供 <code>/</code>、<code>/docs.md</code>、<code>/health</code>。诊断请用 xu check。</p>

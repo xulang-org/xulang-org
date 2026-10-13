@@ -1,0 +1,35 @@
+<!--title: packages 0.1.1：29 个扩展包，一个根模块-->
+<p class="crumb"><a href="/blog">博客</a> / 生态进展</p>
+<p class="meta">2026-10-13 · 扩展包</p>
+<h1>packages 0.1.1：29 个扩展包，一个根模块</h1>
+<p class="banner"><code>github.com/xulang-org/packages</code> · 模块 0.1.1 · 所用 Xu 0.8.3。模块版本与编译器版本分别管理。</p>
+<p>数据库、消息系统、检索服务和对象存储的具体驱动已迁入独立的 <a href="https://github.com/xulang-org/packages">packages 仓库</a>。标准库保留通用契约，例如 database/sql 的连接池、事务和驱动接口；使用哪个服务，由应用自己的依赖声明决定。</p>
+<h2>根模块负责版本，子包负责导入</h2>
+<p>仓库根的 xu.xun 管理整个 <code>github.com/xulang-org/packages</code> 模块。mysql、postgres 等目录是内部包，不再各自维护模块清单。项目的 require 写根模块，源码导入完整子包路径并指定别名。</p>
+<pre><code>module: app
+version: !ver 0.1.0
+xu: !ver 0.8.4
+require:
+  "github.com/xulang-org/packages": file:../packages</code></pre>
+<pre><code>@main
+mysql #github.com/xulang-org/packages/mysql
+postgres #github.com/xulang-org/packages/postgres
+
+fn main() {
+    _ := mysql.driver()
+    _ := postgres.driver()
+}</code></pre>
+<p>上例让 app 与本机 packages 检出目录同级。远程来源可改为审查过的 Git 提交；来源已有对应版本标签时，也可声明精确版本最低要求。安装、MVS 与锁文件行为见 <a href="/docs/modules">模块与依赖</a>。</p>
+<h2>29 个包覆盖哪些服务</h2>
+<ul>
+<li>数据库与缓存：mysql、postgres、sqlite、clickhouse、mongodb、cassandra、neo4j、redis、memcached。</li>
+<li>消息与协调：nats、mqtt、rabbitmq、kafka、etcd、consul、zookeeper、nacos。</li>
+<li>检索、向量与观测：elasticsearch、meilisearch、milvus、qdrant、chroma、influxdb、prometheus。</li>
+<li>存储与协议：s3、grpc、websocket、dns、smtp。</li>
+</ul>
+<p><a href="/docs/packages">扩展包清单</a> 现在可以直接进入每个包的中英文 API，查看从当前源码提取的公开声明。</p>
+<h2>支持范围按包说明</h2>
+<p>包清单不代表所有协议特性均已完成。MySQL 当前支持 mysql_native_password，拒绝 TLS 和 caching_sha2_password；PostgreSQL 尚不协商 TLS；gRPC 支持有界明文 unary 调用，高层连接池复用仍待完善。</p>
+<p>SQLite 通过 xu-c-1 使用 C API，需要先在本机 packages 根目录执行 <code>make native</code>，生成匹配目标的原生切片。当前配置 macOS arm64/x64；Git 来源不包含忽略的 sqlite.xulib，远程发行需要含原生资源的模块归档。</p>
+<p>将这些边界写进文档，应用才能按实际需要选择驱动。完整契约仍以各包 API 与源码 README 为准。</p>
+<p><a href="/docs/packages">使用 packages</a> · <a href="/api/packages/mysql">MySQL API</a> · <a href="/api/packages/postgres">PostgreSQL API</a> · <a href="/docs/status">限制与现状</a></p>

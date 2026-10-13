@@ -1,0 +1,56 @@
+<!--title: External packages-->
+<p class="crumb"><a href="/en/docs/start">Docs</a></p>
+<h1>External packages</h1>
+<p class="banner"><code>github.com/xulang-org/packages</code> · module 0.1.1 · targets Xu 0.8.3 · 29 packages</p>
+<p>The <a href="https://github.com/xulang-org/packages">packages repository</a> is separate from the compiler and standard library. Its root xu.xun manages a single module; mysql, postgres, and the other directories are internal packages of that module and have no independent manifests.</p>
+<h2>Add a dependency</h2><p>Place app beside a local packages checkout:</p><pre><code>module: app
+version: !ver 0.1.0
+xu: !ver 0.8.4
+require:
+  "github.com/xulang-org/packages": file:../packages</code></pre>
+<pre><code>xu install app
+xu check app/main.xu --offline</code></pre><p><a href="/en/docs/modules">Remote versions, Git sources, MVS, locking, and frozen builds</a></p><h2>Use a SQL driver</h2><p><code>database/sql</code> supplies connection pools, transactions, rows, and the driver contract. Concrete mysql/postgres/sqlite drivers come from packages. This example requires a running MySQL server with mysql_native_password authentication:</p><pre><code>@main
+#database/sql
+mysql #github.com/xulang-org/packages/mysql
+
+fn main() int {
+    mut db := sql.open(mysql.driver(), "user:password@tcp(127.0.0.1:3306)/demo?tls=false")
+    db.ping() or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    db.close() or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre><p>External paths require an explicit alias: <code>mysql #github.com/xulang-org/packages/mysql</code>. Use the full path identity; <code>#mysql</code> is not the official external package import.</p><h2>Package catalog</h2><table><tr><th>Category</th><th>Package / API</th><th>Service</th></tr><tr><td>Databases</td><td><a href="/en/api/packages/mysql"><code>mysql</code></a></td><td>MySQL / MariaDB</td></tr>
+<tr><td>Databases</td><td><a href="/en/api/packages/postgres"><code>postgres</code></a></td><td>PostgreSQL</td></tr>
+<tr><td>Databases</td><td><a href="/en/api/packages/sqlite"><code>sqlite</code></a></td><td>SQLite</td></tr>
+<tr><td>Databases</td><td><a href="/en/api/packages/clickhouse"><code>clickhouse</code></a></td><td>ClickHouse</td></tr>
+<tr><td>Databases</td><td><a href="/en/api/packages/mongodb"><code>mongodb</code></a></td><td>MongoDB</td></tr>
+<tr><td>Databases</td><td><a href="/en/api/packages/cassandra"><code>cassandra</code></a></td><td>Cassandra</td></tr>
+<tr><td>Databases</td><td><a href="/en/api/packages/neo4j"><code>neo4j</code></a></td><td>Neo4j</td></tr>
+<tr><td>Caches</td><td><a href="/en/api/packages/redis"><code>redis</code></a></td><td>Redis</td></tr>
+<tr><td>Caches</td><td><a href="/en/api/packages/memcached"><code>memcached</code></a></td><td>Memcached</td></tr>
+<tr><td>Messaging</td><td><a href="/en/api/packages/nats"><code>nats</code></a></td><td>NATS</td></tr>
+<tr><td>Messaging</td><td><a href="/en/api/packages/mqtt"><code>mqtt</code></a></td><td>MQTT</td></tr>
+<tr><td>Messaging</td><td><a href="/en/api/packages/rabbitmq"><code>rabbitmq</code></a></td><td>RabbitMQ</td></tr>
+<tr><td>Messaging</td><td><a href="/en/api/packages/kafka"><code>kafka</code></a></td><td>Kafka</td></tr>
+<tr><td>Coordination</td><td><a href="/en/api/packages/etcd"><code>etcd</code></a></td><td>etcd</td></tr>
+<tr><td>Coordination</td><td><a href="/en/api/packages/consul"><code>consul</code></a></td><td>Consul</td></tr>
+<tr><td>Coordination</td><td><a href="/en/api/packages/zookeeper"><code>zookeeper</code></a></td><td>ZooKeeper</td></tr>
+<tr><td>Coordination</td><td><a href="/en/api/packages/nacos"><code>nacos</code></a></td><td>Nacos</td></tr>
+<tr><td>Search</td><td><a href="/en/api/packages/elasticsearch"><code>elasticsearch</code></a></td><td>Elasticsearch / OpenSearch</td></tr>
+<tr><td>Search</td><td><a href="/en/api/packages/meilisearch"><code>meilisearch</code></a></td><td>Meilisearch</td></tr>
+<tr><td>Observability</td><td><a href="/en/api/packages/influxdb"><code>influxdb</code></a></td><td>InfluxDB</td></tr>
+<tr><td>Observability</td><td><a href="/en/api/packages/prometheus"><code>prometheus</code></a></td><td>Prometheus</td></tr>
+<tr><td>Vectors</td><td><a href="/en/api/packages/milvus"><code>milvus</code></a></td><td>Milvus</td></tr>
+<tr><td>Vectors</td><td><a href="/en/api/packages/qdrant"><code>qdrant</code></a></td><td>Qdrant</td></tr>
+<tr><td>Vectors</td><td><a href="/en/api/packages/chroma"><code>chroma</code></a></td><td>Chroma</td></tr>
+<tr><td>Storage</td><td><a href="/en/api/packages/s3"><code>s3</code></a></td><td>S3 / MinIO</td></tr>
+<tr><td>Protocols</td><td><a href="/en/api/packages/grpc"><code>grpc</code></a></td><td>gRPC / HTTP/2</td></tr>
+<tr><td>Protocols</td><td><a href="/en/api/packages/websocket"><code>websocket</code></a></td><td>WebSocket</td></tr>
+<tr><td>Protocols</td><td><a href="/en/api/packages/dns"><code>dns</code></a></td><td>DNS</td></tr>
+<tr><td>Protocols</td><td><a href="/en/api/packages/smtp"><code>smtp</code></a></td><td>SMTP</td></tr></table><h2>Current boundaries</h2><p>Each package has its own protocol, authentication, TLS, and pooling scope. MySQL currently rejects TLS and caching_sha2_password; PostgreSQL does not negotiate TLS; gRPC supports cleartext unary calls with bounded messages, with higher-level pool reuse still pending. See each package’s API and source README.</p>
+<p>SQLite uses a native C bridge through xu-c-1. In a local packages checkout run <code>make native</code> before importing it. The configured slices are macOS arm64/x64; other targets require matching toolchains and slices. Git source downloads exclude the generated sqlite.xulib, so a remote SQLite distribution needs an archive containing native resources; that release workflow is pending.</p>

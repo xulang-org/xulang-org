@@ -1,22 +1,35 @@
 <!--title: Install-->
-
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
 <h1>Install</h1>
-<p>The user-facing binary is named <code>xu</code>. Prebuilt files:</p>
-<table>
-<tr><th>File</th><th><code>--target</code></th><th>Format</th></tr>
-<tr><td><code>xu.macos.arm64</code></td><td><code>macos-arm64</code></td><td>Mach-O arm64</td></tr>
-<tr><td><code>xu.macos.x64</code></td><td><code>macos-x64</code></td><td>Mach-O x86_64</td></tr>
-<tr><td><code>xu.linux.arm64</code></td><td><code>linux-arm64</code></td><td>ELF aarch64</td></tr>
-<tr><td><code>xu.linux.x64</code></td><td><code>linux-x64</code></td><td>ELF x86_64</td></tr>
-<tr><td><code>xu.linux.loongarch64</code></td><td><code>linux-loongarch64</code></td><td>ELF LoongArch</td></tr>
-<tr><td><code>xu.linux.riscv64</code></td><td><code>linux-riscv64</code></td><td>ELF RISC-V</td></tr>
-<tr><td><code>xu.windows.x64.exe</code></td><td><code>windows-x64</code></td><td>PE32+ x86-64</td></tr>
-<tr><td><code>xu.windows.arm64.exe</code></td><td><code>windows-arm64</code></td><td>PE32+ ARM64</td></tr>
-</table>
-<p>See <a href="/en/download">/en/download</a>. After it is on <code>PATH</code>:</p>
-<pre><code>xu build hello.xu
-./hello</code></pre>
-<p>On mac/linux the default artifact has no suffix and already has the executable bit set. Windows writes <code>.exe</code>. In PowerShell use <code>--output</code> (<code>-o</code> is swallowed).</p>
-<h2>From source (secondary)</h2>
-<p>In the language repo root: <code>make xu</code>, which produces <code>./bin/xu</code>. Day-to-day, rename the matching download to <code>xu</code> and put it on PATH.</p>
+<p class="banner">These docs target Xu 0.8.4. Download availability is determined by the actual assets on <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a>.</p>
+<p>Use a complete SDK with <code>bin/</code>, <code>src/</code>, and the tools. Standard-library sources are required to compile imports; placing a renamed compiler on PATH alone does not provide a complete development environment.</p>
+<h2>Install the SDK</h2>
+<p>Open Releases from the <a href="/en/download">download page</a> and choose a published archive for your host. Unix archives typically use <code>xu-v&lt;version&gt;-&lt;target&gt;.tar.gz</code>; Windows uses <code>.zip</code>. After extracting, run from the SDK root:</p>
+<pre><code># macOS / Linux
+./install.sh
+# Verify in a new terminal
+xu --version
+xu doctor</code></pre>
+<pre><code># Windows PowerShell
+.\install.ps1
+# Verify after restarting PowerShell
+xu --version
+xu doctor</code></pre>
+<p>The default install directory is <code>~/.xu</code>. On Unix, use <code>./install.sh --prefix /absolute/path</code> to select a directory, or <code>source env.sh</code> to activate an extracted SDK temporarily. PowerShell uses <code>. .\env.ps1</code>.</p>
+<h2>Targets</h2>
+<table><tr><th>System</th><th><code>--target</code></th><th>Default artifact</th></tr>
+<tr><td>macOS</td><td><code>macos-arm64</code>, <code>macos-x64</code></td><td>Mach-O, no suffix</td></tr>
+<tr><td>Linux</td><td><code>linux-arm64</code>, <code>linux-x64</code>, <code>linux-loongarch64</code>, <code>linux-riscv64</code>, <code>linux-arm32</code></td><td>ELF, no suffix</td></tr>
+<tr><td>Windows</td><td><code>windows-x64</code>, <code>windows-arm64</code></td><td>PE, <code>.exe</code></td></tr>
+<tr><td>Bare metal</td><td><code>thumbv7em-none</code>, <code>riscv32imac-none</code></td><td>Bare-metal target output</td></tr></table>
+<p>A supported target does not imply a published SDK asset or support for every library and desktop feature. See <a href="/en/docs/status">Status &amp; Limitations</a>.</p>
+<h2>Update an installation</h2>
+<p>With Python 3.9+ installed, run <code>xu up</code> or <code>xu update</code> to download and compile official release sources from GitHub. <code>xu up --check</code> only checks versions; <code>xu update --ref main</code> selects development sources. The compiler, tools and standard library are replaced after the build and runtime checks succeed. See <a href="/en/docs/cli">CLI</a> for options.</p>
+<h2>Verify compilation</h2>
+<pre><code>xu check hello.xu
+xu run hello.xu
+xu build hello.xu --output hello</code></pre>
+<p>macOS / Linux executables already have execute permission. In PowerShell, prefer <code>--output</code> for output paths.</p>
+<h2>Environment and source builds</h2>
+<p><code>XU_ROOT</code> selects the SDK or compiler checkout; <code>XU_STDLIB_ROOT</code> explicitly selects its <code>src/</code>. <code>XUPATH</code> adds search roots and does not replace external-module <code>require:</code> declarations. Keep <code>xu-fmt</code>, <code>xu-doc</code>, <code>xu-map</code>, <code>xu-doctor</code>, and <code>xu-desktop</code> beside <code>xu</code> in bin.</p>
+<p>Sources are in the <a href="https://github.com/xulang-org/xu">xu repository</a>. <code>make xu</code> self-hosts with an existing hosted product seed and rebuilds the tools. A clean checkout requires a product seed and the bootstrap companion repository first. packages, examples, and vscode are maintained separately.</p>

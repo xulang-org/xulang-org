@@ -1,24 +1,32 @@
 <!--title: #crypto/aes-->
 <p class="crumb">API</p>
 <h1><code>#crypto/aes</code></h1>
+<p class="banner">Xu 0.8.4 API</p>
 <p class="meta">import: <code>#crypto/aes</code></p>
-<p class="meta">counts: 1 fns, 3 methods, 1 types, 1 consts, 0 ifaces</p>
+<p class="meta">counts: 1 fns, 5 methods, 1 types, 1 consts, 0 ifaces</p>
 <p class="lead">AES-128/192/256 single block. CBC/CTR/GCM live in crypto/cipher.</p>
 <article class="api-item" id="const-block_size">
 <h2><code>const block_size</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> block_size = 16</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> block_size = 16</code></pre></div>
 <h3>Purpose</h3>
-<p>AES (FIPS-197) aligned with `crypto/aes` NewCipher + Block. AES-128/192/256 encrypt/decrypt of a single 16-byte block. Pure i64 with byte masks. MixColumns/InvMixColumns xtime is written open in the round loop (Xu does not inline parameterized helpers). No GCM/CTR/CBC (those live on cipher.Block in ; Xu has no struct@ wrapping). Not constant-time. Value `16`.</p>
+<p>AES (FIPS-197) aligned with `crypto/aes` NewCipher + Block. Optimized 32-bit Te/Td lookup tables with scalar state registers and in-place buffer APIs. Pure i64 with masked words/bytes. Not constant-time. XU-CT-CLASS: variable-time Value `16`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
 <article class="api-item" id="struct-Cipher">
 <h2><code>struct Cipher</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cipher {
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cipher {
     <span class="syn-kw">pub</span> nr <span class="syn-type">int</span>
     <span class="syn-kw">pub</span> rk []<span class="syn-type">int</span>
     <span class="syn-kw">pub</span> sbox []<span class="syn-type">int</span>
     <span class="syn-kw">pub</span> inv []<span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> te []<span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> td []<span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> erk []<span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> drk []<span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> hw_accel <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> rk_bytes <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> drk_bytes <span class="syn-type">string</span>
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Public struct `Cipher`.</p>
@@ -28,11 +36,18 @@
 <dt><code>rk</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
 <dt><code>sbox</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
 <dt><code>inv</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>te</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>td</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>erk</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>drk</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>hw_accel</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>rk_bytes</code> <span class="type">string</span></dt><dd>field (string)</dd>
+<dt><code>drk_bytes</code> <span class="type">string</span></dt><dd>field (string)</dd>
 </dl>
 </article>
 <article class="api-item" id="new_cipher">
 <h2><code>new_cipher</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> new_cipher(key &amp;<span class="syn-type">string</span>) Cipher</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> new_cipher(key &amp;<span class="syn-type">string</span>) Cipher</code></pre></div>
 <h3>Purpose</h3>
 <p>Construct cipher. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -44,7 +59,7 @@
 </article>
 <article class="api-item" id="-Cipher-block_size">
 <h2><code>(&amp;Cipher) block_size</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) block_size() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) block_size() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;Cipher`: block size.</p>
 <h3>Parameters</h3>
@@ -56,7 +71,7 @@
 </article>
 <article class="api-item" id="-Cipher-encrypt">
 <h2><code>(&amp;Cipher) encrypt</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) encrypt(src &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) encrypt(src &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;Cipher`: encrypt. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -67,9 +82,23 @@
 <h3>Returns</h3>
 <p>string — result string</p>
 </article>
+<article class="api-item" id="-Cipher-encrypt_block">
+<h2><code>(&amp;Cipher) encrypt_block</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) encrypt_block(dst &amp;<span class="syn-kw">mut</span> []<span class="syn-type">int</span>, src &amp;[]<span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Method on `&amp;Cipher`: encrypt block. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>receiver &amp;Cipher (borrow)</dd>
+<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>destination (exclusive borrow; type &amp;mut []int)</dd>
+<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>source (borrowed; caller keeps it; type &amp;[]int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
 <article class="api-item" id="-Cipher-decrypt">
 <h2><code>(&amp;Cipher) decrypt</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) decrypt(src &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) decrypt(src &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;Cipher`: decrypt. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -79,4 +108,18 @@
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
+</article>
+<article class="api-item" id="-Cipher-decrypt_block">
+<h2><code>(&amp;Cipher) decrypt_block</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) decrypt_block(dst &amp;<span class="syn-kw">mut</span> []<span class="syn-type">int</span>, src &amp;[]<span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Method on `&amp;Cipher`: decrypt block. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>receiver &amp;Cipher (borrow)</dd>
+<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>destination (exclusive borrow; type &amp;mut []int)</dd>
+<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>source (borrowed; caller keeps it; type &amp;[]int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
 </article>

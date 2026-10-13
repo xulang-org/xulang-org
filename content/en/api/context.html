@@ -1,14 +1,17 @@
 <!--title: #context-->
 <p class="crumb">API</p>
 <h1><code>#context</code></h1>
+<p class="banner">Xu 0.8.4 API</p>
 <p class="meta">import: <code>#context</code></p>
-<p class="meta">counts: 5 fns, 1 methods, 2 types, 0 consts, 0 ifaces</p>
+<p class="meta">counts: 9 fns, 2 methods, 2 types, 0 consts, 0 ifaces</p>
 <p class="lead">Background / WithCancel / WithTimeout; Done is a chan. No WithValue.</p>
 <article class="api-item" id="struct-Context">
 <h2><code>struct Context</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Context {
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Context {
     <span class="syn-kw">pub</span> done <span class="syn-kw">chan</span> <span class="syn-type">int</span>
     <span class="syn-kw">pub</span> deadline_ns <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> keys []<span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> vals []<span class="syn-type">string</span>
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Public struct `Context`.</p>
@@ -16,11 +19,13 @@
 <dl class="api-params">
 <dt><code>done</code> <span class="type">chan int</span></dt><dd>field (channel; type chan int)</dd>
 <dt><code>deadline_ns</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>keys</code> <span class="type">[]string</span></dt><dd>field ([]string)</dd>
+<dt><code>vals</code> <span class="type">[]string</span></dt><dd>field ([]string)</dd>
 </dl>
 </article>
 <article class="api-item" id="struct-Cancel">
 <h2><code>struct Cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cancel {
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cancel {
     <span class="syn-kw">pub</span> ctx Context
 }</code></pre></div>
 <h3>Purpose</h3>
@@ -32,7 +37,7 @@
 </article>
 <article class="api-item" id="background">
 <h2><code>background</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> background() Context</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> background() Context</code></pre></div>
 <h3>Purpose</h3>
 <p>background; returns Context.</p>
 <h3>Parameters</h3>
@@ -42,7 +47,7 @@
 </article>
 <article class="api-item" id="with_cancel">
 <h2><code>with_cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel() Cancel</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel() Cancel</code></pre></div>
 <h3>Purpose</h3>
 <p>Derive a new value with cancel.</p>
 <h3>Parameters</h3>
@@ -52,7 +57,7 @@
 </article>
 <article class="api-item" id="-mut-Cancel-cancel">
 <h2><code>(&amp;mut Cancel) cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cancel) cancel()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cancel) cancel()</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `cancel` on `&amp;mut Cancel`.</p>
 <h3>Parameters</h3>
@@ -60,9 +65,21 @@
 <dt><code>c</code> <span class="type">&amp;mut Cancel</span></dt><dd>receiver &amp;mut Cancel (exclusive borrow)</dd>
 </dl>
 </article>
+<article class="api-item" id="with_cancel_parent">
+<h2><code>with_cancel_parent</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel_parent(parent &amp;Context) Cancel</code></pre></div>
+<h3>Purpose</h3>
+<p>with_cancel_parent is the parent-aware form of with_cancel. The returned context shares the parent&#x27;s deadline and is canceled when the parent&#x27;s Done channel closes. Parent and child Cancel values can still be canceled explicitly; close_once makes all three paths idempotent.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Cancel — a value of this type</p>
+</article>
 <article class="api-item" id="with_timeout">
 <h2><code>with_timeout</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_timeout(timeout_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_timeout(timeout_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
 <h3>Purpose</h3>
 <p>Derive a new value with timeout.</p>
 <h3>Parameters</h3>
@@ -74,7 +91,7 @@
 </article>
 <article class="api-item" id="with_deadline">
 <h2><code>with_deadline</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_deadline(deadline_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_deadline(deadline_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
 <h3>Purpose</h3>
 <p>Derive a new value with deadline.</p>
 <h3>Parameters</h3>
@@ -84,15 +101,66 @@
 <h3>Returns</h3>
 <p>Cancel — a value of this type</p>
 </article>
+<article class="api-item" id="Context-deadline">
+<h2><code>(Context) deadline</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c Context) deadline() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Call `deadline` on `Context`.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">Context</span></dt><dd>receiver Context (value receiver)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
 <article class="api-item" id="err">
 <h2><code>err</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>XU</span><span>v0.1.0</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> err(c Context) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> err(c &amp;Context) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>err; returns int. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">Context</span></dt><dd>byte or character code (Context)</dd>
+<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>byte or character code (borrowed; caller keeps it; type &amp;Context)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+</article>
+<article class="api-item" id="with_value">
+<h2><code>with_value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_value(parent &amp;Context, key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) Context</code></pre></div>
+<h3>Purpose</h3>
+<p>with_value attaches a string key/value ( WithValue; v1 keys and values are strings, not any). Later with_value of the same key shadows earlier ones.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
+<dt><code>key</code> <span class="type">string</span></dt><dd>key (string)</dd>
+<dt><code>val</code> <span class="type">string</span></dt><dd>value (string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Context — a value of this type</p>
+</article>
+<article class="api-item" id="value">
+<h2><code>value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> value(c &amp;Context, key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>Purpose</h3>
+<p>value; returns string. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>byte or character code (borrowed; caller keeps it; type &amp;Context)</dd>
+<dt><code>key</code> <span class="type">string</span></dt><dd>key (string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>string — result string</p>
+</article>
+<article class="api-item" id="without_cancel">
+<h2><code>without_cancel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> without_cancel(parent &amp;Context) Context</code></pre></div>
+<h3>Purpose</h3>
+<p>without_cancel is WithoutCancel: values are copied, deadline and cancellation are not. The new Done channel never closes.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Context — a value of this type</p>
 </article>

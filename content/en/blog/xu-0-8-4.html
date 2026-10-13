@@ -1,0 +1,25 @@
+<!--title: Xu 0.8.x: modules, offline builds, and checksum logs-->
+<p class="crumb"><a href="/en/blog">Blog</a> / Version progress</p>
+<p class="meta">2026-10-13 · Development progress</p>
+<h1>Xu 0.8.x: modules, offline builds, and checksum logs</h1>
+<p class="banner">This post covers current Xu 0.8.4 sources and the local product compiler. Xu remains in the 0.8.x series; download availability is determined by the actual assets on <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a>.</p>
+<p>Since the first 0.1.0 snapshot, Xu has grown beyond its language syntax. Recent work focuses on module identity, reproducible dependency installation, offline builds, and content verification independent of the download source. The bilingual website documentation and API now reflect current sources.</p>
+<h2>0.8.1: slash-separated package paths</h2>
+<p>Package declarations, imports, and module manifests use <code>/</code>. Local paths look like <code>@team/util</code> and <code>#net/http</code>. Dots in domain names are preserved; an external declaration can use <code>@"example.com/team/my-lib"</code>. Import aliases and full path identities are separate.</p>
+<p>This change requires migration: replace old dotted package paths while preserving dots in domains, field access, and version numbers. Renaming a module also changes its locked identity, so review and rebuild the lock rather than changing source spelling alone.</p>
+<h2>0.8.2: installed snapshots and frozen builds</h2>
+<p><code>xu install</code> collects transitive dependencies and creates verified vendor snapshots. <code>--offline</code> prevents downloads and uses local sources, existing cache, or vendor. <code>--frozen</code> additionally requires matching lock entries and prevents dependency cache or lock updates. Local <code>file:</code> dependencies must first be installed as vendor snapshots.</p>
+<pre><code>xu install app
+xu check app/main.xu --offline
+xu build app/main.xu --frozen --output app/program</code></pre>
+<p>Dependency freezing constrains dependency content; it does not freeze your own project sources or build output. Keep the reviewed <code>xu.lock</code> with the project and investigate content mismatches.</p>
+<h2>0.8.3: MVS, proxies, and concurrent transactions</h2>
+<p>External modules can declare exact SemVer minimum requirements. The compiler reads all reachable version manifests and uses MVS to choose the highest minimum requirement for each module. It does not query latest or interpret version ranges. Version graphs use v3 locks, and vendor retains all reachable version snapshots for offline replay.</p>
+<p><code>XUPROXY</code> accepts HTTP(S), absolute file:// URLs, direct, and off. A comma falls back only on 404/410; a vertical bar permits fallback on request errors. Identity or integrity mismatches always fail. <code>XUPRIVATE</code> and <code>XUNOPROXY</code> control proxy bypass for private paths. Dependency resolution, lock merging, and shared downloads use kernel locks.</p>
+<h2>0.8.4: trusted-key checksum-log verification</h2>
+<p><code>XUSUMDB</code> configures a trusted Ed25519 verifier key and optional service URL. For canonical SemVer modules, the client verifies the signed tree head, module digest, record inclusion, and append consistency before accepting a cache or lock entry. Existing cache, vendor, and version snapshots follow the same authentication policy.</p>
+<p><code>XUNOSUMDB</code> controls checksum bypass independently and defaults to XUPRIVATE. Unset/off XUSUMDB retains first-use trust. Configured authentication failures do not downgrade automatically; offline and frozen builds require previously verified proofs.</p>
+<p>A public Xu checksum service, independent cross-client witnesses, vanity repository discovery, and power-loss durability remain pending. Local consistency verification does not replace those services or establish that module sources are free of malicious behavior.</p>
+<h2>Documentation and ecosystem progress</h2>
+<p>This website refresh covers installation, CLI commands, dependencies, tutorial paths, and platform boundaries. The API index includes 128 standard-library/UI packages and 29 external packages. Declarations, indexes, and counts now share one generation workflow. Concrete service drivers live in the separate packages root module, whose version remains independent of Xu.</p>
+<p><a href="/en/docs/modules">Modules and dependencies</a> · <a href="/en/blog/packages-0-1-1">packages 0.1.1</a> · <a href="/en/api">API index</a> · <a href="/en/docs/status">Status &amp; Limitations</a></p>

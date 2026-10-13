@@ -1,5 +1,6 @@
 XU_ROOT ?= $(abspath ../xu)
 XU_BOOTSTRAP_ROOT ?= $(abspath ../bootstrap)
+XU_PACKAGES_ROOT ?= $(abspath ../packages)
 PYTHON ?= python3
 BASE_PATH ?=
 PORT ?= 8080
@@ -17,6 +18,6 @@ check:
 check-playground:
 	node --test tests/test_playground*.mjs
 api:
-	XU_ROOT="$(XU_ROOT)" XU_SRC="$(XU_ROOT)/src" ./scripts/gen-api
+	XU_ROOT="$(XU_ROOT)" XU_SRC="$(XU_ROOT)/src" XU_PACKAGES_ROOT="$(XU_PACKAGES_ROOT)" ./scripts/gen-api
 wasm:
 	XU_BOOTSTRAP_ROOT="$(XU_BOOTSTRAP_ROOT)" ./scripts/build-playground.sh

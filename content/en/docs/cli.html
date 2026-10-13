@@ -1,27 +1,35 @@
 <!--title: CLI-->
-
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
 <h1>CLI</h1>
-<p>The product entry is <code>xu</code>. Commands: <code>build</code> <code>run</code> <code>check</code> <code>test</code> <code>fmt</code> <code>map</code> <code>doc</code> <code>doctor</code> <code>up</code>.</p>
-<table>
-<tr><th>Command</th><th>Role</th></tr>
-<tr><td><code>xu build &lt;file|dir&gt;</code></td><td>AOT compile. A directory compiles every *.xu (not recursive). No default suffix on macOS / Linux; .exe on Windows</td></tr>
-<tr><td><code>xu run &lt;file|dir&gt; [-- args]</code></td><td>compile and run, host target only</td></tr>
-<tr><td><code>xu check</code></td><td>parse + type + borrow; lists loop risk and exit sites</td></tr>
-<tr><td><code>xu test</code></td><td>only fn test_* in test.*.xu</td></tr>
-<tr><td><code>xu fmt [-w]</code></td><td>format</td></tr>
-<tr><td><code>xu map</code></td><td>source flowchart (Mermaid; --graph for canvas apps)</td></tr>
-<tr><td><code>xu doc [path...] [-o file] [--public] [--serve] [--addr A]</code></td><td>generate declaration Markdown; <code>--public</code> filters private API and <code>--serve</code> starts a local XUDOCS page</td></tr>
-<tr><td><code>xu doctor</code></td><td>host tools for desktop pack</td></tr>
-<tr><td><code>xu up</code></td><td>prints the toolchain version</td></tr>
-</table>
-<pre><code>xu build file.xu --output out
-xu build file.xu -O0
-xu run dir -- args
-xu test file.xu -v
-xu doc src/net --public -o net.md
-xu doc src/net --public --serve --addr 127.0.0.1:6060
-</code></pre>
-<p>In PowerShell use <code>--output</code>. Test flags: -run -v -count -failfast -list -short -bench. Directory build/check skip test.*.xu.</p>
-<p class="note"><code>xu doc --serve</code> exposes <code>/</code>, <code>/docs.md</code>, and <code>/health</code>; the language server is still not implemented. Use <code>xu check</code> for diagnostics.</p>
-<p>Target order: --target &gt; XUOS+XUARCH &gt; the running binary.</p>
+<p class="banner">Xu 0.8.4 · <code>xu --help</code></p>
+<table><tr><th>Command</th><th>Role</th></tr><tr><td><code>xu build &lt;file|dir&gt;</code></td><td>AOT compilation; directories require xu.xun and combine sources without recursion</td></tr>
+<tr><td><code>xu run &lt;file|dir&gt; [-- args]</code></td><td>Compile and run for the host; temporary output is removed unless --output is supplied</td></tr>
+<tr><td><code>xu check &lt;file|dir&gt;</code></td><td>Parse, type-check, and borrow-check without emitting an executable</td></tr>
+<tr><td><code>xu test &lt;file|dir&gt;</code></td><td>Build and run fn test_* from test.&lt;name&gt;.xu files</td></tr>
+<tr><td><code>xu install [dir]</code></td><td>Resolve require:, verify dependencies, and populate vendor; defaults to the current directory</td></tr>
+<tr><td><code>xu fmt [path...] [-w]</code></td><td>Format; -w rewrites files</td></tr>
+<tr><td><code>xu map [path...]</code></td><td>Generate a flowchart; Mermaid by default, --graph opens a canvas</td></tr>
+<tr><td><code>xu doc [path...] [--public] [--serve]</code></td><td>Extract Markdown declarations or start a local XUDOCS preview</td></tr>
+<tr><td><code>xu doctor [--target T]</code></td><td>Check host tools and desktop packaging prerequisites</td></tr>
+<tr><td><code>xu up</code> / <code>xu update</code></td><td>Download GitHub sources, self-host and update the compiler, tools and standard library; requires Python 3.9+</td></tr>
+<tr><td><code>xu --version</code></td><td>Show the actual compiler version and host target</td></tr></table>
+<h2>Build options</h2><p>Build, run, and test optimize automatically. Use <code>--no-opt</code> to disable optimization or <code>--debug-build</code> for an unoptimized build with DWARF line tables. <code>--debug</code> adds debug information without changing optimization; <code>--timings</code> prints phase statistics.</p>
+<pre><code>xu build hello.xu --output hello
+xu run hello.xu -- arg1
+xu build hello.xu --debug-build --output hello-debug
+xu check app/main.xu --offline
+xu build app/main.xu --frozen --output app/program
+xu test app/ -v
+xu doc src/net --public --output net.md
+xu doc src/net --public --serve --addr 127.0.0.1:6060</code></pre>
+<p>Directory build/check skip test files. Test options include <code>-run</code>, <code>-v</code>, <code>-count</code>, <code>-failfast</code>, <code>-list</code>, <code>-short</code>, <code>-bench</code>, and <code>--cover</code>. <code>xu lsp</code> is not implemented.</p>
+<h2>Update the toolchain</h2>
+<pre><code>xu up --check
+xu up
+xu update --ref main
+xu update --version 0.8.4
+xu update --source /path/to/xu --prefix /path/to/sdk</code></pre>
+<p>The default is the latest GitHub release, falling back to main when no release exists. The updater pins a source commit, verifies the self-host fixed point and builds the tools before replacing the installation. <code>--check</code> only checks versions; <code>--force</code> permits rebuilding or downgrading. Development checkouts require <code>--prefix</code> to install a separate SDK. On Windows replacement finishes after the invoking xu.exe exits; see <code>.xu-update.log</code> in the install directory.</p>
+<p><code>--target</code> &gt; <code>XUOS</code> + <code>XUARCH</code> &gt; the running compiler’s host target。In PowerShell prefer <code>--output</code>。</p>
+<p><code>--offline</code> / <code>--frozen</code>: <a href="/en/docs/modules">Modules and dependencies</a>。<code>--desktop</code>: <a href="/en/docs/ui">UI / WebView</a>。</p>
+<p class="note"><code>xu doc --serve</code> serves <code>/</code>、<code>/docs.md</code>、<code>/health</code>。Use xu check for diagnostics.</p>
