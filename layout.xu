@@ -1,0 +1,372 @@
+@main
+
+#html
+#html/template
+#strings
+
+fn esc_text(s string) string {
+    t := template.new("{{.}}")
+    << template.execute_str(&t, s)
+}
+
+fn nav_item(href string, icon string, label string, path &string) string {
+    mut cls := "nav-tab-btn"
+    p := path + ""
+    if p == href {
+        cls = "nav-tab-btn active"
+    } else {
+        if href != "/" && href != "/en" && strings.has_prefix(path, href) {
+            cls = "nav-tab-btn active"
+        }
+    }
+    << "<a class=\"" + cls + "\" href=\"" + href + "\"><i class=\"xi " + icon + "\"></i> " + label + "</a>"
+}
+
+fn top_nav(path &string, en bool) string {
+    mut home := "/"
+    mut dl := "/download"
+    mut docs := "/docs/start"
+    mut api := "/api"
+    mut blog := "/blog"
+    mut st := "/docs/status"
+    mut lab_home := "首页"
+    mut lab_dl := "下载"
+    mut lab_docs := "文档"
+    mut lab_api := "API"
+    mut lab_blog := "博客"
+    mut lab_st := "现状"
+    if en {
+        home = "/en"
+        dl = "/en/download"
+        docs = "/en/docs/start"
+        api = "/en/api"
+        blog = "/en/blog"
+        st = "/en/docs/status"
+        lab_home = "Home"
+        lab_dl = "Download"
+        lab_docs = "Docs"
+        lab_blog = "Blog"
+        lab_st = "Status"
+    }
+    mut s := "<nav class=\"nav-tabs\">"
+    s = s + nav_item(home, "xi-home", lab_home, path)
+    s = s + nav_item(dl, "xi-download", lab_dl, path)
+    s = s + nav_item(docs, "xi-book", lab_docs, path)
+    s = s + nav_item(api, "xi-api", lab_api, path)
+    s = s + nav_item(blog, "xi-chat", lab_blog, path)
+    s = s + nav_item(st, "xi-benchmark", lab_st, path)
+    s = s + "</nav>"
+    << s
+}
+
+fn header_html(path &string, en bool) string {
+    mut home := "/"
+    mut lang_lab := "EN"
+    mut lang_title := "English"
+    if en {
+        home = "/en"
+        lang_lab = "中"
+        lang_title = "中文"
+    }
+    mut s := "<header class=\"header-bar\">"
+    s = s + "<a class=\"brand-wrapper\" href=\"" + home + "\">"
+    s = s + "<img src=\"/xu_classic.svg\" width=\"34\" height=\"34\" alt=\"XU\" class=\"brand-logo-img\">"
+    s = s + "<span class=\"brand-title\">XU<span class=\"badge\">v0.1.0</span></span>"
+    s = s + "</a>"
+    s = s + top_nav(path, en)
+    s = s + "<div class=\"header-controls\">"
+    s = s + "<a class=\"icon-btn\" href=\"" + other_lang_href(path + "") + "\" title=\"" + lang_title + "\">" + lang_lab + "</a>"
+    s = s + "<button type=\"button\" class=\"icon-btn\" id=\"theme-toggle-btn\" title=\"Theme\"><i class=\"xi xi-moon\"></i> <span>Dark</span></button>"
+    s = s + "</div>"
+    s = s + "</header>"
+    << s
+}
+
+fn footer_html(en bool) string {
+    if en {
+        << "<footer class=\"site\"><p><i class=\"xi xi-logo xi-brand\"></i> XU v0.1.0 · MIT License · Zero GC · Supersonic AOT · <a href=\"http://127.0.0.1:8088/\" target=\"_blank\"><i class=\"xi xi-palette\"></i> Design System</a> · <a href=\"http://127.0.0.1:8088/xu_icons.html\" target=\"_blank\"><i class=\"xi xi-code\"></i> XuIcons (145+)</a></p></footer>"
+    }
+    << "<footer class=\"site\"><p><i class=\"xi xi-logo xi-brand\"></i> XU v0.1.0 · MIT 开源协议 · 坚若磐石 · 零 GC 内存安全 · 超音速 AOT · <a href=\"http://127.0.0.1:8088/\" target=\"_blank\"><i class=\"xi xi-palette\"></i> VI/UI 设计系统</a> · <a href=\"http://127.0.0.1:8088/xu_icons.html\" target=\"_blank\"><i class=\"xi xi-code\"></i> XuIcons 字体图标库 (145+)</a></p></footer>"
+}
+
+fn side_link(href string, label string, path &string) string {
+    mut cls := ""
+    p := path + ""
+    if p == href {
+        cls = " class=\"on\""
+    }
+    << "<li><a" + cls + " href=\"" + href + "\">" + label + "</a></li>"
+}
+
+fn side_h(icon string, label string) string {
+    << "<p class=\"side-h\"><i class=\"xi " + icon + "\"></i> <span>" + label + "</span></p>"
+}
+
+fn sidebar_docs(path &string, en bool) string {
+    mut p := ""
+    mut t1 := "起步"
+    mut t2 := "教程"
+    mut t3 := "语言"
+    mut t4 := "工具"
+    if en {
+        p = "/en"
+        t1 = "Start"
+        t2 = "Tutorial"
+        t3 = "Language"
+        t4 = "Tools"
+    }
+    mut s := "<aside class=\"side\">" + side_h("xi-bookmark", t1) + "<ul>"
+    if en {
+        s = s + side_link(p + "/docs/start", "Get started", path)
+        s = s + side_link(p + "/docs/install", "Install", path)
+        s = s + side_link(p + "/docs/hello", "Hello", path)
+    } else {
+        s = s + side_link(p + "/docs/start", "起步", path)
+        s = s + side_link(p + "/docs/install", "安装", path)
+        s = s + side_link(p + "/docs/hello", "Hello", path)
+    }
+    s = s + "</ul>" + side_h("xi-code", t2) + "<ul>"
+    s = s + side_link(p + "/docs/tutorial/01", "01 hello", path)
+    s = s + side_link(p + "/docs/tutorial/02", "02 bindings", path)
+    s = s + side_link(p + "/docs/tutorial/03", "03 control", path)
+    s = s + side_link(p + "/docs/tutorial/04", "04 functions", path)
+    s = s + side_link(p + "/docs/tutorial/05", "05 errors", path)
+    s = s + side_link(p + "/docs/tutorial/06", "06 ownership", path)
+    s = s + side_link(p + "/docs/tutorial/07", "07 arrays", path)
+    s = s + side_link(p + "/docs/tutorial/08", "08 enum", path)
+    s = s + side_link(p + "/docs/tutorial/09", "09 generics", path)
+    s = s + side_link(p + "/docs/tutorial/10", "10 concurrency", path)
+    s = s + side_link(p + "/docs/tutorial/11", "11 http", path)
+    s = s + side_link(p + "/docs/tutorial/12", "12 fileserver", path)
+    s = s + side_link(p + "/docs/tutorial/13", "13 context", path)
+    s = s + side_link(p + "/docs/tutorial/14", "14 tcp", path)
+    s = s + side_link(p + "/docs/tutorial/15", "15 udp", path)
+    s = s + side_link(p + "/docs/tutorial/16", "16 ui", path)
+    s = s + "</ul>" + side_h("xi-ownership", t3) + "<ul>"
+    if en {
+        s = s + side_link(p + "/docs/lang/goals", "Goals", path)
+        s = s + side_link(p + "/docs/lang/syntax", "Syntax freeze", path)
+        s = s + side_link(p + "/docs/lang/lexical", "Lexical", path)
+        s = s + side_link(p + "/docs/lang/structure", "Structure", path)
+        s = s + side_link(p + "/docs/lang/types", "Types", path)
+        s = s + side_link(p + "/docs/lang/functions", "Functions", path)
+        s = s + side_link(p + "/docs/lang/memory", "Memory", path)
+        s = s + side_link(p + "/docs/lang/concurrency", "Concurrency", path)
+        s = s + side_link(p + "/docs/lang/ebnf", "EBNF", path)
+        s = s + side_link(p + "/docs/lang/stdlib", "Stdlib boundary", path)
+        s = s + side_link(p + "/docs/lang/toolchain", "Toolchain", path)
+        s = s + side_link(p + "/docs/lang/status", "Spec snapshot", path)
+    } else {
+        s = s + side_link(p + "/docs/lang/goals", "设计目标", path)
+        s = s + side_link(p + "/docs/lang/syntax", "语法定稿", path)
+        s = s + side_link(p + "/docs/lang/lexical", "词法", path)
+        s = s + side_link(p + "/docs/lang/structure", "程序结构", path)
+        s = s + side_link(p + "/docs/lang/types", "类型", path)
+        s = s + side_link(p + "/docs/lang/functions", "函数与表达式", path)
+        s = s + side_link(p + "/docs/lang/memory", "内存模型", path)
+        s = s + side_link(p + "/docs/lang/concurrency", "并发", path)
+        s = s + side_link(p + "/docs/lang/ebnf", "EBNF", path)
+        s = s + side_link(p + "/docs/lang/stdlib", "标准库边界", path)
+        s = s + side_link(p + "/docs/lang/toolchain", "工具链", path)
+        s = s + side_link(p + "/docs/lang/status", "规范快照", path)
+    }
+    s = s + "</ul>" + side_h("xi-terminal", t4) + "<ul>"
+    if en {
+        s = s + side_link(p + "/docs/cli", "CLI", path)
+        s = s + side_link(p + "/docs/ui", "UI / WebView", path)
+        s = s + side_link(p + "/docs/vscode", "VS Code", path)
+        s = s + side_link(p + "/docs/status", "Limitations", path)
+    } else {
+        s = s + side_link(p + "/docs/cli", "命令行", path)
+        s = s + side_link(p + "/docs/ui", "UI / WebView", path)
+        s = s + side_link(p + "/docs/vscode", "VS Code", path)
+        s = s + side_link(p + "/docs/status", "限制与现状", path)
+    }
+    s = s + "</ul></aside>"
+    << s
+}
+
+fn sidebar_api(path &string, en bool) string {
+    mut p := ""
+    mut h := "API"
+    if en {
+        p = "/en"
+    }
+    mut s := "<aside class=\"side\">" + side_h("xi-api", h) + "<ul>"
+    s = s + side_link(p + "/api", "Index", path)
+    if en {
+        s = s + "</ul>" + side_h("xi-cpu", "Core") + "<ul>"
+    } else {
+        s = s + "</ul>" + side_h("xi-cpu", "核心") + "<ul>"
+    }
+    s = s + side_link(p + "/api/errors", "#errors", path)
+    s = s + side_link(p + "/api/fmt", "#fmt", path)
+    s = s + side_link(p + "/api/flag", "#flag", path)
+    s = s + side_link(p + "/api/cmp", "#cmp", path)
+    s = s + side_link(p + "/api/context", "#context", path)
+    s = s + side_link(p + "/api/sync", "#sync", path)
+    s = s + side_link(p + "/api/time", "#time", path)
+    s = s + side_link(p + "/api/runtime", "#runtime", path)
+    s = s + side_link(p + "/api/maps", "#maps", path)
+    s = s + side_link(p + "/api/slices", "#slices", path)
+    s = s + side_link(p + "/api/sort", "#sort", path)
+    s = s + side_link(p + "/api/testing", "#testing", path)
+    s = s + side_link(p + "/api/testing/fstest", "#testing/fstest", path)
+    if en {
+        s = s + "</ul>" + side_h("xi-file", "Text") + "<ul>"
+    } else {
+        s = s + "</ul>" + side_h("xi-file", "文本") + "<ul>"
+    }
+    s = s + side_link(p + "/api/strings", "#strings", path)
+    s = s + side_link(p + "/api/bytes", "#bytes", path)
+    s = s + side_link(p + "/api/strconv", "#strconv", path)
+    s = s + side_link(p + "/api/unicode", "#unicode", path)
+    s = s + side_link(p + "/api/regexp", "#regexp", path)
+    s = s + side_link(p + "/api/html", "#html", path)
+    if en {
+        s = s + "</ul>" + side_h("xi-terminal", "IO / OS") + "<ul>"
+    } else {
+        s = s + "</ul>" + side_h("xi-terminal", "IO / OS") + "<ul>"
+    }
+    s = s + side_link(p + "/api/io", "#io", path)
+    s = s + side_link(p + "/api/io/fs", "#io/fs", path)
+    s = s + side_link(p + "/api/os", "#os", path)
+    s = s + side_link(p + "/api/os/exec", "#os/exec", path)
+    s = s + side_link(p + "/api/os/signal", "#os/signal", path)
+    s = s + side_link(p + "/api/os/user", "#os/user", path)
+    s = s + side_link(p + "/api/bufio", "#bufio", path)
+    s = s + side_link(p + "/api/path", "#path", path)
+    s = s + side_link(p + "/api/log", "#log", path)
+    if en {
+        s = s + "</ul>" + side_h("xi-globe", "Net") + "<ul>"
+    } else {
+        s = s + "</ul>" + side_h("xi-globe", "网络") + "<ul>"
+    }
+    s = s + side_link(p + "/api/net", "#net", path)
+    s = s + side_link(p + "/api/net/http", "#net/http", path)
+    s = s + side_link(p + "/api/net/http/cookiejar", "#net/http/cookiejar", path)
+    s = s + side_link(p + "/api/net/http/httptest", "#net/http/httptest", path)
+    s = s + side_link(p + "/api/net/netip", "#net/netip", path)
+    s = s + side_link(p + "/api/net/url", "#net/url", path)
+    if en {
+        s = s + "</ul>" + side_h("xi-binary", "Encoding") + "<ul>"
+    } else {
+        s = s + "</ul>" + side_h("xi-binary", "编码") + "<ul>"
+    }
+    s = s + side_link(p + "/api/encoding/json", "#encoding/json", path)
+    s = s + side_link(p + "/api/encoding/hex", "#encoding/hex", path)
+    s = s + side_link(p + "/api/encoding/base64", "#encoding/base64", path)
+    if en {
+        s = s + "</ul>" + side_h("xi-shield-check", "Crypto <small>Xu-only SM2/SM3/SM4/SM9/ZUC/GMTLS</small>") + "<ul>"
+    } else {
+        s = s + "</ul>" + side_h("xi-shield-check", "密码与国密 <small>Xu 自有 SM2/SM3/SM4/SM9/ZUC/GMTLS</small>") + "<ul>"
+    }
+    s = s + side_link(p + "/api/crypto/sm2", "#crypto/sm2", path)
+    s = s + side_link(p + "/api/crypto/sm3", "#crypto/sm3", path)
+    s = s + side_link(p + "/api/crypto/sm4", "#crypto/sm4", path)
+    s = s + side_link(p + "/api/crypto/sm9", "#crypto/sm9", path)
+    s = s + side_link(p + "/api/crypto/zuc", "#crypto/zuc", path)
+    s = s + side_link(p + "/api/crypto/gmtls", "#crypto/gmtls", path)
+    s = s + side_link(p + "/api/crypto/tls", "#crypto/tls", path)
+    s = s + side_link(p + "/api/crypto/rand", "#crypto/rand", path)
+    s = s + side_link(p + "/api/crypto/x509/pkix", "#crypto/x509/pkix", path)
+    s = s + side_link(p + "/api/crypto/sha256", "#crypto/sha256", path)
+    if en {
+        s = s + "</ul>" + side_h("xi-package", "Compress / image / math") + "<ul>"
+    } else {
+        s = s + "</ul>" + side_h("xi-package", "压缩 / 图像 / 数学") + "<ul>"
+    }
+    s = s + side_link(p + "/api/compress/gzip", "#compress/gzip", path)
+    s = s + side_link(p + "/api/image", "#image", path)
+    s = s + side_link(p + "/api/math", "#math", path)
+    if en {
+        s = s + "</ul>" + side_h("xi-database", "Database") + "<ul>"
+    } else {
+        s = s + "</ul>" + side_h("xi-database", "数据库") + "<ul>"
+    }
+    s = s + side_link(p + "/api/database/sql", "#database/sql", path)
+    s = s + side_link(p + "/api/database/sql/driver", "#database/sql/driver", path)
+    s = s + "</ul>" + side_h("xi-xuui", "UI") + "<ul>"
+    s = s + side_link(p + "/api/ui", "#ui", path)
+    s = s + side_link(p + "/api/ui/webview", "#ui/webview", path)
+    s = s + side_link(p + "/api/ui/draw", "#ui/draw", path)
+    s = s + "</ul></aside>"
+    << s
+}
+
+fn sidebar_for(path &string, en bool) string {
+    r := rest_path(path + "")
+    if r == "/api" || strings.has_prefix(&r, "/api/") {
+        << sidebar_api(path, en)
+    }
+    if r == "/docs" || strings.has_prefix(&r, "/docs/") {
+        << sidebar_docs(path, en)
+    }
+    if r == "/blog" || strings.has_prefix(&r, "/blog/") {
+        mut p := ""
+        if en {
+            p = "/en"
+        }
+        mut s := "<aside class=\"side\"><p class=\"side-h\">Blog</p><ul>"
+        s = s + side_link(p + "/blog", "Index", path)
+        s = s + side_link(p + "/blog/xu-0-1-0", "Xu 0.1.0", path)
+        s = s + "</ul></aside>"
+        << s
+    }
+    << ""
+}
+
+fn theme_boot() string {
+    << "<script>(function(){var t='';try{t=localStorage.getItem('xu-theme')||'';}catch(e){}if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);})();</script>"
+}
+
+fn theme_script() string {
+    << "<script>(function(){var k='xu-theme';var b=document.getElementById('theme-toggle-btn');var moon='<i class=\"xi xi-moon\"></i> <span>Dark</span>';var sun='<i class=\"xi xi-sun xi-gold\"></i> <span>Light</span>';function sync(){var t=document.documentElement.getAttribute('data-theme');if(b){if(t==='light'){b.innerHTML=sun;}else{b.innerHTML=moon;}}}if(b){b.onclick=function(){var n='light';if(document.documentElement.getAttribute('data-theme')==='light'){n='dark';}document.documentElement.setAttribute('data-theme',n);try{localStorage.setItem(k,n);}catch(e){}sync();};}sync();})();</script>"
+}
+
+fn shell_start(title string, path &string, en bool) string {
+    mut lang := "zh-CN"
+    if en {
+        lang = "en"
+    }
+    et := esc_text(title)
+    mut s := "<!doctype html><html lang=\"" + lang + "\" data-theme=\"dark\"><head>"
+    s = s + "<meta charset=\"utf-8\">"
+    s = s + "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">"
+    s = s + "<title>" + et + "</title>"
+    s = s + "<link rel=\"icon\" href=\"/xu_classic.svg\" type=\"image/svg+xml\">"
+    s = s + "<link rel=\"stylesheet\" href=\"/fonts/xu-icons.css\">"
+    s = s + "<link rel=\"stylesheet\" href=\"/site.css\">"
+    s = s + theme_boot()
+    s = s + "</head><body>"
+    s = s + header_html(path, en)
+    << s
+}
+
+fn render_home(title string, path string, body string) string {
+    en := is_en_path(path + "")
+    mut s := shell_start(title, &path, en)
+    s = s + "<main class=\"home\">" + body + "</main>"
+    s = s + footer_html(en)
+    s = s + theme_script()
+    s = s + "</body></html>"
+    << s
+}
+
+fn render_doc(title string, path string, body string) string {
+    en := is_en_path(path + "")
+    mut s := shell_start(title, &path, en)
+    s = s + "<div class=\"page\">"
+    s = s + sidebar_for(&path, en)
+    mut main_cls := "doc"
+    r := rest_path(path + "")
+    if r == "/download" {
+        main_cls = "doc download"
+    }
+    s = s + "<main class=\"" + main_cls + "\">" + body + "</main>"
+    s = s + "</div>"
+    s = s + footer_html(en)
+    s = s + theme_script()
+    s = s + "</body></html>"
+    << s
+}

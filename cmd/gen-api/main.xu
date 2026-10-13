@@ -1,0 +1,209 @@
+@main
+
+#html
+#os
+#strings
+#errors
+
+fn env_or(name string, fallback string) string {
+    v := os.getenv(name)
+    if v.len > 0 {
+        << v
+    }
+    << fallback
+}
+
+fn site_root() string {
+    << env_or("XU_SITE_ROOT", ".")
+}
+
+fn extract_path() string {
+    av := args()
+    mut i := 1
+    while i < av.len {
+        a := av[i] + ""
+        if a == "--extract" && i + 1 < av.len {
+            << av[i + 1] + ""
+        }
+        i = i + 1
+    }
+    p := site_root() + "/xu-api-extract.md"
+    os.stat(p + "") or (err) {
+        << "/tmp/xu-api-extract.md"
+    }
+    << p
+}
+
+fn is_pkg_head(line string) bool {
+    if strings.has_prefix(&line, "### `") {
+        if strings.has_suffix(&line, "`") {
+            << true
+        }
+    }
+    << false
+}
+
+fn pkg_name(line string) string {
+    // ### `fmt`
+    if line.len < 6 {
+        << ""
+    }
+    inner := line[5:(line.len - 1)]
+    << inner
+}
+
+fn flush_pkg(name string, body string) {
+    if name.len == 0 {
+        <<
+    }
+    zh_dir := site_root() + "/content/zh/api"
+    en_dir := site_root() + "/content/en/api"
+    mut dir_rel := ""
+    mut i := 0
+    while i < name.len {
+        c := name[i] & 255
+        if c == 47 {
+            os.mkdir_all(zh_dir + "/" + dir_rel) or (err) { << }
+            os.mkdir_all(en_dir + "/" + dir_rel) or (err) { << }
+            if dir_rel.len > 0 {
+                dir_rel = dir_rel + "/"
+            }
+        } else {
+            dir_rel = dir_rel + string_from_byte(c)
+        }
+        i = i + 1
+    }
+    os.mkdir_all(zh_dir + "/" + dir_rel) or (err) {
+        // parent of file; mkdir the parent path
+        <<
+    }
+    // ensure parent directories of nested packages
+    mut parent := ""
+    mut j := 0
+    while j < name.len {
+        if (name[j] & 255) == 47 {
+            os.mkdir_all(zh_dir + "/" + parent) or (e2) { << }
+            os.mkdir_all(en_dir + "/" + parent) or (e3) { << }
+        }
+        parent = parent + string_from_byte(name[j] & 255)
+        j = j + 1
+    }
+    page := "<!--title: #" + name + "-->\n" + body + "\n"
+    os.write(zh_dir + "/" + name + ".html", page + "") or (err) {
+        println("write zh " + name + ": " + err.msg())
+        <<
+    }
+    os.write(en_dir + "/" + name + ".html", page) or (err) {
+        println("write en " + name + ": " + err.msg())
+        <<
+    }
+}
+
+fn fence_html(code string) string {
+    esc := html.escape_string(&code)
+    << "<pre><code>" + esc + "</code></pre>"
+}
+
+fn convert() int {
+    path := extract_path()
+    raw := os.read(path + "") or (err) {
+        println("cannot read extract: " + err.msg())
+        println("pass --extract PATH or put xu-api-extract.md in XU_SITE_ROOT")
+        << 1
+    }
+    lines := strings.split(&raw, "\n")
+    mut name := ""
+    mut acc := ""
+    mut in_pkg := false
+    mut in_fence := false
+    mut fence := ""
+    mut n := 0
+    mut k := 0
+    mut started := false
+    while k < lines.len {
+        line := lines[k] + ""
+        if !started {
+            if line == "## Packages" {
+                started = true
+            }
+            k = k + 1
+            ->
+        }
+        if !in_pkg {
+            if is_pkg_head(line + "") {
+                in_pkg = true
+                name = pkg_name(line + "")
+                acc = "<p class=\"crumb\">API</p>\n<h1><code>#" + name + "</code></h1>\n"
+                in_fence = false
+                fence = ""
+            }
+            k = k + 1
+            ->
+        }
+        if is_pkg_head(line + "") {
+            flush_pkg(name + "", acc + "")
+            n = n + 1
+            name = pkg_name(line + "")
+            acc = "<p class=\"crumb\">API</p>\n<h1><code>#" + name + "</code></h1>\n"
+            in_fence = false
+            fence = ""
+            k = k + 1
+            ->
+        }
+        if strings.has_prefix(&line, "## ") {
+            flush_pkg(name + "", acc + "")
+            n = n + 1
+            in_pkg = false
+            name = ""
+            k = k + 1
+            ->
+        }
+        if line == "```" {
+            if in_fence {
+                acc = acc + fence_html(fence + "")
+                fence = ""
+                in_fence = false
+            } else {
+                in_fence = true
+                fence = ""
+            }
+            k = k + 1
+            ->
+        }
+        if in_fence {
+            if fence.len > 0 {
+                fence = fence + "\n"
+            }
+            fence = fence + line
+            k = k + 1
+            ->
+        }
+        if strings.has_prefix(&line, "import:") {
+            acc = acc + "<p class=\"meta\">" + html.escape_string(&line) + "</p>\n"
+            k = k + 1
+            ->
+        }
+        if strings.has_prefix(&line, "counts:") {
+            acc = acc + "<p class=\"meta\">" + html.escape_string(&line) + "</p>\n"
+            k = k + 1
+            ->
+        }
+        if strings.has_prefix(&line, "> ") {
+            b := line[2:line.len]
+            acc = acc + "<p>" + html.escape_string(&b) + "</p>\n"
+            k = k + 1
+            ->
+        }
+        k = k + 1
+    }
+    if in_pkg {
+        flush_pkg(name + "", acc + "")
+        n = n + 1
+    }
+    println("gen-api wrote " + str(n) + " packages from " + path)
+    << 0
+}
+
+fn main() int {
+    << convert()
+}

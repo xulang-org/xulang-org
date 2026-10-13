@@ -1,0 +1,29 @@
+<!--title: 15 UDP echo-->
+<p class='crumb'><a href='/en/docs/start'>Docs</a> / Tutorial</p><h1>15 · UDP echo</h1><p><code>listen_packet</code>: read one datagram, write it back to the peer.</p><pre><code>mut c := net.listen_packet("udp", "127.0.0.1:19001") or (err) { &lt;&lt; 1 }
+pkt := c.read_from(4096) or (err) { -&gt; }
+c.write_to(&amp;pkt.data, &amp;pkt.addr)</code></pre><p>From another terminal: <code>printf ping | nc -u -w1 127.0.0.1 19001</code>.</p><h2>Source</h2><pre><code>@main
+
+#net
+
+// UDP echo。
+//   printf ping | nc -u 127.0.0.1 19001
+// TCP 见 14tcp_echo。
+
+fn main() int {
+    mut c := net.listen_packet("udp", "127.0.0.1:19001") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println("udp://127.0.0.1:19001  echo")
+    mut running := true
+    while running {
+        pkt := c.read_from(4096) or (err) {
+            -&gt;
+        }
+        data := pkt.data + ""
+        c.write_to(&amp;data, &amp;pkt.addr) or (err) {
+            -&gt;
+        }
+    }
+    &lt;&lt; 0
+}</code></pre>

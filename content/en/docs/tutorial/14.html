@@ -1,0 +1,40 @@
+<!--title: 14 TCP echo-->
+<p class='crumb'><a href='/en/docs/start'>Docs</a> / Tutorial</p><h1>14 · TCP echo</h1><p><code>listen_on</code> / <code>accept</code> / <code>xu handle</code> per connection.</p><pre><code>ln := net.listen_on("tcp", "127.0.0.1:19000") or (err) { &lt;&lt; 1 }
+c := ln.accept() or (err) { -&gt; }
+xu handle(c)</code></pre><p>From another terminal: <code>printf ping | nc 127.0.0.1 19000</code>.</p><p class='note'>On Windows, TCP <code>dial</code>/<code>listen</code> return an error stub — they do not fail silently.</p><h2>Source</h2><pre><code>@main
+
+#net
+
+// TCP echo。
+//   printf ping | nc 127.0.0.1 19000
+// UDP 见 15udp_echo。
+
+fn handle(c net.Conn) {
+    mut conn := c
+    buf := conn.read(4096) or (err) {
+        conn.close() or (e2) { &lt;&lt; }
+        &lt;&lt;
+    }
+    if buf.len == 0 {
+        conn.close() or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    conn.write(&amp;buf) or (err) { &lt;&lt; }
+    conn.close() or (err) { &lt;&lt; }
+}
+
+fn main() int {
+    ln := net.listen_on("tcp", "127.0.0.1:19000") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println("tcp://127.0.0.1:19000  echo")
+    mut running := true
+    while running {
+        c := ln.accept() or (err) {
+            -&gt;
+        }
+        xu handle(c)
+    }
+    &lt;&lt; 0
+}</code></pre>

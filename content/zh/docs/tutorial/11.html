@@ -1,0 +1,122 @@
+<!--title: 11 HTTP 自己路由-->
+<p class='crumb'><a href='/docs/start'>文档</a> / 教程</p><h1>11 · HTTP 自己路由</h1><p>自己 <code>listen</code> / <code>accept</code>，按 path 分支。静态目录见 <a href='/docs/tutorial/12'>12</a>；Handler 上下文见 <a href='/docs/tutorial/13'>13</a>。</p><p>监听 <code>http://127.0.0.1:18080</code>：GET <code>/</code> <code>/hello</code> <code>/health</code>，POST <code>/echo</code>。每连接 <code>xu handle(fd)</code>。</p><h2>源码</h2><pre><code>@main
+
+#net
+#net/http
+
+// 自己 listen / accept / 按路径处理。
+//   GET  /        HTML
+//   GET  /hello   text
+//   GET  /health  ok
+//   POST /echo    回显 body
+// 静态目录见 12file_server；Handler 上下文见 13http_context。
+
+fn path_only(p string) string {
+    mut i := 0
+    while i &lt; p.len {
+        if (p[i] &amp; 255) == 63 {
+            &lt;&lt; p[0:i]
+        }
+        i = i + 1
+    }
+    &lt;&lt; p + ""
+}
+
+fn write_http(fd int, status int, ctype string, body string) int {
+    mut reason := "OK"
+    if status == 404 {
+        reason = "Not Found"
+    }
+    if status == 400 {
+        reason = "Bad Request"
+    }
+    if status == 405 {
+        reason = "Method Not Allowed"
+    }
+    mut out := "HTTP/1.1 " + str(status) + " " + reason + "\r\n"
+    out = out + "Content-Type: " + ctype + "\r\n"
+    out = out + "Content-Length: " + str(body.len) + "\r\n"
+    out = out + "Connection: close\r\n"
+    out = out + "\r\n"
+    out = out + body
+    &lt;&lt; net.conn_write(fd, &amp;out) or (err) { &gt;&gt; err }
+}
+
+fn index_page() string {
+    &lt;&lt; "&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=\"utf-8\"&gt;&lt;title&gt;Xu HTTP&lt;/title&gt;" +
+        "&lt;style&gt;body{font-family:ui-sans-serif,system-ui,sans-serif;max-width:40rem;" +
+        "margin:3rem auto;padding:0 1.5rem;background:#0f1419;color:#e7ecf1}" +
+        "h1{font-weight:650;letter-spacing:-.03em}a{color:#7dd3fc}" +
+        "code{background:#1b2430;padding:.15rem .4rem;border-radius:4px}" +
+        "ul{line-height:1.8}&lt;/style&gt;&lt;/head&gt;&lt;body&gt;" +
+        "&lt;h1&gt;Xu HTTP&lt;/h1&gt;" +
+        "&lt;p&gt;自己 &lt;code&gt;listen&lt;/code&gt; / &lt;code&gt;accept&lt;/code&gt; / 按 path 分支。&lt;/p&gt;" +
+        "&lt;ul&gt;" +
+        "&lt;li&gt;&lt;a href=\"/hello\"&gt;/hello&lt;/a&gt;&lt;/li&gt;" +
+        "&lt;li&gt;&lt;a href=\"/health\"&gt;/health&lt;/a&gt;&lt;/li&gt;" +
+        "&lt;li&gt;POST &lt;code&gt;/echo&lt;/code&gt;&lt;/li&gt;" +
+        "&lt;/ul&gt;&lt;/body&gt;&lt;/html&gt;"
+}
+
+fn handle(fd int) {
+    mut req := http.new_request()
+    req.read(fd) or (err) {
+        msg := err.msg()
+        write_http(fd, 400, "text/plain; charset=utf-8", msg) or (e2) { &lt;&lt; }
+        net.conn_close(fd) or (e3) { &lt;&lt; }
+        &lt;&lt;
+    }
+    method := req.method()
+    raw_path := req.path()
+    path := path_only(raw_path)
+    if path == "/" || path == "/index.html" {
+        page := index_page()
+        write_http(fd, 200, "text/html; charset=utf-8", page) or (err) { &lt;&lt; }
+        net.conn_close(fd) or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    if path == "/hello" {
+        body := "hello, xu\n"
+        write_http(fd, 200, "text/plain; charset=utf-8", body) or (err) { &lt;&lt; }
+        net.conn_close(fd) or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    if path == "/health" {
+        body := "ok\n"
+        write_http(fd, 200, "text/plain; charset=utf-8", body) or (err) { &lt;&lt; }
+        net.conn_close(fd) or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    if path == "/echo" {
+        if method != "POST" &amp;&amp; method != "PUT" {
+            body := "method not allowed\n"
+            write_http(fd, 405, "text/plain; charset=utf-8", body) or (err) { &lt;&lt; }
+            net.conn_close(fd) or (err) { &lt;&lt; }
+            &lt;&lt;
+        }
+        echo := req.body()
+        write_http(fd, 200, "text/plain; charset=utf-8", echo) or (err) { &lt;&lt; }
+        net.conn_close(fd) or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    miss := "not found: " + path + "\n"
+    write_http(fd, 404, "text/plain; charset=utf-8", miss) or (err) { &lt;&lt; }
+    net.conn_close(fd) or (err) { &lt;&lt; }
+}
+
+fn main() int {
+    mut s := http.new_server()
+    s.listen("127.0.0.1:18080") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println("http://127.0.0.1:18080")
+    mut running := true
+    while running {
+        fd := s.accept() or (err) {
+            -&gt;
+        }
+        xu handle(fd)
+    }
+    &lt;&lt; 0
+}</code></pre>

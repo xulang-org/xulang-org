@@ -1,0 +1,40 @@
+<!--title: 14 TCP echo-->
+<p class='crumb'><a href='/docs/start'>文档</a> / 教程</p><h1>14 · TCP echo</h1><p><code>listen_on</code> / <code>accept</code> / 每连接 <code>xu handle</code>。</p><pre><code>ln := net.listen_on("tcp", "127.0.0.1:19000") or (err) { &lt;&lt; 1 }
+c := ln.accept() or (err) { -&gt; }
+xu handle(c)</code></pre><p>另一终端：<code>printf ping | nc 127.0.0.1 19000</code>。</p><p class='note'>Windows 上 TCP <code>dial</code>/<code>listen</code> 返回错误占位，不是静默成功。</p><h2>源码</h2><pre><code>@main
+
+#net
+
+// TCP echo。
+//   printf ping | nc 127.0.0.1 19000
+// UDP 见 15udp_echo。
+
+fn handle(c net.Conn) {
+    mut conn := c
+    buf := conn.read(4096) or (err) {
+        conn.close() or (e2) { &lt;&lt; }
+        &lt;&lt;
+    }
+    if buf.len == 0 {
+        conn.close() or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    conn.write(&amp;buf) or (err) { &lt;&lt; }
+    conn.close() or (err) { &lt;&lt; }
+}
+
+fn main() int {
+    ln := net.listen_on("tcp", "127.0.0.1:19000") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println("tcp://127.0.0.1:19000  echo")
+    mut running := true
+    while running {
+        c := ln.accept() or (err) {
+            -&gt;
+        }
+        xu handle(c)
+    }
+    &lt;&lt; 0
+}</code></pre>

@@ -1,0 +1,50 @@
+<!--title: 13 HTTP Context / mux-->
+<p class='crumb'><a href='/en/docs/start'>Docs</a> / Tutorial</p><h1>13 · HTTP Context / mux</h1><p>The request is folded into one <code>http.Context</code>:</p><pre><code>fn hello(c http.Context) {
+    c.text(200, "hello")
+}
+http.listen_and_serve_handler("127.0.0.1:18081", hello)</code></pre><p>Branch on <code>c.path()</code> inside one <code>app(c)</code>.</p><h2>Source</h2><pre><code>@main
+
+#net/http
+
+// 请求上下文：收成一个 Context。
+
+fn app(c http.Context) {
+    p := c.path()
+    if p == "/" || p == "/index.html" {
+        page := "&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=\"utf-8\"&gt;&lt;title&gt;Xu&lt;/title&gt;&lt;/head&gt;" +
+            "&lt;body&gt;&lt;h1&gt;Context&lt;/h1&gt;" +
+            "&lt;p&gt;&lt;a href=\"/hello\"&gt;/hello&lt;/a&gt; · &lt;a href=\"/health\"&gt;/health&lt;/a&gt;&lt;/p&gt;" +
+            "&lt;p&gt;POST /echo&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"
+        c.html(200, page) or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    if p == "/hello" {
+        c.text(200, "hello, xu\n") or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    if p == "/health" {
+        c.text(200, "ok\n") or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    if p == "/echo" {
+        m := c.method()
+        if m != "POST" &amp;&amp; m != "PUT" {
+            c.text(405, "method not allowed\n") or (err) { &lt;&lt; }
+            &lt;&lt;
+        }
+        b := c.body()
+        c.text(200, b) or (err) { &lt;&lt; }
+        &lt;&lt;
+    }
+    miss := "not found: " + p + "\n"
+    c.text(404, miss) or (err) { &lt;&lt; }
+}
+
+fn main() int {
+    println("http://127.0.0.1:18081")
+    http.listen_and_serve_handler("127.0.0.1:18081", app) or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre>

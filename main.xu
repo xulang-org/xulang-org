@@ -1,0 +1,85 @@
+@main
+
+#net
+#net/http
+#os
+#strings
+
+fn usage() {
+    println("xu-site — Xu language website (HTTP)")
+    println("usage: xu-site [--port 8080] [--addr 127.0.0.1:8080]")
+    println("gen-api: build cmd/gen-api separately")
+    println("env:   XU_SITE_ROOT  directory that contains content/ and www/")
+    println("       XU_SITE_ADDR  listen address (overrides --port)")
+}
+
+fn parse_addr() string {
+    env := os.getenv("XU_SITE_ADDR")
+    if env.len > 0 {
+        << env
+    }
+    av := args()
+    mut host := "127.0.0.1"
+    mut port := "8080"
+    mut i := 1
+    while i < av.len {
+        a := av[i] + ""
+        if a == "-h" || a == "--help" {
+            usage()
+            <<< 0
+        }
+        if a == "-port" || a == "--port" {
+            if i + 1 < av.len {
+                port = av[i + 1] + ""
+                i = i + 2
+                ->
+            }
+        }
+        if strings.has_prefix(&a, "--port=") {
+            port = a[7:a.len]
+            i = i + 1
+            ->
+        }
+        if a == "-addr" || a == "--addr" {
+            if i + 1 < av.len {
+                << av[i + 1] + ""
+            }
+        }
+        if strings.has_prefix(&a, "--addr=") {
+            << a[7:a.len]
+        }
+        i = i + 1
+    }
+    << host + ":" + port
+}
+
+fn main() int {
+    av := args()
+    if av.len >= 2 {
+        cmd := av[1] + ""
+        if cmd == "help" || cmd == "-h" || cmd == "--help" {
+            usage()
+            << 0
+        }
+    }
+    addr := parse_addr()
+    mut s := http.new_server()
+    s.listen(addr + "") or (err) {
+        println(err.msg())
+        << 1
+    }
+    println("Xu site  http://" + addr)
+    println("root     " + site_root())
+    mut running := true
+    while running {
+        fd := s.accept() or (err) {
+            ->
+        }
+        if xu_target_os() == 1 {
+            handle_http(fd)
+        } else {
+            xu handle_http(fd)
+        }
+    }
+    << 0
+}

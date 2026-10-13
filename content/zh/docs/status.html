@@ -1,0 +1,89 @@
+<!--title: 限制与现状 — XU v0.1.0 官方规范边界与诚实清单-->
+
+<p class="crumb"><a href="/docs/start"><i class="xi xi-book"></i> 文档</a> / 限制与现状</p>
+<h1><i class="xi xi-benchmark xi-brand"></i> 限制与现状 (Status &amp; Limitations)</h1>
+<p class="banner"><i class="xi xi-info xi-brand"></i> XU v0.1.0 官方诚实清单 · 明确技术实现边界与演进路线</p>
+
+<p class="lead">XU 坚持工程透明与诚实原则。以下清单详细记录了 v0.1.0 当前的技术完备状态、已知边界限制及设计约束。</p>
+
+<h2><i class="xi xi-layers xi-brand"></i> 核心子系统完备状态矩阵</h2>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th style="width: 22%;">子系统模块</th>
+      <th style="width: 18%;">当前状态</th>
+      <th>现状描述与支持边界</th>
+      <th style="width: 20%;">后续计划</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong><i class="xi xi-ownership xi-green"></i> 内存与所有权</strong></td>
+      <td><span class="badge" style="background:var(--xu-success-bg);color:var(--xu-success);border:1px solid var(--xu-success);"><i class="xi xi-check-circle"></i> 完备稳定</span></td>
+      <td>无 GC 暂停。单所有者模型、<code>&amp;T</code> 共享借用、<code>&amp;mut T</code> 独占借用，作用域退出时确定性 drop 析构。</td>
+      <td>长期语法冻结锁定</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-shield-check xi-green"></i> 语言安全边界</strong></td>
+      <td><span class="badge" style="background:var(--xu-success-bg);color:var(--xu-success);border:1px solid var(--xu-success);"><i class="xi xi-check-circle"></i> 设计约束</span></td>
+      <td>语言核心<strong>无 unsafe、无 reflect、无裸指针暴露</strong>，杜绝隐式内存越界与未定义行为。</td>
+      <td>核心安全原则保持不变</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-xuaot xi-brand"></i> AOT 交叉编译</strong></td>
+      <td><span class="badge" style="background:var(--xu-success-bg);color:var(--xu-success);border:1px solid var(--xu-success);"><i class="xi xi-check-circle"></i> 完备稳定</span></td>
+      <td>支持 macOS (arm64/x64)、Linux (arm64/x64/loongarch64/riscv64)、Windows (x64/arm64) 一键单文件原生产物。</td>
+      <td>持续优化机器码体积</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-globe xi-cyan"></i> 网络与套接字 (Net/IO)</strong></td>
+      <td><span class="badge" style="background:var(--xu-warning-bg);color:var(--xu-warning);border:1px solid var(--xu-warning);"><i class="xi xi-alert"></i> 平台差异</span></td>
+      <td>Unix (macOS / Linux) 完整支持 IPv4 TCP、UDP、HTTP 与文件服务；Windows 平台 TCP dial/listen 当前返回占位错误。</td>
+      <td>v0.2.0 补齐 WinSock 原生后端</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-database xi-gold"></i> 数据库 (Database)</strong></td>
+      <td><span class="badge" style="background:var(--xu-success-bg);color:var(--xu-success);border:1px solid var(--xu-success);"><i class="xi xi-check-circle"></i> 纯 XU + 外部模块</span></td>
+      <td><code>database/sql</code> 提供驱动契约；PostgreSQL 与 MySQL/MariaDB 是纯 Xu 协议包。</td>
+      <td>SQLite 等嵌入式驱动由外部 <code>require:</code> 模块提供。</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-shield-check xi-brand"></i> 国密与密码学</strong></td>
+      <td><span class="badge" style="background:var(--xu-success-bg);color:var(--xu-success);border:1px solid var(--xu-success);"><i class="xi xi-check-circle"></i> 纯 XU 原生</span></td>
+      <td>SM2 / SM3 / SM4 / SM9 / ZUC / GMTLS 纯 XU 语言自研实现，高性能且零外部依赖；尚未取得商用密码认证。</td>
+      <td>持续进行软硬件加速与对标</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-xuui xi-purple"></i> 桌面 GUI 引擎</strong></td>
+      <td><span class="badge" style="background:var(--xu-warning-bg);color:var(--xu-warning);border:1px solid var(--xu-warning);"><i class="xi xi-alert"></i> macOS 支持</span></td>
+      <td><code>xu build --desktop</code> 在 macOS 可直接产出 <code>.app</code> 原生包（集成 <code>#ui/webview</code> 与 <code>#ui/draw</code>）；Windows/Linux 报未实现。</td>
+      <td>完善 Linux GTK 与 Windows WebView2</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-code xi-brand"></i> 共享库 FFI 导出</strong></td>
+      <td><span class="badge" style="background:var(--xu-success-bg);color:var(--xu-success);border:1px solid var(--xu-success);"><i class="xi xi-check-circle"></i> 支持基础类型</span></td>
+      <td><code>--shared</code> 动态库导出支持类型：<code>int</code>、<code>bool</code>、<code>string</code>、<code>f64</code>、<code>i32</code>、<code>u32</code>、<code>u8</code>。</td>
+      <td>支持结构体与切片跨语言导出</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-file xi-cyan"></i> Map 字典容器</strong></td>
+      <td><span class="badge" style="background:var(--xu-success-bg);color:var(--xu-success);border:1px solid var(--xu-success);"><i class="xi xi-check-circle"></i> 确定性设计</span></td>
+      <td>键目前支持 <code>int</code> 与 <code>string</code>；缺键索引采用 Fail-Loud 机制快速防御，安全无静默未定义值。</td>
+      <td>后续扩展自定义 Hashable 结构体键</td>
+    </tr>
+    <tr>
+      <td><strong><i class="xi xi-terminal xi-brand"></i> 开发工具与语言服务</strong></td>
+      <td><span class="badge" style="background:var(--xu-warning-bg);color:var(--xu-warning);border:1px solid var(--xu-warning);"><i class="xi xi-alert"></i> 规划开发中</span></td>
+      <td><code>xu build</code> / <code>xu run</code> / <code>xu check</code> / <code>xu fmt</code> / <code>xu doc</code> 完备；<code>xu doc --serve</code> 可本地预览 XUDOCS；LSP（语言服务器）暂未开放。</td>
+      <td>语言服务集成于 VS Code 插件中</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<div class="callout" style="margin-top:28px;background:var(--xu-brand-grad-subtle);border-left:4px solid var(--xu-brand-500);padding:16px 20px;border-radius:var(--xu-radius-md);">
+  <h3 style="margin:0 0 6px;font-size:16px;color:var(--xu-text-primary);"><i class="xi xi-flag xi-brand"></i> 升级与版本维护</h3>
+  <p style="margin:0;color:var(--xu-text-secondary);font-size:14px;line-height:1.6;">运行 <code>xu up</code> 会打印当前编译器版本与可用通道更新指引。详细升级日志请参考 <a href="/blog"><i class="xi xi-chat"></i> 官方博客</a> 与 GitHub 发行记录。</p>
+</div>
