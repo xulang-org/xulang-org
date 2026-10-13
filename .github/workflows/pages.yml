@@ -26,6 +26,22 @@ jobs:
           python-version: '3.13'
       - name: Test static site
         run: make check
+      - name: Checkout Xu playground sources
+        uses: actions/checkout@v6
+        with:
+          repository: xulang-org/bootstrap
+          ref: f8ac5d2f376680b8e10eab5d5a1cd216e3d84963
+          path: build/playground-source
+          persist-credentials: false
+      - name: Install Rust WASM target
+        run: rustup toolchain install 1.92.0 --profile minimal --target wasm32-unknown-unknown
+      - name: Build Xu playground
+        env:
+          RUSTUP_TOOLCHAIN: '1.92.0'
+          XU_BOOTSTRAP_ROOT: ${{ github.workspace }}/build/playground-source
+        run: ./scripts/build-playground.sh
+      - name: Test Xu playground execution
+        run: make check-playground
       - name: Read Pages configuration
         if: github.event_name != 'pull_request'
         id: pages
@@ -33,7 +49,7 @@ jobs:
       - name: Build static site
         env:
           BASE_PATH: ${{ steps.pages.outputs.base_path }}
-        run: make build
+        run: python3 scripts/build-static.py --base-path "$BASE_PATH" --require-playground
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4

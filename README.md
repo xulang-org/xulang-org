@@ -38,11 +38,26 @@ make build BASE_PATH=/xulang-org # GitHub 项目站点路径
 编译器下载入口指向 [Xu GitHub Releases](https://github.com/xulang-org/xu/releases)。
 编译器二进制和本地 `www/releases/` 不提交，也不会打包到官网。
 
-首页 playground 是可选的浏览器 WASM 运行器。若构建输入包含 `www/xu-play.wasm`，
-构建会带上该文件；没有 WASM 时，页面说明在线运行尚未启用，运行按钮禁用。
-普通 GitHub checkout 不含该生成文件，因此默认 Pages 部署不启用在线运行。
-需要启用时，由独立的 WASM 发布流程在 `make build` 前提供该文件。
-本机构建可以运行 `make wasm XU_ROOT=/path/to/xu`，再执行 `make build`。
+Pages workflow 自动检出固定版本的 `xulang-org/bootstrap`，使用 Rust 1.92.0
+编译 `xuplay` 为 `wasm32-unknown-unknown`，运行真实 WASM 示例测试，再打包官网。
+发布构建使用 `--require-playground`；运行器缺失时构建失败，避免再次发布禁用按钮。
+源码版本固定在 `.github/workflows/pages.yml` 中，升级时同步验证示例。
+
+本机构建需要 Rust 和 `wasm32-unknown-unknown` 目标：
+
+```sh
+rustup target add wasm32-unknown-unknown
+make wasm XU_BOOTSTRAP_ROOT=/path/to/bootstrap
+make check-playground           # Node.js 运行真实 WASM 与首页示例
+make build
+```
+
+生成的 `www/xu-play.wasm` 与 `build/` 不提交。普通 `make build` / `make check`
+仍只需 Python；本地没有 WASM 时保留未启用提示。
+
+用户代码在独立 Web Worker 中经过真实 Xu 解析、检查与 MIR 解释执行，
+支持停止和 10 秒超时；源码不发往服务器。沙盒支持基础语法、函数及简单结构体，
+不提供文件、网络、协程和完整标准库。首页示例保存在 `www/xu-play-examples.json`。
 
 ## 内容维护
 

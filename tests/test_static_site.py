@@ -75,6 +75,24 @@ class StaticSiteTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'missing /site.css'):
             site.build(source, self.workspace / 'broken-output')
 
+    def test_publication_requires_real_playground_asset(self):
+        with self.assertRaisesRegex(ValueError, 'WASM is required'):
+            site.build(self.source, self.workspace / 'required-output', require_playground=True)
+        source = self.workspace / 'with-wasm'
+        shutil.copytree(self.source, source)
+        wasm = source / 'www/xu-play.wasm'
+        wasm.write_bytes(b'not a wasm module')
+        with self.assertRaisesRegex(ValueError, 'invalid.*WASM'):
+            site.build(source, self.workspace / 'invalid-output', require_playground=True)
+        # A minimal valid module verifies packaging; actual Xu ABI is exercised
+        # by the production-runtime tests in test_playground.mjs.
+        wasm.write_bytes(b'\x00asm\x01\x00\x00\x00')
+        output = self.workspace / 'with-wasm-output'
+        site.build(source, output, '/repo', require_playground=True)
+        self.assertIn('data-wasm-available="true"', (output / 'index.html').read_text())
+        for asset in ('xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
+            self.assertTrue((output / asset).is_file(), asset)
+
     def test_refuses_source_or_unowned_output(self):
         with self.assertRaises(ValueError):
             site.build(self.source, self.source / 'content')

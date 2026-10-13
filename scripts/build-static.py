@@ -129,7 +129,7 @@ def check_links(output: Path, base: str) -> None:
         raise ValueError('Broken local links:\n' + '\n'.join(sorted(set(errors))))
 
 
-def build(root: Path, output: Path, base: str = '') -> int:
+def build(root: Path, output: Path, base: str = '', require_playground: bool = False) -> int:
     base = normalize_base(base)
     if output.is_symlink():
         raise ValueError('output must not be a symbolic link')
@@ -139,6 +139,11 @@ def build(root: Path, output: Path, base: str = '') -> int:
         raise ValueError('output must be dist/ or a directory outside the source tree')
     if output.exists() and any(output.iterdir()) and not (output / '.xu-static-build').is_file():
         raise ValueError('refusing to replace a nonempty directory without a .xu-static-build marker')
+    wasm = root / 'www/xu-play.wasm'
+    if require_playground and not wasm.is_file():
+        raise ValueError('Xu playground WASM is required; run make wasm before publishing')
+    if wasm.is_file() and wasm.read_bytes()[:8] != b'\x00asm\x01\x00\x00\x00':
+        raise ValueError('invalid Xu playground WASM file')
     pages = {}
     for lang in ('zh', 'en'):
         directory = root / 'content' / lang
@@ -187,9 +192,10 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, default=ROOT / 'dist')
     parser.add_argument('--base-path', default='')
+    parser.add_argument('--require-playground', action='store_true', help='fail rather than publish a disabled playground')
     args = parser.parse_args()
     try:
-        count = build(ROOT, args.output, args.base_path)
+        count = build(ROOT, args.output, args.base_path, args.require_playground)
     except (OSError, ValueError) as error:
         parser.exit(1, f'{error}\n')
     print(f'Built {count} pages → {args.output} (base path: {normalize_base(args.base_path) or "/"})')
