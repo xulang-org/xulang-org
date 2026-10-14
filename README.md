@@ -1,91 +1,103 @@
 # xulang-org
 
-Xu 官网源码，使用 GitHub Pages 托管。默认中文，英文入口为 `/en/`，已绑定域名 `xulang.org`。
+Xu 官网源码，使用 GitHub Pages 托管，域名为 `xulang.org`。默认中文，英文入口为 `/en/`。
 
-## 构建与本地预览
+官方帐号入口在所有页面的顶部和页脚：GitHub [@xulang-org](https://github.com/xulang-org)，
+X [@xulang_org](https://x.com/xulang_org)。链接统一维护于 `scripts/site_layout.py` 的
+`SOCIAL_PROFILES`，页脚展示完整帐号；移动端保留顶部图标入口。
 
-需要 Python 3.10 或更新版本，仅使用标准库。静态构建不依赖 Xu 编译器、Node.js 或相邻仓库。
+## 目录
+
+| 目录 | 内容 |
+| --- | --- |
+| `content/{zh,en}/` | 中英文页面、教程与 API 正文 |
+| `templates/` | 页面模板 |
+| `www/` | CSS、JavaScript、字体、图标与可下载示例 |
+| `playground/runtime/` | Xu 编写的浏览器运行器 |
+| `scripts/` | 静态构建、运行器构建与 API 生成 |
+| `tests/` | 构建、在线运行与 chan 示例验证 |
+| `brand/` | Xu 品牌资源 |
+
+生成文件统一放在忽略的 `build/` 和 `dist/`；本机记录与历史备份放在忽略目录中。
+WASM 编译后端由 Xu 编译器仓库维护，官网直接调用产品编译器。
+
+## 静态构建与预览
+
+需要 Python 3.10 或更新版本，仅使用标准库。
 
 ```sh
-make build                      # 输出到 dist/，同时检查站内页面与资源链接
+make build                      # 输出 dist/，检查页面和资源链接
 make run                        # http://127.0.0.1:8080
 make run PORT=18080
-make check                      # 静态构建回归测试
+make check                      # 静态构建与 API 生成回归测试
 make build BASE_PATH=/xulang-org # GitHub 项目站点路径
+make clean                      # 清理 dist/ 和 build/playground/
 ```
 
-`content/{zh,en}/` 保存 HTML 正文片段，首行 `<!--title: ...-->` 指定标题；
-`templates/page.html` 与 `scripts/site_layout.py` 提供页头、导航、侧栏和页脚；
-`www/` 保存 CSS、JavaScript、字体和图标。`/docs/start` 等页面生成对应的
-`docs/start/index.html`，链接统一使用目录 URL。`dist/` 是构建产物，不提交。
+静态构建无需 Xu、Node.js 或相邻仓库。`content/` 的 HTML 正文片段以
+`<!--title: ...-->` 指定标题；`/docs/start` 等页面生成 `docs/start/index.html`。
 
-## GitHub Pages
+## 在线运行器
 
-1. 将仓库上传到 GitHub，默认分支使用 `main`。
-2. 在仓库 **Settings → Pages → Build and deployment → Source** 选择 **GitHub Actions**。
-3. `.github/workflows/pages.yml` 在推送到 `main` 时测试、构建并部署；Pull Request 只测试和构建。
-
-构建从 `actions/configure-pages` 读取实际 `base_path`，因此默认项目地址
-`https://<owner>.github.io/xulang-org/` 和自定义域名都能使用。
-
-绑定域名时，在 **Settings → Pages → Custom domain** 填入 `xulang.org`，
-再按 [GitHub 官方域名配置文档](https://docs.github.com/en/pages/configuring-a-custom-domain-for-your-github-pages-site/managing-a-custom-domain-for-your-github-pages-site)
-设置 DNS，启用 **Enforce HTTPS**。绑定完成后重新运行 Pages workflow，更新资源的基础路径。
-本仓库使用 Actions 发布，GitHub 不要求 `CNAME` 文件；域名配置以仓库 Pages 设置为准。
-
-## 下载与 playground
-
-编译器下载入口指向 [Xu GitHub Releases](https://github.com/xulang-org/xu/releases)。
-编译器二进制和本地 `www/releases/` 不提交，也不会打包到官网。
-
-Pages workflow 在 macOS 15 ARM64 上，使用校验和固定的公开 Xu 0.8.3 产品发行包。
-Xu 编译器先编译 `playground/compiler/emit_wasm.xu`（隔离的驱动扩展），
-再将 `playground/runtime/*.xu` 和产品 Xu 前端编译成 `xu-play.wasm`。
-解析器、类型与借用检查器、MIR 解释器、信道调度及内存/字符串支持均为 Xu 源码；
-构建链不需要 Rust、LLVM、Emscripten 或 bootstrap 仓库。
-发布构建使用 `--require-playground`；运行器缺失时构建失败。
+需要支持实验性 `wasm32` 目标的 Xu 产品编译器，以及匹配的标准库源码。
+本机默认使用同级 `../xu`；历史 Xu 0.8.3 SDK 尚不支持该目标。
 
 ```sh
-make wasm                      # 下载固定 Xu 发布包并构建；需要联网
-XU_PLAYGROUND_SEED=/path/to/xu-bundle make wasm # 使用已有产品发行包
-make check-playground           # Node.js 运行真实 WASM 与首页示例
+make wasm                           # 使用 ../xu/bin/xu
+make wasm XU_ROOT=/path/to/xu-sdk     # 使用支持 wasm32 的 SDK
+XU_BIN=/path/to/xu make wasm XU_ROOT=/path/to/xu
+make check-playground                # Node.js 执行真实 WASM 与首页示例
+make check-chan                      # 产品编译器验证三个原生 chan 示例
 make build
 ```
 
-生成的 `www/xu-play.wasm` 与 `build/` 不提交。普通 `make build` / `make check`
-仍只需 Python；本地没有 WASM 时保留未启用提示。
+构建脚本准备运行器和嵌入的标准库源码，执行 `xu build --target wasm32`，
+输出 `build/playground/xu-play.wasm`。静态构建将其复制到 `dist/xu-play.wasm`。
+`www/` 只保存静态资源；运行器构建不复制、修改或重新编译 Xu 编译器。
 
-WASM 后端目前作为官网独立构建扩展维护；已发布 Xu 的普通 CLI 尚未提供
-`--target wasm32`。`scripts/prepare_wasm_compiler.py` 在忽略目录复制产品驱动，
-接入本仓库的 Xu 后端，原产品源码和安装的 Xu 编译器保持原样。
+运行器使用真实 Xu 解析器、类型与借用检查器、MIR 解释器和 chan 调度器。
+JavaScript 负责 Web Worker、内存接口和输出读取。构建无需 Rust、LLVM 或 Emscripten。
+19 个示例统一定义于 `www/xu-play-examples.json`，覆盖基础语法、函数、数据结构、
+编译诊断，以及信道收发、多 worker 汇总和生产者流水线。
 
-用户代码在独立 Web Worker 中经过真实 Xu 解析、检查与 MIR 解释执行。
-每次运行创建独立的 64 MiB WASM arena，源码上限 128 KiB，输出上限 256 KiB；
-支持停止、10 秒超时和执行步数限制，源码不发往服务器。
-`www/xu-play-runtime.mjs` 只负责编码、内存 ABI 和输出读取，JavaScript 不解释 Xu。
+每次运行使用独立的 64 MiB WASM arena，源码上限 128 KiB、输出上限 256 KiB，
+支持停止、10 秒超时和执行步数限制。源码不发往服务器。
+浏览器信道由 Xu 执行器协作调度，支持缓冲、无缓冲、关闭与死锁诊断；
+文件、网络、完整标准库与 f64 运算尚不支持，未实现的操作返回明确诊断。
+本地未构建 WASM 时，静态首页显示运行器未启用。
 
-19 个在线示例覆盖基本类型、控制流、递归、数组、枚举、结构体、断言、借用诊断，
-以及 chan 缓冲收发、多 worker 汇总和生产者流水线。
-示例定义在 `www/xu-play-examples.json`，中英文标题和说明从同一份数据生成。
-协程由 Xu 执行器协作调度，支持有缓冲和无缓冲信道、关闭和死锁诊断；
-浏览器不提供文件、网络或完整标准库。未实现的 MIR 操作返回明确诊断。
-教程 10 和 `www/examples/chan-*/main.xu` 保留可下载的三个本机程序。
-`make check-chan XU_ROOT=/path/to/xu` 用产品编译器编译并验证这些程序。
+## GitHub Pages
+
+在仓库 **Settings → Pages** 中选择 **GitHub Actions**，填写自定义域名
+`xulang.org` 并启用 **Enforce HTTPS**。
+
+`.github/workflows/pages.yml` 在推送 `main` 时测试、构建和部署；Pull Request
+只测试和构建。流水线锁定 `xulang-org/xu` 的 main 提交，读取该提交的 `VERSION`，
+只下载同版本的正式 Linux ARM64 SDK，并验证附件 SHA-256。
+该版本必须已经正式发布且支持 WASM；版本不匹配、草稿或预发布版本均无法部署。
+发布构建使用 `--require-playground`，运行器缺失会失败。
+
+页面中的 `{{xu_version}}` 在构建时统一展开。发布流水线用同一 SDK 重建 API，
+再用 `--xu-version` 将 SDK 版本用于首页、页头页脚、文档、API 和下载链接。
+API 源码快照的版本与 SDK 不一致时构建失败；历史博客保留当时的版本。
+WASM 也记录实际编译版本和校验和，旧版本产物无法随新版页面一起发布。
+本地离线构建默认使用 `xu.xun` 中的 `xu:`，无需访问 GitHub。
+`make api` 会将此次 API 源码版本同步到官网 `VERSION`、根清单的 `version:` / `xu:`
+和运行器清单的 `xu:`。
+
+构建读取 `actions/configure-pages` 的 `base_path`，同时支持项目地址与自定义域名。
+编译器下载链接指向 [Xu GitHub Releases](https://github.com/xulang-org/xu/releases)，
+安装包由编译器仓库发布。
 
 ## 内容维护
 
 ```sh
 make api XU_ROOT=/path/to/xu XU_PACKAGES_ROOT=/path/to/packages
-# 从编译器与扩展包源码重建 API 正文、索引和统计；构建官网无需执行
 ```
 
-`scripts/gen-api.py` 提取标准库、UI 与 packages 的公开声明，跳过编译器内部包、
-测试夹具和测试源码。中英文 API 正文、索引与统计一起生成，扩展包使用完整导入路径。
-`docs/modules`、`docs/packages` 说明模块依赖及驱动范围；教程命令在独立 examples
-仓库根执行。源码文档版本与实际已发布的下载附件分别说明。
+`scripts/gen-api.py` 从标准库和扩展包源码生成中英文 API 正文、索引与统计，
+跳过编译器内部包、测试源码和夹具。生成 API 需要相邻源码，构建官网无需执行该步骤。
+教程中的本机程序在独立 examples 仓库运行；三个 chan 程序也可从官网直接下载。
 
-`xu.xun` 的 `version:` 和根 `VERSION` 是官网版本，`xu:` 记录内容对应的 Xu 版本。
-官网头部与页脚从 `xu:` 读取语言版本。
-
-原 Xu HTTP 服务源码保留用于兼容本地开发，可执行 `make run-http`。
-GitHub Pages 的构建和部署均使用静态流程。
+官网 `VERSION`、根 `xu.xun` 的 `version:` 和 `xu:` 与 Xu main 对应的最终发布版本一致。
+运行器模块自身的 `version:` 独立管理。

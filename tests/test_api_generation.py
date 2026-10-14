@@ -54,6 +54,11 @@ fn private_helper() {}
             css.parent.mkdir(parents=True)
             styles = '/* —— stdlib API pages —— */\n.api-item {}\n.custom-rule { color: red; }\n'
             css.write_text(styles)
+            (site / 'xu.xun').write_text('module: xu/site\nversion: !ver 0.5.2\nxu: !ver 0.8.3\n')
+            (site / 'VERSION').write_text('0.5.2\n')
+            runtime = site / 'playground/runtime/xu.xun'
+            runtime.parent.mkdir(parents=True)
+            runtime.write_text('module: xu/site/playground\nversion: !ver 0.1.1\nxu: !ver 0.8.3\n')
             with contextlib.redirect_stdout(io.StringIO()):
                 self.assertEqual(api.main(['--src', str(source), '--packages', str(external), '--site', str(site)]), 0)
             for lang in ('zh', 'en'):
@@ -68,11 +73,15 @@ fn private_helper() {}
                 package = (site / f'content/{lang}/api/packages/mysql.html').read_text()
                 self.assertIn('mysql #github.com/xulang-org/packages/mysql', package)
                 self.assertIn('0.1.1', package)
-                self.assertIn('Xu 0.8.4', package)
+                self.assertIn('<!--xu-api-version: 0.8.4-->', package)
+                self.assertIn('Xu {{xu_version}}', package)
                 index = (site / f'content/{lang}/api/index.html').read_text()
                 self.assertIn('/api/packages/mysql', index)
                 self.assertNotIn('/api/internal', index)
             self.assertEqual(css.read_text(), styles)
+            self.assertIn('version: !ver 0.8.4\nxu: !ver 0.8.4', (site / 'xu.xun').read_text())
+            self.assertEqual((site / 'VERSION').read_text().strip(), '0.8.4')
+            self.assertIn('version: !ver 0.1.1\nxu: !ver 0.8.4', runtime.read_text())
             parsed = api.load_package(str(source), 'io')
             self.assertEqual((parsed.n_fn, parsed.n_type, parsed.n_iface), (1, 2, 1))
 

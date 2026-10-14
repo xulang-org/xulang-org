@@ -158,7 +158,7 @@ def check_links(output: Path, base: str) -> None:
         raise ValueError('Broken local links:\n' + '\n'.join(sorted(set(errors))))
 
 
-def build(root: Path, output: Path, base: str = '', require_playground: bool = False) -> int:
+def build(root: Path, output: Path, base: str = '', require_playground: bool = False, xu_version: str | None = None) -> int:
     base = normalize_base(base)
     if output.is_symlink():
         raise ValueError('output must not be a symbolic link')
@@ -168,7 +168,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         raise ValueError('output must be dist/ or a directory outside the source tree')
     if output.exists() and any(output.iterdir()) and not (output / '.xu-static-build').is_file():
         raise ValueError('refusing to replace a nonempty directory without a .xu-static-build marker')
-    wasm = root / 'www/xu-play.wasm'
+    wasm = root / 'build/playground/xu-play.wasm'
     if require_playground and not wasm.is_file():
         raise ValueError('Xu playground WASM is required; run make wasm before publishing')
     if wasm.is_file() and wasm.read_bytes()[:8] != b'\x00asm\x01\x00\x00\x00':
@@ -186,10 +186,26 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     match = re.search(r'^xu:\s*!ver\s+(\d+\.\d+\.\d+)\s*$', (root / 'xu.xun').read_text(), re.MULTILINE)
     if not match:
         raise ValueError('missing Xu version in xu.xun')
-    xu_version = match[1]
+    xu_version = xu_version or match[1]
+    if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', xu_version):
+        raise ValueError('invalid Xu release version')
+    if wasm.is_file():
+        record = wasm.parent / 'build.json'
+        if not record.is_file():
+            raise ValueError('WASM build version is missing; run make wasm')
+        built = json.loads(record.read_text())
+        if built.get('xu_version') != xu_version:
+            raise ValueError(f'WASM version does not match Xu {xu_version}; run make wasm with the matching SDK')
+        if built.get('wasm_sha256') != hashlib.sha256(wasm.read_bytes()).hexdigest():
+            raise ValueError('WASM build checksum does not match; run make wasm')
+    for source in pages.values():
+        if 'api' in source.relative_to(root / 'content').parts:
+            recorded = re.search(r'<!--xu-api-version:\s*(.*?)-->', source.read_text())
+            if not recorded or recorded[1].strip() != xu_version:
+                raise ValueError(f'API version does not match Xu {xu_version}; regenerate API from the matching SDK')
     digest = hashlib.sha256()
     for name in ('xu-play.js', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
-        asset = root / 'www' / name
+        asset = wasm if name == 'xu-play.wasm' else root / 'www' / name
         if asset.exists():
             digest.update(name.encode())
             digest.update(asset.read_bytes())
@@ -200,14 +216,16 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     (output / '.xu-static-build').touch()
     for source in sorted((root / 'www').rglob('*')):
         relative = source.relative_to(root / 'www')
-        if not source.is_file() or 'releases' in relative.parts or source.name.startswith('.'):
+        if not source.is_file() or 'releases' in relative.parts or source.name.startswith('.') or source.name == 'xu-play.wasm':
             continue
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
+    if wasm.is_file():
+        shutil.copyfile(wasm, output / 'xu-play.wasm')
     playground = (output / 'xu-play.wasm').is_file()
     for route, source in pages.items():
-        raw = source.read_text(encoding='utf-8')
+        raw = source.read_text(encoding='utf-8').replace('{{xu_version}}', xu_version)
         title = TITLE.match(raw)
         body = raw[title.end():] if title else raw
         body = playground_options(root, body, 'en' if route == '/en' else 'zh')
@@ -231,9 +249,10 @@ def main() -> None:
     parser.add_argument('--output', type=Path, default=ROOT / 'dist')
     parser.add_argument('--base-path', default='')
     parser.add_argument('--require-playground', action='store_true', help='fail rather than publish a disabled playground')
+    parser.add_argument('--xu-version', help='version from the final SDK matching Xu main (default: xu.xun)')
     args = parser.parse_args()
     try:
-        count = build(ROOT, args.output, args.base_path, args.require_playground)
+        count = build(ROOT, args.output, args.base_path, args.require_playground, args.xu_version)
     except (OSError, ValueError) as error:
         parser.exit(1, f'{error}\n')
     print(f'Built {count} pages → {args.output} (base path: {normalize_base(args.base_path) or "/"})')

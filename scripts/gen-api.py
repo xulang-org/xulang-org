@@ -2038,7 +2038,7 @@ def render_page(pkg: Package, lang: str, xu_version: str = "") -> str:
         f'<p class="lead">{esc(blurb)}</p>',
     ]
     if xu_version:
-        body.insert(3, f'<p class="banner">Xu {esc(xu_version)} API</p>')
+        body.insert(3, f'<!--xu-api-version: {esc(xu_version)}-->\n<p class="banner">Xu {{{{xu_version}}}} API</p>')
     if pkg.module:
         prefix = "/en" if lang == "en" else ""
         body.append(f'<p class="note">{esc(pkg.module)} · {esc(pkg.version)} · '
@@ -2056,9 +2056,9 @@ def render_index(packages: list[Package], lang: str, xu_version: str) -> str:
     standard = [p for p in packages if not p.module]
     external = [p for p in packages if p.module]
     title = "API 索引" if lang == "zh" else "API index"
-    intro = (f"Xu {xu_version}：{len(standard)} 个标准库与 UI 包、{len(external)} 个扩展包。"
-             if lang == "zh" else f"Xu {xu_version}: {len(standard)} standard-library and UI packages, {len(external)} external packages.")
-    body = [f"<!--title: {title}-->", f"<h1>{title}</h1>", f'<p class="banner">{esc(intro)}</p>',
+    intro = (f"Xu {{{{xu_version}}}}：{len(standard)} 个标准库与 UI 包、{len(external)} 个扩展包。"
+             if lang == "zh" else f"Xu {{{{xu_version}}}}: {len(standard)} standard-library and UI packages, {len(external)} external packages.")
+    body = [f"<!--title: {title}-->", f"<!--xu-api-version: {esc(xu_version)}-->", f"<h1>{title}</h1>", f'<p class="banner">{esc(intro)}</p>',
             ('<p>声明与统计从当前源码生成，仅包含公开 API；具体支持范围见各包说明。</p>'
              if lang == "zh" else '<p>Declarations and counts are generated from current sources and include public API only. See each package for its supported scope.</p>'),
             f'<p><a href="{prefix}/docs/modules">{"模块与依赖" if lang == "zh" else "Modules and dependencies"}</a> · '
@@ -2208,26 +2208,13 @@ def ensure_css(site: str) -> None:
     Path(path).write_text(text, encoding="utf-8")
 
 
-def parse_extract_counts(extract_path: str) -> dict:
-    out = {}
-    if not os.path.isfile(extract_path):
-        return out
-    text = Path(extract_path).read_text(encoding="utf-8")
-    for m in re.finditer(
-        r"### `([^`]+)`\n\nimport:.*\nmodule id:.*\ncounts: (\d+) fns, (\d+) methods, (\d+) types, (\d+) consts, (\d+) ifaces",
-        text,
-    ):
-        out[m.group(1)] = tuple(int(m.group(i)) for i in range(2, 7))
-    return out
-
-
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Generate Xu public API HTML and index")
     here = os.path.dirname(os.path.abspath(__file__))
     default_site = os.path.abspath(os.path.join(here, ".."))
     default_src = os.environ.get("XU_SRC") or os.path.abspath(os.path.join(default_site, "..", "xu", "src"))
     ap.add_argument("--src", default=default_src, help="Xu src root (packages with mod.xu)")
-    ap.add_argument("--site", default=os.environ.get("XU_SITE_ROOT") or default_site, help="xu-site root")
+    ap.add_argument("--site", default=os.environ.get("XU_SITE_ROOT") or default_site, help="website source root")
     ap.add_argument("--packages", default=os.environ.get("XU_PACKAGES_ROOT"), help="external packages checkout (default: sibling packages when present)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
@@ -2256,19 +2243,9 @@ def main(argv: list[str] | None = None) -> int:
             pkg.import_path = name.rsplit("/", 1)[-1] + " #" + module + "/" + name
             pkg.module, pkg.version = module, module_version
             packages.append(pkg)
-    extract = parse_extract_counts(os.path.join(site, "xu-api-extract.md"))
-
     missing_docs = []
-    mismatches = []
     for pkg in packages:
-        got = (pkg.n_fn, pkg.n_method, pkg.n_type, pkg.n_const, pkg.n_iface)
-        exp = extract.get(pkg.path)
-        if exp and got != exp:
-            mismatches.append((pkg.path, exp, got, len(pkg.items)))
         for it in pkg.items:
-            if it.kind in ("fn", "method", "iface_method"):
-                if not it.params and "()" not in it.sig.replace(" ", ""):
-                    pass
             # every item gets purpose+params by construction
             pzh = purpose_for(pkg, it, "zh")
             pen = purpose_for(pkg, it, "en")
@@ -2286,10 +2263,6 @@ def main(argv: list[str] | None = None) -> int:
         f"{sum(p.n_const for p in packages)} consts, "
         f"{sum(p.n_iface for p in packages)} ifaces"
     )
-    if mismatches:
-        print(f"  changes since historical local extraction: {len(mismatches)} packages")
-        for row in mismatches[:20]:
-            print(f"    {row[0]} extract={row[1]} got={row[2]} items={row[3]}")
     if missing_docs:
         print(f"  doc gaps: {len(missing_docs)}")
         for row in missing_docs[:20]:
@@ -2300,6 +2273,17 @@ def main(argv: list[str] | None = None) -> int:
 
     write_packages(site, packages, xu_version)
     ensure_css(site)
+    # The user requires the website release to match Xu main's final SDK.
+    # The internal runtime module retains its independent version:.
+    for relative in ('xu.xun', 'playground/runtime/xu.xun'):
+        manifest = Path(site, relative)
+        if manifest.is_file():
+            text = manifest.read_text(encoding='utf-8')
+            if relative == 'xu.xun':
+                text = re.sub(r'(?m)^version:.*$', 'version: !ver ' + xu_version, text)
+            manifest.write_text(re.sub(r'(?m)^xu:.*$', 'xu: !ver ' + xu_version, text), encoding='utf-8')
+    if Path(site, 'VERSION').is_file():
+        Path(site, 'VERSION').write_text(xu_version + '\n', encoding='utf-8')
     print(f"  wrote content/{{zh,en}}/api for {len(packages)} packages")
     return 0
 

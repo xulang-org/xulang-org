@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 
-const bytes = readFileSync(new URL('../www/xu-play.wasm', import.meta.url));
+const bytes = readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url));
 const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url), 'utf8'));
 const expected = {
   hello: 'Hello from XU Programming Language!\n',

@@ -1,7 +1,10 @@
 """Integration coverage for Pages routes, assets, and independent builds."""
 
 import importlib.util
+import hashlib
+import json
 from pathlib import Path
+import re
 import shutil
 import sys
 import tempfile
@@ -45,6 +48,12 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn('https://github.com/xulang-org/xu/releases', (output / 'download/index.html').read_text())
         self.assertFalse((output / 'releases').exists())
         self.assertTrue((output / '.nojekyll').exists())
+        version = re.search(r'(?m)^xu: !ver (\S+)', (self.source / 'xu.xun').read_text())[1]
+        self.assertIn('XU v' + version, home)
+        self.assertNotIn('{{xu_version}}', home)
+        self.assertIn('/releases/tag/v' + version, (output / 'download/index.html').read_text())
+        self.assertIn('Xu ' + version + ' API', (output / 'api/net/http/index.html').read_text())
+        self.assertIn('Xu ' + version, (output / 'docs/status/index.html').read_text())
 
     def test_project_path_and_rebuild_remove_stale_pages(self):
         output = self.workspace / 'project'
@@ -80,18 +89,46 @@ class StaticSiteTests(unittest.TestCase):
             site.build(self.source, self.workspace / 'required-output', require_playground=True)
         source = self.workspace / 'with-wasm'
         shutil.copytree(self.source, source)
-        wasm = source / 'www/xu-play.wasm'
+        wasm = source / 'build/playground/xu-play.wasm'
+        wasm.parent.mkdir(parents=True)
         wasm.write_bytes(b'not a wasm module')
         with self.assertRaisesRegex(ValueError, 'invalid.*WASM'):
             site.build(source, self.workspace / 'invalid-output', require_playground=True)
         # A minimal valid module verifies packaging; actual Xu ABI is exercised
         # by the production-runtime tests in test_playground.mjs.
         wasm.write_bytes(b'\x00asm\x01\x00\x00\x00')
+        version = re.search(r'(?m)^xu: !ver (\S+)', (source / 'xu.xun').read_text())[1]
+        record = wasm.parent / 'build.json'
+        stamp = {'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest()}
+        record.write_text(json.dumps(stamp))
         output = self.workspace / 'with-wasm-output'
         site.build(source, output, '/repo', require_playground=True)
         self.assertIn('data-wasm-available="true"', (output / 'index.html').read_text())
         for asset in ('xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
             self.assertTrue((output / asset).is_file(), asset)
+
+        # The generated artifact contributes to the cache key; stale binaries
+        # in www/ must never enable or replace the current runtime.
+        before = (output / 'index.html').read_text()
+        wasm.write_bytes(b'\x00asm\x01\x00\x00\x00\x00\x02\x01x')
+        with self.assertRaisesRegex(ValueError, 'WASM build checksum does not match'):
+            site.build(source, output, require_playground=True)
+        stamp['wasm_sha256'] = hashlib.sha256(wasm.read_bytes()).hexdigest()
+        record.write_text(json.dumps(stamp))
+        site.build(source, output, '/repo', require_playground=True)
+        self.assertNotEqual(
+            re.search(r'xu-play\.js\?v=([0-9a-f]{16})', before)[1],
+            re.search(r'xu-play\.js\?v=([0-9a-f]{16})', (output / 'index.html').read_text())[1],
+        )
+        stamp['xu_version'] = '0.8.99'
+        record.write_text(json.dumps(stamp))
+        with self.assertRaisesRegex(ValueError, 'WASM version does not match'):
+            site.build(source, output, require_playground=True)
+        wasm.unlink()
+        (source / 'www/xu-play.wasm').write_bytes(b'old runtime')
+        site.build(source, output)
+        self.assertFalse((output / 'xu-play.wasm').exists())
+        self.assertIn('data-wasm-available="false"', (output / 'index.html').read_text())
 
     def test_refuses_source_or_unowned_output(self):
         with self.assertRaises(ValueError):
@@ -107,6 +144,12 @@ class StaticSiteTests(unittest.TestCase):
         manifest = (ROOT / 'xu.xun').read_text()
         self.assertIn('version: !ver ' + (ROOT / 'VERSION').read_text().strip(), manifest)
         self.assertRegex(manifest, r'(?m)^xu: !ver \d+\.\d+\.\d+$')
+
+    def test_mismatched_api_snapshot_cannot_be_relabelled_as_another_release(self):
+        with self.assertRaisesRegex(ValueError, 'API version does not match'):
+            site.build(self.source, self.workspace / 'wrong-version', xu_version='0.8.99')
+        with self.assertRaisesRegex(ValueError, 'invalid Xu release version'):
+            site.build(self.source, self.workspace / 'invalid-version', xu_version='<script>')
 
 
 if __name__ == '__main__':

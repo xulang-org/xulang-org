@@ -1,41 +1,54 @@
 #!/usr/bin/env python3
-"""Compile the Xu backend with Xu, then compile the Xu evaluator to WASM."""
+"""Compile the site's Xu evaluator using the product compiler's wasm32 target."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import shutil
 import subprocess
 import tempfile
+import re
 
-from prepare_wasm_compiler import prepare
 
-
-def build(root: Path, seed: Path):
-    driver = prepare(root, seed)
-    runtime = root / 'build/runtime-source'
+def build(root: Path, xu: Path, compiler: Path):
+    version = (xu / 'VERSION').read_text().strip()
+    expected = os.environ.get('XU_RELEASE_VERSION', version)
+    banner = subprocess.check_output([str(compiler), '--version'], cwd=xu, text=True)
+    if version != expected or not re.search(r'Xu Compiler Toolchain v' + re.escape(version) + r'\b', banner):
+        raise RuntimeError('Xu compiler, SDK sources and selected final release versions must match')
+    help_text = subprocess.check_output([str(compiler), '--help'], cwd=xu, text=True)
+    if 'wasm32' not in help_text:
+        raise RuntimeError('Xu compiler lacks wasm32 support; rebuild Xu or install a WASM-capable SDK')
+    runtime = root / 'build/playground/source'
     runtime.mkdir(parents=True, exist_ok=True)
     for old in runtime.glob('*.xu'):
         old.unlink()
     for source in (root / 'playground/runtime').iterdir():
         if source.suffix in ('.xu', '.xun'):
             shutil.copyfile(source, runtime / source.name)
+    manifest = runtime / 'xu.xun'
+    manifest.write_text(re.sub(r'(?m)^xu:.*$', 'xu: !ver ' + version, manifest.read_text()))
     embedded = '@main\n\n'
     for name, source in [('runtime', 'src/runtime/str_algo.xu'), ('errors', 'src/errors/mod.xu')]:
-        embedded += f'fn playground_std_{name}() string {{\n    << ' + json.dumps((seed / source).read_text(), ensure_ascii=False) + '\n}\n\n'
+        embedded += f'fn playground_std_{name}() string {{\n    << ' + json.dumps((xu / source).read_text(), ensure_ascii=False) + '\n}\n\n'
     (runtime / 'stdlib.xu').write_text(embedded)
-    compiler = root / 'build/xu-wasm'
-    wasm = root / 'build/xu-play.wasm'
+    wasm = root / 'build/playground/xu-play.wasm'
     with tempfile.TemporaryDirectory(prefix='xu-play-build-') as temporary:
         env = os.environ.copy()
-        env.update(XU_STDLIB_ROOT=str(seed / 'src'), XUPATH='', XU_CACHE=temporary)
+        env.update(XU_STDLIB_ROOT=str(xu / 'src'), XUPATH='', XU_CACHE=temporary)
         for name in ('XUOS', 'XUARCH', 'XU_BOOT_EXTRA', 'XU_SEED', 'XU_ALLOW_ORACLE_SEED'):
             env.pop(name, None)
-        subprocess.run([str(seed / 'bin/xu'), 'build', str(driver), '-o', str(compiler)], cwd=seed, env=env, check=True)
-        subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-O0', '-o', str(wasm)], cwd=seed, env=env, check=True)
-    shutil.copyfile(wasm, root / 'www/xu-play.wasm')
-    print(f'Pure Xu playground built: {root / "www/xu-play.wasm"}')
+        subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-O0', '-o', str(wasm)], cwd=xu, env=env, check=True)
+    if (xu / 'VERSION').read_text().strip() != version:
+        raise RuntimeError('Xu SDK version changed during the build; rebuild from a fixed SDK')
+    (wasm.parent / 'build.json').write_text(json.dumps({
+        'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest(),
+    }, indent=2) + '\n')
+    print(f'Pure Xu playground built: {wasm}')
 
 
 if __name__ == '__main__':
     root = Path(__file__).resolve().parents[1]
-    build(root, Path(os.environ['XU_PLAYGROUND_SEED']).resolve())
+    xu = Path(os.environ.get('XU_ROOT', root.parent / 'xu')).resolve()
+    compiler = Path(os.environ.get('XU_BIN', xu / 'bin/xu')).resolve()
+    build(root, xu, compiler)

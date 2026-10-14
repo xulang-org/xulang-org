@@ -41,6 +41,28 @@ API_GROUPS = [
     ('xi-xuui', 'UI', 'UI', 'ui ui/webview ui/draw'.split()),
 ]
 
+SOCIAL_PROFILES = [
+    ('GitHub', 'xulang-org', 'https://github.com/xulang-org', 'github'),
+    ('X', 'xulang_org', 'https://x.com/xulang_org', 'x'),
+]
+SOCIAL_ICONS = {
+    'github': '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38l-.01-1.49c-2.23.48-2.7-1.08-2.7-1.08-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.33.67.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.96 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.08-1.87 3.75-3.65 3.95.29.25.54.74.54 1.48l-.01 2.34c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>',
+    'x': '<path d="M12.6 1h2.3L9.9 6.7 15.8 15h-4.6L7.6 10 3.2 15H.9l5.6-6.4L.8 1h4.7l3.3 4.6L12.6 1ZM11.8 13.5h1.3L4.8 2.4H3.4l8.4 11.1Z"/>',
+}
+
+
+def social_links(en: bool, compact: bool = False) -> str:
+    links = []
+    new_tab = 'opens in a new tab' if en else '在新标签页打开'
+    for platform, handle, href, icon in SOCIAL_PROFILES:
+        label = f'{platform} · @{handle} · {new_tab}'
+        svg = ('<svg class="social-icon" viewBox="0 0 16 16" width="18" height="18" '
+               'fill="currentColor" aria-hidden="true" focusable="false">' + SOCIAL_ICONS[icon] + '</svg>')
+        text = '' if compact else f'<span>{platform} <span class="social-handle">@{handle}</span></span>'
+        links.append(f'<a class="social-link" href="{href}" target="_blank" rel="me noopener noreferrer" '
+                     f'aria-label="{escape(label)}" title="{escape(label)}">{svg}{text}</a>')
+    return ''.join(links)
+
 
 def side_link(href: str, label: str, route: str) -> str:
     active = ' class="on" aria-current="page"' if route == href else ''
@@ -114,4 +136,6 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         other_lang=other, lang_title='中文' if en else 'English', lang_label='中' if en else 'EN',
         theme_label='Switch theme' if en else '切换主题', ui_href=prefix + '/docs/ui',
         footer_text='MIT License · Zero GC · Supersonic AOT' if en else 'MIT 开源协议 · 坚若磐石 · 零 GC 内存安全 · 超音速 AOT',
+        header_social=social_links(en, compact=True), footer_social=social_links(en),
+        social_label='Official accounts' if en else '官方帐号',
     )
