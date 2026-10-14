@@ -108,7 +108,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     home = prefix or '/'
     nav = []
     for href, icon, zh, english in [
-        ('', 'home', '首页', 'Home'), ('/download', 'download', '下载', 'Download'),
+        ('', 'home', '首页', 'Home'), ('/playground', 'play', '演练场', 'Playground'),
+        ('/download', 'download', '下载', 'Download'),
         ('/docs/start', 'book', '文档', 'Docs'), ('/api', 'api', 'API', 'API'),
         ('/blog', 'chat', '博客', 'Blog'), ('/docs/status', 'benchmark', '现状', 'Status'),
     ]:
@@ -123,6 +124,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         nav.append(f'<a class="{cls}"{current} href="{target}"><i class="xi xi-{icon}"></i> {english if en else zh}</a>')
     if route in ('/', '/en'):
         main = '<main class="home">' + body + '</main>'
+    elif route in ('/playground', '/en/playground'):
+        main = '<main class="home playground-page">' + body + '</main>'
     else:
         cls = 'doc download' if route == prefix + '/download' else 'doc'
         main = '<div class="page">' + sidebar(route, en) + f'<main class="{cls}">' + body + '</main></div>'
