@@ -24,12 +24,12 @@ def resolve():
         raise ValueError('Invalid Xu main commit')
     content = api(f'contents/VERSION?ref={commit}')
     version = base64.b64decode(content['content']).decode().strip()
-    if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version):
+    if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?', version):
         raise ValueError('Invalid Xu main VERSION')
     tag = 'v' + version
     release = api(f'releases/tags/{tag}')
-    if release['tag_name'] != tag or release['draft'] or release['prerelease'] or not release['published_at']:
-        raise ValueError(f'Xu main {version} does not have a matching final release')
+    if release['tag_name'] != tag or release['draft'] or not release['published_at']:
+        raise ValueError(f'Xu main {version} does not have a matching release')
     name = f'xu-{tag}-linux-arm64.tar.gz'
     asset = next((item for item in release['assets'] if item['name'] == name), None)
     if not asset or not re.fullmatch(r'sha256:[0-9a-f]{64}', asset.get('digest') or ''):

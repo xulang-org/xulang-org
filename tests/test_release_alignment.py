@@ -39,14 +39,24 @@ class ReleaseAlignmentTests(unittest.TestCase):
         self.assertEqual(result['sha256'], 'b' * 64)
 
     def test_unpublished_or_mismatched_release_cannot_deploy(self):
-        for key, value in [('tag_name', 'v0.8.6'), ('draft', True),
-                           ('prerelease', True), ('published_at', None)]:
+        for key, value in [('tag_name', 'v0.8.6'), ('draft', True), ('published_at', None)]:
             with self.subTest(key=key):
                 original = self.published[key]
                 self.published[key] = value
                 with patch.object(release, 'api', side_effect=self.api), self.assertRaises(ValueError):
                     release.resolve()
                 self.published[key] = original
+
+    def test_prerelease_version_is_supported(self):
+        self.published['tag_name'] = 'v0.8.8-dev.2'
+        self.published['prerelease'] = True
+        self.published['assets'] = [{'name': 'xu-v0.8.8-dev.2-linux-arm64.tar.gz', 'digest': 'sha256:' + 'b' * 64}]
+        with patch.object(release, 'api', side_effect=lambda path:
+                          {'sha': self.sha} if path == 'commits/main' else
+                          ({'content': base64.b64encode(b'0.8.8-dev.2\n').decode()} if 'VERSION' in path else
+                           self.published)):
+            result = release.resolve()
+        self.assertEqual(result['version'], '0.8.8-dev.2')
 
     def test_sdk_must_match_the_main_version_and_have_a_digest(self):
         for assets in [[], [{'name': 'xu-v0.8.6-linux-arm64.tar.gz', 'digest': 'sha256:' + 'b' * 64}],
