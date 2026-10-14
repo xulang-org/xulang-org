@@ -71,12 +71,14 @@ fn private_helper() {}
                 for private_name in ('hidden', 'test_only', 'private_helper', 'private_data', 'v0.1.0'):
                     self.assertNotIn(private_name, page)
                 package = (site / f'content/{lang}/api/packages/mysql.html').read_text()
+                prefix = '' if lang == 'en' else '/zh'
+                self.assertIn(f'href="{prefix}/docs/packages"', package)
                 self.assertIn('mysql #github.com/xulang-org/packages/mysql', package)
                 self.assertIn('0.1.1', package)
                 self.assertIn('<!--xu-api-version: 0.8.4-->', package)
                 self.assertIn('Xu {{xu_version}}', package)
                 index = (site / f'content/{lang}/api/index.html').read_text()
-                self.assertIn('/api/packages/mysql', index)
+                self.assertIn(f'href="{prefix}/api/packages/mysql"', index)
                 self.assertNotIn('/api/internal', index)
             self.assertEqual(css.read_text(), styles)
             self.assertIn('version: !ver 0.8.4\nxu: !ver 0.8.4', (site / 'xu.xun').read_text())

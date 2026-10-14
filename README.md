@@ -1,6 +1,6 @@
 # xulang-org
 
-Xu 官网源码，使用 GitHub Pages 托管，域名为 `xulang.org`。默认中文，英文入口为 `/en/`。
+Xu 官网源码，使用 GitHub Pages 托管，域名为 `xulang.org`。默认英文，中文入口为 `/zh/`；页面右上角可切换语言，保留当前页面。旧 `/en/` 地址自动跳转到对应英文页面。
 
 官方帐号入口在所有页面的顶部和页脚：GitHub [@xulang-org](https://github.com/xulang-org)，
 X [@xulang_org](https://x.com/xulang_org)。链接统一维护于 `scripts/site_layout.py` 的

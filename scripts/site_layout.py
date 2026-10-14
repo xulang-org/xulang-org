@@ -70,8 +70,8 @@ def side_link(href: str, label: str, route: str) -> str:
 
 
 def sidebar(route: str, en: bool) -> str:
-    prefix = '/en' if en else ''
-    rest = route.removeprefix('/en') if en else route
+    prefix = '' if en else '/zh'
+    rest = route if en else route.removeprefix('/zh')
     groups = []
     if rest.startswith('/docs/'):
         for icon, zh, english, links in DOC_GROUPS:
@@ -103,8 +103,8 @@ def sidebar(route: str, en: bool) -> str:
 
 
 def render(root: Path, title: str, route: str, body: str, xu_version: str) -> str:
-    en = route == '/en' or route.startswith('/en/')
-    prefix = '/en' if en else ''
+    en = not (route == '/zh' or route.startswith('/zh/'))
+    prefix = '' if en else '/zh'
     home = prefix or '/'
     nav = []
     for href, icon, zh, english in [
@@ -122,21 +122,22 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         cls = 'nav-tab-btn active' if active else 'nav-tab-btn'
         current = ' aria-current="page"' if active else ''
         nav.append(f'<a class="{cls}"{current} href="{target}"><i class="xi xi-{icon}"></i> {english if en else zh}</a>')
-    if route in ('/', '/en'):
+    if route in ('/', '/zh'):
         main = '<main class="home">' + body + '</main>'
-    elif route in ('/playground', '/en/playground'):
+    elif route in ('/playground', '/zh/playground'):
         main = '<main class="home playground-page">' + body + '</main>'
     else:
         cls = 'doc download' if route == prefix + '/download' else 'doc'
         main = '<div class="page">' + sidebar(route, en) + f'<main class="{cls}">' + body + '</main></div>'
-    other = (route[3:] or '/') if en else ('/en' if route == '/' else '/en' + route)
+    other = ('/zh' if route == '/' else '/zh' + route) if en else (route[3:] or '/')
     if route == '/404':
-        other = '/en'
+        other = '/zh'
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
     return template.substitute(
         lang='en' if en else 'zh-CN', title=escape(title), home=home,
         xu_version=escape(xu_version), nav=''.join(nav), main=main,
-        other_lang=other, lang_title='中文' if en else 'English', lang_label='中' if en else 'EN',
+        other_lang=other, other_lang_code='zh-CN' if en else 'en',
+        lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',
         theme_label='Switch theme' if en else '切换主题', ui_href=prefix + '/docs/ui',
         footer_text='MIT License · Zero GC · Supersonic AOT' if en else 'MIT 开源协议 · 坚若磐石 · 零 GC 内存安全 · 超音速 AOT',
         header_social=social_links(en, compact=True), footer_social=social_links(en),

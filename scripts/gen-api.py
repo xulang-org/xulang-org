@@ -2040,7 +2040,7 @@ def render_page(pkg: Package, lang: str, xu_version: str = "") -> str:
     if xu_version:
         body.insert(3, f'<!--xu-api-version: {esc(xu_version)}-->\n<p class="banner">Xu {{{{xu_version}}}} API</p>')
     if pkg.module:
-        prefix = "/en" if lang == "en" else ""
+        prefix = "" if lang == "en" else "/zh"
         body.append(f'<p class="note">{esc(pkg.module)} · {esc(pkg.version)} · '
                     f'<a href="{prefix}/docs/packages">{"安装与使用" if lang == "zh" else "Install and use"}</a></p>')
     # stable order: consts, ifaces, structs, fns, methods, iface methods
@@ -2052,7 +2052,7 @@ def render_page(pkg: Package, lang: str, xu_version: str = "") -> str:
 
 
 def render_index(packages: list[Package], lang: str, xu_version: str) -> str:
-    prefix = "/en" if lang == "en" else ""
+    prefix = "" if lang == "en" else "/zh"
     standard = [p for p in packages if not p.module]
     external = [p for p in packages if p.module]
     title = "API 索引" if lang == "zh" else "API index"

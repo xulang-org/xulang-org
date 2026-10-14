@@ -38,12 +38,19 @@ class StaticSiteTests(unittest.TestCase):
         output = self.workspace / 'root'
         count = site.build(self.source, output)
         self.assertEqual(count, len(list((self.source / 'content').rglob('*.html'))))
-        for page in ('index.html', 'en/index.html', 'docs/start/index.html',
-                     'en/api/net/http/index.html', 'api/index.html', 'blog/index.html', '404.html'):
+        for page in ('index.html', 'zh/index.html', 'docs/start/index.html',
+                     'zh/api/net/http/index.html', 'api/index.html', 'blog/index.html', '404.html'):
             self.assertTrue((output / page).is_file(), page)
         home = (output / 'index.html').read_text()
+        self.assertIn('<html lang="en"', home)
         self.assertIn('href="/docs/start/"', home)
-        self.assertIn('data-wasm-available="false"', home)
+        self.assertIn('href="/zh/" hreflang="zh-CN"', home)
+        self.assertIn('>中文</a>', home)
+        chinese = (output / 'zh/index.html').read_text()
+        self.assertIn('<html lang="zh-CN"', chinese)
+        self.assertIn('href="/zh/docs/start/"', chinese)
+        self.assertIn('href="/" hreflang="en"', chinese)
+        self.assertIn('data-wasm-available="false"', (output / 'playground/index.html').read_text())
         self.assertNotIn('href="http://127.0.0.1', home)
         self.assertIn('https://github.com/xulang-org/xu/releases', (output / 'download/index.html').read_text())
         self.assertFalse((output / 'releases').exists())
@@ -58,11 +65,14 @@ class StaticSiteTests(unittest.TestCase):
     def test_project_path_and_rebuild_remove_stale_pages(self):
         output = self.workspace / 'project'
         site.build(self.source, output, '/xulang-org/')
-        home = (output / 'en/index.html').read_text()
-        self.assertIn('href="/xulang-org/en/docs/start/"', home)
-        self.assertRegex(home, r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}"')
+        home = (output / 'index.html').read_text()
+        self.assertIn('href="/xulang-org/docs/start/"', home)
+        self.assertIn('href="/xulang-org/zh/" hreflang="zh-CN"', home)
+        self.assertRegex((output / 'playground/index.html').read_text(), r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}"')
         self.assertIn('href="/xulang-org/site.css"', home)
         self.assertIn('href="/xulang-org/"', home)
+        chinese = (output / 'zh/docs/start/index.html').read_text()
+        self.assertIn('href="/xulang-org/docs/start/" hreflang="en"', chinese)
         (output / 'stale.html').write_text('old page')
         site.build(self.source, output, '/xulang-org')
         self.assertFalse((output / 'stale.html').exists())
@@ -76,6 +86,39 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn('href="//example.org/x"', result)
         self.assertIn('<pre>&lt;a href="/api"&gt;</pre>', result)
         self.assertIn('var x = \'href="/api"\'', result)
+
+    def test_language_switches_and_legacy_english_bookmarks(self):
+        output = self.workspace / 'languages'
+        site.build(self.source, output)
+        for source in (self.source / 'content/en').rglob('*.html'):
+            route = site.content_route(source.relative_to(self.source / 'content/en'), 'en')
+            english = (output / route.strip('/') / 'index.html').read_text()
+            chinese_route = '/zh' + route.rstrip('/')
+            chinese = (output / chinese_route.strip('/') / 'index.html').read_text()
+            self.assertIn(f'href="{chinese_route}/" hreflang="zh-CN"', english, route)
+            self.assertIn(f'href="{route.rstrip("/")}/" hreflang="en"', chinese, route)
+            self.assertIn('<html lang="en"', english, route)
+            self.assertIn('<html lang="zh-CN"', chinese, route)
+            self.assertNotIn('href="/en/', english, route)
+            legacy = (output / 'en' / route.strip('/') / 'index.html').read_text()
+            self.assertIn(f'location.replace("{route.rstrip("/")}/" + location.search + location.hash)', legacy, route)
+
+        english_play = (output / 'playground/index.html').read_text()
+        chinese_play = (output / 'zh/playground/index.html').read_text()
+        self.assertIn('optgroup label="Coroutines &amp; chan"', english_play)
+        self.assertIn('optgroup label="协程与 chan"', chinese_play)
+        self.assertIn('href="/zh/docs/tutorial/10/"', chinese_play)
+
+        parser = site.RewriteHTML('/repo', {'/', '/zh', '/api', '/zh/api'}, False, content_lang='zh')
+        parser.feed('<a href="/api?q=a&amp;b=c#item">API</a><a href="/en/api#item">English</a>'
+                    '<a href="/api" hreflang="en">EN</a><img src="/xu_classic.svg">'
+                    '<pre>&lt;a href="/api"&gt;</pre>')
+        result = ''.join(parser.parts)
+        self.assertIn('href="/repo/zh/api/?q=a&amp;b=c#item"', result)
+        self.assertIn('href="/repo/api/#item"', result)
+        self.assertIn('href="/repo/api/" hreflang="en"', result)
+        self.assertIn('src="/repo/xu_classic.svg"', result)
+        self.assertIn('<pre>&lt;a href="/api"&gt;</pre>', result)
 
     def test_missing_asset_fails_build(self):
         source = self.workspace / 'broken'
@@ -103,13 +146,13 @@ class StaticSiteTests(unittest.TestCase):
         record.write_text(json.dumps(stamp))
         output = self.workspace / 'with-wasm-output'
         site.build(source, output, '/repo', require_playground=True)
-        self.assertIn('data-wasm-available="true"', (output / 'index.html').read_text())
+        self.assertIn('data-wasm-available="true"', (output / 'playground/index.html').read_text())
         for asset in ('xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
             self.assertTrue((output / asset).is_file(), asset)
 
         # The generated artifact contributes to the cache key; stale binaries
         # in www/ must never enable or replace the current runtime.
-        before = (output / 'index.html').read_text()
+        before = (output / 'playground/index.html').read_text()
         wasm.write_bytes(b'\x00asm\x01\x00\x00\x00\x00\x02\x01x')
         with self.assertRaisesRegex(ValueError, 'WASM build checksum does not match'):
             site.build(source, output, require_playground=True)
@@ -118,7 +161,7 @@ class StaticSiteTests(unittest.TestCase):
         site.build(source, output, '/repo', require_playground=True)
         self.assertNotEqual(
             re.search(r'xu-play\.js\?v=([0-9a-f]{16})', before)[1],
-            re.search(r'xu-play\.js\?v=([0-9a-f]{16})', (output / 'index.html').read_text())[1],
+            re.search(r'xu-play\.js\?v=([0-9a-f]{16})', (output / 'playground/index.html').read_text())[1],
         )
         stamp['xu_version'] = '0.8.99'
         record.write_text(json.dumps(stamp))
@@ -128,7 +171,7 @@ class StaticSiteTests(unittest.TestCase):
         (source / 'www/xu-play.wasm').write_bytes(b'old runtime')
         site.build(source, output)
         self.assertFalse((output / 'xu-play.wasm').exists())
-        self.assertIn('data-wasm-available="false"', (output / 'index.html').read_text())
+        self.assertIn('data-wasm-available="false"', (output / 'playground/index.html').read_text())
 
     def test_refuses_source_or_unowned_output(self):
         with self.assertRaises(ValueError):

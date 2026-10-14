@@ -59,20 +59,21 @@ def content_route(relative: Path, lang: str) -> str:
         name = ''
     elif name.endswith('/index'):
         name = name[:-6]
-    prefix = '/en' if lang == 'en' else ''
+    prefix = '' if lang == 'en' else '/zh'
     return prefix + ('/' + name if name else '') or '/'
 
 
 class RewriteHTML(HTMLParser):
     """Rewrite real URL attributes without altering examples or inline scripts."""
 
-    def __init__(self, base: str, routes: set[str], playground: bool, asset_key: str = ""):
+    def __init__(self, base: str, routes: set[str], playground: bool, asset_key: str = "", content_lang: str = ""):
         super().__init__(convert_charrefs=False)
         self.base, self.routes, self.playground = base, routes, playground
         self.asset_key = asset_key
+        self.content_lang = content_lang
         self.parts: list[str] = []
 
-    def rewrite_url(self, raw: str) -> str:
+    def rewrite_url(self, raw: str, localized: bool = True) -> str:
         value = unescape(raw)
         if not value.startswith('/') or value.startswith('//'):
             return raw
@@ -80,6 +81,14 @@ class RewriteHTML(HTMLParser):
         if url.path.startswith('/releases/'):
             return RELEASES_URL
         path = url.path
+        # Older English fragments use /en; Chinese fragments use bare routes.
+        # Keep shared assets at the root, and respect explicit hreflang links.
+        if path == '/en' or path.startswith('/en/'):
+            path = path[3:] or '/'
+        elif localized and self.content_lang == 'zh':
+            chinese = '/zh' + path.rstrip('/')
+            if chinese in self.routes:
+                path = chinese
         if path.rstrip('/') in self.routes or path == '/':
             path = path.rstrip('/') + '/'
         result = self.base + path
@@ -89,9 +98,10 @@ class RewriteHTML(HTMLParser):
             result += '#' + url.fragment
         return escape(result, quote=True)
 
-    def start_tag(self, tag: str, closed: bool = False) -> None:
+    def start_tag(self, tag: str, attrs, closed: bool = False) -> None:
         raw = self.get_starttag_text()
-        raw = URL_ATTR.sub(lambda m: m[1] + m[2] + self.rewrite_url(m[3]) + m[2], raw)
+        localized = not any(name == 'hreflang' for name, _ in attrs)
+        raw = URL_ATTR.sub(lambda m: m[1] + m[2] + self.rewrite_url(m[3], localized) + m[2], raw)
         if tag == 'script' and re.search(r'''src\s*=\s*["'][^"']*/xu-play\.js["']''', raw):
             if self.asset_key:
                 raw = raw.replace("xu-play.js", "xu-play.js?v=" + self.asset_key)
@@ -100,10 +110,10 @@ class RewriteHTML(HTMLParser):
         self.parts.append(raw)
 
     def handle_starttag(self, tag, attrs):
-        self.start_tag(tag)
+        self.start_tag(tag, attrs)
 
     def handle_startendtag(self, tag, attrs):
-        self.start_tag(tag, True)
+        self.start_tag(tag, attrs, True)
 
     def handle_endtag(self, tag):
         self.parts.append(f'</{tag}>')
@@ -181,7 +191,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
             if route in pages:
                 raise ValueError(f'duplicate route: {route}')
             pages[route] = source
-    if '/' not in pages or '/en' not in pages:
+    if '/' not in pages or '/zh' not in pages:
         raise ValueError('both Chinese and English home pages are required')
     match = re.search(r'^xu:\s*!ver\s+(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\s*$', (root / 'xu.xun').read_text(), re.MULTILINE)
     if not match:
@@ -225,17 +235,34 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         shutil.copyfile(wasm, output / 'xu-play.wasm')
     playground = (output / 'xu-play.wasm').is_file()
     for route, source in pages.items():
+        lang = source.relative_to(root / 'content').parts[0]
         raw = source.read_text(encoding='utf-8').replace('{{xu_version}}', xu_version)
         title = TITLE.match(raw)
         body = raw[title.end():] if title else raw
-        body = playground_options(root, body, 'en' if route == '/en' else 'zh')
+        body = playground_options(root, body, lang)
         html = render(root, title[1].strip() if title else 'Xu', route, body, xu_version)
-        parser = RewriteHTML(base, set(pages), playground, asset_key)
+        parser = RewriteHTML(base, set(pages), playground, asset_key, lang)
         parser.feed(html)
         target = output / route.strip('/') / 'index.html'
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(''.join(parser.parts), encoding='utf-8')
-    body = '<h1>没有这一页 / Page not found</h1><p><a href="/">回首页</a> · <a href="/en">Home</a></p>'
+        if lang == 'en':
+            # Preserve bookmarks to the former English prefix, including hashes
+            # and query strings when JavaScript is enabled.
+            destination = base + route.rstrip('/') + '/'
+            alias = output / 'en' / route.strip('/') / 'index.html'
+            alias.parent.mkdir(parents=True, exist_ok=True)
+            href = escape(destination, quote=True)
+            alias.write_text(
+                '<!doctype html><html lang="en"><head><meta charset="utf-8">'
+                f'<meta http-equiv="refresh" content="0;url={href}">'
+                f'<link rel="canonical" href="{href}">'
+                '<meta name="robots" content="noindex"><title>Page moved · Xu</title>'
+                f'<script>location.replace({json.dumps(destination)} + location.search + location.hash);</script>'
+                f'</head><body><a href="{href}">Continue to the English page</a></body></html>',
+                encoding='utf-8',
+            )
+    body = '<h1>Page not found / 没有这一页</h1><p><a href="/">Home</a> · <a href="/zh">中文首页</a></p>'
     parser = RewriteHTML(base, set(pages), playground, asset_key)
     parser.feed(render(root, '404 · Xu', '/404', body, xu_version))
     (output / '404.html').write_text(''.join(parser.parts), encoding='utf-8')

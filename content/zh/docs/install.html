@@ -3,21 +3,42 @@
 <h1>安装</h1>
 <p class="banner">本文对应 Xu {{xu_version}}。安装包是否可下载，以 <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a> 的实际附件为准。</p>
 <p>使用包含 <code>bin/</code>、<code>src/</code> 和工具的完整 SDK。标准库源码是编译导入的必要输入；单独把编译器改名放进 PATH 不构成完整开发环境。</p>
-<h2>安装 SDK</h2>
-<p>从 <a href="/download">下载页</a> 进入 Releases，选择匹配本机的已发布归档。Unix 归档通常为 <code>xu-v&lt;版本&gt;-&lt;目标&gt;.tar.gz</code>，Windows 为 <code>.zip</code>。解压后在 SDK 根目录执行：</p>
-<pre><code># macOS / Linux
-./install.sh
-# 在新终端验证
-xu --version
+<h2>原生安装程序（推荐）</h2>
+<p>Xu 提供开箱即用的原生 Setup 安装程序（无需 Python、脚本或第三方依赖），单文件离线内嵌完整 SDK，自动配置全局环境变量，安装后在系统任意终端均可直接执行 <code>xu</code>：</p>
+<div class="doc-table-wrap"><table>
+<tr><th>操作系统</th><th>推荐安装包</th><th>说明</th></tr>
+<tr>
+  <td><strong>Windows</strong></td>
+  <td>下载 <code>xu-v{{xu_version}}-windows-x64-setup.exe</code><br>或 <code>xu-setup-windows-x64.exe</code></td>
+  <td>原生单文件离线安装包，直接双击启动自绘图形向导，自动配置注册表用户 <code>Path</code> 与 <code>XU_ROOT</code>，无脚本执行策略拦截。终端亦可直接执行 <code>.\xu-setup-windows-x64.exe -y</code> 静默安装。</td>
+</tr>
+<tr>
+  <td><strong>macOS</strong></td>
+  <td>下载 <code>xu-v{{xu_version}}-macos-arm64.pkg</code><br>或 <code>xu-setup-macos-arm64</code></td>
+  <td>macOS 原生图形安装向导，自动配置 <code>/etc/paths.d/xu</code>，系统所有终端全局立即可用；亦可下载独立安装程序 <code>xu-setup-macos-arm64</code> 免提权运行。</td>
+</tr>
+<tr>
+  <td><strong>Linux</strong></td>
+  <td>下载 <code>xu-setup-linux-x64</code><br>或 <code>xu-setup-linux-arm64</code></td>
+  <td>原生单文件二进制程序，运行 <code>chmod +x xu-setup-linux-x64 &amp;&amp; ./xu-setup-linux-x64 -y</code>，自动解压 SDK 并写入用户 Shell 环境变量配置。</td>
+</tr>
+</table></div>
+<h2>离线 SDK 归档包安装</h2>
+<p>若从 <a href="/download">下载页</a> 或 GitHub Releases 下载了完整的 SDK 压缩包（Unix 为 <code>.tar.gz</code>，Windows 为 <code>.zip</code>），解压后根目录已内置原生安装程序：</p>
+<pre><code># Windows：解压后在资源管理器中直接双击根目录下的 xu-setup.exe
+# 或在命令行中执行：
+.\xu-setup.exe -y
+
+# macOS / Linux：解压后在终端运行根目录下的 xu-setup
+./xu-setup -y</code></pre>
+<p>默认安装目录为用户主目录下的 <code>.xu</code>（macOS .pkg 默认为 <code>/usr/local/xu</code>）。如需自定义安装目录，可传入参数 <code>--prefix /custom/path</code>。在自动化 CI 脚本中，亦可继续使用 <code>./install.sh</code> 或 <code>.\install.ps1</code>；若只需临时体验，可在解压目录下执行 <code>source env.sh</code>（PowerShell 为 <code>. .\env.ps1</code>）。</p>
+<h2>验证全局环境</h2>
+<p>安装完成后，打开<strong>新的终端窗口</strong>（CMD、PowerShell、Terminal 或 VS Code 内置终端），验证工具链全局可用：</p>
+<pre><code>xu --version
+xu env
 xu doctor</code></pre>
-<pre><code># Windows PowerShell
-.\install.ps1
-# 重启 PowerShell 后验证
-xu --version
-xu doctor</code></pre>
-<p>默认安装目录为 <code>~/.xu</code>。Unix 可用 <code>./install.sh --prefix /absolute/path</code> 指定目录，或用 <code>source env.sh</code> 临时激活解压后的 SDK；PowerShell 对应 <code>. .\env.ps1</code>。</p>
 <h2>更新已安装版本</h2>
-<p>安装 Python 3.9+ 后执行 <code>xu up</code> 或 <code>xu update</code>，从 GitHub 下载正式版本源码并编译更新。<code>xu up --check</code> 只检查，<code>xu update --ref main</code> 选择最新开发源码。源码构建及运行验证成功后，才替换本机编译器、配套工具与标准库；更多选项见 <a href="/docs/cli">命令行</a>。</p>
+<p>执行 <code>xu up</code> 或 <code>xu update</code>，直接从 GitHub 下载匹配当前系统的正式 Release 安装包并更新编译器、配套工具与标准库。<code>xu up --check</code> 只检查是否有新版本，<code>xu update --version &lt;版本&gt;</code> 指定安装特定版本。下载解压并验证通过后，才替换本机工具链；更多选项见 <a href="/docs/cli">命令行</a>。</p>
 <h2>目标平台</h2>
 <table><tr><th>系统</th><th><code>--target</code></th><th>默认产物</th></tr>
 <tr><td>macOS</td><td><code>macos-arm64</code>、<code>macos-x64</code></td><td>Mach-O，无后缀</td></tr>
