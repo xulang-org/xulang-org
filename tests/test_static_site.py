@@ -39,6 +39,7 @@ class StaticSiteTests(unittest.TestCase):
         count = site.build(self.source, output)
         self.assertEqual(count, len(list((self.source / 'content').rglob('*.html'))))
         for page in ('index.html', 'zh/index.html', 'docs/start/index.html',
+                     'benchmarks/index.html', 'zh/benchmarks/index.html', 'benchmarks.json',
                      'zh/api/net/http/index.html', 'api/index.html', 'blog/index.html', '404.html'):
             self.assertTrue((output / page).is_file(), page)
         home = (output / 'index.html').read_text()

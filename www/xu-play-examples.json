@@ -226,5 +226,17 @@
       "en": "A producer sends numbers to a coroutine that squares them and forwards the results."
     },
     "source": "@main\n\nfn produce(output chan int) {\n    for value in 1:6 {\n        output <- value\n    }\n}\n\nfn square(input chan int, output chan int) {\n    for i in 0:5 {\n        value := <-input\n        output <- value * value\n    }\n}\n\nfn main() int {\n    numbers := chan int{cap: 2}\n    squares := chan int{cap: 2}\n    xu produce(numbers)\n    xu square(numbers, squares)\n    for i in 0:5 {\n        value := <-squares\n        println(value)\n    }\n    << 0\n}\n"
+  },
+  "coroutine": {
+    "group": "concurrency",
+    "title": {
+      "zh": "20 · xu f() 协程并发",
+      "en": "20 · xu f() coroutines"
+    },
+    "description": {
+      "zh": "通过 xu f() 语法启动轻量协程并发执行任务，借助 chan 信道收发数据并安全同步。",
+      "en": "Launch lightweight coroutines using xu f() and synchronize results through a typed channel."
+    },
+    "source": "@main\n\nfn worker(id int, ch chan int) {\n    println(\"协程 #\" + str(id) + \" 运行中...\")\n    ch <- id * 10\n}\n\nfn main() int {\n    ch := chan int{cap: 3}\n    // 使用 xu f() 并发启动轻量协程\n    xu worker(1, ch)\n    xu worker(2, ch)\n    xu worker(3, ch)\n\n    mut sum := 0\n    for i in 0:3 {\n        val := <-ch\n        sum += val\n    }\n    println(\"汇总结果: \" + str(sum))\n    << 0\n}\n"
   }
 }

@@ -111,7 +111,9 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         ('', 'home', '首页', 'Home'), ('/playground', 'play', '演练场', 'Playground'),
         ('/download', 'download', '下载', 'Download'),
         ('/docs/start', 'book', '文档', 'Docs'), ('/api', 'api', 'API', 'API'),
-        ('/blog', 'chat', '博客', 'Blog'), ('/docs/status', 'benchmark', '现状', 'Status'),
+        ('/blog', 'chat', '博客', 'Blog'),
+        ('/benchmarks', 'benchmark', '横测', 'Benchmarks'),
+        ('/docs/status', 'shield-check', '现状', 'Status'),
     ]:
         target = prefix + href or '/'
         section = '/docs' if href == '/docs/start' else href
@@ -126,6 +128,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         main = '<main class="home">' + body + '</main>'
     elif route in ('/playground', '/zh/playground'):
         main = '<main class="home playground-page">' + body + '</main>'
+    elif route in ('/benchmarks', '/zh/benchmarks'):
+        main = '<main class="home bench-page">' + body + '</main>'
     else:
         cls = 'doc download' if route == prefix + '/download' else 'doc'
         main = '<div class="page">' + sidebar(route, en) + f'<main class="{cls}">' + body + '</main></div>'

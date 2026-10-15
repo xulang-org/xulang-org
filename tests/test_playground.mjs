@@ -24,7 +24,8 @@ const expected = {
   ints: '42\n7\n',
   'chan-buffered': '42\n',
   'chan-workers': '60\n',
-  'chan-pipeline': '1\n4\n9\n16\n25\n'
+  'chan-pipeline': '1\n4\n9\n16\n25\n',
+  coroutine: '协程 #1 运行中...\n协程 #2 运行中...\n协程 #3 运行中...\n汇总结果: 60\n'
 };
 
 for (const [name, example] of Object.entries(examples)) {
