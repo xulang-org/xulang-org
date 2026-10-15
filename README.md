@@ -2,21 +2,32 @@
   <a href="https://xulang.org"><img src="www/xu_classic.svg" alt="Xu Logo" width="100" height="100"></a>
 </p>
 
-<h1 align="center">xulang-org</h1>
+<h1 align="center">xulang.org Official Website & Interactive Portal</h1>
+
+<p align="center">
+  <b>Official Portal, WebAssembly Playground, and Cross-Language Benchmark Dashboard for the Xu Programming Language</b>
+</p>
 
 <p align="center">
   <b>English</b> | <a href="README.zh-CN.md">简体中文</a>
 </p>
 
 <p align="center">
-  <a href="https://xulang.org"><img src="https://img.shields.io/badge/site-xulang.org-rose" alt="Site"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://xulang.org"><img src="https://img.shields.io/badge/Site-xulang.org-rose" alt="Site"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+  <a href="https://xulang.org/benchmarks"><img src="https://img.shields.io/badge/Benchmarks-47%20Tasks-amber" alt="Benchmarks"></a>
   <a href="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml"><img src="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml/badge.svg" alt="Pages CI"></a>
 </p>
 
-Source code for the official website of the Xu programming language, hosted on GitHub Pages at [`xulang.org`](https://xulang.org). The site defaults to English, with Chinese documentation available at `/zh/`. Seamless language switching is provided in the header controls across all pages.
+**xulang.org** is the source repository for the official website, interactive portal, and documentation hub of the [Xu Programming Language](https://github.com/xulang-org/xu), hosted on GitHub Pages at [xulang.org](https://xulang.org).
 
-Official account links are maintained in the header and footer:
+Key features hosted in this portal:
+- 🌐 **Bilingual Official Docs & Tutorials**: Comprehensive guides, language specs, standard library, and API references with seamless language switching.
+- ⚡ **Multi-Platform 47-Task Benchmark Dashboard**: Interactive cross-language performance and resource comparisons across ARM64, x86-64, and Windows ARM64.
+- 🚀 **Client-Side WebAssembly Playground**: Xu compiled directly to a zero-server-load in-browser WASM sandbox for instant experimentation.
+- 🎨 **Brand Identity Assets**: Official vector logos, typography, and badges.
+
+Official account links:
 - GitHub: [@xulang-org](https://github.com/xulang-org)
 - X (Twitter): [@xulang_org](https://x.com/xulang_org)
 

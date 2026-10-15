@@ -2,21 +2,32 @@
   <a href="https://xulang.org"><img src="www/xu_classic.svg" alt="Xu Logo" width="100" height="100"></a>
 </p>
 
-<h1 align="center">xulang-org</h1>
+<h1 align="center">xulang.org 官方网站与互动门户</h1>
+
+<p align="center">
+  <b>Xu 编程语言官方门户、WebAssembly 在线演练场与全平台横测大看板源码</b>
+</p>
 
 <p align="center">
   <a href="README.md">English</a> | <b>简体中文</b>
 </p>
 
 <p align="center">
-  <a href="https://xulang.org"><img src="https://img.shields.io/badge/site-xulang.org-rose" alt="Site"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
+  <a href="https://xulang.org"><img src="https://img.shields.io/badge/Site-xulang.org-rose" alt="Site"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
+  <a href="https://xulang.org/benchmarks"><img src="https://img.shields.io/badge/Benchmarks-47%20Tasks-amber" alt="Benchmarks"></a>
   <a href="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml"><img src="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml/badge.svg" alt="Pages CI"></a>
 </p>
 
-Xu 官方网站源码仓库，托管于 GitHub Pages，生产环境域名为 [`xulang.org`](https://xulang.org)。站点默认语言为英文，中文入口为 `/zh/`；页面右上角提供无损路径的语言切换按钮。
+**xulang.org** 是 [Xu 编程语言](https://github.com/xulang-org/xu) 的全球官方主站与交互门户源码仓库，生产环境托管部署于 GitHub Pages，生产域名为 [xulang.org](https://xulang.org)。
 
-官方帐号入口统一展示在所有页面的顶部与页脚：
+站点聚合了以下核心模块：
+- 🌐 **双语官方主页与文档中心**：完整的中英文教程、语言规范、标准库与 API 手册（支持多语言无损路由切换）；
+- ⚡ **全平台 47 项跨语言性能大看板**：涵盖 ARM64、x86-64、Windows ARM64 等平台，支持即时动态过滤与直观图表对比；
+- 🚀 **纯客户端 WebAssembly 在线演练场**：由 Xu 源码直接 AOT 编译为 WASM 沙箱，零服务器负担，浏览器内秒开演练；
+- 🎨 **品牌物料与 VI 资产**：官方 Logo、矢量标识与徽章设计。
+
+官方账号入口统一展示在所有页面的顶部与页脚：
 - GitHub: [@xulang-org](https://github.com/xulang-org)
 - X (Twitter): [@xulang_org](https://x.com/xulang_org)
 
