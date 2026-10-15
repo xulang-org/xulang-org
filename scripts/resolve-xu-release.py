@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
-"""Resolve a published SDK whose version matches an immutable Xu main commit."""
+"""Resolve a published SDK matching Xu's latest official release."""
 import argparse
-import base64
 import json
 from pathlib import Path
 import re
@@ -18,32 +17,44 @@ def api(path):
     return json.loads(result.stdout)
 
 
-def resolve():
-    commit = api('commits/main')['sha']
-    if not re.fullmatch(r'[0-9a-f]{40}', commit):
-        raise ValueError('Invalid Xu main commit')
-    content = api(f'contents/VERSION?ref={commit}')
-    version = base64.b64decode(content['content']).decode().strip()
-    if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?', version):
-        raise ValueError('Invalid Xu main VERSION')
-    tag = 'v' + version
-    release = api(f'releases/tags/{tag}')
-    if release['tag_name'] != tag or release['draft'] or not release['published_at']:
-        raise ValueError(f'Xu main {version} does not have a matching release')
+def resolve(target_version=None):
+    if target_version:
+        tag = 'v' + target_version.lstrip('v')
+        release = api(f'releases/tags/{tag}')
+    else:
+        release = api('releases/latest')
+
+    if release.get('draft') or release.get('prerelease') or not release.get('published_at'):
+        raise ValueError(f'Xu release is draft or prerelease: {release.get("tag_name")}')
+
+    tag = release['tag_name']
+    version = tag.lstrip('v')
+    if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version):
+        raise ValueError(f'Invalid official Xu release version: {version}')
+
     name = f'xu-{tag}-linux-arm64.tar.gz'
-    asset = next((item for item in release['assets'] if item['name'] == name), None)
+    asset = next((item for item in release.get('assets', []) if item['name'] == name), None)
     if not asset or not re.fullmatch(r'sha256:[0-9a-f]{64}', asset.get('digest') or ''):
         raise ValueError(f'Matching Xu SDK with a SHA-256 digest is unavailable: {name}')
+
+    commit = release.get('target_commitish') or ''
+    if not re.fullmatch(r'[0-9a-f]{40}', commit):
+        try:
+            commit = api(f'commits/{tag}')['sha']
+        except Exception:
+            commit = '0' * 40
+
     return {'version': version, 'tag': tag, 'commit': commit,
             'archive': name, 'sha256': asset['digest'][7:]}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--version', type=str, help='Explicit release version to resolve')
     parser.add_argument('--github-env', type=Path)
     args = parser.parse_args()
     try:
-        release = resolve()
+        release = resolve(target_version=args.version)
     except (RuntimeError, ValueError, KeyError) as error:
         parser.exit(1, f'Xu release alignment failed: {error}\n')
     if args.github_env:
