@@ -13,6 +13,75 @@ SVG_BOLT = '<svg class="bench-icon bench-icon-bolt" viewBox="0 0 24 24" width="1
 SVG_BRAIN = '<svg class="bench-icon bench-icon-brain" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M12 18v4"/><path d="M12 5V2"/></svg>'
 SVG_BOX = '<svg class="bench-icon bench-icon-box" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>'
 SVG_SEARCH = '<svg class="bench-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>'
+SVG_CONTROL = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>'
+SVG_ALGO = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>'
+SVG_DATA = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>'
+SVG_STRING = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'
+SVG_CRYPTO = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
+SVG_CONCURRENCY = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>'
+
+CATEGORIES_CONFIG = [
+    {
+        "key": "control",
+        "name_zh": "控制流与语言底层机制",
+        "name_en": "Control Flow & Language Primitives",
+        "pill_zh": "控制流机制",
+        "pill_en": "Control & Primitives",
+        "desc_zh": "评测空 main 冷启动、整数循环累加、深度递归、分支预测敏感度、模式匹配展开、defer 释放开销及异常捕获等语言机制开销。",
+        "desc_en": "Evaluates empty-main startup, loop accumulation, deep recursion, branch prediction, pattern matching, defer cleanup, and exception handling overhead.",
+        "icon": SVG_CONTROL,
+    },
+    {
+        "key": "algo",
+        "name_zh": "数值算法与密集计算",
+        "name_en": "Numerical Algorithms & Compute",
+        "pill_zh": "数值算法",
+        "pill_en": "Algorithms",
+        "desc_zh": "高强度数值计算与矩阵代数：包含双精度矩阵乘法、N 体天体轨道动力学模拟、Mandelbrot 复数分形、谱范数逼近、素数筛选及快速排序。",
+        "desc_en": "Compute-intensive numerical algorithms: matrix multiplication, N-body orbital dynamics, Mandelbrot fractals, spectral norm, prime sieve, and quicksort.",
+        "icon": SVG_ALGO,
+    },
+    {
+        "key": "data",
+        "name_zh": "数据结构与内存访问模式",
+        "name_en": "Data Structures & Memory Access",
+        "pill_zh": "数据结构",
+        "pill_en": "Data Structures",
+        "desc_zh": "三维向量 SROA 标量寄存器拆解、动态向量扩容、高频哈希表读写、二叉树构建遍历、双向链表、LRU 缓存淘汰与无锁环形缓冲区。",
+        "desc_en": "Scalar replacement of aggregates (SROA), dynamic vector resizing, hashmap inserts/lookups, binary trees, linked lists, LRU cache, and ring buffers.",
+        "icon": SVG_DATA,
+    },
+    {
+        "key": "string",
+        "name_zh": "字符串处理与文本 I/O",
+        "name_en": "Strings & Text I/O",
+        "pill_zh": "文本与I/O",
+        "pill_en": "Strings & I/O",
+        "desc_zh": "字符串快速拼接缓冲、正则表达式编译匹配、JSON 词法语法解析、Base64 编解码、UTF-8 字符流校验及顺序文件吞吐量。",
+        "desc_en": "String buffer concatenation, regex matching, JSON parsing, Base64 encoding, UTF-8 validation, sequential file throughput, and CSV processing.",
+        "icon": SVG_STRING,
+    },
+    {
+        "key": "crypto",
+        "name_zh": "现代密码学与散列摘要",
+        "name_en": "Modern Cryptography & Hashing",
+        "pill_zh": "现代密码学",
+        "pill_en": "Cryptography",
+        "desc_zh": "AES-128/256 软件对称加密、SHA-256/512 哈希链、BLAKE3 高吞吐哈希、ChaCha20 流密码、Ed25519 签名与验签、RSA-2048 及 HMAC-SHA256。",
+        "desc_en": "AES-128/256 symmetric ciphers, SHA-256/512 chains, BLAKE3 high-throughput hash, ChaCha20 stream cipher, Ed25519 signatures, RSA-2048, and HMAC.",
+        "icon": SVG_CRYPTO,
+    },
+    {
+        "key": "concurrency",
+        "name_zh": "高性能并发与协程通信",
+        "name_en": "Concurrency & Coroutines",
+        "pill_zh": "并发通信",
+        "pill_en": "Concurrency",
+        "desc_zh": "基于 CSP 通信顺序进程模型的轻量级协程调度延迟与有界/无界 Channel 管道跨协程高频乒乓（Ping-Pong）通信开销。",
+        "desc_en": "CSP-model lightweight coroutine scheduling latency and high-frequency ping-pong channel communications.",
+        "icon": SVG_CONCURRENCY,
+    },
+]
 
 PLATFORMS_CONFIG = [
     {
@@ -499,9 +568,7 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
     benches = p_data.get("benches", [])
     footprint = p_data.get("footprint", [])
 
-    # Table headers
-    th_category = "Category" if en else "场景类别"
-    th_workload = "Workload & Description" if en else "评测负载与说明"
+    th_workload = "Workload & Description" if en else "评测负载与算法说明"
     th_xu = "Xu (ms)"
     th_c = "C (-O3, ms)"
     th_rust = "Rust (-O3, ms)"
@@ -509,16 +576,23 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
     th_go = "Go (ms)"
     th_ratio = "Xu / Best Peer" if en else "Xu / 最佳对照"
 
-    table_rows = []
-    cat_keys = ["control", "algo", "data", "string", "crypto", "concurrency"]
-    for ck in cat_keys:
+    sections = []
+
+    # 1. 核心看板
+    peer_charts = render_platform_peer_charts(benches, footprint, en)
+    sections.append(f'<div class="bench-sec-core">{peer_charts}</div>')
+
+    # 2. 按功能大类流式展开各分类的卡片与表格
+    for cat_cfg in CATEGORIES_CONFIG:
+        ck = cat_cfg["key"]
         cat_benches = [b for b in benches if b["category"] == ck]
         if not cat_benches:
             continue
-        cat_label = categories.get(ck, {}).get("en" if en else "zh", ck)
-        table_rows.append(
-            f'<tr class="bench-cat-header" data-cat="{ck}"><th colspan="8">{cat_label}</th></tr>'
-        )
+        cat_title = cat_cfg["name_en"] if en else cat_cfg["name_zh"]
+        cat_desc = cat_cfg["desc_en"] if en else cat_cfg["desc_zh"]
+        cat_count_text = f"{len(cat_benches)} {'workloads' if en else '项算法评测'}"
+
+        rows = []
         for b in cat_benches:
             desc = b["desc_en"] if en else b["desc_zh"]
             xu_str = format_ms(b.get("xu_wall_ms"))
@@ -530,9 +604,8 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
             best_peer = min(peers) if peers else None
             ratio = round(b["xu_wall_ms"] / best_peer, 2) if (best_peer and b.get("xu_wall_ms")) else None
             badge = format_ratio_badge(ratio)
-            table_rows.append(
-                f'<tr data-cat="{ck}" data-name="{b["name"].lower()}" data-desc="{desc.lower()}">'
-                f'<td><code>{b["category"]}</code></td>'
+            rows.append(
+                f'<tr data-name="{b["name"].lower()}" data-desc="{desc.lower()}">'
                 f'<td><strong><code>{b["name"]}</code></strong><div class="bench-desc">{desc}</div></td>'
                 f'<td class="bench-xu-col"><strong>{xu_str}</strong></td>'
                 f'<td>{c_str}</td>'
@@ -543,7 +616,39 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
                 f'</tr>'
             )
 
-    # Footprint table
+        section_html = f"""
+<div class="bench-cat-section bench-sec-{ck}">
+  <div class="bench-cat-section-header">
+    <div class="bench-cat-title-wrap">
+      <span class="bench-cat-icon">{cat_cfg["icon"]}</span>
+      <h3 class="bench-cat-title">{cat_title}</h3>
+      <span class="bench-cat-count">{cat_count_text}</span>
+    </div>
+    <p class="bench-cat-desc">{cat_desc}</p>
+  </div>
+  <div class="doc-table-wrap bench-table-wrap">
+    <table class="bench-table">
+      <thead>
+        <tr>
+          <th>{th_workload}</th>
+          <th class="bench-xu-col">{th_xu}</th>
+          <th>{th_c}</th>
+          <th>{th_rust}</th>
+          <th>{th_swift}</th>
+          <th>{th_go}</th>
+          <th class="bench-ratio-col">{th_ratio}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {''.join(rows)}
+      </tbody>
+    </table>
+  </div>
+</div>
+"""
+        sections.append(section_html)
+
+    # 3. 内存与体积板块
     th_impl = "Implementation" if en else "实现 / 编译器"
     th_rss = "Peak RSS Range (MiB)" if en else "47 项峰值 RSS 中位数范围 (MiB)"
     th_size = "Binary Size Range (KiB)" if en else "可执行文件大小范围 (KiB)"
@@ -554,20 +659,43 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
         for item in footprint
     )
 
+    footprint_h2 = "Memory Footprint & Binary Size" if en else "内存占用与产物体积横向对比"
+    footprint_desc = (
+        f"Median peak resident memory (RSS, wait4/Win32) and unstripped on-disk binary size on {name}:"
+        if en
+        else f"在 {name} 环境下的峰值常驻内存（RSS，系统调用精准捕获）与未裁剪二进制大小："
+    )
+
+    footprint_section = f"""
+<div class="bench-cat-section bench-sec-footprint">
+  <div class="bench-cat-section-header">
+    <div class="bench-cat-title-wrap">
+      <span class="bench-cat-icon">{SVG_BRAIN}</span>
+      <h3 class="bench-cat-title">{footprint_h2}</h3>
+      <span class="bench-cat-count">{'RSS & Binary Size' if en else '真实系统开销'}</span>
+    </div>
+    <p class="bench-cat-desc">{footprint_desc}</p>
+  </div>
+  <div class="doc-table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>{th_impl}</th>
+          <th>{th_rss}</th>
+          <th>{th_size}</th>
+          <th>{th_gc}</th>
+        </tr>
+      </thead>
+      <tbody>
+        {fp_tbody}
+      </tbody>
+    </table>
+  </div>
+</div>
+"""
+    sections.append(footprint_section)
+
     pane_active = " active" if is_default else ""
-
-    # Category filter pills
-    filter_chips = [
-        f'<button type="button" class="bench-filter-btn active" data-cat="all" onclick="filterBenchCategory(\'{p_id}\', \'all\', this)">{"All (47)" if en else "全量 (47)"}</button>',
-        f'<button type="button" class="bench-filter-btn" data-cat="control" onclick="filterBenchCategory(\'{p_id}\', \'control\', this)">{"Control (9)" if en else "控制流 (9)"}</button>',
-        f'<button type="button" class="bench-filter-btn" data-cat="algo" onclick="filterBenchCategory(\'{p_id}\', \'algo\', this)">{"Algorithm (8)" if en else "数值算法 (8)"}</button>',
-        f'<button type="button" class="bench-filter-btn" data-cat="data" onclick="filterBenchCategory(\'{p_id}\', \'data\', this)">{"Data Struct (8)" if en else "数据结构 (8)"}</button>',
-        f'<button type="button" class="bench-filter-btn" data-cat="string" onclick="filterBenchCategory(\'{p_id}\', \'string\', this)">{"Text & IO (9)" if en else "文本与IO (9)"}</button>',
-        f'<button type="button" class="bench-filter-btn" data-cat="crypto" onclick="filterBenchCategory(\'{p_id}\', \'crypto\', this)">{"Crypto (12)" if en else "密码学 (12)"}</button>',
-        f'<button type="button" class="bench-filter-btn" data-cat="concurrency" onclick="filterBenchCategory(\'{p_id}\', \'concurrency\', this)">{"Channels (1)" if en else "并发通道 (1)"}</button>',
-    ]
-
-    search_placeholder = "Filter workloads by name or keyword..." if en else "搜索评测项或算法说明..."
 
     return f"""
 <div id="pane-{p_id}" class="bench-tab-pane{pane_active}">
@@ -584,59 +712,7 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
     </div>
   </div>
 
-  {render_platform_peer_charts(benches, footprint, en)}
-
-  <h2>{'Workload Benchmarks (Wall Time, ms)' if en else '47 项业务与算法全量横测数据 (耗时中位数，ms)'}</h2>
-  <p class="meta">{'Comparing Xu with C (-O3), Rust (-O3), Swift (-O3), and Go under ' + name + '. Ratio is calculated as Xu / Best Peer; ≤1.00× means Xu is equal or faster.' if en else '在 ' + name + ' 环境下与 C (-O3)、Rust (-O3)、Swift (-O3)、Go 横向对比（各原生对照语言均启用最高编译优化）。比率计算为 Xu / 最佳对照组；≤1.00× 表示 Xu 相当或更快。'}</p>
-
-  <div class="bench-table-toolbar">
-    <div class="bench-cat-filters">
-      {''.join(filter_chips)}
-    </div>
-    <div class="bench-search-wrap">
-      {SVG_SEARCH}
-      <input type="text" class="bench-search-input" placeholder="{search_placeholder}" oninput="searchBenchTable('{p_id}', this.value)" />
-    </div>
-  </div>
-
-  <div class="doc-table-wrap bench-table-wrap">
-    <table class="bench-table" id="table-{p_id}">
-      <thead>
-        <tr>
-          <th>{th_category}</th>
-          <th>{th_workload}</th>
-          <th class="bench-xu-col">{th_xu}</th>
-          <th>{th_c}</th>
-          <th>{th_rust}</th>
-          <th>{th_swift}</th>
-          <th>{th_go}</th>
-          <th class="bench-ratio-col">{th_ratio}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {''.join(table_rows)}
-      </tbody>
-    </table>
-  </div>
-
-  <h2>{'Memory Footprint & Binary Size' if en else '内存占用与产物体积横向对比'}</h2>
-  <p class="meta">{'Median peak resident memory (RSS, wait4/Win32) and unstripped on-disk binary size on ' + name + ':' if en else '在 ' + name + ' 环境下的峰值常驻内存（RSS，系统调用精准捕获）与未裁剪二进制大小：'}</p>
-
-  <div class="doc-table-wrap">
-    <table>
-      <thead>
-        <tr>
-          <th>{th_impl}</th>
-          <th>{th_rss}</th>
-          <th>{th_size}</th>
-          <th>{th_gc}</th>
-        </tr>
-      </thead>
-      <tbody>
-        {fp_tbody}
-      </tbody>
-    </table>
-  </div>
+  {''.join(sections)}
 </div>
 """
 
@@ -744,6 +820,23 @@ def render_page(data: dict, lang: str) -> str:
         "</ul>"
     )
 
+    # 4. Functional anchor pills
+    anchor_buttons = []
+    any_p = next(iter(platforms.values()), {})
+    for cat_cfg in CATEGORIES_CONFIG:
+        ck = cat_cfg["key"]
+        pill_name = cat_cfg["pill_en"] if en else cat_cfg["pill_zh"]
+        icon = cat_cfg["icon"]
+        count = len([b for b in any_p.get("benches", []) if b.get("category") == ck])
+        count_tag = f'<span class="badge">{count}</span>' if count else ""
+        anchor_buttons.append(
+            f'<button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection(\'{ck}\')">'
+            f'{icon} <span>{pill_name}</span> {count_tag}'
+            f'</button>'
+        )
+
+    search_placeholder = "Search workload or algorithm across all sections..." if en else "全局搜索算法用例或说明..."
+
     tab_script = """
 <script>
 function switchBenchTab(platformId) {
@@ -761,46 +854,48 @@ function switchBenchTab(platformId) {
       pane.classList.remove('active');
     }
   });
+  var searchInput = document.getElementById('bench-global-search');
+  if (searchInput && searchInput.value) {
+    searchBenchAll(searchInput.value);
+  }
   if (history.replaceState) {
     history.replaceState(null, null, '#' + platformId);
   }
 }
 
-function filterBenchCategory(paneId, cat, btn) {
-  var pane = document.getElementById('pane-' + paneId);
-  if (!pane) return;
-  pane.querySelectorAll('.bench-filter-btn').forEach(function(b) {
-    b.classList.remove('active');
-  });
-  if (btn) btn.classList.add('active');
-
-  var rows = pane.querySelectorAll('tbody tr');
-  rows.forEach(function(tr) {
-    var trCat = tr.getAttribute('data-cat');
-    if (cat === 'all' || trCat === cat) {
-      tr.style.display = '';
-    } else {
-      tr.style.display = 'none';
-    }
-  });
+function jumpToBenchSection(secKey) {
+  var activePane = document.querySelector('.bench-tab-pane.active');
+  if (!activePane) return;
+  var target = activePane.querySelector('.bench-sec-' + secKey);
+  if (target) {
+    var nav = document.querySelector('.bench-tabs-wrapper');
+    var navHeight = nav ? nav.offsetHeight : 100;
+    var targetTop = target.getBoundingClientRect().top + window.pageYOffset - navHeight - 16;
+    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+  }
 }
 
-function searchBenchTable(paneId, query) {
-  var pane = document.getElementById('pane-' + paneId);
-  if (!pane) return;
+function searchBenchAll(query) {
+  var activePane = document.querySelector('.bench-tab-pane.active');
+  if (!activePane) return;
   var q = (query || '').toLowerCase().trim();
-  var rows = pane.querySelectorAll('tbody tr');
-  rows.forEach(function(tr) {
-    if (tr.classList.contains('bench-cat-header')) {
-      tr.style.display = q ? 'none' : '';
-      return;
-    }
-    var name = tr.getAttribute('data-name') || '';
-    var desc = tr.getAttribute('data-desc') || '';
-    if (!q || name.indexOf(q) !== -1 || desc.indexOf(q) !== -1) {
-      tr.style.display = '';
+  activePane.querySelectorAll('.bench-cat-section').forEach(function(sec) {
+    var rows = sec.querySelectorAll('tbody tr');
+    var visibleCount = 0;
+    rows.forEach(function(tr) {
+      var name = tr.getAttribute('data-name') || '';
+      var desc = tr.getAttribute('data-desc') || '';
+      if (!q || name.indexOf(q) !== -1 || desc.indexOf(q) !== -1) {
+        tr.style.display = '';
+        visibleCount++;
+      } else {
+        tr.style.display = 'none';
+      }
+    });
+    if (q && visibleCount === 0) {
+      sec.style.display = 'none';
     } else {
-      tr.style.display = 'none';
+      sec.style.display = '';
     }
   });
 }
@@ -825,21 +920,38 @@ window.addEventListener('DOMContentLoaded', function() {
 
 <p class="banner">{banner_text}</p>
 
-{cross_platform_panorama}
-
-{cross_arch_section}
-
 <div class="bench-tabs-wrapper">
-  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-    <h2 style="margin: 0; font-size: 18px;">{'Platform & Architecture Workspaces' if en else '各平台与硬件架构深度评测工作区'}</h2>
-    <span class="meta" style="margin: 0; font-size: 12px;">{'6 Target Configurations' if en else '6 大目标平台完整覆盖'}</span>
+  <div class="bench-sticky-topline">
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 700;">{'Platform & Architecture Workspaces' if en else '各平台与硬件架构深度评测工作区'}</h2>
+      <span class="meta" style="margin: 0; font-size: 12px;">{'6 Target Configurations' if en else '6 大目标平台完整覆盖'}</span>
+    </div>
+    <div class="bench-tabs-nav">
+      {''.join(tab_buttons)}
+    </div>
   </div>
-  <div class="bench-tabs-nav">
-    {''.join(tab_buttons)}
+  <div class="bench-anchor-bar">
+    <div class="bench-anchor-links">
+      <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('core')">
+        {SVG_BOLT} <span>{'Core Charts' if en else '核心看板'}</span>
+      </button>
+      {''.join(anchor_buttons)}
+      <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('footprint')">
+        {SVG_BRAIN} <span>{'Memory & Size' if en else '内存与体积'}</span>
+      </button>
+    </div>
+    <div class="bench-search-wrap bench-search-global">
+      {SVG_SEARCH}
+      <input type="text" class="bench-search-input" id="bench-global-search" placeholder="{search_placeholder}" oninput="searchBenchAll(this.value)" />
+    </div>
   </div>
 </div>
 
 {''.join(tab_panes)}
+
+{cross_platform_panorama}
+
+{cross_arch_section}
 
 <h2>{method_h2}</h2>
 {method_p1}
