@@ -108,19 +108,22 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     home = prefix or '/'
     nav = []
     for href, icon, zh, english in [
-        ('', 'home', '首页', 'Home'), ('/playground', 'play', '演练场', 'Playground'),
-        ('/download', 'download', '下载', 'Download'),
-        ('/docs/start', 'book', '文档', 'Docs'), ('/api', 'api', 'API', 'API'),
-        ('/blog', 'chat', '博客', 'Blog'),
+        ('/docs/start', 'book', '文档', 'Docs'),
+        ('/api', 'api', 'API', 'API'),
+        ('/playground', 'play', '演练场', 'Playground'),
         ('/benchmarks', 'benchmark', '横测', 'Benchmarks'),
-        ('/docs/status', 'shield-check', '现状', 'Status'),
+        ('/download', 'download', '下载', 'Download'),
+        ('/blog', 'chat', '博客', 'Blog'),
     ]:
-        target = prefix + href or '/'
-        section = '/docs' if href == '/docs/start' else href
-        active = route == target or (bool(section) and route.startswith(prefix + section + '/'))
-        # Status has its own tab even though it is a documentation page.
-        if href == '/docs/start' and route == prefix + '/docs/status':
-            active = False
+        target = prefix + href
+        if href == '/docs/start':
+            active = route == target or route.startswith(prefix + '/docs/')
+        elif href == '/api':
+            active = route == target or route.startswith(prefix + '/api/')
+        elif href == '/blog':
+            active = route == target or route.startswith(prefix + '/blog/')
+        else:
+            active = route == target
         cls = 'nav-tab-btn active' if active else 'nav-tab-btn'
         current = ' aria-current="page"' if active else ''
         nav.append(f'<a class="{cls}"{current} href="{target}"><i class="xi xi-{icon}"></i> {english if en else zh}</a>')
@@ -139,6 +142,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
     return template.substitute(
         lang='en' if en else 'zh-CN', title=escape(title), home=home,
+        home_title='Xu Home' if en else 'Xu 官网首页',
         xu_version=escape(xu_version), nav=''.join(nav), main=main,
         other_lang=other, other_lang_code='zh-CN' if en else 'en',
         lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',
@@ -146,4 +150,6 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         footer_text='MIT License · Zero GC · Supersonic AOT' if en else 'MIT 开源协议 · 坚若磐石 · 零 GC 内存安全 · 超音速 AOT',
         header_social=social_links(en, compact=True), footer_social=social_links(en),
         social_label='Official accounts' if en else '官方帐号',
+        menu_label='Navigation menu' if en else '导航菜单',
+        nav_label='Main navigation' if en else '主导航',
     )
