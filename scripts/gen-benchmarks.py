@@ -122,13 +122,13 @@ def render_visual_charts(benches: list[dict], footprint: list[dict], en: bool) -
         if b.get("xu_wall_ms") is not None:
             series.append(("Xu", "xu", b["xu_wall_ms"]))
         if b.get("c_wall_ms") is not None:
-            series.append(("C", "c", b["c_wall_ms"]))
+            series.append(("C -O3", "c", b["c_wall_ms"]))
         if b.get("rust_wall_ms") is not None:
-            series.append(("Rust", "rs", b["rust_wall_ms"]))
+            series.append(("Rust -O3", "rs", b["rust_wall_ms"]))
+        if b.get("swift_wall_ms") is not None:
+            series.append(("Swift -O3", "swift", b["swift_wall_ms"]))
         if b.get("go_wall_ms") is not None:
             series.append(("Go", "go", b["go_wall_ms"]))
-        if b.get("swift_wall_ms") is not None:
-            series.append(("Swift", "swift", b["swift_wall_ms"]))
         
         if not series:
             continue
