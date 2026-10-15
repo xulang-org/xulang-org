@@ -6,7 +6,7 @@ from string import Template
 
 DOC_GROUPS = [
     ('xi-bookmark', '起步', 'Start', [
-        ('start', '起步', 'Get started'), ('install', '安装', 'Install'), ('hello', 'Hello', 'Hello'),
+        ('start', '起步', 'Get started'), ('install', '安装', 'Install'),
         ('modules', '模块与依赖', 'Modules and dependencies'), ('packages', '扩展包', 'External packages'),
     ]),
     ('xi-code', '教程', 'Tutorial', [
