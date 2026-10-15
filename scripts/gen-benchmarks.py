@@ -173,30 +173,60 @@ def format_ratio_badge(ratio: float | None) -> str:
     return f'<span class="bench-badge {cls}">{ratio:.2f}×</span>'
 
 
+def parse_fp_min(val_str: str | None) -> float | None:
+    """Parse the lower bound number from a footprint range string, e.g. '1.45 – 17.45' -> 1.45."""
+    if not val_str:
+        return None
+    try:
+        parts = str(val_str).replace("~", "–").split("–")
+        return float(parts[0].strip())
+    except Exception:
+        return None
+
+
 def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg: dict, en: bool) -> str:
-    """Render a dedicated, self-contained workload block (e.g. startup) comparing all 6 platforms and peer languages side-by-side."""
+    """Render a self-contained workload block (e.g. startup) with platforms as columns (horizontal) and languages as rows (vertical). Highlights per-platform best cells."""
     desc = ref_bench["desc_en"] if en else ref_bench["desc_zh"]
     cat_pill = cat_cfg["pill_en"] if en else cat_cfg["pill_zh"]
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
 
-    p_data = []
+    # 收集 6 个平台的原始数据
+    p_map = {}
     xu_vals = []
     for c in active_configs:
         pid = c["id"]
         b_list = platforms[pid].get("benches", [])
         item = next((x for x in b_list if x["name"] == b_name), None)
-        if item and item.get("xu_wall_ms") is not None:
+        p_map[pid] = item
+        if item and item.get("xu_wall_ms") is not None and item["xu_wall_ms"] > 0:
             xu_vals.append((item["xu_wall_ms"], c))
-            p_data.append((c, item))
-        else:
-            p_data.append((c, None))
 
     min_xu_val = min(x[0] for x in xu_vals) if xu_vals else None
     fastest_cfg = next((x[1] for x in xu_vals if x[0] == min_xu_val), None) if min_xu_val else None
 
+    # 计算每一个平台的跨语言最优（绝对最小值）
+    p_best_map = {}
+    for c in active_configs:
+        pid = c["id"]
+        item = p_map.get(pid)
+        if not item:
+            continue
+        vals = [
+            v for v in [
+                item.get("xu_wall_ms"),
+                item.get("c_wall_ms"),
+                item.get("rust_wall_ms"),
+                item.get("swift_wall_ms"),
+                item.get("go_wall_ms"),
+            ]
+            if v is not None and v > 0
+        ]
+        if vals:
+            p_best_map[pid] = min(vals)
+
     all_ratios = []
-    for _, item in p_data:
-        if not item or item.get("xu_wall_ms") is None:
+    for pid, item in p_map.items():
+        if not item or item.get("xu_wall_ms") is None or item["xu_wall_ms"] <= 0:
             continue
         xu_ms = item["xu_wall_ms"]
         peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms"), item.get("swift_wall_ms"), item.get("go_wall_ms")] if v is not None and v > 0]
@@ -224,67 +254,93 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
             f'</span>'
         )
 
-    table_rows = []
-    for c, item in p_data:
+    # 1. 横向表头：6 个目标平台
+    th_cols = [f'<th class="bench-td-lang-cell" style="width: 16%;">{"Language" if en else "实现语言"}</th>']
+    for c in active_configs:
         p_name = c["name_en"] if en else c["name_zh"]
         arch = c["arch_tag"]
-        chip = c["chip_en"] if en else c["chip_zh"]
         icon = c["icon"]
         arch_cls = "arch-arm" if "arm" in arch.lower() else "arch-x64"
+        th_cols.append(
+            f'<th class="bench-th-platform" style="width: 14%;">'
+            f'  <div class="bench-th-pname"><i class="xi {icon}"></i> <span>{p_name}</span> <span class="btn-arch {arch_cls}">{arch}</span></div>'
+            f'</th>'
+        )
 
-        if not item or item.get("xu_wall_ms") is None:
-            table_rows.append(
-                f'<tr>'
-                f'  <td class="bench-td-platform-cell">'
-                f'    <div class="bench-td-platform">'
-                f'      <div class="bench-td-pname"><i class="xi {icon}"></i> <strong>{p_name}</strong> <span class="btn-arch {arch_cls}">{arch}</span></div>'
-                f'      <div class="bench-chip-label">{chip}</div>'
-                f'    </div>'
-                f'  </td>'
-                f'  <td colspan="6" class="meta">—</td>'
-                f'</tr>'
-            )
+    # 2. 纵向各行：各个对比语言 (Xu, C, Rust, Swift, Go)
+    # 行 1: Xu (重点高亮行)
+    xu_cells = []
+    for c in active_configs:
+        pid = c["id"]
+        item = p_map.get(pid)
+        if not item or item.get("xu_wall_ms") is None or item["xu_wall_ms"] <= 0:
+            xu_cells.append('<td class="meta">—</td>')
             continue
-
         xu_ms = item["xu_wall_ms"]
-        c_ms = item.get("c_wall_ms")
-        rust_ms = item.get("rust_wall_ms")
-        swift_ms = item.get("swift_wall_ms")
-        go_ms = item.get("go_wall_ms")
-
-        peers = [v for v in [c_ms, rust_ms, swift_ms, go_ms] if v is not None and v > 0]
+        peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms"), item.get("swift_wall_ms"), item.get("go_wall_ms")] if v is not None and v > 0]
         best_peer = min(peers) if peers else None
         ratio = round(xu_ms / best_peer, 2) if (best_peer and xu_ms) else None
         badge = format_ratio_badge(ratio)
 
-        is_fastest = (xu_ms == min_xu_val)
-        fastest_tag = f' <span class="bench-fast-badge">{"fast" if en else "最快"}</span>' if is_fastest else ""
-        row_cls = " class=\"bench-row-fastest\"" if is_fastest else ""
+        # 单平台最佳判定
+        p_best = p_best_map.get(pid)
+        is_best = (p_best is not None and abs(xu_ms - p_best) < 1e-4)
+        best_cls = " bench-cell-best" if is_best else ""
+        best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>' if is_best else ""
+        val_cls = "bench-xu-val bench-val-best" if is_best else "bench-xu-val"
 
-        table_rows.append(
-            f'<tr{row_cls}>'
-            f'  <td class="bench-td-platform-cell">'
-            f'    <div class="bench-td-platform">'
-            f'      <div class="bench-td-pname"><i class="xi {icon}"></i> <strong>{p_name}</strong> <span class="btn-arch {arch_cls}">{arch}</span></div>'
-            f'      <div class="bench-chip-label">{chip}</div>'
+        xu_cells.append(
+            f'<td class="bench-xu-col{best_cls}">'
+            f'  <div class="bench-cell-wrap">'
+            f'    <div class="bench-val-row">'
+            f'      <span class="{val_cls}">{xu_ms:.2f}ms</span>{best_pill}'
             f'    </div>'
-            f'  </td>'
-            f'  <td class="bench-xu-col"><strong>{xu_ms:.2f}</strong>{fastest_tag}</td>'
-            f'  <td class="num">{format_ms(c_ms)}</td>'
-            f'  <td class="num">{format_ms(rust_ms)}</td>'
-            f'  <td class="num">{format_ms(swift_ms)}</td>'
-            f'  <td class="num">{format_ms(go_ms)}</td>'
-            f'  <td class="bench-ratio-col">{badge}</td>'
-            f'</tr>'
+            f'    <div class="bench-ratio-sub">{badge}</div>'
+            f'  </div>'
+            f'</td>'
         )
 
-    th_platform = "Platform" if en else "目标平台"
-    th_xu = "Xu (ms)"
-    th_c = "C <small>-O3</small>"
-    th_rust = "Rust <small>-O3</small>"
-    th_swift = "Swift <small>-O3</small>"
-    th_go = "Go"
-    th_ratio = "vs Peer" if en else "相对最佳"
+    # 其余语言行
+    peer_rows_def = [
+        ("c", "C <small>-O3</small>", "c_wall_ms"),
+        ("rs", "Rust <small>-O3</small>", "rust_wall_ms"),
+        ("swift", "Swift <small>-O3</small>", "swift_wall_ms"),
+        ("go", "Go <small>native</small>", "go_wall_ms"),
+    ]
+
+    other_rows_html = []
+    for cls_key, lang_label, key in peer_rows_def:
+        cells = [f'<td class="bench-td-lang-cell"><span class="bench-bar-lang {cls_key}">{lang_label}</span></td>']
+        for c in active_configs:
+            pid = c["id"]
+            item = p_map.get(pid)
+            val = item.get(key) if item else None
+            if val is not None and val > 0:
+                p_best = p_best_map.get(pid)
+                is_best = (p_best is not None and abs(val - p_best) < 1e-4)
+                if is_best:
+                    best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>'
+                    cells.append(
+                        f'<td class="num bench-cell-best">'
+                        f'  <div class="bench-cell-wrap">'
+                        f'    <div class="bench-val-row">'
+                        f'      <strong class="bench-val-best">{val:.2f}ms</strong>{best_pill}'
+                        f'    </div>'
+                        f'  </div>'
+                        f'</td>'
+                    )
+                else:
+                    cells.append(f'<td class="num">{val:.2f}ms</td>')
+            else:
+                cells.append('<td class="meta">—</td>')
+        other_rows_html.append(f'<tr>{"".join(cells)}</tr>')
+
+    xu_row_html = (
+        f'<tr class="bench-row-xu">'
+        f'  <td class="bench-td-lang-cell"><strong class="bench-bar-lang xu">Xu</strong></td>'
+        f'  {"".join(xu_cells)}'
+        f'</tr>'
+    )
 
     return f"""
 <div class="bench-workload-block" id="workload-{b_name}" data-name="{b_name.lower()}" data-desc="{desc.lower()}">
@@ -303,17 +359,12 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
     <table class="bench-workload-table">
       <thead>
         <tr>
-          <th>{th_platform}</th>
-          <th class="bench-xu-col">{th_xu}</th>
-          <th>{th_c}</th>
-          <th>{th_rust}</th>
-          <th>{th_swift}</th>
-          <th>{th_go}</th>
-          <th class="bench-ratio-col">{th_ratio}</th>
+          {''.join(th_cols)}
         </tr>
       </thead>
       <tbody>
-        {''.join(table_rows)}
+        {xu_row_html}
+        {''.join(other_rows_html)}
       </tbody>
     </table>
   </div>
@@ -360,92 +411,179 @@ def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool)
 
 
 def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
+    """Render memory footprint and binary size: platforms as columns (horizontal), languages as rows (vertical). Highlights per-platform best cells."""
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
 
-    th_platform = "Platform" if en else "目标平台"
-    th_chip = "Chip" if en else "芯片架构"
-    th_cold = "Cold" if en else "冷启动"
-    th_xu_rss = "Xu RSS" if en else "Xu 峰值常驻内存"
-    th_peer_rss = "Peers RSS" if en else "对照语言 RSS"
-    th_xu_size = "Xu Size" if en else "Xu 体积"
-    th_peer_size = "Peers Size" if en else "对照语言体积"
-    th_gc = "GC Architecture" if en else "内存管理架构"
+    # 计算各平台 RSS 和 Size 的单平台最小值
+    platform_min_rss = {}
+    platform_min_size = {}
 
-    tbody_rows = []
     for c in active_configs:
         pid = c["id"]
         p = platforms[pid]
+        fp_list = p.get("footprint", [])
+        rss_cands = []
+        size_cands = []
+        for f in fp_list:
+            r = parse_fp_min(f.get("rss"))
+            if r is not None and r > 0:
+                rss_cands.append(r)
+            s = parse_fp_min(f.get("size"))
+            if s is not None and s > 0:
+                size_cands.append(s)
+        if rss_cands:
+            platform_min_rss[pid] = min(rss_cands)
+        if size_cands:
+            platform_min_size[pid] = min(size_cands)
+
+    # 横向表头：6 个目标平台
+    th_cols_rss = [f'<th class="bench-td-lang-cell" style="width: 13%;">{"Language" if en else "实现语言"}</th>']
+    th_cols_size = [f'<th class="bench-td-lang-cell" style="width: 16%;">{"Language" if en else "实现语言"}</th>']
+    for c in active_configs:
         p_name = c["name_en"] if en else c["name_zh"]
         arch = c["arch_tag"]
-        chip = c["chip_en"] if en else c["chip_zh"]
         icon = c["icon"]
         arch_cls = "arch-arm" if "arm" in arch.lower() else "arch-x64"
-        startup_ms = p.get("startup_ms", 3.5)
-
-        fp_list = p.get("footprint", [])
-        xu_fp = next((f for f in fp_list if f["impl"] == "Xu"), None)
-        xu_rss = xu_fp["rss"] if xu_fp else "—"
-        xu_size = xu_fp["size"] if xu_fp else "—"
-        gc_text = xu_fp.get("gc_en" if en else "gc_zh", "Immix-GC") if xu_fp else "Immix-GC"
-
-        peer_fps = [f for f in fp_list if f["impl"] != "Xu"]
-        if peer_fps:
-            peer_rss_str = f"{min(f['rss'] for f in peer_fps)} ~ {max(f['rss'] for f in peer_fps)}"
-            peer_size_str = f"{min(f['size'] for f in peer_fps)} ~ {max(f['size'] for f in peer_fps)}"
-        else:
-            peer_rss_str = "—"
-            peer_size_str = "—"
-
-        tbody_rows.append(
-            f'<tr>'
-            f'  <td class="bench-td-platform-cell">'
-            f'    <div class="bench-td-platform">'
-            f'      <div class="bench-td-pname"><i class="xi {icon}"></i> <strong>{p_name}</strong> <span class="btn-arch {arch_cls}">{arch}</span></div>'
-            f'    </div>'
-            f'  </td>'
-            f'  <td><code>{chip}</code></td>'
-            f'  <td class="bench-xu-col"><strong>{startup_ms:.1f}ms</strong></td>'
-            f'  <td class="bench-xu-col"><strong>{xu_rss}</strong></td>'
-            f'  <td class="num">{peer_rss_str}</td>'
-            f'  <td class="bench-xu-col"><strong>{xu_size}</strong></td>'
-            f'  <td class="num">{peer_size_str}</td>'
-            f'  <td><small>{gc_text}</small></td>'
-            f'</tr>'
+        col_html_rss = (
+            f'<th class="bench-th-platform" style="width: 11.5%;">'
+            f'  <div class="bench-th-pname"><i class="xi {icon}"></i> <span>{p_name}</span> <span class="btn-arch {arch_cls}">{arch}</span></div>'
+            f'</th>'
         )
+        col_html_size = (
+            f'<th class="bench-th-platform" style="width: 14%;">'
+            f'  <div class="bench-th-pname"><i class="xi {icon}"></i> <span>{p_name}</span> <span class="btn-arch {arch_cls}">{arch}</span></div>'
+            f'</th>'
+        )
+        th_cols_rss.append(col_html_rss)
+        th_cols_size.append(col_html_size)
 
-    title = "Memory Footprint & Standalone Binary Size (All 6 Platforms)" if en else "全平台内存常驻与独立二进制体积横向综合评测"
-    desc = (
-        "Comparing Xu's resident memory (RSS, captured natively via wait4/Win32) and unstripped standalone binary size across all 6 OS and architecture targets:"
+    th_cols_rss.append(f'<th style="width: 18%; text-align: left; padding-left: 14px;">{"GC Architecture" if en else "内存管理机制"}</th>')
+
+    # 各语言配置定义
+    langs_def = [
+        ("xu", "Xu", "Xu", "零 GC · 编译期借用与 RAII 确定性析构", "Zero GC / RAII Scope Drop", True),
+        ("c", "C <small>-O3</small>", "Clang", "手动 free / 无运行时开销", "Manual free / Zero runtime", False),
+        ("rs", "Rust <small>-O3</small>", "rustc", "零 GC · 所有权生命周期与 Drop", "Zero GC / Ownership Drop", False),
+        ("swift", "Swift <small>-O3</small>", "Swift", "ARC 自动引用计数运行时", "ARC (Automatic Reference Counting)", False),
+        ("go", "Go <small>native</small>", "Go", "并发三色标记清除 GC 运行时", "Concurrent Tracing GC Runtime", False),
+    ]
+
+    rss_rows = []
+    size_rows = []
+
+    for cls_key, label, match_prefix, gc_zh, gc_en, is_xu in langs_def:
+        rss_cells = [f'<td class="bench-td-lang-cell"><strong class="bench-bar-lang {cls_key}">{label}</strong></td>' if is_xu else f'<td class="bench-td-lang-cell"><span class="bench-bar-lang {cls_key}">{label}</span></td>']
+        size_cells = [f'<td class="bench-td-lang-cell"><strong class="bench-bar-lang {cls_key}">{label}</strong></td>' if is_xu else f'<td class="bench-td-lang-cell"><span class="bench-bar-lang {cls_key}">{label}</span></td>']
+
+        for c in active_configs:
+            pid = c["id"]
+            p = platforms[pid]
+            fp_list = p.get("footprint", [])
+            fp = next((f for f in fp_list if match_prefix.lower() in f["impl"].lower()), None)
+            
+            if fp and fp.get("rss"):
+                val_rss = f"{fp['rss']} MiB"
+                num_rss = parse_fp_min(fp["rss"])
+                p_min = platform_min_rss.get(pid)
+                is_best = (num_rss is not None and p_min is not None and abs(num_rss - p_min) < 1e-4)
+
+                if is_best:
+                    best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>'
+                    rss_cells.append(
+                        f'<td class="bench-cell-best">'
+                        f'  <div class="bench-cell-wrap">'
+                        f'    <div class="bench-val-row">'
+                        f'      <strong class="bench-val-best">{val_rss}</strong>{best_pill}'
+                        f'    </div>'
+                        f'  </div>'
+                        f'</td>'
+                    )
+                elif is_xu:
+                    rss_cells.append(f'<td class="bench-xu-col"><strong>{val_rss}</strong></td>')
+                else:
+                    rss_cells.append(f'<td class="num">{val_rss}</td>')
+            else:
+                rss_cells.append('<td class="meta">—</td>')
+
+            if fp and fp.get("size"):
+                val_size = f"{fp['size']} KiB"
+                num_size = parse_fp_min(fp["size"])
+                p_min = platform_min_size.get(pid)
+                is_best = (num_size is not None and p_min is not None and abs(num_size - p_min) < 1e-4)
+
+                if is_best:
+                    best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>'
+                    size_cells.append(
+                        f'<td class="bench-cell-best">'
+                        f'  <div class="bench-cell-wrap">'
+                        f'    <div class="bench-val-row">'
+                        f'      <strong class="bench-val-best">{val_size}</strong>{best_pill}'
+                        f'    </div>'
+                        f'  </div>'
+                        f'</td>'
+                    )
+                elif is_xu:
+                    size_cells.append(f'<td class="bench-xu-col"><strong>{val_size}</strong></td>')
+                else:
+                    size_cells.append(f'<td class="num">{val_size}</td>')
+            else:
+                size_cells.append('<td class="meta">—</td>')
+
+        # 内存管理机制说明单元格
+        gc_text = gc_en if en else gc_zh
+        rss_cells.append(f'<td style="text-align: left; padding-left: 14px;"><small>{gc_text}</small></td>')
+
+        row_cls = ' class="bench-row-xu"' if is_xu else ''
+        rss_rows.append(f'<tr{row_cls}>{"".join(rss_cells)}</tr>')
+        size_rows.append(f'<tr{row_cls}>{"".join(size_cells)}</tr>')
+
+    sec_title = "Memory Footprint & Binary Size (All Platforms & Languages)" if en else "全平台内存常驻与独立二进制体积横向综合评测"
+    sec_desc = (
+        "Accurately comparing Xu against C, Rust, Swift, and Go across all 6 OS and architecture platforms (wait4/Win32 native capture):"
         if en
-        else "全 6 组目标操作系统与芯片架构下，Xu 峰值常驻内存（系统调用 wait4/Win32 原生捕获）与未裁剪独立二进制体积横向对比："
+        else "在全 6 组操作系统与芯片架构下，横向对照各平台、纵向对照各语言的峰值常驻内存（wait4/Win32 原生捕获）与未裁剪独立体积："
     )
+
+    h3_rss = "1. Peak Resident Memory across Platforms & Languages (RSS, lower is better)" if en else "1. 各语言在全平台的峰值常驻内存横向对照 (Peak RSS，越低越好)"
+    h3_size = "2. Standalone Binary Size across Platforms & Languages (Unstripped on-disk size, smaller is better)" if en else "2. 各语言在全平台的未裁剪独立二进制体积横向对照 (Binary Size，越小越好)"
 
     return f"""
 <div class="bench-cat-section bench-sec-footprint">
   <div class="bench-cat-section-header">
     <div class="bench-cat-title-wrap">
       <span class="bench-cat-icon">{SVG_BRAIN}</span>
-      <h3 class="bench-cat-title">{title}</h3>
-      <span class="bench-cat-count">{'System Footprint' if en else '系统级开销'}</span>
+      <h3 class="bench-cat-title">{sec_title}</h3>
+      <span class="bench-cat-count">{'All Peers Compared' if en else '5 语言全平台横测'}</span>
     </div>
-    <p class="bench-cat-desc">{desc}</p>
+    <p class="bench-cat-desc">{sec_desc}</p>
   </div>
+
+  <!-- 1. RSS 对比表：横向各平台，纵向各语言 -->
+  <div class="bench-subtable-title"><strong>{h3_rss}</strong></div>
+  <div class="bench-workload-table-wrap" style="margin-bottom: 24px;">
+    <table class="bench-workload-table">
+      <thead>
+        <tr>
+          {''.join(th_cols_rss)}
+        </tr>
+      </thead>
+      <tbody>
+        {''.join(rss_rows)}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 2. Binary Size 对比表：横向各平台，纵向各语言 -->
+  <div class="bench-subtable-title"><strong>{h3_size}</strong></div>
   <div class="bench-workload-table-wrap">
     <table class="bench-workload-table">
       <thead>
         <tr>
-          <th>{th_platform}</th>
-          <th>{th_chip}</th>
-          <th>{th_cold}</th>
-          <th class="bench-xu-col">{th_xu_rss}</th>
-          <th>{th_peer_rss}</th>
-          <th class="bench-xu-col">{th_xu_size}</th>
-          <th>{th_peer_size}</th>
-          <th>{th_gc}</th>
+          {''.join(th_cols_size)}
         </tr>
       </thead>
       <tbody>
-        {''.join(tbody_rows)}
+        {''.join(size_rows)}
       </tbody>
     </table>
   </div>
