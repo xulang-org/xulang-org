@@ -99,6 +99,158 @@ def render_cross_arch_table(platforms: dict, en: bool) -> str:
 """
 
 
+
+def render_visual_charts(benches: list[dict], footprint: list[dict], en: bool) -> str:
+    key_chart_items = [
+        ("startup", "进程启动 / 空 main", "Process startup / empty main", "越短越快 (ms)", "lower is better (ms)"),
+        ("loop_sum", "整数累加循环 (1 亿次)", "Integer loop accumulation (100M)", "越短越快 (ms)", "lower is better (ms)"),
+        ("matmul", "矩阵乘法 (i64 matmul)", "Matrix multiplication (i64)", "越短越快 (ms)", "lower is better (ms)"),
+        ("chan_ping", "Channel 协程流水线", "Channel / Coroutines ping-pong", "越短越快 (ms)", "lower is better (ms)"),
+        ("aes128_encrypt", "AES-128 软件加密", "AES-128 software encrypt", "越短越快 (ms)", "lower is better (ms)"),
+        ("sha256_chain", "SHA-256 散列链", "SHA-256 hash chain", "越短越快 (ms)", "lower is better (ms)"),
+    ]
+
+    cards = []
+    for b_name, title_zh, title_en, unit_zh, unit_en in key_chart_items:
+        b = next((x for x in benches if x["name"] == b_name), None)
+        if not b:
+            continue
+        title = title_en if en else title_zh
+        unit = unit_en if en else unit_zh
+        
+        series = []
+        if b.get("xu_wall_ms") is not None:
+            series.append(("Xu", "xu", b["xu_wall_ms"]))
+        if b.get("c_wall_ms") is not None:
+            series.append(("C", "c", b["c_wall_ms"]))
+        if b.get("rust_wall_ms") is not None:
+            series.append(("Rust", "rs", b["rust_wall_ms"]))
+        if b.get("go_wall_ms") is not None:
+            series.append(("Go", "go", b["go_wall_ms"]))
+        if b.get("swift_wall_ms") is not None:
+            series.append(("Swift", "swift", b["swift_wall_ms"]))
+        
+        if not series:
+            continue
+            
+        min_val = min(s[2] for s in series)
+        max_val = max(s[2] for s in series)
+        if max_val <= 0:
+            max_val = 1.0
+
+        bar_rows = []
+        for label, cls, val in series:
+            pct = max(10, int((val / max_val) * 100))
+            is_fastest = (val == min_val)
+            lead_tag = f' <span class="lead-tag">{"fastest" if en else "最快"}</span>' if is_fastest else ""
+            bar_rows.append(
+                f'<div class="bench-bar-row">'
+                f'<span class="bench-bar-lang {cls}">{label}</span>'
+                f'<div class="bench-bar-track">'
+                f'<div class="bench-bar-fill {cls}" style="width: {pct}%;"></div>'
+                f'</div>'
+                f'<span class="bench-bar-val"><strong>{val:.2f}ms</strong>{lead_tag}</span>'
+                f'</div>'
+            )
+
+        card_html = (
+            f'<div class="bench-chart-card">'
+            f'<div class="bench-chart-card-header">'
+            f'<span class="bench-chart-card-title"><code>{b_name}</code> · {title}</span>'
+            f'<span class="bench-chart-card-unit">{unit}</span>'
+            f'</div>'
+            f'<div class="bench-chart-bars">'
+            f'{"".join(bar_rows)}'
+            f'</div>'
+            f'</div>'
+        )
+        cards.append(card_html)
+
+    # Footprint visual card: Memory & Binary size
+    if footprint:
+        # Peak RSS bar chart
+        rss_rows = []
+        parsed_fps = []
+        for fp in footprint:
+            raw_rss = fp.get("rss", "0").split("–")[-1].replace("MiB", "").strip()
+            raw_size = fp.get("size", "0").split("–")[-1].replace("KiB", "").strip()
+            try:
+                parsed_fps.append((fp["impl"], float(raw_rss), float(raw_size)))
+            except Exception:
+                pass
+        
+        if parsed_fps:
+            max_rss = max(p[1] for p in parsed_fps) or 1.0
+            min_rss = min(p[1] for p in parsed_fps)
+            for impl, rss_val, _ in parsed_fps:
+                pct = max(10, int((rss_val / max_rss) * 100))
+                cls = "xu" if "Xu" in impl else ("rs" if "Rust" in impl else ("go" if "Go" in impl else "c"))
+                is_best = (rss_val == min_rss)
+                tag = f' <span class="lead-tag">{"lowest" if en else "最低"}</span>' if is_best else ""
+                rss_rows.append(
+                    f'<div class="bench-bar-row">'
+                    f'<span class="bench-bar-lang {cls}">{impl.split()[0]}</span>'
+                    f'<div class="bench-bar-track">'
+                    f'<div class="bench-bar-fill {cls}" style="width: {pct}%;"></div>'
+                    f'</div>'
+                    f'<span class="bench-bar-val"><strong>{rss_val:.1f} MiB</strong>{tag}</span>'
+                    f'</div>'
+                )
+            cards.append(
+                f'<div class="bench-chart-card">'
+                f'<div class="bench-chart-card-header">'
+                f'<span class="bench-chart-card-title">🧠 {"峰值内存开销 (Peak RSS)" if not en else "Peak Resident Memory (RSS)"}</span>'
+                f'<span class="bench-chart-card-unit">{"越低越好 (MiB)" if not en else "lower is better"}</span>'
+                f'</div>'
+                f'<div class="bench-chart-bars">{"".join(rss_rows)}</div>'
+                f'</div>'
+            )
+
+            max_size = max(p[2] for p in parsed_fps) or 1.0
+            min_size = min(p[2] for p in parsed_fps)
+            size_rows = []
+            for impl, _, size_val in parsed_fps:
+                pct = max(8, int((size_val / max_size) * 100))
+                cls = "xu" if "Xu" in impl else ("rs" if "Rust" in impl else ("go" if "Go" in impl else "c"))
+                is_best = (size_val == min_size)
+                tag = f' <span class="lead-tag">{"smallest" if en else "最精炼"}</span>' if is_best else ""
+                size_rows.append(
+                    f'<div class="bench-bar-row">'
+                    f'<span class="bench-bar-lang {cls}">{impl.split()[0]}</span>'
+                    f'<div class="bench-bar-track">'
+                    f'<div class="bench-bar-fill {cls}" style="width: {pct}%;"></div>'
+                    f'</div>'
+                    f'<span class="bench-bar-val"><strong>{size_val:.0f} KiB</strong>{tag}</span>'
+                    f'</div>'
+                )
+            cards.append(
+                f'<div class="bench-chart-card">'
+                f'<div class="bench-chart-card-header">'
+                f'<span class="bench-chart-card-title">📦 {"二进制独立体积 (Binary Size)" if not en else "Stand-alone Binary Size"}</span>'
+                f'<span class="bench-chart-card-unit">{"越小越好 (KiB)" if not en else "lower is better"}</span>'
+                f'</div>'
+                f'<div class="bench-chart-bars">{"".join(size_rows)}</div>'
+                f'</div>'
+            )
+
+    dash_title = "⚡ 核心评测场景直观横向图形看板" if not en else "⚡ Core Workloads Visual Benchmark Dashboard"
+    dash_desc = (
+        "柱状条长度对应实测耗时或资源消耗，条形越短越快、内存与体积越精炼（各语言均开启最高级优化）："
+        if not en
+        else "Bar width corresponds directly to measured wall time or resource usage. Shorter is faster and more compact:"
+    )
+
+    return f"""
+<div class="bench-visual-dashboard">
+  <div class="bench-chart-section-title"><i class="xi xi-analytics xi-brand"></i> {dash_title}</div>
+  <p class="meta">{dash_desc}</p>
+  <div class="bench-chart-grid">
+    {''.join(cards)}
+  </div>
+</div>
+"""
+
+
 def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is_default: bool) -> str:
     name = p_data["name_en"] if en else p_data["name_zh"]
     chip = p_data.get("chip", p_data.get("arch", ""))
@@ -224,6 +376,8 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
       <p>{p4_body}</p>
     </article>
   </section>
+
+  {render_visual_charts(benches, footprint, en)}
 
   <h2>{'Workload Benchmarks (Wall Time, ms)' if en else '47 项业务与算法全量横测数据 (耗时中位数，ms)'}</h2>
   <p class="meta">{'Comparing Xu with C, Rust, Go, and Swift under ' + name + '. Ratio is calculated as Xu / Best Peer; ≤1.00× means Xu is equal or faster.' if en else '在 ' + name + ' 环境下与 C、Rust、Go、Swift 横向对比。比率计算为 Xu / 最佳对照组；≤1.00× 表示 Xu 相当或更快。'}</p>

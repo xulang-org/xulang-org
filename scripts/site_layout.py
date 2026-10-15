@@ -89,6 +89,7 @@ def sidebar(route: str, en: bool) -> str:
     elif rest == '/blog' or rest.startswith('/blog/'):
         groups.append(('xi-chat', 'Blog', [
             (prefix + '/blog', 'Index' if en else '博客索引'),
+            (prefix + '/blog/xu-0-8-8', 'Xu 0.8.8'),
             (prefix + '/blog/xu-0-8-4', 'Xu 0.8.x · 0.8.4'),
             (prefix + '/blog/packages-0-1-1', 'packages 0.1.1'),
             (prefix + '/blog/xu-0-1-0', 'Xu 0.1.0'),

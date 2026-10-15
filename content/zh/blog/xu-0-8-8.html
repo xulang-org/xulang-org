@@ -1,0 +1,40 @@
+<!--title: Xu 0.8.8：全量 47 项跨语言横测、原生 Setup 离线安装器与 WebAssembly 支持-->
+<p class="crumb"><a href="/blog">博客</a> / 版本进展</p>
+<p class="meta">2026-10-14 · 版本发布</p>
+<h1>Xu 0.8.8：全量 47 项跨语言横测、原生 Setup 离线安装器与 WebAssembly 支持</h1>
+<p class="banner">本文记录 Xu 0.8.8 正式版本的关键特性与生态进展。已发布二进制产物与 SHA-256 校验签名以 <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a> 为准。</p>
+<p>Xu 迎来 0.8.8 重要里程碑。在延续“零 GC、单所有权与确定性资源生命周期”核心设计的同时，本版本重点上线了双架构 47 项跨语言全量基准测试专区、开箱即用的原生 Setup 离线图形与静默安装程序、WebAssembly (wasm32) 目标支持与浏览器端无后端交互演练场，并全面升级了官网交互体验。</p>
+<h2>47 项全量跨语言性能与资源基准测试</h2>
+<p>为客观呈现 Xu 语言在系统编程领域真实的吞吐效率与物理内存边界，官网正式推出 <a href="/benchmarks">47 项全量跨语言性能与资源横测专区</a>。测试覆盖 Apple Silicon M 系列 ARM64 与 Intel/AMD x86_64 双硬件架构，对标 C++20、Rust、Go、Java、Node.js 与 Python 六大主流工业语言：</p>
+<ul>
+<li><strong>全场景覆盖</strong>：包含算术微基准、递归调用、字符串解析、哈希表与树型遍历、JSON/二进制编解码、高频素数与矩阵计算、协程/线程并发调度，以及文件流式 I/O。</li>
+<li><strong>双维度度量</strong>：不仅精确记录各语言的端到端执行时间（Wall Time），还实时捕获真实物理驻留集峰值内存（RSS Peak Memory）。横测结果验证了 Xu 零 GC 编译期内存管理在极端高并发与紧凑内存受限场景下的突出优势。</li>
+<li><strong>开源可复现</strong>：所有测试源码与测量工具链均已开源，支持一键在目标硬件上本地复现与交叉比对。</li>
+</ul>
+<h2>开箱即用原生 Setup 离线安装程序</h2>
+<p>0.8.8 正式引入开箱即用的原生 Setup 单文件离线安装包（由配套 <code>xu-setup</code> 驱动），彻底摆脱了此前需要依赖 Python、Shell 脚本或预置环境的限制：</p>
+<ul>
+<li><strong>Windows</strong>：提供单文件 <code>xu-setup-windows-x64.exe</code>。直接双击即可启动自绘图形向导，自动配置注册表用户 <code>Path</code> 与 <code>XU_ROOT</code>，无 PowerShell 脚本执行策略拦截；终端亦支持 <code>.\xu-setup-windows-x64.exe -y</code> 静默安装。</li>
+<li><strong>macOS</strong>：提供原生图形安装向导 <code>xu-macos-arm64.pkg</code>，自动配置 <code>/etc/paths.d/xu</code>，全系统任意终端立即可用；同时提供免提权的独立安装程序 <code>xu-setup-macos-arm64</code>。</li>
+<li><strong>Linux</strong>：提供单文件自解压二进制 <code>xu-setup-linux-x64</code> 与 <code>xu-setup-linux-arm64</code>，执行后自动部署并写入用户 Shell 环境配置。</li>
+<li><strong>在线升级</strong>：已安装环境可随时执行 <code>xu up</code> 或 <code>xu update</code>，直接从 GitHub 下载匹配当前系统的 Release 包并原子替换工具链。</li>
+</ul>
+<h2>WebAssembly (wasm32) 目标与浏览器交互演练场</h2>
+<p>编译器新增对 <code>--target wasm32</code> 目标的原生 AOT 编译支持，能够将 Xu 源码直接输出为标准的 WebAssembly 二进制模块（<code>.wasm</code>），无须依赖外部重型打包工具链：</p>
+<pre><code>xu build app/main.xu --target wasm32 --output dist/app.wasm</code></pre>
+<p>依托该底层能力，官网正式上线 <a href="/playground">WebAssembly 在线演练场</a>。演练场在纯浏览器客户端内加载基于 WebAssembly 的 Xu 运行时沙箱，零后端依赖，支持协程并发、通道收发、借用检查与模式匹配等完整语法演练，并提供丰富的官方实战示例库。</p>
+<h2>协程并发与运行时加固</h2>
+<p>0.8.8 进一步优化了 <code>xu f(args)</code> 轻量级协程与 <code>chan</code> 通道的调度与通信语义：</p>
+<ul>
+<li>优化了有缓冲与无缓冲通道的会合握手机制，降低上下文切换与同步开销；</li>
+<li>完善了 <code>close</code> 与 <code>select</code> 多路复用的确定性错误报告与死锁诊断；</li>
+<li>加固了各主流操作系统在多核并发调度下的平台运行时边界。</li>
+</ul>
+<h2>体验升级：精炼导航、明亮宣纸主题与文档同步</h2>
+<p>伴随 0.8.8 发布，官网完成了全站导航与视觉设计的整体升级：</p>
+<ul>
+<li><strong>精炼顶栏菜单</strong>：主导航精简为“文档、API、演练场、横测、下载、博客”6 大核心入口，移动端新增平滑滑出的汉堡折叠抽屉导航与半透明遮罩；</li>
+<li><strong>默认明亮宣纸主题</strong>：全站默认启用清新护眼的 Light 明亮宣纸主题，同时完整保留 Dark 深色主题的无缝切换与持久化偏好；</li>
+<li><strong>全量文档同步</strong>：安装指南、CLI 命令、模块依赖、语言规范快照与 157 个标准库/扩展包 API 声明均已同步至最新 v0.8.8 状态。</li>
+</ul>
+<p><a href="/benchmarks">47 项全量跨语言性能与资源横测</a> · <a href="/playground">WebAssembly 交互演练场</a> · <a href="/download">下载 Xu {{xu_version}}</a> · <a href="/docs/status">限制与现状</a></p>
