@@ -184,12 +184,13 @@ def render_visual_charts(benches: list[dict], footprint: list[dict], en: bool) -
             min_rss = min(p[1] for p in parsed_fps)
             for impl, rss_val, _ in parsed_fps:
                 pct = max(10, int((rss_val / max_rss) * 100))
-                cls = "xu" if "Xu" in impl else ("rs" if "Rust" in impl else ("go" if "Go" in impl else "c"))
+                cls = "xu" if "Xu" in impl else ("rs" if ("Rust" in impl or "rustc" in impl) else ("swift" if "Swift" in impl else ("go" if "Go" in impl else "c")))
                 is_best = (rss_val == min_rss)
                 tag = f' <span class="lead-tag">{"lowest" if en else "最低"}</span>' if is_best else ""
+                disp_impl = impl.replace("Swift -O", "Swift -O3").replace("Go build", "Go")
                 rss_rows.append(
                     f'<div class="bench-bar-row">'
-                    f'<span class="bench-bar-lang {cls}">{impl.split()[0]}</span>'
+                    f'<span class="bench-bar-lang {cls}">{disp_impl}</span>'
                     f'<div class="bench-bar-track">'
                     f'<div class="bench-bar-fill {cls}" style="width: {pct}%;"></div>'
                     f'</div>'
@@ -211,12 +212,13 @@ def render_visual_charts(benches: list[dict], footprint: list[dict], en: bool) -
             size_rows = []
             for impl, _, size_val in parsed_fps:
                 pct = max(8, int((size_val / max_size) * 100))
-                cls = "xu" if "Xu" in impl else ("rs" if "Rust" in impl else ("go" if "Go" in impl else "c"))
+                cls = "xu" if "Xu" in impl else ("rs" if ("Rust" in impl or "rustc" in impl) else ("swift" if "Swift" in impl else ("go" if "Go" in impl else "c")))
                 is_best = (size_val == min_size)
                 tag = f' <span class="lead-tag">{"smallest" if en else "最精炼"}</span>' if is_best else ""
+                disp_impl = impl.replace("Swift -O", "Swift -O3").replace("Go build", "Go")
                 size_rows.append(
                     f'<div class="bench-bar-row">'
-                    f'<span class="bench-bar-lang {cls}">{impl.split()[0]}</span>'
+                    f'<span class="bench-bar-lang {cls}">{disp_impl}</span>'
                     f'<div class="bench-bar-track">'
                     f'<div class="bench-bar-fill {cls}" style="width: {pct}%;"></div>'
                     f'</div>'
@@ -301,9 +303,10 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
     th_category = "Category" if en else "场景类别"
     th_workload = "Workload & Description" if en else "评测负载与说明"
     th_xu = "Xu (ms)"
+    th_c = "C (-O3, ms)"
+    th_rust = "Rust (-O3, ms)"
+    th_swift = "Swift (-O3, ms)"
     th_go = "Go (ms)"
-    th_c = "C Best (ms)" if en else "C 最佳 (ms)"
-    th_rust = "Rust Best (ms)" if en else "Rust 最佳 (ms)"
     th_ratio = "Xu / Best Peer" if en else "Xu / 最佳对照"
 
     table_rows = []
@@ -314,26 +317,28 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
             continue
         cat_label = categories.get(ck, {}).get("en" if en else "zh", ck)
         table_rows.append(
-            f'<tr class="bench-cat-header"><th colspan="7">{cat_label}</th></tr>'
+            f'<tr class="bench-cat-header"><th colspan="8">{cat_label}</th></tr>'
         )
         for b in cat_benches:
             desc = b["desc_en"] if en else b["desc_zh"]
-            xu_str = format_ms(b["xu_wall_ms"])
-            go_str = format_ms(b["go_wall_ms"])
-            c_str = format_ms(b["c_wall_ms"])
-            rust_str = format_ms(b["rust_wall_ms"])
-            peers = [v for v in [b["c_wall_ms"], b["rust_wall_ms"], b["go_wall_ms"]] if v is not None and v > 0]
+            xu_str = format_ms(b.get("xu_wall_ms"))
+            c_str = format_ms(b.get("c_wall_ms"))
+            rust_str = format_ms(b.get("rust_wall_ms"))
+            swift_str = format_ms(b.get("swift_wall_ms"))
+            go_str = format_ms(b.get("go_wall_ms"))
+            peers = [v for v in [b.get("c_wall_ms"), b.get("rust_wall_ms"), b.get("swift_wall_ms"), b.get("go_wall_ms")] if v is not None and v > 0]
             best_peer = min(peers) if peers else None
-            ratio = round(b["xu_wall_ms"] / best_peer, 2) if best_peer else None
+            ratio = round(b["xu_wall_ms"] / best_peer, 2) if (best_peer and b.get("xu_wall_ms")) else None
             badge = format_ratio_badge(ratio)
             table_rows.append(
                 f'<tr>'
                 f'<td><code>{b["category"]}</code></td>'
                 f'<td><strong><code>{b["name"]}</code></strong><div class="bench-desc">{desc}</div></td>'
                 f'<td class="bench-xu-col"><strong>{xu_str}</strong></td>'
-                f'<td>{go_str}</td>'
                 f'<td>{c_str}</td>'
                 f'<td>{rust_str}</td>'
+                f'<td>{swift_str}</td>'
+                f'<td>{go_str}</td>'
                 f'<td class="bench-ratio-col">{badge}</td>'
                 f'</tr>'
             )
@@ -345,7 +350,7 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
     th_gc = "GC Architecture" if en else "内存管理架构"
 
     fp_tbody = "".join(
-        f'<tr><td><strong>{item["impl"]}</strong></td><td class="num">{item["rss"]}</td><td class="num">{item["size"]}</td><td>{item["gc_en" if en else "gc_zh"]}</td></tr>'
+        f'<tr><td><strong>{item["impl"].replace("Swift -O", "Swift -O3")}</strong></td><td class="num">{item["rss"]}</td><td class="num">{item["size"]}</td><td>{item["gc_en" if en else "gc_zh"]}</td></tr>'
         for item in footprint
     )
 
@@ -380,7 +385,7 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
   {render_visual_charts(benches, footprint, en)}
 
   <h2>{'Workload Benchmarks (Wall Time, ms)' if en else '47 项业务与算法全量横测数据 (耗时中位数，ms)'}</h2>
-  <p class="meta">{'Comparing Xu with C, Rust, Go, and Swift under ' + name + '. Ratio is calculated as Xu / Best Peer; ≤1.00× means Xu is equal or faster.' if en else '在 ' + name + ' 环境下与 C、Rust、Go、Swift 横向对比。比率计算为 Xu / 最佳对照组；≤1.00× 表示 Xu 相当或更快。'}</p>
+  <p class="meta">{'Comparing Xu with C (-O3), Rust (-O3), Swift (-O3), and Go under ' + name + '. Ratio is calculated as Xu / Best Peer; ≤1.00× means Xu is equal or faster.' if en else '在 ' + name + ' 环境下与 C (-O3)、Rust (-O3)、Swift (-O3)、Go 横向对比（各原生对照语言均启用最高编译优化）。比率计算为 Xu / 最佳对照组；≤1.00× 表示 Xu 相当或更快。'}</p>
 
   <div class="doc-table-wrap bench-table-wrap">
     <table class="bench-table">
@@ -389,9 +394,10 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
           <th>{th_category}</th>
           <th>{th_workload}</th>
           <th class="bench-xu-col">{th_xu}</th>
-          <th>{th_go}</th>
           <th>{th_c}</th>
           <th>{th_rust}</th>
+          <th>{th_swift}</th>
+          <th>{th_go}</th>
           <th class="bench-ratio-col">{th_ratio}</th>
         </tr>
       </thead>
@@ -444,11 +450,11 @@ def render_page(data: dict, lang: str) -> str:
 
     lead_text = (
         f"Rigorous, reproducible cross-language benchmarks comparing Xu v{meta['xu_version']} "
-        f"against C (Clang -O3), Rust (rustc -O3), Go (go build), and Swift (-O) across 47 real-world algorithms. "
+        f"against C (Clang -O3), Rust (rustc -O3), Swift (swiftc -O3), and Go (go build) across 47 real-world algorithms. "
         f"Concurrently verified across dual architectures (ARM64 & x86_64) on macOS, Linux, and Windows."
         if en
         else f"严谨、可复现的跨语言横向评测：在 47 个真实算法与业务负载下，将 Xu v{meta['xu_version']} "
-        f"与 C (Clang -O3)、Rust (rustc -O3)、Go (go build) 及 Swift (-O) 进行同算法全维度对照。"
+        f"与 C (Clang -O3)、Rust (rustc -O3)、Swift (swiftc -O3) 及 Go (go build) 进行同算法全维度对照。"
         f"覆盖 ARM64 与 x86_64 双架构，以及 macOS、Linux、Windows 三大操作系统自动化 CI 实测。"
     )
 
@@ -498,6 +504,7 @@ def render_page(data: dict, lang: str) -> str:
     method_p1 = (
         "<ul>"
         "<li><b>Equal algorithm parity</b>: Every workload implements identical mathematical algorithms, data structures, and iteration counts across all languages.</li>"
+        "<li><b>Peak optimization flags</b>: All native peers compiled under peak release optimization flags (Clang <code>-O3</code>, rustc <code>-O3 / --release</code>, Swift <code>-O</code> equivalent to -O3, Go native release build).</li>"
         "<li><b>Strict verification</b>: Every iteration verifies program stdout fingerprint and return code to prevent dead-code elimination cheats.</li>"
         "<li><b>Wall & CPU timing</b>: 7 iterations per test; reports median wall time and peak resident set size (RSS, wait4 on Unix, Win32 API on Windows).</li>"
         "<li><b>Dual-Architecture Matrix</b>: Native execution on ARM64 (Apple Silicon / Neoverse) and x86_64 (Intel / AMD) across macOS, Linux, and Windows runners.</li>"
@@ -506,6 +513,7 @@ def render_page(data: dict, lang: str) -> str:
         if en
         else "<ul>"
         "<li><b>同算法等价实现</b>：所有横测均采用相同的数据结构、数学算法与循环迭代规模，拒绝峰值特化。</li>"
+        "<li><b>全量最高编译优化</b>：所有原生对比语言均开启官方最高级别优化（Clang <code>-O3</code>、rustc <code>-O3 / --release</code>、Swift <code>-O</code> 即等价 -O3、Go 原生编译优化），统一处于激进优化水平。</li>"
         "<li><b>严苛输出指纹校验</b>：每次运行均严格比对 stdout 黄金校验码与退出码，杜绝无意义的死代码剪除与假跑。</li>"
         "<li><b>稳健采样方法</b>：每个程序重复运行 7 次，取 wall 耗时与 CPU 耗时中位数；通过 Unix wait4 与 Windows 原生 API 捕获真实峰值常驻内存（RSS）。</li>"
         "<li><b>双架构完整覆盖</b>：原生支持 ARM64（Apple Silicon / Neoverse）与 x86_64（Intel / AMD）硬件，并在 macOS、Linux、Windows 环境下全面实测。</li>"
