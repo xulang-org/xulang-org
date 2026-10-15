@@ -8,6 +8,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DATA_FILE = ROOT / "www/benchmarks.json"
 
+SVG_BOLT = '<svg class="bench-icon bench-icon-bolt" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'
+SVG_BRAIN = '<svg class="bench-icon bench-icon-brain" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M12 18v4"/><path d="M12 5V2"/></svg>'
+SVG_BOX = '<svg class="bench-icon bench-icon-box" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>'
+
 
 def format_ms(val: float | None) -> str:
     if val is None:
@@ -70,7 +74,7 @@ def render_cross_arch_table(platforms: dict, en: bool) -> str:
                 row_cols.append("<td>—</td>")
         rows.append(f"<tr>{''.join(row_cols)}</tr>")
 
-    title = "⚡ Multi-Architecture & Cross-OS Overview (Xu Wall Time, ms)" if en else "⚡ 双架构与多操作系统性能横向总览 (Xu 运行耗时，ms)"
+    title = f"{SVG_BOLT} Multi-Architecture & Cross-OS Overview (Xu Wall Time, ms)" if en else f"{SVG_BOLT} 双架构与多操作系统性能横向总览 (Xu 运行耗时，ms)"
     lead = (
         "Performance parity across ARM64 (Apple Silicon, Neoverse) and x86_64 (Intel, AMD) on macOS, Linux, and Windows:"
         if en
@@ -200,7 +204,7 @@ def render_visual_charts(benches: list[dict], footprint: list[dict], en: bool) -
             cards.append(
                 f'<div class="bench-chart-card">'
                 f'<div class="bench-chart-card-header">'
-                f'<span class="bench-chart-card-title">🧠 {"峰值内存开销 (Peak RSS)" if not en else "Peak Resident Memory (RSS)"}</span>'
+                f'<span class="bench-chart-card-title">{SVG_BRAIN} {"峰值内存开销 (Peak RSS)" if not en else "Peak Resident Memory (RSS)"}</span>'
                 f'<span class="bench-chart-card-unit">{"越低越好 (MiB)" if not en else "lower is better"}</span>'
                 f'</div>'
                 f'<div class="bench-chart-bars">{"".join(rss_rows)}</div>'
@@ -228,14 +232,14 @@ def render_visual_charts(benches: list[dict], footprint: list[dict], en: bool) -
             cards.append(
                 f'<div class="bench-chart-card">'
                 f'<div class="bench-chart-card-header">'
-                f'<span class="bench-chart-card-title">📦 {"二进制独立体积 (Binary Size)" if not en else "Stand-alone Binary Size"}</span>'
+                f'<span class="bench-chart-card-title">{SVG_BOX} {"二进制独立体积 (Binary Size)" if not en else "Stand-alone Binary Size"}</span>'
                 f'<span class="bench-chart-card-unit">{"越小越好 (KiB)" if not en else "lower is better"}</span>'
                 f'</div>'
                 f'<div class="bench-chart-bars">{"".join(size_rows)}</div>'
                 f'</div>'
             )
 
-    dash_title = "⚡ 核心评测场景直观横向图形看板" if not en else "⚡ Core Workloads Visual Benchmark Dashboard"
+    dash_title = f"{SVG_BOLT} 核心评测场景直观横向图形看板" if not en else f"{SVG_BOLT} Core Workloads Visual Benchmark Dashboard"
     dash_desc = (
         "柱状条长度对应实测耗时或资源消耗，条形越短越快、内存与体积越精炼（各语言均开启最高级优化）："
         if not en
@@ -244,7 +248,7 @@ def render_visual_charts(benches: list[dict], footprint: list[dict], en: bool) -
 
     return f"""
 <div class="bench-visual-dashboard">
-  <div class="bench-chart-section-title"><i class="xi xi-analytics xi-brand"></i> {dash_title}</div>
+  <div class="bench-chart-section-title">{dash_title}</div>
   <p class="meta">{dash_desc}</p>
   <div class="bench-chart-grid">
     {''.join(cards)}

@@ -70,7 +70,7 @@
           ready = true;
           button.disabled = false;
           label(false);
-          status(text('就绪 · Ctrl/⌘ + Enter 运行', 'Ready · Ctrl/⌘ + Enter to run'));
+          status(text('就绪 · Ctrl / Cmd + Enter 运行', 'Ready · Ctrl / Cmd + Enter to run'));
         } else if (result.type === 'result') {
           running = false;
           label(false);
@@ -107,7 +107,7 @@
         source.value = example.source;
         if (help) help.textContent = example.description[en ? 'en' : 'zh'];
         show(text('点击「运行代码」查看结果。', 'Click Run Code to see the result.'), false);
-        if (ready && !running) status(text('就绪 · Ctrl/⌘ + Enter 运行', 'Ready · Ctrl/⌘ + Enter to run'));
+        if (ready && !running) status(text('就绪 · Ctrl / Cmd + Enter 运行', 'Ready · Ctrl / Cmd + Enter to run'));
       });
     }
     function load() {
