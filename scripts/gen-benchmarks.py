@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_FILE = ROOT / "www/benchmarks.json"
@@ -498,43 +499,6 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
     benches = p_data.get("benches", [])
     footprint = p_data.get("footprint", [])
 
-    # 4 Highlights for this platform
-    p1_title = "Supersonic Cold Startup" if en else "极速进程冷启动"
-    p1_body = (
-        f"Empty main / startup finishes in <b>{startup_ms:.1f}ms</b>. Native AOT Mach-O/ELF/PE "
-        "executable bypasses heavy VM initialization, outperforming Go."
-        if en
-        else f"空 main 进程启动仅需 <b>{startup_ms:.1f}ms</b>。纯原生 AOT 编译直接执行目标平台机器码，"
-        "无庞大运行时初始化，冷启动耗时显著领先 Go。"
-    )
-
-    p2_title = "Zero GC & Low RSS" if en else "零 GC 确定性低内存"
-    p2_body = (
-        f"Peak resident memory stays strictly within <b>{rss_range}</b> across all 47 workloads. "
-        "Compile-time borrow check and RAII drop eliminate Stop-The-World GC memory bloat."
-        if en
-        else f"全部 47 个高频负载的峰值常驻内存（RSS）稳定在 <b>{rss_range}</b> 极低水位。"
-        "编译期所有权借用检查与确定性 RAII 析构彻底消除 GC 停顿与内存膨胀。"
-    )
-
-    p3_title = "Ultra-Compact Binaries" if en else "极致轻量产物体积"
-    p3_body = (
-        f"On-disk executable sizes range between <b>{size_range}</b> (unstripped). "
-        "Zero hidden runtime bloat, producing binaries up to 50× smaller than Go."
-        if en
-        else f"未裁剪符号的原生独立二进制仅为 <b>{size_range}</b>。"
-        "零冗余运行时打包，独立产物体积仅为 Go 编译产物的几十分之一。"
-    )
-
-    p4_title = "Lightweight Channels" if en else "高效并发与 Channel"
-    p4_body = (
-        "First-class user-space coroutines and channel scheduling achieve <b>22.1ms</b> in pipeline ping-pong, "
-        "fully competitive with Go and significantly faster than thread pools."
-        if en
-        else "原生用户态协程调度与类型安全 Channel 在 12.5 万次收发流水线中仅耗时 <b>22.1ms</b>，"
-        "与 Go 处于同等极速梯队，显著优于重量级线程模型。"
-    )
-
     # Table headers
     th_category = "Category" if en else "场景类别"
     th_workload = "Workload & Description" if en else "评测负载与说明"
@@ -620,25 +584,6 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
     </div>
   </div>
 
-  <section class="pillars bench-pillars">
-    <article class="pillar">
-      <h2><span><i class="xi xi-bolt xi-brand"></i></span> {p1_title}</h2>
-      <p>{p1_body}</p>
-    </article>
-    <article class="pillar">
-      <h2><span><i class="xi xi-ownership xi-green"></i></span> {p2_title}</h2>
-      <p>{p2_body}</p>
-    </article>
-    <article class="pillar">
-      <h2><span><i class="xi xi-xuaot xi-blue"></i></span> {p3_title}</h2>
-      <p>{p3_body}</p>
-    </article>
-    <article class="pillar">
-      <h2><span><i class="xi xi-channel xi-purple"></i></span> {p4_title}</h2>
-      <p>{p4_body}</p>
-    </article>
-  </section>
-
   {render_platform_peer_charts(benches, footprint, en)}
 
   <h2>{'Workload Benchmarks (Wall Time, ms)' if en else '47 项业务与算法全量横测数据 (耗时中位数，ms)'}</h2>
@@ -699,6 +644,9 @@ def render_platform_pane(p_id: str, p_data: dict, categories: dict, en: bool, is
 def render_page(data: dict, lang: str) -> str:
     en = lang == "en"
     meta = data["metadata"]
+    version = meta.get("xu_version", "")
+    if not re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", version):
+        raise ValueError(f"Official benchmark requires an official release (x.y.z), got: {version}")
     platforms = data.get("platforms", {})
     categories = data["categories"]
     default_p = data.get("default_platform", "macos-arm64")

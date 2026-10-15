@@ -193,12 +193,12 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
             pages[route] = source
     if '/' not in pages or '/zh' not in pages:
         raise ValueError('both Chinese and English home pages are required')
-    match = re.search(r'^xu:\s*!ver\s+(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)\s*$', (root / 'xu.xun').read_text(), re.MULTILINE)
+    match = re.search(r'^xu:\s*!ver\s+(\d+\.\d+\.\d+)\s*$', (root / 'xu.xun').read_text(), re.MULTILINE)
     if not match:
         raise ValueError('missing Xu version in xu.xun')
     xu_version = xu_version or match[1]
-    if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?', xu_version):
-        raise ValueError('invalid Xu release version')
+    if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', xu_version):
+        raise ValueError('invalid Xu release version: only official releases (x.y.z) are supported')
     if wasm.is_file():
         record = wasm.parent / 'build.json'
         if not record.is_file():
