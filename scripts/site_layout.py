@@ -148,7 +148,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         other_lang=other, other_lang_code='zh-CN' if en else 'en',
         lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',
         theme_label='Switch theme' if en else '切换主题', ui_href=prefix + '/docs/ui',
-        footer_text='MIT License · Zero GC · Supersonic AOT' if en else 'MIT 开源协议 · 坚若磐石 · 零 GC 内存安全 · 超音速 AOT',
+        footer_text=('<a href="/LICENSE">MIT License</a> · Zero GC · Supersonic AOT' if en
+                     else '<a href="/LICENSE">MIT 开源协议</a> · 坚若磐石 · 零 GC 内存安全 · 超音速 AOT'),
         header_social=social_links(en, compact=True), footer_social=social_links(en),
         social_label='Official accounts' if en else '官方帐号',
         menu_label='Navigation menu' if en else '导航菜单',
