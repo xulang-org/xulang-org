@@ -762,10 +762,10 @@ function searchBenchAll(query) {
   </div>
   <div class="bench-anchor-bar">
     <div class="bench-anchor-links">
-      {''.join(anchor_buttons)}
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('footprint')">
         {SVG_BRAIN} <span>{'Memory & Size' if en else '内存与体积'}</span>
       </button>
+      {''.join(anchor_buttons)}
     </div>
     <div class="bench-search-wrap bench-search-global">
       {SVG_SEARCH}
@@ -774,11 +774,11 @@ function searchBenchAll(query) {
   </div>
 </div>
 
-<!-- 1. 功能大类全平台合一平铺 (按功能，各平台直接铺开) -->
-{''.join(category_sections)}
-
-<!-- 2. 全平台内存与体积横向综合评测 -->
+<!-- 1. 全平台内存与体积横向综合评测 (位于 Control Flow 之上) -->
 {footprint_section}
+
+<!-- 2. 功能大类全平台合一平铺 (按功能，各平台直接铺开) -->
+{''.join(category_sections)}
 
 <h2>{method_h2}</h2>
 {method_p1}
