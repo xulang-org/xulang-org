@@ -71,6 +71,12 @@
           button.disabled = false;
           label(false);
           status(text('就绪 · Ctrl / Cmd + Enter 运行', 'Ready · Ctrl / Cmd + Enter to run'));
+          if (autoRunCode && !hasAutoRun) {
+            hasAutoRun = true;
+            setTimeout(function () {
+              if (!button.disabled && !running) button.click();
+            }, 60);
+          }
         } else if (result.type === 'result') {
           running = false;
           label(false);
@@ -110,6 +116,9 @@
         if (ready && !running) status(text('就绪 · Ctrl / Cmd + Enter 运行', 'Ready · Ctrl / Cmd + Enter to run'));
       });
     }
+    var autoRunCode = null;
+    var hasAutoRun = false;
+
     function load() {
       button.disabled = true;
       status(text('正在加载…', 'Loading…'));
@@ -121,8 +130,23 @@
         .then(function (loaded) {
           examples = loaded;
           if (select) select.disabled = false;
-          var current = examples[select && select.value] || examples.hello;
-          if (help && current) help.textContent = current.description[en ? 'en' : 'zh'];
+          var customCode = null;
+          try {
+            customCode = sessionStorage.getItem('xu-playground-code');
+            if (customCode) sessionStorage.removeItem('xu-playground-code');
+          } catch (e) {}
+          if (!customCode) {
+            var urlParams = new URLSearchParams(window.location.search);
+            customCode = urlParams.get('code');
+          }
+          if (customCode) {
+            autoRunCode = customCode;
+            source.value = customCode;
+            if (help) help.textContent = text('来自文档与 API 的示例代码', 'Example code from documentation');
+          } else {
+            var current = examples[select && select.value] || examples.hello;
+            if (help && current) help.textContent = current.description[en ? 'en' : 'zh'];
+          }
           startWorker();
         })
         .catch(function () {

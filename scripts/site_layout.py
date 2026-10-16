@@ -96,11 +96,57 @@ def sidebar(route: str, en: bool) -> str:
         ]))
     if not groups:
         return ''
+
+    # 判断是否有任何一个组命中当前路由
+    matched_idx = -1
+    for idx, (_, _, links) in enumerate(groups):
+        if any(href == route for href, _ in links):
+            matched_idx = idx
+            break
+
     sections = []
-    for icon, label, links in groups:
-        sections.append(f'<p class="side-h"><i class="xi {icon}"></i> <span>{escape(label)}</span></p><ul>'
-                        + ''.join(side_link(href, text, route) for href, text in links) + '</ul>')
-    return '<aside class="side">' + ''.join(sections) + '</aside>'
+    for idx, (icon, label, links) in enumerate(groups):
+        # 激活规则：
+        # 1. 命中当前路由的组必定展开；
+        # 2. 如果未命中任何具体组：
+        #    - 在 docs 下：默认展开前两组（起步与教程）；
+        #    - 在 api 下：默认展开前两组（Index与核心）；
+        #    - 在 blog 下：默认展开；
+        if matched_idx >= 0:
+            is_open = (idx == matched_idx)
+        else:
+            is_open = (idx < 2) if (rest.startswith('/docs/') or rest.startswith('/api')) else True
+
+        open_cls = ' is-open' if is_open else ''
+        expanded_attr = 'true' if is_open else 'false'
+        count = len(links)
+        count_tag = f'<span class="side-badge">{count}</span>' if count > 1 else ''
+
+        links_html = ''.join(side_link(href, text, route) for href, text in links)
+
+        sections.append(
+            f'<div class="side-group{open_cls}" data-group-index="{idx}">'
+            f'  <button type="button" class="side-h" aria-expanded="{expanded_attr}" onclick="toggleSideGroup(this)">'
+            f'    <div class="side-h-title"><i class="xi {icon}"></i> <span>{escape(label)}</span></div>'
+            f'    <div class="side-h-meta">{count_tag}<i class="xi xi-chevron-down side-chevron"></i></div>'
+            f'  </button>'
+            f'  <ul class="side-list">'
+            f'    {links_html}'
+            f'  </ul>'
+            f'</div>'
+        )
+
+    toggle_all_title = "Toggle all sections" if en else "折叠/展开全部菜单"
+    side_header = (
+        f'<div class="side-header">'
+        f'  <span class="side-header-title">{"Sections" if en else "目录导航"}</span>'
+        f'  <button type="button" class="side-toggle-all-btn" onclick="toggleAllSideGroups(this)" title="{toggle_all_title}" aria-label="{toggle_all_title}">'
+        f'    <i class="xi xi-sliders"></i>'
+        f'  </button>'
+        f'</div>'
+    )
+
+    return '<aside class="side">' + side_header + ''.join(sections) + '</aside>'
 
 
 def render(root: Path, title: str, route: str, body: str, xu_version: str) -> str:
