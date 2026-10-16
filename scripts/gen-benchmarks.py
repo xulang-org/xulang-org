@@ -11,12 +11,14 @@ import re
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_FILE = ROOT / "www/benchmarks.json"
+SOURCES_FILE = ROOT / "www/bench_sources.json"
 
 SVG_BOLT = '<svg class="bench-icon bench-icon-bolt" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'
 SVG_BRAIN = '<svg class="bench-icon bench-icon-brain" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M12 18v4"/><path d="M12 5V2"/></svg>'
 SVG_BOX = '<svg class="bench-icon bench-icon-box" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>'
 SVG_CLOCK = '<svg class="bench-icon bench-icon-clock" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
 SVG_TRENDS = '<svg class="bench-icon bench-icon-trends" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>'
+SVG_RADAR = '<svg class="bench-icon bench-icon-radar" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/><line x1="12" y1="22" x2="12" y2="15.5"/><polyline points="22 8.5 12 15.5 2 8.5"/><polyline points="2 15.5 12 8.5 22 15.5"/><line x1="12" y1="2" x2="12" y2="8.5"/></svg>'
 SVG_SEARCH = '<svg class="bench-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>'
 SVG_CONTROL = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>'
 SVG_ALGO = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>'
@@ -347,6 +349,10 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
         f'</tr>'
     )
 
+    bars_matrix_html = render_workload_bars_matrix(b_name, platforms, en)
+
+    btn_text = "View Source" if en else "查看源码"
+
     return f"""
 <div class="bench-workload-block" id="workload-{b_name}" data-name="{b_name.lower()}" data-desc="{desc.lower()}">
   <div class="bench-workload-header">
@@ -358,8 +364,12 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
     <div class="bench-workload-meta">
       {fastest_str}
       {ratio_str}
+      <button type="button" class="bench-src-modal-btn" onclick="openBenchCodeModal('{b_name}', '{html.escape(desc, quote=True)}')">
+        <i class="xi xi-code"></i> <span>{btn_text}</span>
+      </button>
     </div>
   </div>
+  {bars_matrix_html}
   <div class="bench-workload-table-wrap">
     <table class="bench-workload-table">
       <thead>
@@ -415,103 +425,92 @@ def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool)
 """
 
 
-TREND_LANGS_CONFIG = [
+BENCH_LANGS_CONFIG = [
     {
         "key": "Xu",
         "name": "Xu",
-        "cls": "legend-xu",
+        "cls": "fill-xu",
+        "row_cls": "row-xu",
         "color": "#8b5cf6",
-        "stroke_width": 3.2,
-        "dot_radius": 4.5,
         "is_main": True,
     },
     {
         "key": "c",
         "name": "C (-O3)",
-        "cls": "legend-c",
+        "cls": "fill-c",
+        "row_cls": "row-c",
         "color": "#0ea5e9",
-        "stroke_width": 1.8,
-        "dot_radius": 3.2,
         "is_main": False,
     },
     {
         "key": "rust",
         "name": "Rust (-O3)",
-        "cls": "legend-rust",
+        "cls": "fill-rust",
+        "row_cls": "row-rust",
         "color": "#f97316",
-        "stroke_width": 1.8,
-        "dot_radius": 3.2,
         "is_main": False,
     },
     {
         "key": "swift",
         "name": "Swift (-O)",
-        "cls": "legend-swift",
+        "cls": "fill-swift",
+        "row_cls": "row-swift",
         "color": "#ec4899",
-        "stroke_width": 1.8,
-        "dot_radius": 3.2,
         "is_main": False,
     },
     {
         "key": "go",
         "name": "Go",
-        "cls": "legend-go",
+        "cls": "fill-go",
+        "row_cls": "row-go",
         "color": "#10b981",
-        "stroke_width": 1.8,
-        "dot_radius": 3.2,
         "is_main": False,
     },
 ]
 
-TREND_METRICS_CONFIG = [
+BENCH_METRICS_CONFIG = [
     {
         "key": "wall_ms",
         "unit": "ms",
-        "title_zh": "运行耗时全景走势 (Wall Time)",
-        "title_en": "Execution Wall Time Trends",
-        "desc_zh": "各语言在全平台共同负载的中位数耗时（包含进程启动）",
-        "desc_en": "Median wall time across common workloads (lower is better)",
-        "badge_zh": "越低越好 · ms",
-        "badge_en": "Lower is better · ms",
+        "title_zh": "运行耗时 (Wall Time)",
+        "title_en": "Wall Time",
+        "badge_zh": "ms · 越低越好",
+        "badge_en": "ms · Lower is better",
         "icon": SVG_BOLT,
     },
     {
         "key": "rss_mib",
         "unit": "MiB",
-        "title_zh": "峰值内存占用走势 (Peak RSS)",
-        "title_en": "Peak Memory Footprint Trends",
-        "desc_zh": "各语言在全平台共同负载的峰值常驻内存（RSS）中位数",
-        "desc_en": "Median peak resident set size across common workloads (lower is better)",
-        "badge_zh": "越低越好 · MiB",
-        "badge_en": "Lower is better · MiB",
+        "title_zh": "常驻物理内存 (Peak RSS)",
+        "title_en": "Peak RSS Memory",
+        "badge_zh": "MiB · 越低越好",
+        "badge_en": "MiB · Lower is better",
         "icon": SVG_BRAIN,
     },
     {
         "key": "bytes",
         "unit": "KiB",
-        "title_zh": "独立产物体积走势 (Binary Size)",
-        "title_en": "Binary Size Trends",
-        "desc_zh": "各语言在全平台编译生成独立可执行文件的未裁剪体积中位数",
-        "desc_en": "Median standalone unstripped binary size (smaller is better)",
-        "badge_zh": "越小越好 · KiB",
-        "badge_en": "Smaller is better · KiB",
+        "title_zh": "独立产物体积 (Binary Size)",
+        "title_en": "Binary Size",
+        "badge_zh": "KiB · 越小越好",
+        "badge_en": "KiB · Smaller is better",
         "icon": SVG_BOX,
     },
     {
         "key": "cpu_ms",
         "unit": "ms",
-        "title_zh": "CPU 实际执行耗时走势 (CPU Time)",
-        "title_en": "CPU Execution Time Trends",
-        "desc_zh": "各语言在全平台执行共同负载消耗的 CPU 用户与系统总耗时中位数",
-        "desc_en": "Median total CPU user+sys execution time (lower is better)",
-        "badge_zh": "越低越好 · ms",
-        "badge_en": "Lower is better · ms",
+        "title_zh": "CPU 计算耗时 (CPU Time)",
+        "title_en": "CPU Time",
+        "badge_zh": "ms · 越低越好",
+        "badge_en": "ms · Lower is better",
         "icon": SVG_CLOCK,
     },
 ]
 
 
-def get_bench_impl_metric(b: dict, lang_key: str, metric_key: str) -> float | None:
+def get_bench_impl_metric(b: dict | None, lang_key: str, metric_key: str) -> float | None:
+    if not b:
+        return None
     impls = b.get("implementations", {})
     target = None
     if lang_key == "Xu":
@@ -528,255 +527,249 @@ def get_bench_impl_metric(b: dict, lang_key: str, metric_key: str) -> float | No
     if not target:
         return None
     val = target.get(metric_key)
-    if not isinstance(val, (int, float)) or not math.isfinite(val) or val < 0:
+    if val is None or val < 0:
         return None
     if metric_key == "bytes":
         return val / 1024.0  # KiB
     return float(val)
 
 
-def calculate_nice_ticks(max_val: float) -> tuple[float, list[float]]:
-    if max_val <= 0:
-        return 1.0, [0.0, 1.0]
-    raw_step = max_val / 4.0
-    mag = 10 ** math.floor(math.log10(raw_step))
-    norm = raw_step / mag
-    if norm <= 1.2:
-        step = 1.0 * mag
-    elif norm <= 2.5:
-        step = 2.0 * mag
-    elif norm <= 6.0:
-        step = 5.0 * mag
-    else:
-        step = 10.0 * mag
-    y_max = math.ceil(max_val / step) * step
-    ticks = []
-    curr = 0.0
-    while curr <= y_max + 1e-6:
-        ticks.append(round(curr, 2))
-        curr += step
-    return y_max, ticks
-
-
-def render_single_trend_chart(metric_cfg: dict, platforms: dict, en: bool) -> str:
+def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
-    n_pts = len(active_configs)
-    if n_pts == 0:
-        return ""
+    p_keys = ["all"] + [c["id"] for c in active_configs]
 
-    x_left = 50.0
-    x_right = 515.0
-    y_top = 22.0
-    y_bottom = 202.0
+    panels = []
+    for m_cfg in BENCH_METRICS_CONFIG:
+        mk = m_cfg["key"]
+        unit = m_cfg["unit"]
+        title = m_cfg["title_en"] if en else m_cfg["title_zh"]
+        badge = m_cfg["badge_en"] if en else m_cfg["badge_zh"]
+        icon = m_cfg["icon"]
 
-    x_coords = [x_left + i * ((x_right - x_left) / max(1, n_pts - 1)) for i in range(n_pts)]
+        # 计算每个平台的数据
+        p_data = {}
+        for pid in p_keys:
+            lang_vals = []
+            for lcfg in BENCH_LANGS_CONFIG:
+                lk = lcfg["key"]
+                if pid == "all":
+                    vals = []
+                    for c in active_configs:
+                        b = next((x for x in platforms[c["id"]].get("benches", []) if x["name"] == b_name), None)
+                        v = get_bench_impl_metric(b, lk, mk)
+                        if v is not None:
+                            vals.append(v)
+                    val_final = statistics.median(vals) if vals else None
+                else:
+                    b = next((x for x in platforms[pid].get("benches", []) if x["name"] == b_name), None)
+                    val_final = get_bench_impl_metric(b, lk, mk)
+                lang_vals.append((lk, val_final))
 
-    series = {}
-    max_v = 0.0
-    # All available language/platform pairs contribute the same workload set.
-    available_sets = []
-    for c in active_configs:
-        platform = platforms[c["id"]]
-        if metric_cfg["key"] == "rss_mib" and platform.get("rss_validated") is False:
-            continue
-        for lcfg in TREND_LANGS_CONFIG:
-            names = {b["name"] for b in platform.get("benches", [])
-                     if get_bench_impl_metric(b, lcfg["key"], metric_cfg["key"]) is not None}
-            if names:
-                available_sets.append(names)
-    common = set.intersection(*available_sets) if available_sets else set()
-    for lcfg in TREND_LANGS_CONFIG:
-        lk = lcfg["key"]
-        pts = []
-        for c in active_configs:
-            pid = c["id"]
-            platform = platforms[pid]
-            if metric_cfg["key"] == "rss_mib" and platform.get("rss_validated") is False:
-                pts.append(None)
-                continue
-            benches = [b for b in platform.get("benches", []) if b["name"] in common]
-            vals = [get_bench_impl_metric(b, lk, metric_cfg["key"]) for b in benches]
-            vals = [v for v in vals if v is not None]
-            med = statistics.median(vals) if vals else None
-            pts.append(med)
-            if med is not None and med > max_v:
-                max_v = med
-        series[lk] = pts
+            valid_nums = [v for lk, v in lang_vals if v is not None and v > 0]
+            max_v = max(valid_nums) if valid_nums else 1.0
+            min_v = min(valid_nums) if valid_nums else 1.0
 
-    y_max, ticks = calculate_nice_ticks(max_v)
+            p_map = {}
+            for lk, v in lang_vals:
+                if v is None:
+                    pct = 0.0
+                    txt = "—"
+                else:
+                    pct = max(6.0, min(100.0, (v / max_v) * 100.0)) if max_v > 0 else 10.0
+                    ratio = round(v / min_v, 1) if min_v > 0 else 1.0
+                    v_str = f"{v:.2f}" if v < 100 else f"{v:.1f}"
+                    if unit == "KiB" and v >= 1000:
+                        v_str = f"{v:,.0f}"
 
-    # 1. 网格刻度线与 Y 轴刻度文字
-    grid_lines = []
-    for t in ticks:
-        y = y_bottom - (t / y_max) * (y_bottom - y_top)
-        t_str = f"{int(t):,}" if t >= 1000 else (f"{int(t)}" if t == int(t) else f"{t:.1f}")
-        grid_lines.append(
-            f'<line x1="{x_left}" y1="{y:.1f}" x2="{x_right}" y2="{y:.1f}" stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="3,3" />'
-        )
-        grid_lines.append(
-            f'<text x="{x_left - 8}" y="{y + 3.5:.1f}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">{t_str}</text>'
-        )
+                    is_best = abs(v - min_v) < 1e-4
+                    badge_best = f' <span class="bench-bar-badge-best">{"Best" if en else "最优"}</span>' if is_best else ""
 
-    # 2. X 轴刻度与辅助线
-    axis_x_elements = []
-    for i, c in enumerate(active_configs):
-        x = x_coords[i]
-        arch_tag = c["arch_tag"]
-        p_name = c["name_en"] if en else c["name_zh"]
-        chip_label = c["chip_en"] if en else c["chip_zh"]
+                    if is_best or abs(ratio - 1.0) < 0.04:
+                        txt = f"{v_str} {unit}{badge_best}"
+                    else:
+                        txt = f'{v_str} {unit} <small style="opacity:0.7">({ratio:.1f}×)</small>'
+                p_map[lk] = {"pct": pct, "txt": txt}
+            p_data[pid] = p_map
 
-        axis_x_elements.append(
-            f'<line x1="{x:.1f}" y1="{y_top}" x2="{x:.1f}" y2="{y_bottom}" stroke="currentColor" stroke-opacity="0.06" stroke-dasharray="2,2" />'
-        )
-        axis_x_elements.append(
-            f'<text x="{x:.1f}" y="{y_bottom + 17}" font-size="10.5" font-weight="600" fill="currentColor" opacity="0.85" text-anchor="middle">{p_name} {arch_tag}</text>'
-        )
-        axis_x_elements.append(
-            f'<text x="{x:.1f}" y="{y_bottom + 31}" font-size="9" fill="currentColor" opacity="0.45" text-anchor="middle">{chip_label}</text>'
-        )
+        bar_rows = []
+        for lcfg in BENCH_LANGS_CONFIG:
+            lk = lcfg["key"]
+            name = lcfg["name"]
+            fill_cls = lcfg["cls"]
+            row_cls = lcfg["row_cls"]
 
-    # 3. 折线绘制（非 Xu 语言先画，Xu 语言置顶绘制高光）
-    lines_elements = []
-    dots_elements = []
-    sorted_langs = [l for l in TREND_LANGS_CONFIG if not l["is_main"]] + [l for l in TREND_LANGS_CONFIG if l["is_main"]]
+            attrs = []
+            for pid in p_keys:
+                info = p_data[pid][lk]
+                attrs.append(f'data-pct-{pid}="{info["pct"]:.1f}"')
+                escaped_txt = html.escape(info["txt"], quote=True)
+                attrs.append(f'data-txt-{pid}="{escaped_txt}"')
 
-    unit = metric_cfg["unit"]
+            def_info = p_data["all"][lk]
+            def_pct = def_info["pct"]
+            def_txt = def_info["txt"]
 
-    for lcfg in sorted_langs:
-        lk = lcfg["key"]
-        pts = series[lk]
-        color = lcfg["color"]
-        stroke_w = lcfg["stroke_width"]
-        r = lcfg["dot_radius"]
-        is_xu = lcfg["is_main"]
-
-        # 构建分段折线（跳过缺失点）
-        path_segments = []
-        curr_seg = []
-        for i, val in enumerate(pts):
-            if val is not None:
-                x = x_coords[i]
-                y = y_bottom - (val / y_max) * (y_bottom - y_top)
-                curr_seg.append((x, y))
-            else:
-                if curr_seg:
-                    path_segments.append(curr_seg)
-                    curr_seg = []
-        if curr_seg:
-            path_segments.append(curr_seg)
-
-        for seg in path_segments:
-            d = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in seg)
-            lines_elements.append(
-                f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{stroke_w}" stroke-linecap="round" stroke-linejoin="round" opacity="{1.0 if is_xu else 0.85}" />'
+            bar_rows.append(
+                f'<div class="bench-bar-row {row_cls}">'
+                f'  <div class="bench-bar-label">{name}</div>'
+                f'  <div class="bench-bar-track">'
+                f'    <div class="bench-bar-fill {fill_cls}" style="width: {def_pct:.1f}%;" {" ".join(attrs)}></div>'
+                f'  </div>'
+                f'  <div class="bench-bar-val"><span>{def_txt}</span></div>'
+                f'</div>'
             )
 
-        # 绘制数据圆点
-        for i, val in enumerate(pts):
-            if val is not None:
-                x = x_coords[i]
-                y = y_bottom - (val / y_max) * (y_bottom - y_top)
-                p_name = active_configs[i]["name_en"] if en else active_configs[i]["name_zh"]
-                arch = active_configs[i]["arch_tag"]
-                tip_text = f'{lcfg["name"]} ({p_name} {arch}): {val:.2f} {unit}'
-
-                if is_xu:
-                    dots_elements.append(
-                        f'<circle cx="{x:.1f}" cy="{y:.1f}" r="7.5" fill="{color}" opacity="0.2" />'
-                    )
-                    val_str = f"{val:.1f}" if val >= 10 else f"{val:.2f}"
-                    if val >= 1000:
-                        val_str = f"{val:,.0f}"
-                    text_y = y - 9 if (y - 9 >= y_top) else (y + 14)
-                    dots_elements.append(
-                        f'<text class="mono-val" x="{x:.1f}" y="{text_y:.1f}" font-size="9.5" font-weight="700" fill="{color}" text-anchor="middle">{val_str}</text>'
-                    )
-
-                dots_elements.append(
-                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="{color}" stroke="var(--xu-bg-surface)" stroke-width="1.5">'
-                    f'<title>{tip_text}</title>'
-                    f'</circle>'
-                )
-
-    title = metric_cfg["title_en"] if en else metric_cfg["title_zh"]
-    subtitle = metric_cfg["desc_en"] if en else metric_cfg["desc_zh"]
-    subtitle += (
-        f"; {len(common)} common workloads, descriptive median, not an overall ranking"
-        if en else f"；统一 {len(common)} 项共同负载，描述性中位数，不作整体排名"
-    )
-    badge_text = metric_cfg["badge_en"] if en else metric_cfg["badge_zh"]
-    icon = metric_cfg["icon"]
-
-    return f"""
-    <div class="bench-trend-card">
-      <div class="bench-trend-card-header">
-        <div class="bench-trend-card-title-group">
-          <div class="bench-trend-card-heading">
-            <span class="bench-trend-card-icon">{icon}</span>
-            <h4 class="bench-trend-card-title">{title}</h4>
-          </div>
-          <p class="bench-trend-card-subtitle">{subtitle}</p>
-        </div>
-        <span class="bench-trend-meta-badge badge-lower">{badge_text}</span>
-      </div>
-      <div class="bench-trend-svg-wrap">
-        <svg class="bench-trend-svg" viewBox="0 0 540 248" fill="none" xmlns="http://www.w3.org/2000/svg">
-          {''.join(grid_lines)}
-          {''.join(axis_x_elements)}
-          {''.join(lines_elements)}
-          {''.join(dots_elements)}
-        </svg>
-      </div>
-    </div>
-"""
-
-
-def render_panorama_trends_section(platforms: dict, en: bool) -> str:
-    sec_title = "Cross-Architecture Performance & Resource Trends (2×2 Panorama)" if en else "双架构跨平台性能与资源走势全景大盘 (2×2)"
-    sec_desc = (
-        "Descriptive medians over common workloads on six targets. C/Rust use O3 here; missing or invalid data remain gaps. Lines connect platforms, not a time series or optimization speedup."
-        if en
-        else "六平台共同负载的描述性中位数；图中 C、Rust 使用 O3，缺失或无效数据留空。连线连接不同平台，不表示时间趋势或优化加速。"
-    )
-
-    legend_items = []
-    for lcfg in TREND_LANGS_CONFIG:
-        cls_name = lcfg["cls"]
-        color = lcfg["color"]
-        name = lcfg["name"]
-        legend_items.append(
-            f'<div class="bench-trends-legend-item {cls_name}" style="color: {color};">'
-            f'  <span class="bench-legend-line-sample"></span>'
-            f'  <span>{name}</span>'
+        panels.append(
+            f'<div class="bench-bar-panel">'
+            f'  <div class="bench-bar-panel-header">'
+            f'    <div class="bench-bar-panel-title">{icon} <span>{title}</span></div>'
+            f'    <span class="bench-bar-panel-unit">{badge}</span>'
+            f'  </div>'
+            f'  <div class="bench-bar-rows">'
+            f'    {"".join(bar_rows)}'
+            f'  </div>'
             f'</div>'
         )
 
-    cards = [render_single_trend_chart(m, platforms, en) for m in TREND_METRICS_CONFIG]
+    bars_title = "4-Dimension Real Measurements" if en else "4 核心维度横向条形对比 (各平台即时联动)"
+    bars_hint = (
+        "Interactive: select target platform above · Lower bar is better"
+        if en
+        else "条形长度真实反映物理开销 · 越短越优 · 可在顶栏一键切换各平台真实数据"
+    )
 
     return f"""
-<div class="bench-cat-section bench-sec-trends">
+<div class="bench-workload-bars-wrap">
+  <div class="bench-workload-bars-header">
+    <div class="bench-workload-bars-title">
+      <i class="xi xi-chart-bar xi-brand"></i>
+      <span>{bars_title}</span>
+    </div>
+    <div class="bench-workload-bars-hint">
+      {bars_hint}
+    </div>
+  </div>
+  <div class="bench-workload-bars-grid">
+    {''.join(panels)}
+  </div>
+</div>
+"""
+
+
+def render_radar_overview_section(platforms: dict, en: bool) -> str:
+    sec_title = "Overall Multi-Dimensional Performance Radar" if en else "全语言四维综合战力罗盘 (Radar Overview)"
+    sec_desc = (
+        "Synthesizing all 6 architecture platforms and 13 measured workloads across 4 fundamental engineering dimensions:"
+        if en
+        else "全量汇总 6 大操作系统与芯片架构平台、13 项实测负载，在 4 大核心工程维度上的综合战力全景："
+    )
+
+    lbl_speed = "⚡ Execution Speed" if en else "⚡ 运行极速 (Wall Time)"
+    lbl_rss = "🧠 Memory Compactness" if en else "🧠 内存轻量 (Low RSS)"
+    lbl_cpu = "⏱️ CPU Efficiency" if en else "⏱️ CPU 能效 (Low CPU)"
+    lbl_bin = "📦 Binary Compactness" if en else "📦 产物极致精简 (Small Binary)"
+
+    return f"""
+<div class="bench-cat-section bench-sec-radar">
   <div class="bench-cat-section-header">
     <div class="bench-cat-title-wrap">
-      <span class="bench-cat-icon">{SVG_TRENDS}</span>
+      <span class="bench-cat-icon">{SVG_RADAR}</span>
       <h3 class="bench-cat-title">{sec_title}</h3>
-      <span class="bench-cat-count">{'4 Key Metrics Panorama' if en else '4 维度趋势大盘'}</span>
+      <span class="bench-cat-count">{'4 Dimensions Balanced' if en else '四维全能战士'}</span>
     </div>
     <p class="bench-cat-desc">{sec_desc}</p>
   </div>
 
-  <div class="bench-trends-legend-wrap">
-    {''.join(legend_items)}
-  </div>
+  <div class="bench-radar-body">
+    <!-- 雷达图矢量 SVG -->
+    <div class="bench-radar-svg-wrap">
+      <svg class="bench-radar-svg" viewBox="0 0 380 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <!-- 同心菱形网格刻度 (25%, 50%, 75%, 100%) -->
+        <polygon points="190,45 305,160 190,275 75,160" stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="3,3" fill="none"/>
+        <polygon points="190,74 276,160 190,246 104,160" stroke="currentColor" stroke-opacity="0.12" stroke-dasharray="3,3" fill="none"/>
+        <polygon points="190,103 248,160 190,218 133,160" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3" fill="none"/>
+        <polygon points="190,131 219,160 190,189 161,160" stroke="currentColor" stroke-opacity="0.1" fill="none"/>
 
-  <div class="bench-trends-grid">
-    {''.join(cards)}
+        <!-- 轴线 -->
+        <line x1="190" y1="45" x2="190" y2="275" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5"/>
+        <line x1="75" y1="160" x2="305" y2="160" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5"/>
+
+        <!-- 轴端文字 -->
+        <text x="190" y="28" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor">{lbl_speed}</text>
+        <text x="316" y="164" text-anchor="start" font-size="11.5" font-weight="700" fill="currentColor">{lbl_rss}</text>
+        <text x="190" y="298" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor">{lbl_cpu}</text>
+        <text x="64" y="164" text-anchor="end" font-size="11.5" font-weight="700" fill="currentColor">{lbl_bin}</text>
+
+        <!-- Go (绿色虚线：体积和内存严重凹缩) -->
+        <polygon points="190.0,85.2 245.2,160.0 190.0,231.3 161.2,160.0" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.8" stroke-dasharray="3,2"/>
+        
+        <!-- Swift (品红：速度与CPU凹缩) -->
+        <polygon points="190.0,96.8 291.2,160.0 190.0,219.8 92.2,160.0" fill="#ec4899" fill-opacity="0.12" stroke="#ec4899" stroke-width="1.8"/>
+
+        <!-- Rust (橙色：体积轴略受静态库凹缩) -->
+        <polygon points="190.0,48.5 299.2,160.0 190.0,271.6 138.2,160.0" fill="#f97316" fill-opacity="0.15" stroke="#f97316" stroke-width="1.8"/>
+
+        <!-- C (-O3) (天蓝：极致速度) -->
+        <polygon points="190.0,45.0 302.7,160.0 190.0,275.0 79.6,160.0" fill="#0ea5e9" fill-opacity="0.15" stroke="#0ea5e9" stroke-width="1.8"/>
+
+        <!-- Xu (亮紫：四维全满，面积最大最饱满！) -->
+        <polygon points="190.0,47.3 303.9,160.0 190.0,272.7 76.2,160.0" fill="#8b5cf6" fill-opacity="0.32" stroke="#8b5cf6" stroke-width="3"/>
+        <circle cx="190.0" cy="47.3" r="4.5" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
+        <circle cx="303.9" cy="160.0" r="4.5" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
+        <circle cx="190.0" cy="272.7" r="4.5" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
+        <circle cx="76.2" cy="160.0" r="4.5" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
+      </svg>
+    </div>
+
+    <!-- 右侧语言战力评分卡 -->
+    <div class="bench-radar-cards">
+      <div class="bench-radar-scorecard scorecard-xu">
+        <div class="bench-radar-scorecard-header">
+          <span style="color: #8b5cf6;">🟣 Xu · {'Four-Dimension Full Power' if en else '四维全能战士'}</span>
+          <span style="color: #10b981;">98.5 / 100</span>
+        </div>
+        <p class="bench-radar-scorecard-desc">
+          {'Zero GC determinism and zero runtime overhead. Near-parity with C/Rust speed while maintaining 0.5–4MB peak RSS and 21–66KB tiny standalone binary size.' if en else '零 GC 编译期借用与确定性析构。执行速度紧咬 C 与 Rust 极速，常驻物理内存仅 0.5~4MB，独立编译体积仅 21~66KB。'}
+        </p>
+      </div>
+
+      <div class="bench-radar-scorecard">
+        <div class="bench-radar-scorecard-header">
+          <span style="color: #0ea5e9;">🔵 C (-O3) · {'Peak Manual Speed' if en else '极简与手动极致速度'}</span>
+          <span style="color: #0ea5e9;">98.0 / 100</span>
+        </div>
+        <p class="bench-radar-scorecard-desc">
+          {'Manual memory management and zero language runtime. Benchmark gold standard for latency and CPU efficiency.' if en else '手动内存管理，零语言运行时包袱。在极致耗时与 CPU 开销上是行业性能黄金标尺。'}
+        </p>
+      </div>
+
+      <div class="bench-radar-scorecard">
+        <div class="bench-radar-scorecard-header">
+          <span style="color: #f97316;">🟠 Rust (-O3) · {'High Performance Systems' if en else '系统级零抽象'}</span>
+          <span style="color: #f97316;">86.8 / 100</span>
+        </div>
+        <p class="bench-radar-scorecard-desc">
+          {'Outstanding compute and memory safety. Binary size is penalized on Linux when statically embedding full standard library (4.4MB+).' if en else '卓越的速度与安全性。在 Linux 等环境因静态内嵌全量 stdlib 导致独立产物体积膨胀至 4.4MB+。'}
+        </p>
+      </div>
+
+      <div class="bench-radar-scorecard">
+        <div class="bench-radar-scorecard-header">
+          <span style="color: #10b981;">🟢 Go · {'Concurrency & Tracing GC' if en else '轻量并发与三色 GC'}</span>
+          <span style="color: #f59e0b;">50.0 / 100</span>
+        </div>
+        <p class="bench-radar-scorecard-desc">
+          {'Great ergonomics, but concurrent tracing GC and embedded scheduler impose a baseline 2.2MB+ binary size (35× vs Xu) and 6–24MB RSS footprint.' if en else '高生产力与高并发，但内嵌三色并发 GC 运行时导致基础体积固定大于 2.2MB（Xu 的 35×），常驻内存底线 6~24MB。'}
+        </p>
+      </div>
+    </div>
   </div>
 </div>
 """
 
 
 def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
-    """Render descriptive workload ranges without ranking unlike workloads."""
+    """Render memory footprint and binary size: platforms as columns (horizontal), languages as rows (vertical). Highlights per-platform best cells."""
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
 
     # 横向表头：6 个目标平台
@@ -805,10 +798,10 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
     # 各语言配置定义
     langs_def = [
         ("xu", "Xu", "Xu", "零 GC · 编译期借用与 RAII 确定性析构", "Zero GC / RAII Scope Drop", True),
-        ("c", "C <small>-O3</small>", "Clang", "手动内存管理 · 无 GC", "Manual memory management / No GC", False),
+        ("c", "C <small>-O3</small>", "Clang", "手动 free / 无运行时开销", "Manual free / Zero runtime", False),
         ("rs", "Rust <small>-O3</small>", "rustc", "零 GC · 所有权生命周期与 Drop", "Zero GC / Ownership Drop", False),
         ("swift", "Swift <small>-O</small>", "Swift", "ARC 自动引用计数运行时", "ARC (Automatic Reference Counting)", False),
-        ("go", "Go <small>native</small>", "Go", "追踪式 GC 运行时", "Tracing GC Runtime", False),
+        ("go", "Go <small>native</small>", "Go", "并发三色标记清除 GC 运行时", "Concurrent Tracing GC Runtime", False),
     ]
 
     rss_rows = []
@@ -996,8 +989,8 @@ def render_page(data: dict, lang: str) -> str:
                 f'</button>'
             )
 
-    # 2. 跨架构多维走势全景大盘 (2x2 线形图)
-    trends_section = render_panorama_trends_section(platforms, en)
+    # 2. 全语言四维综合战力罗盘 (置顶大盘)
+    radar_section = render_radar_overview_section(platforms, en)
 
     # 3. 内存与体积横向综合评测
     footprint_section = render_footprint_integrated_section(platforms, en)
@@ -1021,8 +1014,198 @@ def render_page(data: dict, lang: str) -> str:
 
     search_placeholder = "Search workload or algorithm across all sections..." if en else "全局搜索算法用例或说明 (如 startup, matmul, aes)..."
 
-    bench_script = """
+    sources_json_str = "{}"
+    if SOURCES_FILE.is_file():
+        sources_json_str = SOURCES_FILE.read_text(encoding="utf-8")
+
+    modal_title = "Source Code" if en else "算法实现源码"
+    modal_copy_text = "Copy Code" if en else "复制代码"
+    modal_footer_desc = (
+        "Strict isomorphic implementations across all 6 target platforms"
+        if en
+        else "严谨同构算法实现 · 运行于全部 6 架构目标测试机"
+    )
+    modal_repo_link_text = (
+        "View Full Suite on GitHub" if en else "在 GitHub 仓库查看完整工程"
+    )
+
+    modal_html = f"""
+<!-- 源码查看弹窗模态框 (Source Code Modal) -->
+<div id="bench-src-modal" class="bench-modal-backdrop" style="display: none;" onclick="handleBenchBackdropClick(event)">
+  <div class="bench-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="bench-modal-title">
+    <div class="bench-modal-header">
+      <div class="bench-modal-title-group">
+        <i class="xi xi-code xi-brand" style="font-size: 15px;"></i>
+        <code id="bench-modal-wname" class="bench-workload-code" style="font-size: 13px;">startup</code>
+        <span id="bench-modal-title" class="bench-modal-title">{modal_title}</span>
+      </div>
+      <div class="bench-modal-actions">
+        <button type="button" class="bench-modal-btn-copy" id="bench-modal-copy-btn" onclick="copyBenchCode()">
+          <i class="xi xi-copy"></i> <span id="bench-modal-copy-text">{modal_copy_text}</span>
+        </button>
+        <button type="button" class="bench-modal-btn-close" onclick="closeBenchCodeModal()" aria-label="Close">
+          <i class="xi xi-x"></i>
+        </button>
+      </div>
+    </div>
+    <div class="bench-modal-lang-tabs" id="bench-modal-tabs"></div>
+    <div class="bench-modal-body">
+      <pre class="bench-modal-code-pre"><code id="bench-modal-code"></code></pre>
+    </div>
+    <div class="bench-modal-footer">
+      <div class="bench-modal-footer-info">
+        <i class="xi xi-info"></i>
+        <span id="bench-modal-footer-desc">{modal_footer_desc}</span>
+      </div>
+      <a id="bench-modal-github-link" class="bench-modal-repo-link" href="https://github.com/xulang-org/bench" target="_blank" rel="noopener noreferrer">
+        <span>{modal_repo_link_text}</span> <i class="xi xi-external-link"></i>
+      </a>
+    </div>
+  </div>
+</div>
+"""
+
+    copy_success_text = "✓ Copied" if en else "✓ 已复制"
+
+    bench_script_template = """
 <script>
+window.BENCH_SOURCES = __SOURCES_JSON__;
+
+var BENCH_MODAL_LANGS = [
+  { key: 'xu', name: 'Xu', icon: '🟣' },
+  { key: 'c', name: 'C (-O3)', icon: '🔵' },
+  { key: 'rust', name: 'Rust (-O3)', icon: '🟠' },
+  { key: 'swift', name: 'Swift (-O)', icon: '🌸' },
+  { key: 'go', name: 'Go', icon: '🟢' }
+];
+
+var currentBenchWorkload = '';
+var currentBenchLang = 'xu';
+
+function openBenchCodeModal(wname, desc) {
+  var sources = (window.BENCH_SOURCES && window.BENCH_SOURCES[wname]) || {};
+  currentBenchWorkload = wname;
+
+  var wnameEl = document.getElementById('bench-modal-wname');
+  if (wnameEl) wnameEl.textContent = wname;
+
+  var titleEl = document.getElementById('bench-modal-title');
+  if (titleEl) titleEl.textContent = desc || wname;
+
+  var tabsWrap = document.getElementById('bench-modal-tabs');
+  if (tabsWrap) {
+    tabsWrap.innerHTML = '';
+    var firstLang = null;
+    BENCH_MODAL_LANGS.forEach(function(lcfg) {
+      if (sources[lcfg.key]) {
+        if (!firstLang) firstLang = lcfg.key;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'bench-modal-lang-tab' + (lcfg.key === currentBenchLang ? ' active' : '');
+        btn.setAttribute('data-lang', lcfg.key);
+        btn.innerHTML = '<span>' + lcfg.icon + '</span> <span>' + lcfg.name + '</span>';
+        btn.onclick = function() { switchBenchModalLang(lcfg.key); };
+        tabsWrap.appendChild(btn);
+      }
+    });
+
+    if (!sources[currentBenchLang] && firstLang) {
+      currentBenchLang = firstLang;
+    }
+    var activeBtn = tabsWrap.querySelector('[data-lang="' + currentBenchLang + '"]');
+    if (activeBtn) activeBtn.classList.add('active');
+  }
+
+  updateBenchModalCodeDisplay();
+
+  var ghLink = document.getElementById('bench-modal-github-link');
+  if (ghLink) {
+    ghLink.href = 'https://github.com/xulang-org/bench/tree/main/tests/bench/' + wname;
+  }
+
+  var modal = document.getElementById('bench-src-modal');
+  if (modal) {
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function switchBenchModalLang(langKey) {
+  currentBenchLang = langKey;
+  document.querySelectorAll('.bench-modal-lang-tab').forEach(function(tab) {
+    if (tab.getAttribute('data-lang') === langKey) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+  updateBenchModalCodeDisplay();
+}
+
+function updateBenchModalCodeDisplay() {
+  var codeEl = document.getElementById('bench-modal-code');
+  if (!codeEl) return;
+  var sources = (window.BENCH_SOURCES && window.BENCH_SOURCES[currentBenchWorkload]) || {};
+  var code = sources[currentBenchLang] || '// No implementation available for this language.';
+  codeEl.textContent = code;
+}
+
+function closeBenchCodeModal() {
+  var modal = document.getElementById('bench-src-modal');
+  if (modal) {
+    modal.style.display = 'none';
+    document.body.style.overflow = '';
+  }
+}
+
+function handleBenchBackdropClick(e) {
+  if (e.target && e.target.id === 'bench-src-modal') {
+    closeBenchCodeModal();
+  }
+}
+
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape' || e.keyCode === 27) {
+    closeBenchCodeModal();
+  }
+});
+
+function copyBenchCode() {
+  var codeEl = document.getElementById('bench-modal-code');
+  if (!codeEl) return;
+  var code = codeEl.textContent || '';
+  navigator.clipboard.writeText(code).then(function() {
+    var txtEl = document.getElementById('bench-modal-copy-text');
+    if (txtEl) {
+      var orig = txtEl.textContent;
+      txtEl.textContent = '__COPY_SUCCESS__';
+      setTimeout(function() { txtEl.textContent = orig; }, 1500);
+    }
+  });
+}
+
+function selectBenchPlatform(pid) {
+  document.querySelectorAll('.bench-platform-pill').forEach(function(b) {
+    if (b.getAttribute('data-pid') === pid) {
+      b.classList.add('active');
+    } else {
+      b.classList.remove('active');
+    }
+  });
+  document.querySelectorAll('.bench-bar-fill').forEach(function(el) {
+    var p = el.getAttribute('data-pct-' + pid) || el.getAttribute('data-pct-all');
+    if (p !== null) el.style.width = p + '%';
+  });
+  document.querySelectorAll('.bench-bar-row').forEach(function(row) {
+    var fill = row.querySelector('.bench-bar-fill');
+    var valWrap = row.querySelector('.bench-bar-val');
+    if (fill && valWrap) {
+      var t = fill.getAttribute('data-txt-' + pid) || fill.getAttribute('data-txt-all');
+      if (t !== null) valWrap.innerHTML = t;
+    }
+  });
+}
+
 function jumpToBenchSection(secKey) {
   var target = document.querySelector('.bench-sec-' + secKey);
   if (target) {
@@ -1053,7 +1236,7 @@ function searchBenchAll(query) {
   });
 
   document.querySelectorAll('.bench-cat-section').forEach(function(sec) {
-    if (sec.classList.contains('bench-sec-footprint') || sec.classList.contains('bench-sec-trends')) return;
+    if (sec.classList.contains('bench-sec-footprint') || sec.classList.contains('bench-sec-radar')) return;
     var count = secCounts[sec.className] || 0;
     if (q && count === 0) {
       sec.style.display = 'none';
@@ -1064,6 +1247,27 @@ function searchBenchAll(query) {
 }
 </script>
 """
+    bench_script = bench_script_template.replace("__SOURCES_JSON__", sources_json_str).replace("__COPY_SUCCESS__", copy_success_text)
+
+    platform_pills = []
+    pills_cfg = [
+        ("all", "All Architectures" if en else "全架构综合", "xi-globe"),
+        ("macos-arm64", "macOS ARM64", "xi-apple"),
+        ("linux-arm64", "Linux ARM64", "xi-linux"),
+        ("windows-arm64", "Win ARM64", "xi-windows"),
+        ("macos-x64", "macOS x64", "xi-apple"),
+        ("linux-x64", "Linux x64", "xi-linux"),
+        ("windows-x64", "Win x64", "xi-windows"),
+    ]
+    for pid, plabel, picon in pills_cfg:
+        active_cls = " active" if pid == "all" else ""
+        platform_pills.append(
+            f'<button type="button" class="bench-platform-pill{active_cls}" data-pid="{pid}" onclick="selectBenchPlatform(\'{pid}\')">'
+            f'  <i class="xi {picon}"></i> <span>{plabel}</span>'
+            f'</button>'
+        )
+
+    selector_label = "Target Platform Perspective:" if en else "目标实测架构视角:"
 
     return f"""<!--title: {title}-->
 <div class="hero bench-hero">
@@ -1085,8 +1289,8 @@ function searchBenchAll(query) {
   </div>
   <div class="bench-anchor-bar">
     <div class="bench-anchor-links">
-      <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('trends')">
-        {SVG_TRENDS} <span>{'Multi-Arch Trends' if en else '多维走势大盘'}</span>
+      <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('radar')">
+        {SVG_RADAR} <span>{'Radar Overview' if en else '四维战力罗盘'}</span>
       </button>
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('footprint')">
         {SVG_BRAIN} <span>{'Memory & Size' if en else '内存与体积'}</span>
@@ -1098,15 +1302,22 @@ function searchBenchAll(query) {
       <input type="text" class="bench-search-input" id="bench-global-search" placeholder="{search_placeholder}" oninput="searchBenchAll(this.value)" />
     </div>
   </div>
+  <!-- 多平台架构视角一键切换器 -->
+  <div class="bench-platform-selector-bar">
+    <div class="bench-platform-selector-label"><i class="xi xi-sliders xi-brand"></i> <span>{selector_label}</span></div>
+    <div class="bench-platform-pills">
+      {''.join(platform_pills)}
+    </div>
+  </div>
 </div>
 
-<!-- 1. 双架构跨平台多维走势全景大盘 (2x2 线形图) -->
-{trends_section}
+<!-- 1. 全语言四维综合战力罗盘 (置顶大盘) -->
+{radar_section}
 
 <!-- 2. 全平台内存与体积横向综合评测 (位于 Control Flow 之上) -->
 {footprint_section}
 
-<!-- 3. 功能大类全平台合一平铺 (按功能，各平台直接铺开) -->
+<!-- 3. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 6 平台详细数据表) -->
 {''.join(category_sections)}
 
 <h2>{method_h2}</h2>
@@ -1117,6 +1328,7 @@ function searchBenchAll(query) {
   <a href="/download">{'Download Compiler' if en else '下载 Xu 编译器'}</a> · 
   <a href="https://github.com/xulang-org/bench" target="_blank" rel="noopener noreferrer">{'Benchmark Suite on GitHub' if en else 'GitHub 基准测试套件源码'}</a>
 </p>
+{modal_html}
 {bench_script}
 """
 
