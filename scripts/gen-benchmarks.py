@@ -469,8 +469,8 @@ TREND_METRICS_CONFIG = [
         "unit": "ms",
         "title_zh": "运行耗时全景走势 (Wall Time)",
         "title_en": "Execution Wall Time Trends",
-        "desc_zh": "各语言在全平台所有实测负载的中位数耗时（包含进程启动）",
-        "desc_en": "Median wall time across all measured workloads (lower is better)",
+        "desc_zh": "各语言在全平台共同负载的中位数耗时（包含进程启动）",
+        "desc_en": "Median wall time across common workloads (lower is better)",
         "badge_zh": "越低越好 · ms",
         "badge_en": "Lower is better · ms",
         "icon": SVG_BOLT,
@@ -480,8 +480,8 @@ TREND_METRICS_CONFIG = [
         "unit": "MiB",
         "title_zh": "峰值内存占用走势 (Peak RSS)",
         "title_en": "Peak Memory Footprint Trends",
-        "desc_zh": "各语言在全平台所有实测负载的峰值常驻内存（RSS）中位数",
-        "desc_en": "Median peak resident set size across all workloads (lower is better)",
+        "desc_zh": "各语言在全平台共同负载的峰值常驻内存（RSS）中位数",
+        "desc_en": "Median peak resident set size across common workloads (lower is better)",
         "badge_zh": "越低越好 · MiB",
         "badge_en": "Lower is better · MiB",
         "icon": SVG_BRAIN,
@@ -502,7 +502,7 @@ TREND_METRICS_CONFIG = [
         "unit": "ms",
         "title_zh": "CPU 实际执行耗时走势 (CPU Time)",
         "title_en": "CPU Execution Time Trends",
-        "desc_zh": "各语言在全平台执行所有实测负载消耗的 CPU 用户与系统总耗时中位数",
+        "desc_zh": "各语言在全平台执行共同负载消耗的 CPU 用户与系统总耗时中位数",
         "desc_en": "Median total CPU user+sys execution time (lower is better)",
         "badge_zh": "越低越好 · ms",
         "badge_en": "Lower is better · ms",
@@ -528,7 +528,7 @@ def get_bench_impl_metric(b: dict, lang_key: str, metric_key: str) -> float | No
     if not target:
         return None
     val = target.get(metric_key)
-    if val is None or val < 0:
+    if not isinstance(val, (int, float)) or not math.isfinite(val) or val < 0:
         return None
     if metric_key == "bytes":
         return val / 1024.0  # KiB
@@ -573,12 +573,28 @@ def render_single_trend_chart(metric_cfg: dict, platforms: dict, en: bool) -> st
 
     series = {}
     max_v = 0.0
+    # All available language/platform pairs contribute the same workload set.
+    available_sets = []
+    for c in active_configs:
+        platform = platforms[c["id"]]
+        if metric_cfg["key"] == "rss_mib" and platform.get("rss_validated") is False:
+            continue
+        for lcfg in TREND_LANGS_CONFIG:
+            names = {b["name"] for b in platform.get("benches", [])
+                     if get_bench_impl_metric(b, lcfg["key"], metric_cfg["key"]) is not None}
+            if names:
+                available_sets.append(names)
+    common = set.intersection(*available_sets) if available_sets else set()
     for lcfg in TREND_LANGS_CONFIG:
         lk = lcfg["key"]
         pts = []
         for c in active_configs:
             pid = c["id"]
-            benches = platforms.get(pid, {}).get("benches", [])
+            platform = platforms[pid]
+            if metric_cfg["key"] == "rss_mib" and platform.get("rss_validated") is False:
+                pts.append(None)
+                continue
+            benches = [b for b in platform.get("benches", []) if b["name"] in common]
             vals = [get_bench_impl_metric(b, lk, metric_cfg["key"]) for b in benches]
             vals = [v for v in vals if v is not None]
             med = statistics.median(vals) if vals else None
@@ -684,6 +700,10 @@ def render_single_trend_chart(metric_cfg: dict, platforms: dict, en: bool) -> st
 
     title = metric_cfg["title_en"] if en else metric_cfg["title_zh"]
     subtitle = metric_cfg["desc_en"] if en else metric_cfg["desc_zh"]
+    subtitle += (
+        f"; {len(common)} common workloads, descriptive median, not an overall ranking"
+        if en else f"；统一 {len(common)} 项共同负载，描述性中位数，不作整体排名"
+    )
     badge_text = metric_cfg["badge_en"] if en else metric_cfg["badge_zh"]
     icon = metric_cfg["icon"]
 
@@ -714,9 +734,9 @@ def render_single_trend_chart(metric_cfg: dict, platforms: dict, en: bool) -> st
 def render_panorama_trends_section(platforms: dict, en: bool) -> str:
     sec_title = "Cross-Architecture Performance & Resource Trends (2×2 Panorama)" if en else "双架构跨平台性能与资源走势全景大盘 (2×2)"
     sec_desc = (
-        "Comparing all 5 language implementations across 6 OS and architecture targets in 4 key dimensions: Wall Time, Peak Memory, Binary Size, and CPU Time."
+        "Descriptive medians over common workloads on six targets. C/Rust use O3 here; missing or invalid data remain gaps. Lines connect platforms, not a time series or optimization speedup."
         if en
-        else "在 6 大系统与芯片架构目标下，从运行效率、内存占用、独立体积和 CPU 耗时 4 个核心维度，全景对照 5 大语言体系的实测走势："
+        else "六平台共同负载的描述性中位数；图中 C、Rust 使用 O3，缺失或无效数据留空。连线连接不同平台，不表示时间趋势或优化加速。"
     )
 
     legend_items = []
@@ -756,7 +776,7 @@ def render_panorama_trends_section(platforms: dict, en: bool) -> str:
 
 
 def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
-    """Render memory footprint and binary size: platforms as columns (horizontal), languages as rows (vertical). Highlights per-platform best cells."""
+    """Render descriptive workload ranges without ranking unlike workloads."""
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
 
     # 横向表头：6 个目标平台
@@ -785,10 +805,10 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
     # 各语言配置定义
     langs_def = [
         ("xu", "Xu", "Xu", "零 GC · 编译期借用与 RAII 确定性析构", "Zero GC / RAII Scope Drop", True),
-        ("c", "C <small>-O3</small>", "Clang", "手动 free / 无运行时开销", "Manual free / Zero runtime", False),
+        ("c", "C <small>-O3</small>", "Clang", "手动内存管理 · 无 GC", "Manual memory management / No GC", False),
         ("rs", "Rust <small>-O3</small>", "rustc", "零 GC · 所有权生命周期与 Drop", "Zero GC / Ownership Drop", False),
         ("swift", "Swift <small>-O</small>", "Swift", "ARC 自动引用计数运行时", "ARC (Automatic Reference Counting)", False),
-        ("go", "Go <small>native</small>", "Go", "并发三色标记清除 GC 运行时", "Concurrent Tracing GC Runtime", False),
+        ("go", "Go <small>native</small>", "Go", "追踪式 GC 运行时", "Tracing GC Runtime", False),
     ]
 
     rss_rows = []
@@ -823,12 +843,12 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
         rss_rows.append(f'<tr{row_cls}>{"".join(rss_cells)}</tr>')
         size_rows.append(f'<tr{row_cls}>{"".join(size_cells)}</tr>')
 
-    sec_title = "Memory Footprint & Binary Size (All Platforms & Languages)" if en else "全平台内存常驻与独立二进制体积横向综合评测"
+    sec_title = "Memory Footprint & Binary Size (All Platforms & Languages)" if en else "全平台内存与独立二进制体积"
     sec_desc = (
-        "Each cell spans different workloads, not a matched-workload memory ranking. Linux RSS is withheld pending a retest: its old wait4 sampler included launcher memory. Raw historical values are retained with validity flags in the dataset."
-        if en
-        else "每格覆盖不同负载，不能用范围下限评整体最优。旧 Linux wait4 采样混入启动进程内存，RSS 暂不展示，等待复测；原始历史值与有效性标记保留在数据集中。"
+        "Each cell spans different workloads, not a matched-workload memory ranking. "
+        if en else "每格覆盖不同负载，不能用范围下限评整体最优。"
     )
+    sec_desc += rss_method_note(platforms, en)
 
     h3_rss = "1. Range of per-workload median peak RSS (MiB; no overall ranking)" if en else "1. 各负载峰值 RSS 中位数范围（MiB，不作整体排名）"
     h3_size = "2. Binary-size range across workloads (unstripped KiB; no overall ranking)" if en else "2. 不同负载的未裁剪二进制体积范围（KiB，不作整体排名）"
@@ -875,6 +895,21 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
   </div>
 </div>
 """
+
+
+def rss_method_note(platforms: dict, en: bool) -> str:
+    if any(p.get("rss_validated") is False for p in platforms.values()):
+        return (
+            "Legacy Linux RSS includes launcher memory and is withheld pending a retest."
+            if en else "旧 Linux 采样混入启动进程内存，RSS 暂不展示，等待复测。"
+        )
+    return (
+        "Linux peak RSS is collected in a separate post-exec run; tracing is excluded from wall time. "
+        "macOS uses wait4 and Windows uses peak working set; these OS accounting methods differ."
+        if en else
+        "Linux 另次运行读取 exec 后目标地址空间的峰值 RSS，跟踪开销不计入耗时。"
+        "macOS 使用 wait4，Windows 使用峰值工作集；各系统的内存统计口径不同。"
+    )
 
 
 def render_page(data: dict, lang: str) -> str:
@@ -969,17 +1004,18 @@ def render_page(data: dict, lang: str) -> str:
 
     # Methodology section
     method_h2 = "Methodology & Reproducibility" if en else "评测准则与环境公开"
+    rss_note = rss_method_note(platforms, en)
     method_p1 = (
         "<ul><li>Seven whole-program samples per implementation; wall time is the median, including process startup.</li>"
         "<li>C and Rust rows select the lowest measured median among O1/O2/O3 for that workload and platform. Go and Swift show only measured implementations.</li>"
         "<li>Every Xu workload output and exit status passed the benchmark harness. All six compiler identities match the recorded commit, version, source closure and Gen2=Gen3.</li>"
-        "<li>Resource ranges span different workloads and do not establish an overall ranking. Linux RSS from the old sampler is invalid; see the memory section. C/Rust footprint rows use O3 builds.</li>"
+        f"<li>Resource ranges do not establish an overall ranking. {rss_note} C/Rust footprint rows use O3 builds.</li>"
         "<li>Runner hardware, libraries, startup costs and hardware acceleration differ. Compare ratios within one platform; do not interpret cross-machine timing changes as optimization speedups.</li></ul>"
         if en else
         "<ul><li>每项实现运行七次，展示整进程 wall 耗时中位数，包含进程启动。</li>"
         "<li>C、Rust 行分别取该负载同平台 O1/O2/O3 中位数最小值；Go、Swift 仅展示实测实现。</li>"
         "<li>全部 Xu 负载的输出与退出状态通过校验；六份编译器身份的提交、版本、源闭包和 Gen2=Gen3 已核验。</li>"
-        "<li>资源范围覆盖不同负载，不代表整体排名；旧采样器的 Linux RSS 无效，见内存区说明。C、Rust 的资源表使用 O3 构建。</li>"
+        f"<li>资源范围不代表整体排名。{rss_note}C、Rust 的资源表使用 O3 构建。</li>"
         "<li>机器、库实现、启动成本和硬件加速路径不同，应在同一平台内比较倍数，不能把跨机器耗时变化当作优化收益。</li></ul>"
     )
 
