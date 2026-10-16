@@ -416,28 +416,6 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
     """Render memory footprint and binary size: platforms as columns (horizontal), languages as rows (vertical). Highlights per-platform best cells."""
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
 
-    # 计算各平台 RSS 和 Size 的单平台最小值
-    platform_min_rss = {}
-    platform_min_size = {}
-
-    for c in active_configs:
-        pid = c["id"]
-        p = platforms[pid]
-        fp_list = p.get("footprint", [])
-        rss_cands = []
-        size_cands = []
-        for f in fp_list:
-            r = parse_fp_min(f.get("rss"))
-            if r is not None and r > 0:
-                rss_cands.append(r)
-            s = parse_fp_min(f.get("size"))
-            if s is not None and s > 0:
-                size_cands.append(s)
-        if rss_cands:
-            platform_min_rss[pid] = min(rss_cands)
-        if size_cands:
-            platform_min_size[pid] = min(size_cands)
-
     # 横向表头：6 个目标平台
     th_cols_rss = [f'<th class="bench-td-lang-cell" style="width: 13%;">{"Language" if en else "实现语言"}</th>']
     th_cols_size = [f'<th class="bench-td-lang-cell" style="width: 16%;">{"Language" if en else "实现语言"}</th>']
@@ -483,51 +461,14 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
             fp_list = p.get("footprint", [])
             fp = next((f for f in fp_list if match_prefix.lower() in f["impl"].lower()), None)
             
-            if fp and fp.get("rss"):
-                val_rss = f"{fp['rss']} MiB"
-                num_rss = parse_fp_min(fp["rss"])
-                p_min = platform_min_rss.get(pid)
-                is_best = (num_rss is not None and p_min is not None and abs(num_rss - p_min) < 1e-4)
-
-                if is_best:
-                    best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>'
-                    rss_cells.append(
-                        f'<td class="bench-cell-best">'
-                        f'  <div class="bench-cell-wrap">'
-                        f'    <div class="bench-val-row">'
-                        f'      <strong class="bench-val-best">{val_rss}</strong>{best_pill}'
-                        f'    </div>'
-                        f'  </div>'
-                        f'</td>'
-                    )
-                elif is_xu:
-                    rss_cells.append(f'<td class="bench-xu-col"><strong>{val_rss}</strong></td>')
-                else:
-                    rss_cells.append(f'<td class="num">{val_rss}</td>')
+            if p.get("rss_validated") is False:
+                rss_cells.append(f'<td class="meta">{"Pending retest" if en else "待复测"}</td>')
+            elif fp and fp.get("rss"):
+                rss_cells.append(f'<td class="num">{fp["rss"]} MiB</td>')
             else:
                 rss_cells.append('<td class="meta">—</td>')
-
             if fp and fp.get("size"):
-                val_size = f"{fp['size']} KiB"
-                num_size = parse_fp_min(fp["size"])
-                p_min = platform_min_size.get(pid)
-                is_best = (num_size is not None and p_min is not None and abs(num_size - p_min) < 1e-4)
-
-                if is_best:
-                    best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>'
-                    size_cells.append(
-                        f'<td class="bench-cell-best">'
-                        f'  <div class="bench-cell-wrap">'
-                        f'    <div class="bench-val-row">'
-                        f'      <strong class="bench-val-best">{val_size}</strong>{best_pill}'
-                        f'    </div>'
-                        f'  </div>'
-                        f'</td>'
-                    )
-                elif is_xu:
-                    size_cells.append(f'<td class="bench-xu-col"><strong>{val_size}</strong></td>')
-                else:
-                    size_cells.append(f'<td class="num">{val_size}</td>')
+                size_cells.append(f'<td class="num">{fp["size"]} KiB</td>')
             else:
                 size_cells.append('<td class="meta">—</td>')
 
@@ -541,13 +482,13 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
 
     sec_title = "Memory Footprint & Binary Size (All Platforms & Languages)" if en else "全平台内存常驻与独立二进制体积横向综合评测"
     sec_desc = (
-        "Accurately comparing Xu against C, Rust, Swift, and Go across all 6 OS and architecture platforms (wait4/Win32 native capture):"
+        "Each cell spans different workloads, not a matched-workload memory ranking. Linux RSS is withheld pending a retest: its old wait4 sampler included launcher memory. Raw historical values are retained with validity flags in the dataset."
         if en
-        else "在全 6 组操作系统与芯片架构下，横向对照各平台、纵向对照各语言的峰值常驻内存（wait4/Win32 原生捕获）与未裁剪独立体积："
+        else "每格覆盖不同负载，不能用范围下限评整体最优。旧 Linux wait4 采样混入启动进程内存，RSS 暂不展示，等待复测；原始历史值与有效性标记保留在数据集中。"
     )
 
-    h3_rss = "1. Peak Resident Memory across Platforms & Languages (RSS, lower is better)" if en else "1. 各语言在全平台的峰值常驻内存横向对照 (Peak RSS，越低越好)"
-    h3_size = "2. Standalone Binary Size across Platforms & Languages (Unstripped on-disk size, smaller is better)" if en else "2. 各语言在全平台的未裁剪独立二进制体积横向对照 (Binary Size，越小越好)"
+    h3_rss = "1. Range of per-workload median peak RSS (MiB; no overall ranking)" if en else "1. 各负载峰值 RSS 中位数范围（MiB，不作整体排名）"
+    h3_size = "2. Binary-size range across workloads (unstripped KiB; no overall ranking)" if en else "2. 不同负载的未裁剪二进制体积范围（KiB，不作整体排名）"
 
     return f"""
 <div class="bench-cat-section bench-sec-footprint">
@@ -686,13 +627,13 @@ def render_page(data: dict, lang: str) -> str:
         "<ul><li>Seven whole-program samples per implementation; wall time is the median, including process startup.</li>"
         "<li>C and Rust rows select the lowest measured median among O1/O2/O3 for that workload and platform. Go and Swift show only measured implementations.</li>"
         "<li>Every Xu workload output and exit status passed the benchmark harness. All six compiler identities match the recorded commit, version, source closure and Gen2=Gen3.</li>"
-        "<li>RSS and binary-size ranges are derived from the measured workloads. O3 builds are used for the C/Rust footprint rows.</li>"
+        "<li>Resource ranges span different workloads and do not establish an overall ranking. Linux RSS from the old sampler is invalid; see the memory section. C/Rust footprint rows use O3 builds.</li>"
         "<li>Runner hardware, libraries, startup costs and hardware acceleration differ. Compare ratios within one platform; do not interpret cross-machine timing changes as optimization speedups.</li></ul>"
         if en else
         "<ul><li>每项实现运行七次，展示整进程 wall 耗时中位数，包含进程启动。</li>"
         "<li>C、Rust 行分别取该负载同平台 O1/O2/O3 中位数最小值；Go、Swift 仅展示实测实现。</li>"
         "<li>全部 Xu 负载的输出与退出状态通过校验；六份编译器身份的提交、版本、源闭包和 Gen2=Gen3 已核验。</li>"
-        "<li>RSS 与体积范围来自本轮实测负载；C、Rust 的资源表使用 O3 构建。</li>"
+        "<li>资源范围覆盖不同负载，不代表整体排名；旧采样器的 Linux RSS 无效，见内存区说明。C、Rust 的资源表使用 O3 构建。</li>"
         "<li>机器、库实现、启动成本和硬件加速路径不同，应在同一平台内比较倍数，不能把跨机器耗时变化当作优化收益。</li></ul>"
     )
 

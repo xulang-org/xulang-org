@@ -66,6 +66,7 @@ def load(artifacts, version, commit, run_id, measured_date):
             for key in ('c', 'rust', 'go', 'swift'):
                 peer = item[key + '_wall_ms']
                 item['ratio_vs_' + key] = item['xu_wall_ms'] / peer if positive(peer) else None
+        rss_validated = not target.startswith('linux-') or meta.get('rss_method') == 'linux-post-exec-vmhwm-v1'
         footprint = []
         for impl, label in [('Xu', 'Xu'), ('clang -O3', 'Clang -O3'),
                             ('rustc -O3', 'rustc -O3'), ('swiftc -O', 'Swift -O'),
@@ -76,10 +77,12 @@ def load(artifacts, version, commit, run_id, measured_date):
             record = {'impl': label}
             for source, key, scale in [('rss_mib', 'rss', 1), ('bytes', 'size', 1024)]:
                 values = [s[source] / scale for s in samples if positive(s.get(source))]
-                if values:
+                if values and (key != 'rss' or rss_validated):
                     record[key] = f'{min(values):.2f} – {max(values):.2f}'
             footprint.append(record)
-        platforms[target] = {**meta, 'benches': data['benches'], 'footprint': footprint}
+        platforms[target] = {**meta, 'rss_validated': rss_validated,
+                             'rss_note': '' if rss_validated else 'Invalid legacy wait4 peak includes launcher memory; pending retest',
+                             'benches': data['benches'], 'footprint': footprint}
         identities[target] = identity
         categories = categories or data['categories']
         if categories != data['categories']:
