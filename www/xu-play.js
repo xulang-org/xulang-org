@@ -132,13 +132,15 @@
           if (select) select.disabled = false;
           var customCode = null;
           try {
-            customCode = sessionStorage.getItem('xu-playground-code');
-            if (customCode) sessionStorage.removeItem('xu-playground-code');
+            if (typeof sessionStorage !== 'undefined' && sessionStorage && sessionStorage.getItem) {
+              customCode = sessionStorage.getItem('xu-playground-code');
+              if (customCode) sessionStorage.removeItem('xu-playground-code');
+            }
+            if (!customCode && typeof window !== 'undefined' && window.location && window.location.search) {
+              var urlParams = new URLSearchParams(window.location.search);
+              customCode = urlParams.get('code');
+            }
           } catch (e) {}
-          if (!customCode) {
-            var urlParams = new URLSearchParams(window.location.search);
-            customCode = urlParams.get('code');
-          }
           if (customCode) {
             autoRunCode = customCode;
             source.value = customCode;
