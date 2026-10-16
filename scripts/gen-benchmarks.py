@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import html
+import statistics
 from pathlib import Path
 import re
 
@@ -27,8 +29,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Control Flow & Language Primitives",
         "pill_zh": "控制流机制",
         "pill_en": "Control & Primitives",
-        "desc_zh": "评测空 main 冷启动、整数循环累加、深度递归、分支预测敏感度、模式匹配展开、defer 释放开销及异常捕获等语言机制开销。",
-        "desc_en": "Evaluates empty-main startup, loop accumulation, deep recursion, branch prediction, pattern matching, defer cleanup, and exception handling overhead.",
+        "desc_zh": "实测进程启动、整数与浮点循环、递归、嵌套循环和结构体方法调用。",
+        "desc_en": "Measured process startup, integer and floating-point loops, recursion, nested loops and struct method calls.",
         "icon": SVG_CONTROL,
     },
     {
@@ -37,8 +39,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Numerical Algorithms & Compute",
         "pill_zh": "数值算法",
         "pill_en": "Algorithms",
-        "desc_zh": "高强度数值计算与矩阵代数：包含双精度矩阵乘法、N 体天体轨道动力学模拟、Mandelbrot 复数分形、谱范数逼近、素数筛选及快速排序。",
-        "desc_en": "Compute-intensive numerical algorithms: matrix multiplication, N-body orbital dynamics, Mandelbrot fractals, spectral norm, prime sieve, and quicksort.",
+        "desc_zh": "本轮实测数值计算负载；具体算法与规模以各项源码为准。",
+        "desc_en": "Measured numerical workloads in this run; see each workload source for the algorithm and input size.",
         "icon": SVG_ALGO,
     },
     {
@@ -47,8 +49,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Data Structures & Memory Access",
         "pill_zh": "数据结构",
         "pill_en": "Data Structures",
-        "desc_zh": "三维向量 SROA 标量寄存器拆解、动态向量扩容、高频哈希表读写、二叉树构建遍历、双向链表、LRU 缓存淘汰与无锁环形缓冲区。",
-        "desc_en": "Scalar replacement of aggregates (SROA), dynamic vector resizing, hashmap inserts/lookups, binary trees, linked lists, LRU cache, and ring buffers.",
+        "desc_zh": "本轮实测数据结构字段访问及块内存拷贝。",
+        "desc_en": "Measured aggregate field access and block memory copying.",
         "icon": SVG_DATA,
     },
     {
@@ -57,8 +59,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Strings & Text I/O",
         "pill_zh": "文本与I/O",
         "pill_en": "Strings & I/O",
-        "desc_zh": "字符串快速拼接缓冲、正则表达式编译匹配、JSON 词法语法解析、Base64 编解码、UTF-8 字符流校验及顺序文件吞吐量。",
-        "desc_en": "String buffer concatenation, regex matching, JSON parsing, Base64 encoding, UTF-8 validation, sequential file throughput, and CSV processing.",
+        "desc_zh": "字符串扩容与构建。",
+        "desc_en": "String buffer growth and construction.",
         "icon": SVG_STRING,
     },
     {
@@ -67,8 +69,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Modern Cryptography & Hashing",
         "pill_zh": "现代密码学",
         "pill_en": "Cryptography",
-        "desc_zh": "AES-128/256 软件对称加密、SHA-256/512 哈希链、BLAKE3 高吞吐哈希、ChaCha20 流密码、Ed25519 签名与验签、RSA-2048 及 HMAC-SHA256。",
-        "desc_en": "AES-128/256 symmetric ciphers, SHA-256/512 chains, BLAKE3 high-throughput hash, ChaCha20 stream cipher, Ed25519 signatures, RSA-2048, and HMAC.",
+        "desc_zh": "本轮实测 SHA-256 哈希链与 AES-128 加密；硬件与软件执行路径可能不同。",
+        "desc_en": "Measured SHA-256 hash chains and AES-128 encryption; hardware and software execution paths may differ.",
         "icon": SVG_CRYPTO,
     },
     {
@@ -229,18 +231,18 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
         if not item or item.get("xu_wall_ms") is None or item["xu_wall_ms"] <= 0:
             continue
         xu_ms = item["xu_wall_ms"]
-        peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms"), item.get("swift_wall_ms"), item.get("go_wall_ms")] if v is not None and v > 0]
+        peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms")] if v is not None and v > 0]
         if peers:
             all_ratios.append(xu_ms / min(peers))
 
-    median_ratio = sorted(all_ratios)[len(all_ratios) // 2] if all_ratios else None
+    median_ratio = statistics.median(all_ratios) if all_ratios else None
 
     fastest_str = ""
     if fastest_cfg:
         f_name = fastest_cfg["name_en"] if en else fastest_cfg["name_zh"]
         fastest_str = (
             f'<span class="bench-meta-tag bench-meta-fastest">'
-            f'{SVG_BOLT} <span>{"Fastest:" if en else "最快架构:"} '
+            f'{SVG_BOLT} <span>{"Lowest observed wall time:" if en else "本轮最低 wall 耗时:"} '
             f'<strong>{f_name} {fastest_cfg["arch_tag"]} ({min_xu_val:.2f}ms)</strong></span>'
             f'</span>'
         )
@@ -250,7 +252,7 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
         badge = format_ratio_badge(median_ratio)
         ratio_str = (
             f'<span class="bench-meta-tag bench-meta-ratio">'
-            f'<span>{"Median vs Best Peer:" if en else "中位对比最佳:"}</span> {badge}'
+            f'<span>{"Median Xu / best C/Rust:" if en else "Xu / 最佳 C、Rust 中位数:"}</span> {badge}'
             f'</span>'
         )
 
@@ -277,7 +279,7 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
             xu_cells.append('<td class="meta">—</td>')
             continue
         xu_ms = item["xu_wall_ms"]
-        peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms"), item.get("swift_wall_ms"), item.get("go_wall_ms")] if v is not None and v > 0]
+        peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms")] if v is not None and v > 0]
         best_peer = min(peers) if peers else None
         ratio = round(xu_ms / best_peer, 2) if (best_peer and xu_ms) else None
         badge = format_ratio_badge(ratio)
@@ -302,9 +304,9 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
 
     # 其余语言行
     peer_rows_def = [
-        ("c", "C <small>-O3</small>", "c_wall_ms"),
-        ("rs", "Rust <small>-O3</small>", "rust_wall_ms"),
-        ("swift", "Swift <small>-O3</small>", "swift_wall_ms"),
+        ("c", "C <small>best O1–O3</small>", "c_wall_ms"),
+        ("rs", "Rust <small>best O1–O3</small>", "rust_wall_ms"),
+        ("swift", "Swift <small>-O</small>", "swift_wall_ms"),
         ("go", "Go <small>native</small>", "go_wall_ms"),
     ]
 
@@ -464,7 +466,7 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
         ("xu", "Xu", "Xu", "零 GC · 编译期借用与 RAII 确定性析构", "Zero GC / RAII Scope Drop", True),
         ("c", "C <small>-O3</small>", "Clang", "手动 free / 无运行时开销", "Manual free / Zero runtime", False),
         ("rs", "Rust <small>-O3</small>", "rustc", "零 GC · 所有权生命周期与 Drop", "Zero GC / Ownership Drop", False),
-        ("swift", "Swift <small>-O3</small>", "Swift", "ARC 自动引用计数运行时", "ARC (Automatic Reference Counting)", False),
+        ("swift", "Swift <small>-O</small>", "Swift", "ARC 自动引用计数运行时", "ARC (Automatic Reference Counting)", False),
         ("go", "Go <small>native</small>", "Go", "并发三色标记清除 GC 运行时", "Concurrent Tracing GC Runtime", False),
     ]
 
@@ -599,11 +601,12 @@ def render_page(data: dict, lang: str) -> str:
         raise ValueError(f"Official benchmark requires an official release (x.y.z), got: {version}")
     platforms = data.get("platforms", {})
     categories = data["categories"]
+    workload_count = meta["total_benches"]
 
     title = (
         "Benchmarks — Cross-Language & Multi-Architecture Performance"
         if en
-        else "横向测评 — 47 项跨语言与双架构性能实测"
+        else f"横向测评 — {workload_count} 项跨语言与双架构性能实测"
     )
 
     h1_text = (
@@ -614,18 +617,18 @@ def render_page(data: dict, lang: str) -> str:
 
     lead_text = (
         f"Rigorous, reproducible cross-language benchmarks comparing Xu v{meta['xu_version']} "
-        f"against C (Clang -O3), Rust (rustc -O3), Swift (swiftc -O3), and Go (go build) across 47 real-world algorithms. "
+        f"against C (best Clang O1–O3), Rust (best rustc O1–O3), Swift (swiftc -O), and Go (go build) across {workload_count} measured workloads. "
         f"Concurrently verified across dual architectures (ARM64 & x86_64) on macOS, Linux, and Windows."
         if en
-        else f"严谨、可复现的跨语言横向评测：在 47 个真实算法与业务负载下，将 Xu v{meta['xu_version']} "
-        f"与 C (Clang -O3)、Rust (rustc -O3)、Swift (swiftc -O3) 及 Go (go build) 进行同算法全维度对照。"
+        else f"严谨、可复现的跨语言横向评测：在 {workload_count} 个实测负载下，将 Xu v{meta['xu_version']} "
+        f"与 C（Clang O1–O3 最佳）、Rust（rustc O1–O3 最佳）、Swift（swiftc -O） 及 Go (go build) 进行同算法全维度对照。"
         f"覆盖 ARM64 与 x86_64 双架构，以及 macOS、Linux、Windows 三大操作系统自动化 CI 实测。"
     )
 
     meta_text = (
-        f"Updated: {meta['date']} · Verified against official SDK v{meta['xu_version']} · Dual-Architecture (ARM64 + x86_64)"
+        f"Updated: {meta['date']} · Measured Xu v{meta['xu_version']} · Dual-Architecture (ARM64 + x86_64)"
         if en
-        else f"更新于 {meta['date']} · 对应官方 SDK v{meta['xu_version']} · 双架构（ARM64 + x86_64）多平台实测"
+        else f"更新于 {meta['date']} · 实测 Xu v{meta['xu_version']} · 双架构（ARM64 + x86_64）多平台实测"
     )
 
     banner_text = (
@@ -638,6 +641,20 @@ def render_page(data: dict, lang: str) -> str:
         '全量评测源码与测量方法完全开源于 '
         '<a href="https://github.com/xulang-org/bench" target="_blank" rel="noopener noreferrer">bench 仓库</a>。'
         '原始结构化数据集：<a href="/benchmarks.json">benchmarks.json</a>。'
+    )
+
+    run_url = html.escape(meta.get("run_url", "https://github.com/xulang-org/bench"), quote=True)
+    commit = html.escape(meta.get("xu_commit", "unrecorded"))
+    banner_text += (
+        f' <a href="{run_url}">Source Actions run</a> · Xu <code>{commit}</code>. '
+        'Ratios use the lowest same-platform C/Rust O1–O3 median. A dash means no measurement. '
+        'Different runner timings are not speedup evidence. SHA-256 uses hardware instructions when '
+        'available on ARM64; x64 currently uses software. Cryptographic library paths may differ.'
+        if en else
+        f' <a href="{run_url}">来源 Actions 运行</a> · Xu <code>{commit}</code>。'
+        '倍数使用同平台 C、Rust O1–O3 中位数的最小值；横线表示没有实测数据。'
+        '不同机器的绝对耗时不能作为加速证据。SHA-256 在支持的 ARM64 上使用硬件指令，'
+        'x64 当前使用软件路径；各语言密码库采用的路径可能不同。'
     )
 
     # 1. 功能大类平铺区块列表
@@ -666,23 +683,17 @@ def render_page(data: dict, lang: str) -> str:
     # Methodology section
     method_h2 = "Methodology & Reproducibility" if en else "评测准则与环境公开"
     method_p1 = (
-        "<ul>"
-        "<li><b>Equal algorithm parity</b>: Every workload implements identical mathematical algorithms, data structures, and iteration counts across all languages.</li>"
-        "<li><b>Peak optimization flags</b>: All native peers compiled under peak release optimization flags (Clang <code>-O3</code>, rustc <code>-O3 / --release</code>, Swift <code>-O</code> equivalent to -O3, Go native release build).</li>"
-        "<li><b>Strict verification</b>: Every iteration verifies program stdout fingerprint and return code to prevent dead-code elimination cheats.</li>"
-        "<li><b>Wall & CPU timing</b>: 7 iterations per test; reports median wall time and peak resident set size (RSS, wait4 on Unix, Win32 API on Windows).</li>"
-        "<li><b>Dual-Architecture Matrix</b>: Native execution on ARM64 (Apple Silicon, Neoverse, Snapdragon X) and x86_64 (Intel, AMD) across macOS, Linux, and Windows runners.</li>"
-        "<li><b>CI automation</b>: Continually tested on GitHub Actions runner. View the workflow: <code>.github/workflows/bench.yml</code> in the <a href=\"https://github.com/xulang-org/bench\" target=\"_blank\">bench repository</a>.</li>"
-        "</ul>"
-        if en
-        else "<ul>"
-        "<li><b>同算法等价实现</b>：所有横测均采用相同的数据结构、数学算法与循环迭代规模，拒绝峰值特化。</li>"
-        "<li><b>全量最高编译优化</b>：所有原生对比语言均开启官方最高级别优化（Clang <code>-O3</code>、rustc <code>-O3 / --release</code>、Swift <code>-O</code> 即等价 -O3、Go 原生编译优化），统一处于激进优化水平。</li>"
-        "<li><b>严苛输出指纹校验</b>：每次运行均严格比对 stdout 黄金校验码与退出码，杜绝无意义的死代码剪除与假跑。</li>"
-        "<li><b>稳健采样方法</b>：每个程序重复运行 7 次，取 wall 耗时与 CPU 耗时中位数；通过 Unix wait4 与 Windows 原生 API 捕获真实峰值常驻内存（RSS）。</li>"
-        "<li><b>双架构完整覆盖</b>：原生覆盖 ARM64（Apple Silicon / Neoverse / Snapdragon X Elite）与 x86_64（Intel / AMD）硬件，并在 macOS、Linux、Windows 环境下全面实测。</li>"
-        "<li><b>CI 自动化测试</b>：由 GitHub Actions CI 全程自动运行与出具报告。流水线配置见 <a href=\"https://github.com/xulang-org/bench\" target=\"_blank\">bench 仓库</a> 的 <code>.github/workflows/bench.yml</code>。</li>"
-        "</ul>"
+        "<ul><li>Seven whole-program samples per implementation; wall time is the median, including process startup.</li>"
+        "<li>C and Rust rows select the lowest measured median among O1/O2/O3 for that workload and platform. Go and Swift show only measured implementations.</li>"
+        "<li>Every Xu workload output and exit status passed the benchmark harness. All six compiler identities match the recorded commit, version, source closure and Gen2=Gen3.</li>"
+        "<li>RSS and binary-size ranges are derived from the measured workloads. O3 builds are used for the C/Rust footprint rows.</li>"
+        "<li>Runner hardware, libraries, startup costs and hardware acceleration differ. Compare ratios within one platform; do not interpret cross-machine timing changes as optimization speedups.</li></ul>"
+        if en else
+        "<ul><li>每项实现运行七次，展示整进程 wall 耗时中位数，包含进程启动。</li>"
+        "<li>C、Rust 行分别取该负载同平台 O1/O2/O3 中位数最小值；Go、Swift 仅展示实测实现。</li>"
+        "<li>全部 Xu 负载的输出与退出状态通过校验；六份编译器身份的提交、版本、源闭包和 Gen2=Gen3 已核验。</li>"
+        "<li>RSS 与体积范围来自本轮实测负载；C、Rust 的资源表使用 O3 构建。</li>"
+        "<li>机器、库实现、启动成本和硬件加速路径不同，应在同一平台内比较倍数，不能把跨机器耗时变化当作优化收益。</li></ul>"
     )
 
     search_placeholder = "Search workload or algorithm across all sections..." if en else "全局搜索算法用例或说明 (如 startup, matmul, aes)..."
@@ -746,7 +757,7 @@ function searchBenchAll(query) {
   <div class="bench-sticky-topline">
     <div style="display: flex; align-items: center; gap: 8px;">
       <h2 style="margin: 0; font-size: 17px; font-weight: 700;">{'Cross-Architecture Benchmark Suite' if en else '全量架构性能评测工作集'}</h2>
-      <span class="meta" style="margin: 0; font-size: 12px;">{'47 Real-world Workloads · 6 Platforms Integrated' if en else '47 项真实算法负载 · 6 大目标平台合一平铺'}</span>
+      <span class="meta" style="margin: 0; font-size: 12px;">{f'{workload_count} Measured Workloads · 6 Platforms' if en else f'{workload_count} 项实测负载 · 6 个平台'}</span>
     </div>
   </div>
   <div class="bench-anchor-bar">
@@ -793,8 +804,8 @@ def main():
     zh_out = ROOT / "content/zh/benchmarks.html"
     en_out = ROOT / "content/en/benchmarks.html"
 
-    zh_out.write_text(zh_content, encoding="utf-8")
-    en_out.write_text(en_content, encoding="utf-8")
+    zh_out.write_text("\n".join(line.rstrip() for line in zh_content.splitlines()) + "\n", encoding="utf-8")
+    en_out.write_text("\n".join(line.rstrip() for line in en_content.splitlines()) + "\n", encoding="utf-8")
 
     print(f"Generated {zh_out}")
     print(f"Generated {en_out}")

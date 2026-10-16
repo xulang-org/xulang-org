@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://xulang.org"><img src="https://img.shields.io/badge/Site-xulang.org-rose" alt="Site"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <a href="https://xulang.org/benchmarks"><img src="https://img.shields.io/badge/Benchmarks-47%20Tasks-amber" alt="Benchmarks"></a>
+  <a href="https://xulang.org/benchmarks"><img src="https://img.shields.io/badge/Benchmarks-13%20Tasks-amber" alt="Benchmarks"></a>
   <a href="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml"><img src="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml/badge.svg" alt="Pages CI"></a>
 </p>
 
@@ -23,7 +23,7 @@
 
 Key features hosted in this portal:
 - 🌐 **Bilingual Official Docs & Tutorials**: Comprehensive guides, language specs, standard library, and API references with seamless language switching.
-- ⚡ **Multi-Platform 47-Task Benchmark Dashboard**: Interactive cross-language performance and resource comparisons across ARM64, x86-64, and Windows ARM64.
+- ⚡ **Multi-Platform 13-Task Benchmark Dashboard**: Interactive cross-language performance and resource comparisons across ARM64, x86-64, and Windows ARM64.
 - 🚀 **Client-Side WebAssembly Playground**: Xu compiled directly to a zero-server-load in-browser WASM sandbox for instant experimentation.
 - 🎨 **Brand Identity Assets**: Official vector logos, typography, and badges.
 
@@ -82,3 +82,7 @@ Automated deployment is configured in `.github/workflows/pages.yml`:
 ## License
 
 This repository is open-sourced under the [MIT License](LICENSE).
+
+## Xu 0.8.11
+
+The site selects the published stable 0.8.11 SDK. Development builds remain separate. To refresh the benchmark page, download one complete six-platform Actions run and use `scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD`, then `python3 scripts/gen-benchmarks.py`. Import verifies compiler identities, source closure, fixed point, workload completeness and stdout. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.

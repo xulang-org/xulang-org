@@ -213,6 +213,9 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
             recorded = re.search(r'<!--xu-api-version:\s*(.*?)-->', source.read_text())
             if not recorded or recorded[1].strip() != xu_version:
                 raise ValueError(f'API version does not match Xu {xu_version}; regenerate API from the matching SDK')
+    benchmark = json.loads((root / 'www/benchmarks.json').read_text())
+    if benchmark['metadata']['xu_version'] != xu_version:
+        raise ValueError(f'Benchmark version does not match Xu {xu_version}; import the matching release run')
     digest = hashlib.sha256()
     for name in ('xu-play.js', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
         asset = wasm if name == 'xu-play.wasm' else root / 'www' / name

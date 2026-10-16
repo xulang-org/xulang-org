@@ -702,6 +702,17 @@ def _ov(pkg, name, zh_p, zh_params, zh_r, en_p, en_params, en_r, recv=""):
     }
 
 
+_ov("ui", "native_set_menu_visible",
+    "在 App.run 前后控制 Windows 原生窗口的默认菜单栏；写入失败时抛出错误。",
+    {"on": "0 隐藏菜单栏，非 0 显示菜单栏"}, "写入操作的返回值",
+    "Control the Windows native window's default menu bar before or after App.run; throws if the setting cannot be written.",
+    {"on": "0 hides the menu bar; nonzero shows it"}, "the setting write result")
+_ov("ui/draw", "set_pan_enabled",
+    "控制 Windows 画布内置的拖拽与滚轮平移；固定布局窗体可关闭此功能。",
+    {"on": "0 关闭平移，1 开启平移"}, "绘图命令的返回值",
+    "Enable or disable the Windows canvas's built-in drag and wheel panning, useful for fixed-layout forms.",
+    {"on": "0 disables panning; 1 enables it"}, "the drawing command result")
+
 _ov(
     "fmt", "Arg",
     "格式化实参的装箱结构。kind 区分载荷：0 int、1 string、2 bool、3 f64、4 字节/字符。",
