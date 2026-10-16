@@ -103,7 +103,8 @@
     var copyText = isEn ? 'Copy' : '复制';
     var copiedText = isEn ? '✓ Copied' : '✓ 已复制';
     var runText = isEn ? 'Run' : '运行';
-    var runTitle = isEn ? 'Run in WebAssembly Playground' : '在 WebAssembly 演练场运行';
+    var runTitle = isEn ? 'Run code on this page' : '在当前页面运行代码';
+    var resultId = 0;
 
     var pres = document.querySelectorAll('main.doc pre, main.home pre, .api-item pre');
     pres.forEach(function (pre) {
@@ -174,19 +175,43 @@
         runBtn.className = 'code-action-btn code-run-btn';
         runBtn.innerHTML = '<i class="xi xi-play"></i> <span>' + runText + '</span>';
         runBtn.title = runTitle;
+        runBtn.setAttribute('aria-expanded', 'false');
+        var runInline = null;
         runBtn.addEventListener('click', function () {
-          var finalCode = rawCode;
-          var hasMain = /fn\s+main\s*\(/.test(finalCode);
-          if (!hasMain) {
-            finalCode = '@main\n\nfn main() int {\n    ' + finalCode.split('\n').join('\n    ') + '\n    << 0\n}\n';
-          } else if (finalCode.indexOf('@main') === -1) {
-            finalCode = '@main\n\n' + finalCode;
+          if (!runInline) {
+            var result = document.createElement('div');
+            result.className = 'code-run-result';
+            result.id = 'code-run-result-' + (++resultId);
+            var resultHeader = document.createElement('div');
+            resultHeader.className = 'code-run-result-header';
+            var resultTitle = document.createElement('span');
+            resultTitle.textContent = isEn ? 'Output' : '运行结果';
+            var meta = document.createElement('span');
+            meta.className = 'xu-play-meta';
+            meta.setAttribute('role', 'status');
+            resultHeader.appendChild(resultTitle);
+            resultHeader.appendChild(meta);
+            var output = document.createElement('pre');
+            output.className = 'xu-play-out';
+            output.setAttribute('aria-label', isEn ? 'Execution output' : '执行输出');
+            output.setAttribute('aria-live', 'polite');
+            output.tabIndex = 0;
+            result.appendChild(resultHeader);
+            result.appendChild(output);
+            wrapper.appendChild(result);
+            runBtn.setAttribute('aria-controls', result.id);
+            runBtn.setAttribute('aria-expanded', 'true');
+
+            var finalCode = rawCode;
+            var hasMain = /fn\s+main\s*\(/.test(finalCode);
+            if (!hasMain) {
+              finalCode = '@main\n\nfn main() int {\n    ' + finalCode.split('\n').join('\n    ') + '\n    << 0\n}\n';
+            } else if (finalCode.indexOf('@main') === -1) {
+              finalCode = '@main\n\n' + finalCode;
+            }
+            runInline = window.XuPlay.bind({source: {value: finalCode}, button: runBtn, output: output, meta: meta});
           }
-          try {
-            sessionStorage.setItem('xu-playground-code', finalCode);
-          } catch (e) {}
-          var targetUrl = (isEn ? '' : '/zh') + '/playground';
-          window.location.href = targetUrl;
+          runInline();
         });
         actions.appendChild(runBtn);
       }

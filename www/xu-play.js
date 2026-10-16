@@ -8,25 +8,27 @@
   var en = document.documentElement.lang === 'en';
   function text(zh, english) { return en ? english : zh; }
 
-  function bind() {
-    var source = document.getElementById('xu-play-src');
-    var select = document.getElementById('xu-play-ex');
-    var button = document.getElementById('xu-play-run');
-    var output = document.getElementById('xu-play-out');
-    var meta = document.getElementById('xu-play-meta');
-    var help = document.getElementById('xu-play-help');
+  function bind(options) {
+    var inline = !!options;
+    var source = inline ? options.source : document.getElementById('xu-play-src');
+    var select = inline ? null : document.getElementById('xu-play-ex');
+    var button = inline ? options.button : document.getElementById('xu-play-run');
+    var output = inline ? options.output : document.getElementById('xu-play-out');
+    var meta = inline ? options.meta : document.getElementById('xu-play-meta');
+    var help = inline ? null : document.getElementById('xu-play-help');
     if (!source || !button || !output) return;
     var examples = {};
     var worker = null;
     var ready = false;
     var running = false;
     var timer = null;
+    var pendingRun = false;
     button.disabled = true;
 
     function label(stopping) {
       button.innerHTML = stopping
         ? '<i class="xi xi-stop"></i> ' + text('停止运行', 'Stop')
-        : '<i class="xi xi-play"></i> ' + text('运行代码', 'Run Code');
+        : '<i class="xi xi-play"></i> ' + (inline ? text('运行', 'Run') : text('运行代码', 'Run Code'));
     }
     function status(value) { if (meta) meta.textContent = value; }
     function show(value, error) {
@@ -41,6 +43,7 @@
       label(false);
     }
     function failure(message) {
+      pendingRun = false;
       clearWorker();
       button.disabled = false;
       button.textContent = text('重试', 'Retry');
@@ -71,7 +74,10 @@
           button.disabled = false;
           label(false);
           status(text('就绪 · Ctrl / Cmd + Enter 运行', 'Ready · Ctrl / Cmd + Enter to run'));
-          if (autoRunCode && !hasAutoRun) {
+          if (pendingRun) {
+            pendingRun = false;
+            run();
+          } else if (autoRunCode && !hasAutoRun) {
             hasAutoRun = true;
             setTimeout(function () {
               if (!button.disabled && !running) button.click();
@@ -80,6 +86,7 @@
         } else if (result.type === 'result') {
           running = false;
           label(false);
+          if (inline) clearWorker();
           var value = result.stderr + result.stdout;
           if (result.truncated) value += text('\n…输出过长，已截断。', '\n…Output truncated.');
           show(value || text('（无输出）', '(no output)'), result.exit !== 0);
@@ -92,17 +99,6 @@
         if (worker === current) failure(text('在线运行器发生错误，请重试。', 'The playground encountered an error. Please retry.'));
       };
       current.postMessage({type: 'init'});
-    }
-
-    if (!available) {
-      show(text('此版本暂未启用在线运行。可下载 Xu，在本机运行这些示例。',
-        'Online execution is not enabled for this deployment. Download Xu to run these examples locally.'), false);
-      return;
-    }
-    if (!window.Worker || !window.WebAssembly) {
-      show(text('此浏览器不支持在线运行，请使用支持 WebAssembly 的现代浏览器。',
-        'Use a modern browser with WebAssembly support to run these examples.'), true);
-      return;
     }
 
     if (select) {
@@ -120,6 +116,25 @@
     var hasAutoRun = false;
 
     function load() {
+      if (!available) {
+        button.disabled = !inline;
+        status(text('暂不可用', 'Unavailable'));
+        show(text('此版本暂未启用在线运行。可下载 Xu，在本机运行这些示例。',
+          'Online execution is not enabled for this deployment. Download Xu to run these examples locally.'), false);
+        return;
+      }
+      if (!window.Worker || !window.WebAssembly) {
+        button.disabled = !inline;
+        status(text('浏览器不支持', 'Unsupported browser'));
+        show(text('此浏览器不支持在线运行，请使用支持 WebAssembly 的现代浏览器。',
+          'Use a modern browser with WebAssembly support to run these examples.'), true);
+        return;
+      }
+      if (inline) {
+        pendingRun = true;
+        startWorker();
+        return;
+      }
       button.disabled = true;
       status(text('正在加载…', 'Loading…'));
       fetch(examplesUrl)
@@ -155,10 +170,13 @@
           failure(text('示例加载失败，请重试。', 'Could not load examples. Please retry.'));
         });
     }
-    button.addEventListener('click', function () {
+    function run() {
       if (running) {
         show(text('运行已停止。', 'Execution stopped.'), false);
-        startWorker();
+        if (inline) {
+          clearWorker();
+          status(text('已停止', 'Stopped'));
+        } else startWorker();
         return;
       }
       if (!ready) { load(); return; }
@@ -169,19 +187,28 @@
       timer = setTimeout(function () {
         show(text('运行超过 10 秒，已停止。请检查循环或缩小输入。',
           'Execution stopped after 10 seconds. Check loops or reduce the input.'), true);
-        startWorker();
+        if (inline) {
+          clearWorker();
+          status(text('已超时', 'Timed out'));
+        } else startWorker();
       }, 10000);
       worker.postMessage({type: 'run', source: source.value});
-    });
-    source.addEventListener('keydown', function (event) {
-      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
-        event.preventDefault();
-        if (!button.disabled) button.click();
-      }
-    });
+    }
+    if (!inline) {
+      button.addEventListener('click', run);
+      source.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+          event.preventDefault();
+          if (!button.disabled) button.click();
+        }
+      });
+    }
     window.addEventListener('pagehide', clearWorker);
-    load();
+    if (inline) button.disabled = false;
+    else load();
+    return run;
   }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind);
+  window.XuPlay = {bind: bind};
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { bind(); });
   else bind();
 })();
