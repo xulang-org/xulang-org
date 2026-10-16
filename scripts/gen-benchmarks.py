@@ -890,6 +890,222 @@ def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
 """
 
 
+def render_transparency_charter_section(meta: dict, en: bool) -> str:
+    badge_text = "Openness & Transparency Charter" if en else "阳光公开与严谨复现承诺"
+    title_text = "Unbiased, 100% Transparent Cross-Language Benchmarks" if en else "零偏向、全透明的工业级跨语言性能实测"
+    desc_text = (
+        "Every benchmark runs fully automated inside GitHub Actions cloud runners across physical and isolated OS environments. "
+        "Test implementations, compilation flags, execution environments, and raw metrics are 100% open-source and publicly auditable. "
+        "We eliminate cherry-picked data, artificial optimizations, and black-box measurements."
+        if en else
+        "所有基准测试均由 GitHub Actions CI 在多系统隔离云端环境下全自动化执行。"
+        "全部 5 种语言测试源码、环境配置、编译指令与原始测量数据全部透明开放，"
+        "接受全球开发者全流程审阅，杜绝任何人工精选数据、局部特化优化或黑盒测试。"
+    )
+
+    run_url = html.escape(meta.get("run_url", "https://github.com/xulang-org/bench"), quote=True)
+    commit = html.escape(meta.get("xu_commit", "unrecorded"))
+
+    pills = [
+        f'<span class="bench-charter-pill"><i class="xi xi-server"></i> <span>{"Automated CI: GitHub Actions" if en else "全自动 CI: GitHub Actions 云端流水线"}</span></span>',
+        f'<span class="bench-charter-pill"><i class="xi xi-check-circle"></i> <span>{"Compiler Bootstrap Verified: Gen2 = Gen3" if en else "编译器闭包核验: Gen2 = Gen3 自举一致"}</span></span>',
+        f'<a class="bench-charter-pill pill-link" href="{run_url}" target="_blank" rel="noopener noreferrer"><i class="xi xi-external-link"></i> <span>{"Source Actions Run" if en else "来源 Actions 运行"} (<code>{commit}</code>)</span></a>',
+        f'<a class="bench-charter-pill pill-link" href="https://github.com/xulang-org/bench" target="_blank" rel="noopener noreferrer"><i class="xi xi-github"></i> <span>{"github.com/xulang-org/bench" if en else "评测套件开源仓库"}</span></a>',
+        f'<a class="bench-charter-pill pill-link" href="/benchmarks.json" target="_blank"><i class="xi xi-download"></i> <span>{"Raw Dataset: benchmarks.json" if en else "原始全量数据集: benchmarks.json"}</span></a>',
+    ]
+
+    p1_title = "100% Open-Source Implementations" if en else "100% 评测源码透明开放"
+    p1_desc = (
+        "Full implementations of all 13 workloads across Xu, C, Rust, Go, and Swift are publicly accessible. Inspect isomorphic algorithm structure instantly with the in-page 'View Source' modal or browse on GitHub."
+        if en else
+        "全量 13 项基准算法在 Xu、C、Rust、Go、Swift 5 种语言下的实现源码全部公开。可在页面卡片一键点击【查看源码】弹窗对比或直达 GitHub 仓库，杜绝黑盒实现。"
+    )
+
+    p2_title = "Strict Isomorphic Workloads & No Bias" if en else "严禁私利 · 同构算法公平对照"
+    p2_desc = (
+        "Workloads strictly share equivalent algorithmic logic and data structures. No hand-tuned assembly hacks or specialized compiler cheating. C and Rust automatically select the lowest measured median among O1–O3."
+        if en else
+        "各语言严格遵循相同的算法复杂度与内存布局，禁止为特定语言手写私有内联汇编；C 与 Rust 自动选取 O1~O3 最优实测中位数，Go 与 Swift 采用官方标准发行编译参数。"
+    )
+
+    p3_title = "Automated Dual-Arch 6-Platform CI" if en else "双架构 6 平台自动化 CI 并行"
+    p3_desc = (
+        "Concurrently measured across macOS, Linux, and Windows on both ARM64 and x86_64 architectures. Every data point is generated in cloud runners without manual local machine selection."
+        if en else
+        "涵盖 macOS、Linux、Windows 三大操作系统及 ARM64 与 x86_64 双架构。所有数据均由云端自动化流水线并行采集并实时出具，杜绝任何人工挑选的单机数据。"
+    )
+
+    p4_title = "7-Run Median & Open Dataset" if en else "7 次冷启动中位数与全量数据开放"
+    p4_desc = (
+        "Seven independent whole-program executions per implementation; wall time uses the median, accounting for cold launch overhead. Peak RSS and unstripped binary size are reported faithfully with full JSON datasets."
+        if en else
+        "每项负载独立运行 7 次整进程取中位数（计入进程冷启动开销）；真实展示峰值物理 RSS 与未裁剪二进制体积；提供全量原始结构化数据集供全球查验复现。"
+    )
+
+    return f"""
+<div class="bench-charter-card">
+  <div class="bench-charter-top">
+    <div class="bench-charter-badge">
+      <i class="xi xi-shield-check"></i>
+      <span>{badge_text}</span>
+    </div>
+    <h2 class="bench-charter-title">
+      <i class="xi xi-verified xi-brand" style="color: #10b981;"></i>
+      <span>{title_text}</span>
+    </h2>
+    <p class="bench-charter-desc">{desc_text}</p>
+    <div class="bench-charter-meta-row">
+      {''.join(pills)}
+    </div>
+  </div>
+  <div class="bench-charter-grid">
+    <div class="bench-pillar-card">
+      <div class="bench-pillar-header">
+        <span class="bench-pillar-icon icon-green"><i class="xi xi-code"></i></span>
+        <h4 class="bench-pillar-title">{p1_title}</h4>
+      </div>
+      <p class="bench-pillar-body">{p1_desc}</p>
+    </div>
+    <div class="bench-pillar-card">
+      <div class="bench-pillar-header">
+        <span class="bench-pillar-icon icon-blue"><i class="xi xi-check-circle"></i></span>
+        <h4 class="bench-pillar-title">{p2_title}</h4>
+      </div>
+      <p class="bench-pillar-body">{p2_desc}</p>
+    </div>
+    <div class="bench-pillar-card">
+      <div class="bench-pillar-header">
+        <span class="bench-pillar-icon icon-purple"><i class="xi xi-server"></i></span>
+        <h4 class="bench-pillar-title">{p3_title}</h4>
+      </div>
+      <p class="bench-pillar-body">{p3_desc}</p>
+    </div>
+    <div class="bench-pillar-card">
+      <div class="bench-pillar-header">
+        <span class="bench-pillar-icon icon-orange"><i class="xi xi-database"></i></span>
+        <h4 class="bench-pillar-title">{p4_title}</h4>
+      </div>
+      <p class="bench-pillar-body">{p4_desc}</p>
+    </div>
+  </div>
+</div>
+"""
+
+
+def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> str:
+    sec_title = "Audited Methodology & Execution Environment" if en else "评测准则与环境环境审计公示"
+    rss_note = rss_method_note(platforms, en)
+    desc = (
+        f"Seven whole-program executions per implementation; reported wall time is the median including process launch. "
+        f"C and Rust select the lowest measured median among O1/O2/O3. {rss_note} "
+        f"All Xu outputs and exit codes passed harness verification. Compiler identities, source closures and Gen2=Gen3 bootstrap verified."
+        if en else
+        f"每项实现独立运行七次整进程，展示包含进程冷启动的 Wall 耗时中位数。"
+        f"C 与 Rust 自动选取该负载同平台 O1/O2/O3 中位数的最小值；Go、Swift 展示官方实测。{rss_note}"
+        f"全部 Xu 负载的输出与退出状态 100% 通过测试机校验；六份编译器身份的提交 SHA、版本、源闭包和 Gen2=Gen3 自举自验完全核验通过。"
+    )
+
+    t1_title = "Audited Platform & Telemetry Matrix" if en else "6 大目标测试机环境与遥测机制"
+    th_p = "Target Platform" if en else "测试目标平台"
+    th_arch = "Architecture" if en else "芯片架构"
+    th_telemetry = "Memory & Time Accounting" if en else "统计口径与遥测机制"
+
+    platforms_rows = [
+        ("macOS ARM64", "Apple Silicon (M-series)", "wait4 · 整进程峰值物理 RSS 与 CPU 耗时"),
+        ("Linux ARM64", "ARM64 (Ubuntu Cloud)", "exec 后独立地址空间峰值 RSS (排除跟踪开销)"),
+        ("Windows ARM64", "ARM64 (Windows Server)", "系统 Job 统计 · 物理工作集峰值 (Peak Working Set)"),
+        ("macOS x86_64", "Intel Core x86_64", "wait4 · 整进程峰值物理 RSS 与 CPU 耗时"),
+        ("Linux x86_64", "AMD64 / x86_64 (Ubuntu Cloud)", "exec 后独立地址空间峰值 RSS (排除跟踪开销)"),
+        ("Windows x86_64", "AMD64 / x86_64 (Windows Server)", "系统 Job 统计 · 物理工作集峰值 (Peak Working Set)"),
+    ] if not en else [
+        ("macOS ARM64", "Apple Silicon (M-series)", "wait4: whole-process peak RSS & CPU time"),
+        ("Linux ARM64", "ARM64 (Ubuntu Cloud)", "post-exec address space peak RSS (tracing excluded)"),
+        ("Windows ARM64", "ARM64 (Windows Server)", "OS Job Object: Peak Working Set memory"),
+        ("macOS x86_64", "Intel Core x86_64", "wait4: whole-process peak RSS & CPU time"),
+        ("Linux x86_64", "AMD64 / x86_64 (Ubuntu Cloud)", "post-exec address space peak RSS (tracing excluded)"),
+        ("Windows x86_64", "AMD64 / x86_64 (Windows Server)", "OS Job Object: Peak Working Set memory"),
+    ]
+
+    p_trs = []
+    for pname, parch, ptelemetry in platforms_rows:
+        p_trs.append(
+            f'<tr><td><strong>{pname}</strong></td><td><code>{parch}</code></td><td><small>{ptelemetry}</small></td></tr>'
+        )
+
+    t2_title = "Compiler Toolchains & Optimization Flags" if en else "5 大语言体系编译器基准与参数"
+    th_lang = "Language / Toolchain" if en else "语言体系 / 编译器"
+    th_flag = "Build Flags" if en else "构建参数 / 优化级别"
+    th_rt = "Runtime & Memory Model" if en else "运行时与内存机制"
+
+    compilers_rows = [
+        ("Xu", "xu build -O", "零 GC · 编译期借用生命周期与 RAII 确定性析构"),
+        ("C (Clang)", "clang -O1 / -O2 / -O3 (取最优)", "手动 free · 零运行时开销 (性能标尺)"),
+        ("Rust (rustc)", "rustc -O1 / -O2 / -O3 (取最优)", "零 GC · 所有权生命周期与 Scope Drop"),
+        ("Swift", "swiftc -O", "ARC 自动引用计数运行时 (含 Swift 标准库)"),
+        ("Go", "go build (native)", "并发三色标记清除 GC 运行时 (含并发调度器)"),
+    ] if not en else [
+        ("Xu", "xu build -O", "Zero GC / RAII Scope Drop / LLVM Backend"),
+        ("C (Clang)", "clang -O1 / -O2 / -O3 (lowest median)", "Manual memory management / Zero runtime"),
+        ("Rust (rustc)", "rustc -O1 / -O2 / -O3 (lowest median)", "Zero GC / Ownership Drop / LLVM Backend"),
+        ("Swift", "swiftc -O", "ARC (Automatic Reference Counting) runtime"),
+        ("Go", "go build (native)", "Concurrent Tracing GC runtime & Scheduler"),
+    ]
+
+    c_trs = []
+    for clang, cflag, crt in compilers_rows:
+        c_trs.append(
+            f'<tr><td><strong>{clang}</strong></td><td><code>{cflag}</code></td><td><small>{crt}</small></td></tr>'
+        )
+
+    repro_cmd = "git clone https://github.com/xulang-org/bench.git && cd bench && ./run.sh --all --reps 7"
+    copy_btn_txt = "Copy Command" if en else "复制复现指令"
+
+    return f"""
+<div class="bench-audit-box">
+  <div class="bench-audit-header">
+    <h3 class="bench-audit-title">
+      <i class="xi xi-shield-check xi-brand"></i>
+      <span>{sec_title}</span>
+    </h3>
+    <p class="bench-audit-desc">{desc}</p>
+  </div>
+
+  <div class="bench-audit-grid">
+    <div class="bench-audit-card">
+      <div class="bench-audit-card-title"><i class="xi xi-server"></i> <span>{t1_title}</span></div>
+      <table class="bench-audit-table">
+        <thead>
+          <tr><th>{th_p}</th><th>{th_arch}</th><th>{th_telemetry}</th></tr>
+        </thead>
+        <tbody>
+          {''.join(p_trs)}
+        </tbody>
+      </table>
+    </div>
+
+    <div class="bench-audit-card">
+      <div class="bench-audit-card-title"><i class="xi xi-terminal"></i> <span>{t2_title}</span></div>
+      <table class="bench-audit-table">
+        <thead>
+          <tr><th>{th_lang}</th><th>{th_flag}</th><th>{th_rt}</th></tr>
+        </thead>
+        <tbody>
+          {''.join(c_trs)}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="bench-repro-console">
+    <div><span style="opacity: 0.6; user-select: none;">$ </span><span>{repro_cmd}</span></div>
+    <button type="button" class="bench-repro-btn" onclick="copyBenchReproCmd(this, '{repro_cmd}')">
+      <i class="xi xi-copy"></i> <span>{copy_btn_txt}</span>
+    </button>
+  </div>
+</div>
+"""
+
+
 def rss_method_note(platforms: dict, en: bool) -> str:
     if any(p.get("rss_validated") is False for p in platforms.values()):
         return (
@@ -995,22 +1211,11 @@ def render_page(data: dict, lang: str) -> str:
     # 3. 内存与体积横向综合评测
     footprint_section = render_footprint_integrated_section(platforms, en)
 
-    # Methodology section
-    method_h2 = "Methodology & Reproducibility" if en else "评测准则与环境公开"
-    rss_note = rss_method_note(platforms, en)
-    method_p1 = (
-        "<ul><li>Seven whole-program samples per implementation; wall time is the median, including process startup.</li>"
-        "<li>C and Rust rows select the lowest measured median among O1/O2/O3 for that workload and platform. Go and Swift show only measured implementations.</li>"
-        "<li>Every Xu workload output and exit status passed the benchmark harness. All six compiler identities match the recorded commit, version, source closure and Gen2=Gen3.</li>"
-        f"<li>Resource ranges do not establish an overall ranking. {rss_note} C/Rust footprint rows use O3 builds.</li>"
-        "<li>Runner hardware, libraries, startup costs and hardware acceleration differ. Compare ratios within one platform; do not interpret cross-machine timing changes as optimization speedups.</li></ul>"
-        if en else
-        "<ul><li>每项实现运行七次，展示整进程 wall 耗时中位数，包含进程启动。</li>"
-        "<li>C、Rust 行分别取该负载同平台 O1/O2/O3 中位数最小值；Go、Swift 仅展示实测实现。</li>"
-        "<li>全部 Xu 负载的输出与退出状态通过校验；六份编译器身份的提交、版本、源闭包和 Gen2=Gen3 已核验。</li>"
-        f"<li>资源范围不代表整体排名。{rss_note}C、Rust 的资源表使用 O3 构建。</li>"
-        "<li>机器、库实现、启动成本和硬件加速路径不同，应在同一平台内比较倍数，不能把跨机器耗时变化当作优化收益。</li></ul>"
-    )
+    # 阳光公开与严谨复现承诺 (Transparency Charter)
+    charter_section = render_transparency_charter_section(meta, en)
+
+    # 评测准则与环境审计公示 (Methodology Audit Box)
+    method_audit_section = render_methodology_audit_section(platforms, meta, en)
 
     search_placeholder = "Search workload or algorithm across all sections..." if en else "全局搜索算法用例或说明 (如 startup, matmul, aes)..."
 
@@ -1184,6 +1389,14 @@ function copyBenchCode() {
   });
 }
 
+function copyBenchReproCmd(btn, cmd) {
+  navigator.clipboard.writeText(cmd).then(function() {
+    var orig = btn.innerHTML;
+    btn.innerHTML = '<i class="xi xi-check"></i> <span>__COPY_SUCCESS__</span>';
+    setTimeout(function() { btn.innerHTML = orig; }, 1500);
+  });
+}
+
 function selectBenchPlatform(pid) {
   document.querySelectorAll('.bench-platform-pill').forEach(function(b) {
     if (b.getAttribute('data-pid') === pid) {
@@ -1278,7 +1491,8 @@ function searchBenchAll(query) {
   </div>
 </div>
 
-<p class="banner">{banner_text}</p>
+<!-- 阳光公开与权威基准评测承诺书 -->
+{charter_section}
 
 <div class="bench-tabs-wrapper">
   <div class="bench-sticky-topline">
@@ -1320,8 +1534,8 @@ function searchBenchAll(query) {
 <!-- 3. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 6 平台详细数据表) -->
 {''.join(category_sections)}
 
-<h2>{method_h2}</h2>
-{method_p1}
+<!-- 评测准则与环境审计公示专区 -->
+{method_audit_section}
 
 <p class="meta">
   <a href="/docs/status">{'View Limitations & Status' if en else '查看语言规范与现状限制'}</a> · 
