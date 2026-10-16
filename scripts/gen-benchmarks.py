@@ -525,9 +525,10 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
     fastest_str = ""
     if fastest_cfg:
         f_name = fastest_cfg["name_en"] if en else fastest_cfg["name_zh"]
+        lbl_fast = "Fastest:" if en else "最优耗时:"
         fastest_str = (
             f'<span class="bench-meta-tag bench-meta-fastest">'
-            f'{SVG_BOLT} <span>{"Lowest observed wall time:" if en else "本轮最低 wall 耗时:"} '
+            f'{SVG_BOLT} <span>{lbl_fast} '
             f'<strong>{f_name} {fastest_cfg["arch_tag"]} ({min_xu_val:.2f}ms)</strong></span>'
             f'</span>'
         )
@@ -535,9 +536,10 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
     ratio_str = ""
     if median_ratio:
         badge = format_ratio_badge(median_ratio)
+        lbl_ratio = "vs C/Rust:" if en else "对 C/Rust:"
         ratio_str = (
             f'<span class="bench-meta-tag bench-meta-ratio">'
-            f'<span>{"Median Xu / best C/Rust:" if en else "Xu / 最佳 C、Rust 中位数:"}</span> {badge}'
+            f'<span>{lbl_ratio}</span> {badge}'
             f'</span>'
         )
 
@@ -795,7 +797,7 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
   <div class="bench-radar-body">
     <!-- 雷达图矢量 SVG：基于 47 项负载实测中位数几何标准化比例绘制 -->
     <div class="bench-radar-svg-wrap">
-      <svg class="bench-radar-svg" viewBox="0 0 380 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg class="bench-radar-svg" viewBox="-80 0 540 320" fill="none" xmlns="http://www.w3.org/2000/svg">
         <!-- 同心菱形网格刻度 (25%, 50%, 75%, 100%) -->
         <polygon points="190,45 305,160 190,275 75,160" stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="3,3" fill="none"/>
         <polygon points="190,74 276,160 190,246 104,160" stroke="currentColor" stroke-opacity="0.12" stroke-dasharray="3,3" fill="none"/>
@@ -876,7 +878,7 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
         <div class="bench-radar-scorecard-header">
           <span style="color: #ec4899;">🌸 Swift (swiftc -O)</span>
           <span class="bench-radar-tag" style="color: #ec4899; border-color: rgba(236, 72, 153, 0.35); background: rgba(236, 72, 153, 0.08);">
-            {'Modern Expressiveness · Automatic Reference Counting' if en else '现代语言特性 · 自动引用计数 (ARC)'}
+            {'Modern Expressive · Auto ARC' if en else '现代语言特性 · 自动 ARC'}
           </span>
         </div>
         <p class="bench-radar-scorecard-desc">
