@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import html
+import math
 import statistics
 from pathlib import Path
 import re
@@ -14,6 +15,8 @@ DATA_FILE = ROOT / "www/benchmarks.json"
 SVG_BOLT = '<svg class="bench-icon bench-icon-bolt" viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>'
 SVG_BRAIN = '<svg class="bench-icon bench-icon-brain" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4"/><path d="M12 18v4"/><path d="M12 5V2"/></svg>'
 SVG_BOX = '<svg class="bench-icon bench-icon-box" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m7.5 4.27 9 5.15"/><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>'
+SVG_CLOCK = '<svg class="bench-icon bench-icon-clock" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>'
+SVG_TRENDS = '<svg class="bench-icon bench-icon-trends" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>'
 SVG_SEARCH = '<svg class="bench-search-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>'
 SVG_CONTROL = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/><line x1="4" y1="4" x2="9" y2="9"/></svg>'
 SVG_ALGO = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="2" width="16" height="20" rx="2"/><line x1="8" y1="6" x2="16" y2="6"/><line x1="16" y1="14" x2="16" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>'
@@ -412,6 +415,346 @@ def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool)
 """
 
 
+TREND_LANGS_CONFIG = [
+    {
+        "key": "Xu",
+        "name": "Xu",
+        "cls": "legend-xu",
+        "color": "#8b5cf6",
+        "stroke_width": 3.2,
+        "dot_radius": 4.5,
+        "is_main": True,
+    },
+    {
+        "key": "c",
+        "name": "C (-O3)",
+        "cls": "legend-c",
+        "color": "#0ea5e9",
+        "stroke_width": 1.8,
+        "dot_radius": 3.2,
+        "is_main": False,
+    },
+    {
+        "key": "rust",
+        "name": "Rust (-O3)",
+        "cls": "legend-rust",
+        "color": "#f97316",
+        "stroke_width": 1.8,
+        "dot_radius": 3.2,
+        "is_main": False,
+    },
+    {
+        "key": "swift",
+        "name": "Swift (-O)",
+        "cls": "legend-swift",
+        "color": "#ec4899",
+        "stroke_width": 1.8,
+        "dot_radius": 3.2,
+        "is_main": False,
+    },
+    {
+        "key": "go",
+        "name": "Go",
+        "cls": "legend-go",
+        "color": "#10b981",
+        "stroke_width": 1.8,
+        "dot_radius": 3.2,
+        "is_main": False,
+    },
+]
+
+TREND_METRICS_CONFIG = [
+    {
+        "key": "wall_ms",
+        "unit": "ms",
+        "title_zh": "运行耗时全景走势 (Wall Time)",
+        "title_en": "Execution Wall Time Trends",
+        "desc_zh": "各语言在全平台所有实测负载的中位数耗时（包含进程启动）",
+        "desc_en": "Median wall time across all measured workloads (lower is better)",
+        "badge_zh": "越低越好 · ms",
+        "badge_en": "Lower is better · ms",
+        "icon": SVG_BOLT,
+    },
+    {
+        "key": "rss_mib",
+        "unit": "MiB",
+        "title_zh": "峰值内存占用走势 (Peak RSS)",
+        "title_en": "Peak Memory Footprint Trends",
+        "desc_zh": "各语言在全平台所有实测负载的峰值常驻内存（RSS）中位数",
+        "desc_en": "Median peak resident set size across all workloads (lower is better)",
+        "badge_zh": "越低越好 · MiB",
+        "badge_en": "Lower is better · MiB",
+        "icon": SVG_BRAIN,
+    },
+    {
+        "key": "bytes",
+        "unit": "KiB",
+        "title_zh": "独立产物体积走势 (Binary Size)",
+        "title_en": "Binary Size Trends",
+        "desc_zh": "各语言在全平台编译生成独立可执行文件的未裁剪体积中位数",
+        "desc_en": "Median standalone unstripped binary size (smaller is better)",
+        "badge_zh": "越小越好 · KiB",
+        "badge_en": "Smaller is better · KiB",
+        "icon": SVG_BOX,
+    },
+    {
+        "key": "cpu_ms",
+        "unit": "ms",
+        "title_zh": "CPU 实际执行耗时走势 (CPU Time)",
+        "title_en": "CPU Execution Time Trends",
+        "desc_zh": "各语言在全平台执行所有实测负载消耗的 CPU 用户与系统总耗时中位数",
+        "desc_en": "Median total CPU user+sys execution time (lower is better)",
+        "badge_zh": "越低越好 · ms",
+        "badge_en": "Lower is better · ms",
+        "icon": SVG_CLOCK,
+    },
+]
+
+
+def get_bench_impl_metric(b: dict, lang_key: str, metric_key: str) -> float | None:
+    impls = b.get("implementations", {})
+    target = None
+    if lang_key == "Xu":
+        target = impls.get("Xu")
+    elif lang_key == "c":
+        target = impls.get("clang -O3") or impls.get("clang -O2") or impls.get("clang -O1")
+    elif lang_key == "rust":
+        target = impls.get("rustc -O3") or impls.get("rustc -O2") or impls.get("rustc -O1")
+    elif lang_key == "swift":
+        target = impls.get("swiftc -O")
+    elif lang_key == "go":
+        target = impls.get("go build")
+
+    if not target:
+        return None
+    val = target.get(metric_key)
+    if val is None or val < 0:
+        return None
+    if metric_key == "bytes":
+        return val / 1024.0  # KiB
+    return float(val)
+
+
+def calculate_nice_ticks(max_val: float) -> tuple[float, list[float]]:
+    if max_val <= 0:
+        return 1.0, [0.0, 1.0]
+    raw_step = max_val / 4.0
+    mag = 10 ** math.floor(math.log10(raw_step))
+    norm = raw_step / mag
+    if norm <= 1.2:
+        step = 1.0 * mag
+    elif norm <= 2.5:
+        step = 2.0 * mag
+    elif norm <= 6.0:
+        step = 5.0 * mag
+    else:
+        step = 10.0 * mag
+    y_max = math.ceil(max_val / step) * step
+    ticks = []
+    curr = 0.0
+    while curr <= y_max + 1e-6:
+        ticks.append(round(curr, 2))
+        curr += step
+    return y_max, ticks
+
+
+def render_single_trend_chart(metric_cfg: dict, platforms: dict, en: bool) -> str:
+    active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
+    n_pts = len(active_configs)
+    if n_pts == 0:
+        return ""
+
+    x_left = 50.0
+    x_right = 515.0
+    y_top = 22.0
+    y_bottom = 202.0
+
+    x_coords = [x_left + i * ((x_right - x_left) / max(1, n_pts - 1)) for i in range(n_pts)]
+
+    series = {}
+    max_v = 0.0
+    for lcfg in TREND_LANGS_CONFIG:
+        lk = lcfg["key"]
+        pts = []
+        for c in active_configs:
+            pid = c["id"]
+            benches = platforms.get(pid, {}).get("benches", [])
+            vals = [get_bench_impl_metric(b, lk, metric_cfg["key"]) for b in benches]
+            vals = [v for v in vals if v is not None]
+            med = statistics.median(vals) if vals else None
+            pts.append(med)
+            if med is not None and med > max_v:
+                max_v = med
+        series[lk] = pts
+
+    y_max, ticks = calculate_nice_ticks(max_v)
+
+    # 1. 网格刻度线与 Y 轴刻度文字
+    grid_lines = []
+    for t in ticks:
+        y = y_bottom - (t / y_max) * (y_bottom - y_top)
+        t_str = f"{int(t):,}" if t >= 1000 else (f"{int(t)}" if t == int(t) else f"{t:.1f}")
+        grid_lines.append(
+            f'<line x1="{x_left}" y1="{y:.1f}" x2="{x_right}" y2="{y:.1f}" stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="3,3" />'
+        )
+        grid_lines.append(
+            f'<text x="{x_left - 8}" y="{y + 3.5:.1f}" font-size="10" fill="currentColor" opacity="0.6" text-anchor="end">{t_str}</text>'
+        )
+
+    # 2. X 轴刻度与辅助线
+    axis_x_elements = []
+    for i, c in enumerate(active_configs):
+        x = x_coords[i]
+        arch_tag = c["arch_tag"]
+        p_name = c["name_en"] if en else c["name_zh"]
+        chip_label = c["chip_en"] if en else c["chip_zh"]
+
+        axis_x_elements.append(
+            f'<line x1="{x:.1f}" y1="{y_top}" x2="{x:.1f}" y2="{y_bottom}" stroke="currentColor" stroke-opacity="0.06" stroke-dasharray="2,2" />'
+        )
+        axis_x_elements.append(
+            f'<text x="{x:.1f}" y="{y_bottom + 17}" font-size="10.5" font-weight="600" fill="currentColor" opacity="0.85" text-anchor="middle">{p_name} {arch_tag}</text>'
+        )
+        axis_x_elements.append(
+            f'<text x="{x:.1f}" y="{y_bottom + 31}" font-size="9" fill="currentColor" opacity="0.45" text-anchor="middle">{chip_label}</text>'
+        )
+
+    # 3. 折线绘制（非 Xu 语言先画，Xu 语言置顶绘制高光）
+    lines_elements = []
+    dots_elements = []
+    sorted_langs = [l for l in TREND_LANGS_CONFIG if not l["is_main"]] + [l for l in TREND_LANGS_CONFIG if l["is_main"]]
+
+    unit = metric_cfg["unit"]
+
+    for lcfg in sorted_langs:
+        lk = lcfg["key"]
+        pts = series[lk]
+        color = lcfg["color"]
+        stroke_w = lcfg["stroke_width"]
+        r = lcfg["dot_radius"]
+        is_xu = lcfg["is_main"]
+
+        # 构建分段折线（跳过缺失点）
+        path_segments = []
+        curr_seg = []
+        for i, val in enumerate(pts):
+            if val is not None:
+                x = x_coords[i]
+                y = y_bottom - (val / y_max) * (y_bottom - y_top)
+                curr_seg.append((x, y))
+            else:
+                if curr_seg:
+                    path_segments.append(curr_seg)
+                    curr_seg = []
+        if curr_seg:
+            path_segments.append(curr_seg)
+
+        for seg in path_segments:
+            d = "M " + " L ".join(f"{x:.1f} {y:.1f}" for x, y in seg)
+            lines_elements.append(
+                f'<path d="{d}" fill="none" stroke="{color}" stroke-width="{stroke_w}" stroke-linecap="round" stroke-linejoin="round" opacity="{1.0 if is_xu else 0.85}" />'
+            )
+
+        # 绘制数据圆点
+        for i, val in enumerate(pts):
+            if val is not None:
+                x = x_coords[i]
+                y = y_bottom - (val / y_max) * (y_bottom - y_top)
+                p_name = active_configs[i]["name_en"] if en else active_configs[i]["name_zh"]
+                arch = active_configs[i]["arch_tag"]
+                tip_text = f'{lcfg["name"]} ({p_name} {arch}): {val:.2f} {unit}'
+
+                if is_xu:
+                    dots_elements.append(
+                        f'<circle cx="{x:.1f}" cy="{y:.1f}" r="7.5" fill="{color}" opacity="0.2" />'
+                    )
+                    val_str = f"{val:.1f}" if val >= 10 else f"{val:.2f}"
+                    if val >= 1000:
+                        val_str = f"{val:,.0f}"
+                    text_y = y - 9 if (y - 9 >= y_top) else (y + 14)
+                    dots_elements.append(
+                        f'<text class="mono-val" x="{x:.1f}" y="{text_y:.1f}" font-size="9.5" font-weight="700" fill="{color}" text-anchor="middle">{val_str}</text>'
+                    )
+
+                dots_elements.append(
+                    f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r}" fill="{color}" stroke="var(--xu-bg-surface)" stroke-width="1.5">'
+                    f'<title>{tip_text}</title>'
+                    f'</circle>'
+                )
+
+    title = metric_cfg["title_en"] if en else metric_cfg["title_zh"]
+    subtitle = metric_cfg["desc_en"] if en else metric_cfg["desc_zh"]
+    badge_text = metric_cfg["badge_en"] if en else metric_cfg["badge_zh"]
+    icon = metric_cfg["icon"]
+
+    return f"""
+    <div class="bench-trend-card">
+      <div class="bench-trend-card-header">
+        <div class="bench-trend-card-title-group">
+          <div class="bench-trend-card-heading">
+            <span class="bench-trend-card-icon">{icon}</span>
+            <h4 class="bench-trend-card-title">{title}</h4>
+          </div>
+          <p class="bench-trend-card-subtitle">{subtitle}</p>
+        </div>
+        <span class="bench-trend-meta-badge badge-lower">{badge_text}</span>
+      </div>
+      <div class="bench-trend-svg-wrap">
+        <svg class="bench-trend-svg" viewBox="0 0 540 248" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {''.join(grid_lines)}
+          {''.join(axis_x_elements)}
+          {''.join(lines_elements)}
+          {''.join(dots_elements)}
+        </svg>
+      </div>
+    </div>
+"""
+
+
+def render_panorama_trends_section(platforms: dict, en: bool) -> str:
+    sec_title = "Cross-Architecture Performance & Resource Trends (2×2 Panorama)" if en else "双架构跨平台性能与资源走势全景大盘 (2×2)"
+    sec_desc = (
+        "Comparing all 5 language implementations across 6 OS and architecture targets in 4 key dimensions: Wall Time, Peak Memory, Binary Size, and CPU Time."
+        if en
+        else "在 6 大系统与芯片架构目标下，从运行效率、内存占用、独立体积和 CPU 耗时 4 个核心维度，全景对照 5 大语言体系的实测走势："
+    )
+
+    legend_items = []
+    for lcfg in TREND_LANGS_CONFIG:
+        cls_name = lcfg["cls"]
+        color = lcfg["color"]
+        name = lcfg["name"]
+        legend_items.append(
+            f'<div class="bench-trends-legend-item {cls_name}" style="color: {color};">'
+            f'  <span class="bench-legend-line-sample"></span>'
+            f'  <span>{name}</span>'
+            f'</div>'
+        )
+
+    cards = [render_single_trend_chart(m, platforms, en) for m in TREND_METRICS_CONFIG]
+
+    return f"""
+<div class="bench-cat-section bench-sec-trends">
+  <div class="bench-cat-section-header">
+    <div class="bench-cat-title-wrap">
+      <span class="bench-cat-icon">{SVG_TRENDS}</span>
+      <h3 class="bench-cat-title">{sec_title}</h3>
+      <span class="bench-cat-count">{'4 Key Metrics Panorama' if en else '4 维度趋势大盘'}</span>
+    </div>
+    <p class="bench-cat-desc">{sec_desc}</p>
+  </div>
+
+  <div class="bench-trends-legend-wrap">
+    {''.join(legend_items)}
+  </div>
+
+  <div class="bench-trends-grid">
+    {''.join(cards)}
+  </div>
+</div>
+"""
+
+
 def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
     """Render memory footprint and binary size: platforms as columns (horizontal), languages as rows (vertical). Highlights per-platform best cells."""
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
@@ -618,7 +961,10 @@ def render_page(data: dict, lang: str) -> str:
                 f'</button>'
             )
 
-    # 2. 内存与体积横向综合评测
+    # 2. 跨架构多维走势全景大盘 (2x2 线形图)
+    trends_section = render_panorama_trends_section(platforms, en)
+
+    # 3. 内存与体积横向综合评测
     footprint_section = render_footprint_integrated_section(platforms, en)
 
     # Methodology section
@@ -671,7 +1017,7 @@ function searchBenchAll(query) {
   });
 
   document.querySelectorAll('.bench-cat-section').forEach(function(sec) {
-    if (sec.classList.contains('bench-sec-footprint')) return;
+    if (sec.classList.contains('bench-sec-footprint') || sec.classList.contains('bench-sec-trends')) return;
     var count = secCounts[sec.className] || 0;
     if (q && count === 0) {
       sec.style.display = 'none';
@@ -703,6 +1049,9 @@ function searchBenchAll(query) {
   </div>
   <div class="bench-anchor-bar">
     <div class="bench-anchor-links">
+      <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('trends')">
+        {SVG_TRENDS} <span>{'Multi-Arch Trends' if en else '多维走势大盘'}</span>
+      </button>
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('footprint')">
         {SVG_BRAIN} <span>{'Memory & Size' if en else '内存与体积'}</span>
       </button>
@@ -715,10 +1064,13 @@ function searchBenchAll(query) {
   </div>
 </div>
 
-<!-- 1. 全平台内存与体积横向综合评测 (位于 Control Flow 之上) -->
+<!-- 1. 双架构跨平台多维走势全景大盘 (2x2 线形图) -->
+{trends_section}
+
+<!-- 2. 全平台内存与体积横向综合评测 (位于 Control Flow 之上) -->
 {footprint_section}
 
-<!-- 2. 功能大类全平台合一平铺 (按功能，各平台直接铺开) -->
+<!-- 3. 功能大类全平台合一平铺 (按功能，各平台直接铺开) -->
 {''.join(category_sections)}
 
 <h2>{method_h2}</h2>
