@@ -69,7 +69,7 @@ def side_link(href: str, label: str, route: str) -> str:
     return f'<li><a{active} href="{href}">{escape(label)}</a></li>'
 
 
-def sidebar(route: str, en: bool) -> str:
+def sidebar(route: str, en: bool, xu_version: str = '') -> str:
     prefix = '' if en else '/zh'
     rest = route if en else route.removeprefix('/zh')
     groups = []
@@ -137,6 +137,8 @@ def sidebar(route: str, en: bool) -> str:
         )
 
     toggle_all_title = "Toggle all sections" if en else "折叠/展开全部菜单"
+    scroll_top_title = "Back to top of menu" if en else "回到目录顶部"
+
     side_header = (
         f'<div class="side-header">'
         f'  <span class="side-header-title">{"Sections" if en else "目录导航"}</span>'
@@ -146,7 +148,28 @@ def sidebar(route: str, en: bool) -> str:
         f'</div>'
     )
 
-    return '<aside class="side">' + side_header + ''.join(sections) + '</aside>'
+    ver_display = f'v{escape(xu_version)}' if xu_version else 'SDK'
+    side_footer = (
+        f'<div class="side-footer">'
+        f'  <div class="side-footer-meta"><i class="xi xi-tag xi-brand"></i> <span>XU {ver_display}</span></div>'
+        f'  <div class="side-footer-actions">'
+        f'    <button type="button" class="side-footer-btn" onclick="scrollSideToTop(this)" title="{scroll_top_title}" aria-label="{scroll_top_title}">'
+        f'      <i class="xi xi-arrow-up"></i>'
+        f'    </button>'
+        f'    <button type="button" class="side-footer-btn" onclick="toggleAllSideGroups(this)" title="{toggle_all_title}" aria-label="{toggle_all_title}">'
+        f'      <i class="xi xi-sliders"></i>'
+        f'    </button>'
+        f'  </div>'
+        f'</div>'
+    )
+
+    return (
+        f'<aside class="side">'
+        f'  {side_header}'
+        f'  <div class="side-content">{"".join(sections)}</div>'
+        f'  {side_footer}'
+        f'</aside>'
+    )
 
 
 def render(root: Path, title: str, route: str, body: str, xu_version: str) -> str:
@@ -182,7 +205,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         main = '<main class="home bench-page">' + body + '</main>'
     else:
         cls = 'doc download' if route == prefix + '/download' else 'doc'
-        main = '<div class="page">' + sidebar(route, en) + f'<main class="{cls}">' + body + '</main></div>'
+        main = '<div class="page page-with-side">' + sidebar(route, en, xu_version) + f'<main class="{cls}">' + body + '</main></div>'
     other = ('/zh' if route == '/' else '/zh' + route) if en else (route[3:] or '/')
     if route == '/404':
         other = '/zh'

@@ -66,7 +66,7 @@
     initCodeToolbars();
   });
 
-  // 侧边栏菜单分组折叠/收起
+  // 侧边栏菜单分组折叠/收起与滚动控制
   window.toggleSideGroup = function (btn) {
     var group = btn.closest('.side-group');
     if (!group) return;
@@ -85,7 +85,16 @@
       var h = g.querySelector('button.side-h');
       if (h) h.setAttribute('aria-expanded', String(nextState));
     });
-    btn.setAttribute('data-expanded', String(nextState));
+    side.querySelectorAll('.side-toggle-all-btn, .side-footer-btn').forEach(function (b) {
+      if (b.querySelector('.xi-sliders')) b.setAttribute('data-expanded', String(nextState));
+    });
+  };
+
+  window.scrollSideToTop = function (btn) {
+    var side = btn.closest('.side');
+    if (!side) return;
+    var content = side.querySelector('.side-content') || side;
+    content.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // 代码块方便的复制与运行按钮
