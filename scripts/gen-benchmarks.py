@@ -191,240 +191,6 @@ def parse_fp_min(val_str: str | None) -> float | None:
         return None
 
 
-def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg: dict, en: bool) -> str:
-    """Render a self-contained workload block (e.g. startup) with platforms as columns (horizontal) and languages as rows (vertical). Highlights per-platform best cells."""
-    desc = ref_bench["desc_en"] if en else ref_bench["desc_zh"]
-    cat_pill = cat_cfg["pill_en"] if en else cat_cfg["pill_zh"]
-    active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
-
-    # 收集 6 个平台的原始数据
-    p_map = {}
-    xu_vals = []
-    for c in active_configs:
-        pid = c["id"]
-        b_list = platforms[pid].get("benches", [])
-        item = next((x for x in b_list if x["name"] == b_name), None)
-        p_map[pid] = item
-        if item and item.get("xu_wall_ms") is not None and item["xu_wall_ms"] > 0:
-            xu_vals.append((item["xu_wall_ms"], c))
-
-    min_xu_val = min(x[0] for x in xu_vals) if xu_vals else None
-    fastest_cfg = next((x[1] for x in xu_vals if x[0] == min_xu_val), None) if min_xu_val else None
-
-    # 计算每一个平台的跨语言最优（绝对最小值）
-    p_best_map = {}
-    for c in active_configs:
-        pid = c["id"]
-        item = p_map.get(pid)
-        if not item:
-            continue
-        vals = [
-            v for v in [
-                item.get("xu_wall_ms"),
-                item.get("c_wall_ms"),
-                item.get("rust_wall_ms"),
-                item.get("swift_wall_ms"),
-                item.get("go_wall_ms"),
-            ]
-            if v is not None and v > 0
-        ]
-        if vals:
-            p_best_map[pid] = min(vals)
-
-    all_ratios = []
-    for pid, item in p_map.items():
-        if not item or item.get("xu_wall_ms") is None or item["xu_wall_ms"] <= 0:
-            continue
-        xu_ms = item["xu_wall_ms"]
-        peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms")] if v is not None and v > 0]
-        if peers:
-            all_ratios.append(xu_ms / min(peers))
-
-    median_ratio = statistics.median(all_ratios) if all_ratios else None
-
-    fastest_str = ""
-    if fastest_cfg:
-        f_name = fastest_cfg["name_en"] if en else fastest_cfg["name_zh"]
-        fastest_str = (
-            f'<span class="bench-meta-tag bench-meta-fastest">'
-            f'{SVG_BOLT} <span>{"Lowest observed wall time:" if en else "本轮最低 wall 耗时:"} '
-            f'<strong>{f_name} {fastest_cfg["arch_tag"]} ({min_xu_val:.2f}ms)</strong></span>'
-            f'</span>'
-        )
-
-    ratio_str = ""
-    if median_ratio:
-        badge = format_ratio_badge(median_ratio)
-        ratio_str = (
-            f'<span class="bench-meta-tag bench-meta-ratio">'
-            f'<span>{"Median Xu / best C/Rust:" if en else "Xu / 最佳 C、Rust 中位数:"}</span> {badge}'
-            f'</span>'
-        )
-
-    # 1. 横向表头：6 个目标平台
-    th_cols = [f'<th class="bench-td-lang-cell" style="width: 16%;">{"Language" if en else "实现语言"}</th>']
-    for c in active_configs:
-        p_name = c["name_en"] if en else c["name_zh"]
-        arch = c["arch_tag"]
-        icon = c["icon"]
-        arch_cls = "arch-arm" if "arm" in arch.lower() else "arch-x64"
-        th_cols.append(
-            f'<th class="bench-th-platform" style="width: 14%;">'
-            f'  <div class="bench-th-pname"><i class="xi {icon}"></i> <span>{p_name}</span> <span class="btn-arch {arch_cls}">{arch}</span></div>'
-            f'</th>'
-        )
-
-    # 2. 纵向各行：各个对比语言 (Xu, C, Rust, Swift, Go)
-    # 行 1: Xu (重点高亮行)
-    xu_cells = []
-    for c in active_configs:
-        pid = c["id"]
-        item = p_map.get(pid)
-        if not item or item.get("xu_wall_ms") is None or item["xu_wall_ms"] <= 0:
-            xu_cells.append('<td class="meta">—</td>')
-            continue
-        xu_ms = item["xu_wall_ms"]
-        peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms")] if v is not None and v > 0]
-        best_peer = min(peers) if peers else None
-        ratio = round(xu_ms / best_peer, 2) if (best_peer and xu_ms) else None
-        badge = format_ratio_badge(ratio)
-
-        # 单平台最佳判定
-        p_best = p_best_map.get(pid)
-        is_best = (p_best is not None and abs(xu_ms - p_best) < 1e-4)
-        best_cls = " bench-cell-best" if is_best else ""
-        best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>' if is_best else ""
-        val_cls = "bench-xu-val bench-val-best" if is_best else "bench-xu-val"
-
-        xu_cells.append(
-            f'<td class="bench-xu-col{best_cls}">'
-            f'  <div class="bench-cell-wrap">'
-            f'    <div class="bench-val-row">'
-            f'      <span class="{val_cls}">{xu_ms:.2f}ms</span>{best_pill}'
-            f'    </div>'
-            f'    <div class="bench-ratio-sub">{badge}</div>'
-            f'  </div>'
-            f'</td>'
-        )
-
-    # 其余语言行
-    peer_rows_def = [
-        ("c", "C <small>best O1–O3</small>", "c_wall_ms"),
-        ("rs", "Rust <small>best O1–O3</small>", "rust_wall_ms"),
-        ("swift", "Swift <small>-O</small>", "swift_wall_ms"),
-        ("go", "Go <small>native</small>", "go_wall_ms"),
-    ]
-
-    other_rows_html = []
-    for cls_key, lang_label, key in peer_rows_def:
-        cells = [f'<td class="bench-td-lang-cell"><span class="bench-bar-lang {cls_key}">{lang_label}</span></td>']
-        for c in active_configs:
-            pid = c["id"]
-            item = p_map.get(pid)
-            val = item.get(key) if item else None
-            if val is not None and val > 0:
-                p_best = p_best_map.get(pid)
-                is_best = (p_best is not None and abs(val - p_best) < 1e-4)
-                if is_best:
-                    best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>'
-                    cells.append(
-                        f'<td class="num bench-cell-best">'
-                        f'  <div class="bench-cell-wrap">'
-                        f'    <div class="bench-val-row">'
-                        f'      <strong class="bench-val-best">{val:.2f}ms</strong>{best_pill}'
-                        f'    </div>'
-                        f'  </div>'
-                        f'</td>'
-                    )
-                else:
-                    cells.append(f'<td class="num">{val:.2f}ms</td>')
-            else:
-                cells.append('<td class="meta">—</td>')
-        other_rows_html.append(f'<tr>{"".join(cells)}</tr>')
-
-    xu_row_html = (
-        f'<tr class="bench-row-xu">'
-        f'  <td class="bench-td-lang-cell"><strong class="bench-bar-lang xu">Xu</strong></td>'
-        f'  {"".join(xu_cells)}'
-        f'</tr>'
-    )
-
-    bars_matrix_html = render_workload_bars_matrix(b_name, platforms, en)
-
-    btn_text = "View Source" if en else "查看源码"
-
-    return f"""
-<div class="bench-workload-block" id="workload-{b_name}" data-name="{b_name.lower()}" data-desc="{desc.lower()}">
-  <div class="bench-workload-header">
-    <div class="bench-workload-title-group">
-      <code class="bench-workload-code">{b_name}</code>
-      <span class="bench-workload-title">{desc}</span>
-      <span class="bench-workload-cat-pill">{cat_pill}</span>
-    </div>
-    <div class="bench-workload-meta">
-      {fastest_str}
-      {ratio_str}
-      <button type="button" class="bench-src-modal-btn" onclick="openBenchCodeModal('{b_name}', '{html.escape(desc, quote=True)}')">
-        <i class="xi xi-code"></i> <span>{btn_text}</span>
-      </button>
-    </div>
-  </div>
-  {bars_matrix_html}
-  <div class="bench-workload-table-wrap">
-    <table class="bench-workload-table">
-      <thead>
-        <tr>
-          {''.join(th_cols)}
-        </tr>
-      </thead>
-      <tbody>
-        {xu_row_html}
-        {''.join(other_rows_html)}
-      </tbody>
-    </table>
-  </div>
-</div>
-"""
-
-
-def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool) -> str:
-    ck = cat_cfg["key"]
-    cat_title = cat_cfg["name_en"] if en else cat_cfg["name_zh"]
-    cat_desc = cat_cfg["desc_en"] if en else cat_cfg["desc_zh"]
-
-    ref_benches = []
-    for pid in [c["id"] for c in PLATFORMS_CONFIG]:
-        if pid in platforms:
-            ref_benches = [b for b in platforms[pid].get("benches", []) if b.get("category") == ck]
-            if ref_benches:
-                break
-
-    if not ref_benches:
-        return ""
-
-    blocks = []
-    for b in ref_benches:
-        blocks.append(render_workload_block(b["name"], b, platforms, cat_cfg, en))
-
-    cat_count_text = f"{len(ref_benches)} {'workloads' if en else '项算法评测'}"
-
-    return f"""
-<div class="bench-cat-section bench-sec-{ck}">
-  <div class="bench-cat-section-header">
-    <div class="bench-cat-title-wrap">
-      <span class="bench-cat-icon">{cat_cfg["icon"]}</span>
-      <h3 class="bench-cat-title">{cat_title}</h3>
-      <span class="bench-cat-count">{cat_count_text}</span>
-    </div>
-    <p class="bench-cat-desc">{cat_desc}</p>
-  </div>
-  <div class="bench-workload-list">
-    {''.join(blocks)}
-  </div>
-</div>
-"""
-
-
 BENCH_LANGS_CONFIG = [
     {
         "key": "Xu",
@@ -534,6 +300,348 @@ def get_bench_impl_metric(b: dict | None, lang_key: str, metric_key: str) -> flo
     return float(val)
 
 
+def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: bool) -> str:
+    """Render a comprehensive multi-platform table for a single metric (wall_ms, rss_mib, bytes, cpu_ms).
+    Includes all 6 target platforms as columns plus a cross-platform median column.
+    """
+    mk = m_cfg["key"]
+    unit = m_cfg["unit"]
+    active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
+
+    langs_def = [
+        ("xu", "Xu", "Xu", True),
+        ("c", "C <small>best O1–O3</small>", "c", False),
+        ("rs", "Rust <small>best O1–O3</small>", "rust", False),
+        ("swift", "Swift <small>-O</small>", "swift", False),
+        ("go", "Go <small>native</small>", "go", False),
+    ]
+
+    table_data = {}
+    for cls_key, label, lk, is_xu in langs_def:
+        table_data[lk] = {}
+        for c in active_configs:
+            pid = c["id"]
+            b = next((x for x in platforms[pid].get("benches", []) if x["name"] == b_name), None)
+            table_data[lk][pid] = get_bench_impl_metric(b, lk, mk)
+
+    p_best_map = {}
+    for c in active_configs:
+        pid = c["id"]
+        col_vals = [table_data[lk][pid] for _, _, lk, _ in langs_def if table_data[lk].get(pid) is not None and table_data[lk][pid] > 0]
+        if col_vals:
+            p_best_map[pid] = min(col_vals)
+
+    lang_meds = {}
+    for cls_key, label, lk, is_xu in langs_def:
+        valid_vals = [table_data[lk][pid] for pid in [c["id"] for c in active_configs] if table_data[lk].get(pid) is not None and table_data[lk][pid] > 0]
+        lang_meds[lk] = statistics.median(valid_vals) if valid_vals else None
+
+    all_meds = [m for m in lang_meds.values() if m is not None and m > 0]
+    best_med = min(all_meds) if all_meds else None
+
+    th_cols = [f'<th class="bench-td-lang-cell" style="width: 14%;">{"Language" if en else "实现语言"}</th>']
+    for c in active_configs:
+        p_name = c["name_en"] if en else c["name_zh"]
+        arch = c["arch_tag"]
+        icon = c["icon"]
+        arch_cls = "arch-arm" if "arm" in arch.lower() else "arch-x64"
+        th_cols.append(
+            f'<th class="bench-th-platform" style="width: 12.2%;">'
+            f'  <div class="bench-th-pname"><i class="xi {icon}"></i> <span>{p_name}</span> <span class="btn-arch {arch_cls}">{arch}</span></div>'
+            f'</th>'
+        )
+
+    med_hdr_title = "Cross-Platform" if en else "全平台中位数"
+    med_hdr_sub = "Median" if en else "综合基准"
+    th_cols.append(
+        f'<th class="bench-th-platform bench-th-median" style="width: 12.8%;">'
+        f'  <div class="bench-th-pname"><i class="xi xi-chart-bar" style="color:var(--xu-brand);"></i> <span>{med_hdr_title}</span> <span class="bench-med-badge">{med_hdr_sub}</span></div>'
+        f'</th>'
+    )
+
+    def format_metric_val(val: float | None) -> str:
+        if val is None or val <= 0:
+            return "—"
+        if mk == "bytes":
+            return f"{val:,.0f} KiB" if val >= 1000 else f"{val:.1f} KiB"
+        elif mk == "rss_mib":
+            return f"{val:.2f} MiB"
+        else:
+            return f"{val:.2f}ms"
+
+    rows_html = []
+    for cls_key, label, lk, is_xu in langs_def:
+        cells = [
+            f'<td class="bench-td-lang-cell"><strong class="bench-bar-lang {cls_key}">{label}</strong></td>' if is_xu
+            else f'<td class="bench-td-lang-cell"><span class="bench-bar-lang {cls_key}">{label}</span></td>'
+        ]
+
+        for c in active_configs:
+            pid = c["id"]
+            val = table_data[lk].get(pid)
+            if val is not None and val > 0:
+                p_best = p_best_map.get(pid)
+                is_best = (p_best is not None and abs(val - p_best) < 1e-4)
+                best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>' if is_best else ""
+                val_text = format_metric_val(val)
+
+                ratio_badge_html = ""
+                if is_xu:
+                    peers = [table_data[other_lk].get(pid) for other_lk in ["c", "rust"] if table_data[other_lk].get(pid) is not None and table_data[other_lk][pid] > 0]
+                    if peers:
+                        best_peer = min(peers)
+                        ratio = round(val / best_peer, 2)
+                        ratio_badge_html = f'<div class="bench-ratio-sub">{format_ratio_badge(ratio)}</div>'
+
+                if is_best:
+                    best_cls = " bench-cell-best"
+                    if is_xu:
+                        cells.append(
+                            f'<td class="bench-xu-col{best_cls}">'
+                            f'  <div class="bench-cell-wrap">'
+                            f'    <div class="bench-val-row">'
+                            f'      <span class="bench-xu-val bench-val-best">{val_text}</span>{best_pill}'
+                            f'    </div>'
+                            f'    {ratio_badge_html}'
+                            f'  </div>'
+                            f'</td>'
+                        )
+                    else:
+                        cells.append(
+                            f'<td class="num bench-cell-best">'
+                            f'  <div class="bench-cell-wrap">'
+                            f'    <div class="bench-val-row">'
+                            f'      <strong class="bench-val-best">{val_text}</strong>{best_pill}'
+                            f'    </div>'
+                            f'  </div>'
+                            f'</td>'
+                        )
+                else:
+                    if is_xu:
+                        cells.append(
+                            f'<td class="bench-xu-col">'
+                            f'  <div class="bench-cell-wrap">'
+                            f'    <div class="bench-val-row">'
+                            f'      <span class="bench-xu-val">{val_text}</span>'
+                            f'    </div>'
+                            f'    {ratio_badge_html}'
+                            f'  </div>'
+                            f'</td>'
+                        )
+                    else:
+                        cells.append(f'<td class="num">{val_text}</td>')
+            else:
+                cells.append('<td class="meta">—</td>')
+
+        # 全平台中位数
+        m_val = lang_meds.get(lk)
+        if m_val is not None and m_val > 0:
+            is_med_best = (best_med is not None and abs(m_val - best_med) < 1e-4)
+            best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>' if is_med_best else ""
+            m_text = format_metric_val(m_val)
+            if is_med_best:
+                cells.append(
+                    f'<td class="num bench-cell-median bench-cell-best">'
+                    f'  <div class="bench-cell-wrap">'
+                    f'    <div class="bench-val-row">'
+                    f'      <strong class="bench-val-best">{m_text}</strong>{best_pill}'
+                    f'    </div>'
+                    f'  </div>'
+                    f'</td>'
+                )
+            else:
+                cells.append(f'<td class="num bench-cell-median"><strong>{m_text}</strong></td>')
+        else:
+            cells.append('<td class="meta bench-cell-median">—</td>')
+
+        row_cls = ' class="bench-row-xu"' if is_xu else ''
+        rows_html.append(f'<tr{row_cls}>{"".join(cells)}</tr>')
+
+    return f"""
+    <table class="bench-workload-table">
+      <thead>
+        <tr>
+          {''.join(th_cols)}
+        </tr>
+      </thead>
+      <tbody>
+        {''.join(rows_html)}
+      </tbody>
+    </table>
+"""
+
+
+def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg: dict, en: bool) -> str:
+    """Render a self-contained workload block (e.g. startup) with platforms as columns (horizontal) and languages as rows (vertical). Highlights per-platform best cells."""
+    desc = ref_bench["desc_en"] if en else ref_bench["desc_zh"]
+    cat_pill = cat_cfg["pill_en"] if en else cat_cfg["pill_zh"]
+    active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
+
+    # 收集 6 个平台的原始数据
+    p_map = {}
+    xu_vals = []
+    for c in active_configs:
+        pid = c["id"]
+        b_list = platforms[pid].get("benches", [])
+        item = next((x for x in b_list if x["name"] == b_name), None)
+        p_map[pid] = item
+        if item and item.get("xu_wall_ms") is not None and item["xu_wall_ms"] > 0:
+            xu_vals.append((item["xu_wall_ms"], c))
+
+    min_xu_val = min(x[0] for x in xu_vals) if xu_vals else None
+    fastest_cfg = next((x[1] for x in xu_vals if x[0] == min_xu_val), None) if min_xu_val else None
+
+    # 计算每一个平台的跨语言最优（绝对最小值）
+    p_best_map = {}
+    for c in active_configs:
+        pid = c["id"]
+        item = p_map.get(pid)
+        if not item:
+            continue
+        vals = [
+            v for v in [
+                item.get("xu_wall_ms"),
+                item.get("c_wall_ms"),
+                item.get("rust_wall_ms"),
+                item.get("swift_wall_ms"),
+                item.get("go_wall_ms"),
+            ]
+            if v is not None and v > 0
+        ]
+        if vals:
+            p_best_map[pid] = min(vals)
+
+    all_ratios = []
+    for pid, item in p_map.items():
+        if not item or item.get("xu_wall_ms") is None or item["xu_wall_ms"] <= 0:
+            continue
+        xu_ms = item["xu_wall_ms"]
+        peers = [v for v in [item.get("c_wall_ms"), item.get("rust_wall_ms")] if v is not None and v > 0]
+        if peers:
+            all_ratios.append(xu_ms / min(peers))
+
+    median_ratio = statistics.median(all_ratios) if all_ratios else None
+
+    fastest_str = ""
+    if fastest_cfg:
+        f_name = fastest_cfg["name_en"] if en else fastest_cfg["name_zh"]
+        fastest_str = (
+            f'<span class="bench-meta-tag bench-meta-fastest">'
+            f'{SVG_BOLT} <span>{"Lowest observed wall time:" if en else "本轮最低 wall 耗时:"} '
+            f'<strong>{f_name} {fastest_cfg["arch_tag"]} ({min_xu_val:.2f}ms)</strong></span>'
+            f'</span>'
+        )
+
+    ratio_str = ""
+    if median_ratio:
+        badge = format_ratio_badge(median_ratio)
+        ratio_str = (
+            f'<span class="bench-meta-tag bench-meta-ratio">'
+            f'<span>{"Median Xu / best C/Rust:" if en else "Xu / 最佳 C、Rust 中位数:"}</span> {badge}'
+            f'</span>'
+        )
+
+    bars_matrix_html = render_workload_bars_matrix(b_name, platforms, en)
+
+    btn_text = "View Source" if en else "查看源码"
+
+    table_panes = []
+    for idx, m_cfg in enumerate(BENCH_METRICS_CONFIG):
+        mk = m_cfg["key"]
+        t_html = render_workload_metric_table(b_name, platforms, m_cfg, en)
+        is_active = (idx == 0)
+        disp_style = "" if is_active else ' style="display: none;"'
+        active_cls = " active" if is_active else ""
+        table_panes.append(
+            f'<div class="bench-table-pane{active_cls}" data-metric="{mk}"{disp_style}>\n{t_html}\n</div>'
+        )
+
+    tab_btns = []
+    for idx, m_cfg in enumerate(BENCH_METRICS_CONFIG):
+        mk = m_cfg["key"]
+        icon = m_cfg["icon"]
+        title = m_cfg["title_en"] if en else m_cfg["title_zh"]
+        is_active = (idx == 0)
+        active_cls = " active" if is_active else ""
+        tab_btns.append(
+            f'<button type="button" class="bench-table-tab{active_cls}" data-metric="{mk}" onclick="switchWorkloadTableMetric(\'{b_name}\', \'{mk}\')">'
+            f'{icon} <span>{title}</span>'
+            f'</button>'
+        )
+
+    table_heading = "6-Platform Audited Data Matrix & Median" if en else "6 大目标平台审计实测数据表与中位数"
+
+    return f"""
+<div class="bench-workload-block" id="workload-{b_name}" data-name="{b_name.lower()}" data-desc="{desc.lower()}">
+  <div class="bench-workload-header">
+    <div class="bench-workload-title-group">
+      <code class="bench-workload-code">{b_name}</code>
+      <span class="bench-workload-title">{desc}</span>
+      <span class="bench-workload-cat-pill">{cat_pill}</span>
+    </div>
+    <div class="bench-workload-meta">
+      {fastest_str}
+      {ratio_str}
+      <button type="button" class="bench-src-modal-btn" onclick="openBenchCodeModal('{b_name}', '{html.escape(desc, quote=True)}')">
+        <i class="xi xi-code"></i> <span>{btn_text}</span>
+      </button>
+    </div>
+  </div>
+  {bars_matrix_html}
+  <div class="bench-workload-table-toolbar">
+    <div class="bench-workload-table-heading">
+      <i class="xi xi-table xi-brand"></i>
+      <span>{table_heading}</span>
+    </div>
+    <div class="bench-table-metric-tabs">
+      {''.join(tab_btns)}
+    </div>
+  </div>
+  <div class="bench-workload-table-wrap">
+    {''.join(table_panes)}
+  </div>
+</div>
+"""
+
+
+def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool) -> str:
+    ck = cat_cfg["key"]
+    cat_title = cat_cfg["name_en"] if en else cat_cfg["name_zh"]
+    cat_desc = cat_cfg["desc_en"] if en else cat_cfg["desc_zh"]
+
+    ref_benches = []
+    for pid in [c["id"] for c in PLATFORMS_CONFIG]:
+        if pid in platforms:
+            ref_benches = [b for b in platforms[pid].get("benches", []) if b.get("category") == ck]
+            if ref_benches:
+                break
+
+    if not ref_benches:
+        return ""
+
+    blocks = []
+    for b in ref_benches:
+        blocks.append(render_workload_block(b["name"], b, platforms, cat_cfg, en))
+
+    cat_count_text = f"{len(ref_benches)} {'workloads' if en else '项算法评测'}"
+
+    return f"""
+<div class="bench-cat-section bench-sec-{ck}">
+  <div class="bench-cat-section-header">
+    <div class="bench-cat-title-wrap">
+      <span class="bench-cat-icon">{cat_cfg["icon"]}</span>
+      <h3 class="bench-cat-title">{cat_title}</h3>
+      <span class="bench-cat-count">{cat_count_text}</span>
+    </div>
+    <p class="bench-cat-desc">{cat_desc}</p>
+  </div>
+  <div class="bench-workload-list">
+    {''.join(blocks)}
+  </div>
+</div>
+"""
+
+
 def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
     p_keys = ["all"] + [c["id"] for c in active_configs]
@@ -619,8 +727,9 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
                 f'</div>'
             )
 
+        card_title_hint = f'Click to inspect {title} multi-platform table' if en else f'点击联动在下方切换查看 {title} 详细数据表'
         panels.append(
-            f'<div class="bench-bar-panel">'
+            f'<div class="bench-bar-panel" onclick="switchWorkloadTableMetric(\'{b_name}\', \'{mk}\')" title="{card_title_hint}">'
             f'  <div class="bench-bar-panel-header">'
             f'    <div class="bench-bar-panel-title">{icon} <span>{title}</span></div>'
             f'    <span class="bench-bar-panel-unit">{badge}</span>'
@@ -750,6 +859,16 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
         </div>
         <p class="bench-radar-scorecard-desc">
           {'Outstanding compute and memory safety. Binary size is penalized on Linux when statically embedding full standard library (4.4MB+).' if en else '卓越的速度与安全性。在 Linux 等环境因静态内嵌全量 stdlib 导致独立产物体积膨胀至 4.4MB+。'}
+        </p>
+      </div>
+
+      <div class="bench-radar-scorecard">
+        <div class="bench-radar-scorecard-header">
+          <span style="color: #ec4899;">🌸 Swift (-O) · {'Modern Systems & ARC' if en else '现代语言与 ARC 引用计数'}</span>
+          <span style="color: #ec4899;">78.5 / 100</span>
+        </div>
+        <p class="bench-radar-scorecard-desc">
+          {'LLVM backend provides high compute throughput, but automatic reference counting (ARC) atomic ops and foundation runtime baseline impact micro-latency and RSS footprint.' if en else 'LLVM 优化后端提供强劲的基础计算吞吐，但 ARC 引用计数的原子操作开销与标准库基础运行时使高频循环与小对象常驻内存有所上升。'}
         </p>
       </div>
 
@@ -1394,6 +1513,27 @@ function copyBenchReproCmd(btn, cmd) {
     var orig = btn.innerHTML;
     btn.innerHTML = '<i class="xi xi-check"></i> <span>__COPY_SUCCESS__</span>';
     setTimeout(function() { btn.innerHTML = orig; }, 1500);
+  });
+}
+
+function switchWorkloadTableMetric(wname, metricKey) {
+  var block = document.getElementById('workload-' + wname);
+  if (!block) return;
+  block.querySelectorAll('.bench-table-tab').forEach(function(tab) {
+    if (tab.getAttribute('data-metric') === metricKey) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+  block.querySelectorAll('.bench-table-pane').forEach(function(pane) {
+    if (pane.getAttribute('data-metric') === metricKey) {
+      pane.style.display = 'block';
+      pane.classList.add('active');
+    } else {
+      pane.style.display = 'none';
+      pane.classList.remove('active');
+    }
   });
 }
 
