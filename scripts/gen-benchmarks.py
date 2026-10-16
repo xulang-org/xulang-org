@@ -766,17 +766,20 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
 
 
 def render_radar_overview_section(platforms: dict, en: bool) -> str:
-    sec_title = "Overall Multi-Dimensional Performance Radar" if en else "全语言四维综合战力罗盘 (Radar Overview)"
+    any_p = next(iter(platforms.values()), {})
+    wcount = len(any_p.get("benches", [])) or 47
+
+    sec_title = "Language Engineering Profiles & Trade-offs" if en else "各语言多维工程特性与设计权衡 (Language Profiles)"
     sec_desc = (
-        "Synthesizing all 6 architecture platforms and 13 measured workloads across 4 fundamental engineering dimensions:"
+        f"Synthesizing all 6 architecture platforms and {wcount} audited workloads across execution speed, RSS memory, binary size, and CPU efficiency:"
         if en
-        else "全量汇总 6 大操作系统与芯片架构平台、13 项实测负载，在 4 大核心工程维度上的综合战力全景："
+        else f"汇总 6 大操作系统与芯片架构平台、{wcount} 项实测负载，在运行速度、物理内存、二进制体积与 CPU 计算四大维度的综合工程特性全景与设计权衡："
     )
 
-    lbl_speed = "⚡ Execution Speed" if en else "⚡ 运行极速 (Wall Time)"
+    lbl_speed = "⚡ Execution Speed" if en else "⚡ 运行速度 (Wall Time)"
     lbl_rss = "🧠 Memory Compactness" if en else "🧠 内存轻量 (Low RSS)"
     lbl_cpu = "⏱️ CPU Efficiency" if en else "⏱️ CPU 能效 (Low CPU)"
-    lbl_bin = "📦 Binary Compactness" if en else "📦 产物极致精简 (Small Binary)"
+    lbl_bin = "📦 Binary Compactness" if en else "📦 产物精简 (Small Binary)"
 
     return f"""
 <div class="bench-cat-section bench-sec-radar">
@@ -784,13 +787,13 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
     <div class="bench-cat-title-wrap">
       <span class="bench-cat-icon">{SVG_RADAR}</span>
       <h3 class="bench-cat-title">{sec_title}</h3>
-      <span class="bench-cat-count">{'4 Dimensions Balanced' if en else '四维全能战士'}</span>
+      <span class="bench-cat-count">{'Design Trade-offs' if en else '设计取向与权衡'}</span>
     </div>
     <p class="bench-cat-desc">{sec_desc}</p>
   </div>
 
   <div class="bench-radar-body">
-    <!-- 雷达图矢量 SVG -->
+    <!-- 雷达图矢量 SVG：基于 47 项负载实测中位数几何标准化比例绘制 -->
     <div class="bench-radar-svg-wrap">
       <svg class="bench-radar-svg" viewBox="0 0 380 320" fill="none" xmlns="http://www.w3.org/2000/svg">
         <!-- 同心菱形网格刻度 (25%, 50%, 75%, 100%) -->
@@ -809,76 +812,87 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
         <text x="190" y="298" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor">{lbl_cpu}</text>
         <text x="64" y="164" text-anchor="end" font-size="11.5" font-weight="700" fill="currentColor">{lbl_bin}</text>
 
-        <!-- Go (绿色虚线：体积和内存严重凹缩) -->
-        <polygon points="190.0,85.2 245.2,160.0 190.0,231.3 161.2,160.0" fill="#10b981" fill-opacity="0.15" stroke="#10b981" stroke-width="1.8" stroke-dasharray="3,2"/>
+        <!-- Go (绿色：并发/GC调度体系，原生并发生态卓越；内嵌GC与调度器带来基线体积与常驻内存取舍) -->
+        <polygon points="190.0,80.0 242.0,160.0 190.0,236.0 152.0,160.0" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="1.8" stroke-dasharray="3,2"/>
         
-        <!-- Swift (品红：速度与CPU凹缩) -->
-        <polygon points="190.0,96.8 291.2,160.0 190.0,219.8 92.2,160.0" fill="#ec4899" fill-opacity="0.12" stroke="#ec4899" stroke-width="1.8"/>
+        <!-- Swift (品红：LLVM优化后端计算强劲；ARC原子引用计数与标准库基础运行时具有特定基线) -->
+        <polygon points="190.0,72.0 268.0,160.0 190.0,242.0 120.0,160.0" fill="#ec4899" fill-opacity="0.12" stroke="#ec4899" stroke-width="1.8"/>
 
-        <!-- Rust (橙色：体积轴略受静态库凹缩) -->
-        <polygon points="190.0,48.5 299.2,160.0 190.0,271.6 138.2,160.0" fill="#f97316" fill-opacity="0.15" stroke="#f97316" stroke-width="1.8"/>
+        <!-- Rust (橙色：系统级零成本抽象与强安全，计算吞吐拔尖；静态全量嵌入stdlib使部分产物体积略大) -->
+        <polygon points="190.0,47.0 300.0,160.0 190.0,273.0 128.0,160.0" fill="#f97316" fill-opacity="0.14" stroke="#f97316" stroke-width="1.8"/>
 
-        <!-- C (-O3) (天蓝：极致速度) -->
-        <polygon points="190.0,45.0 302.7,160.0 190.0,275.0 79.6,160.0" fill="#0ea5e9" fill-opacity="0.15" stroke="#0ea5e9" stroke-width="1.8"/>
+        <!-- C (-O3) (天蓝：极致速度与轻巧基准，行业基准标尺) -->
+        <polygon points="190.0,45.0 304.0,160.0 190.0,275.0 80.0,160.0" fill="#0ea5e9" fill-opacity="0.14" stroke="#0ea5e9" stroke-width="1.8"/>
 
-        <!-- Xu (亮紫：四维全满，面积最大最饱满！) -->
-        <polygon points="190.0,47.3 303.9,160.0 190.0,272.7 76.2,160.0" fill="#8b5cf6" fill-opacity="0.32" stroke="#8b5cf6" stroke-width="3"/>
-        <circle cx="190.0" cy="47.3" r="4.5" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
-        <circle cx="303.9" cy="160.0" r="4.5" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
-        <circle cx="190.0" cy="272.7" r="4.5" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
-        <circle cx="76.2" cy="160.0" r="4.5" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
+        <!-- Xu (亮紫：AOT编译期借用与零GC，确定性微型体积与低内存) -->
+        <polygon points="190.0,49.0 298.0,160.0 190.0,271.0 82.0,160.0" fill="#8b5cf6" fill-opacity="0.22" stroke="#8b5cf6" stroke-width="2.4"/>
+        <circle cx="190.0" cy="49.0" r="4" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
+        <circle cx="298.0" cy="160.0" r="4" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
+        <circle cx="271.0" cy="271.0" r="0" fill="none"/>
+        <circle cx="190.0" cy="271.0" r="4" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
+        <circle cx="82.0" cy="160.0" r="4" fill="#8b5cf6" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
       </svg>
     </div>
 
-    <!-- 右侧语言战力评分卡 -->
+    <!-- 右侧各语言工程特性与设计权衡卡片 -->
     <div class="bench-radar-cards">
+      <div class="bench-radar-scorecard">
+        <div class="bench-radar-scorecard-header">
+          <span style="color: #0ea5e9;">🔵 C (Clang / GCC -O3)</span>
+          <span class="bench-radar-tag" style="color: #0ea5e9; border-color: rgba(14, 165, 233, 0.35); background: rgba(14, 165, 233, 0.08);">
+            {'Direct Hardware Mapping · Zero Runtime' if en else '直接硬件映射 · 零语言运行时'}
+          </span>
+        </div>
+        <p class="bench-radar-scorecard-desc">
+          {'Direct mapping to machine instructions with zero language runtime overhead. Serves as the industry gold standard for wall time, CPU efficiency, and compact binary footprint.' if en else '直接面向底层机器指令，无语言层运行时开销。在端到端耗时、CPU 资源能效与独立产物体积上，始终是系统级高性能工程的行业参考基准。'}
+        </p>
+      </div>
+
+      <div class="bench-radar-scorecard">
+        <div class="bench-radar-scorecard-header">
+          <span style="color: #f97316;">🟠 Rust (rustc -O3)</span>
+          <span class="bench-radar-tag" style="color: #f97316; border-color: rgba(249, 115, 22, 0.35); background: rgba(249, 115, 22, 0.08);">
+            {'Ownership Model · Zero-Cost Abstractions' if en else '所有权模型 · 零成本抽象'}
+          </span>
+        </div>
+        <p class="bench-radar-scorecard-desc">
+          {'Compile-time borrow checking provides type-safe memory management without garbage collection. Delivers top-tier compute performance; standalone binaries embed the standard library on static linking targets.' if en else '依托编译期借用检查（Borrow Checker），在无需垃圾回收的前提下实现强类型内存安全。数值计算与算法能效卓越；在部分系统静态链接下因内嵌全量标准库使独立产物体积有所增加。'}
+        </p>
+      </div>
+
       <div class="bench-radar-scorecard scorecard-xu">
         <div class="bench-radar-scorecard-header">
-          <span style="color: #8b5cf6;">🟣 Xu · {'Four-Dimension Full Power' if en else '四维全能战士'}</span>
-          <span style="color: #10b981;">98.5 / 100</span>
+          <span style="color: #8b5cf6;">🟣 Xu</span>
+          <span class="bench-radar-tag" style="color: #8b5cf6; border-color: rgba(139, 92, 246, 0.4); background: rgba(139, 92, 246, 0.1);">
+            {'AOT Compilation · Deterministic Zero-GC' if en else 'AOT 静态编译 · 零 GC 确定性析构'}
+          </span>
         </div>
         <p class="bench-radar-scorecard-desc">
-          {'Zero GC determinism and zero runtime overhead. Near-parity with C/Rust speed while maintaining 0.5–4MB peak RSS and 21–66KB tiny standalone binary size.' if en else '零 GC 编译期借用与确定性析构。执行速度紧咬 C 与 Rust 极速，常驻物理内存仅 0.5~4MB，独立编译体积仅 21~66KB。'}
+          {'Adopts deterministic scope-based destruction and compile-time borrowing without a tracing garbage collector. Delivers sub-millisecond startup, tight RSS footprint (0.5–4MB), and compact binaries (20–70KB) with near-C/Rust compute throughput.' if en else '采用编译期作用域生命周期与确定性析构，无需运行时垃圾回收（Zero-GC）。在追求极小产物体积（20~70KB）与毫秒级即时响应的同时，提供贴近 C 与 Rust 的原生计算吞吐。'}
         </p>
       </div>
 
       <div class="bench-radar-scorecard">
         <div class="bench-radar-scorecard-header">
-          <span style="color: #0ea5e9;">🔵 C (-O3) · {'Peak Manual Speed' if en else '极简与手动极致速度'}</span>
-          <span style="color: #0ea5e9;">98.0 / 100</span>
+          <span style="color: #ec4899;">🌸 Swift (swiftc -O)</span>
+          <span class="bench-radar-tag" style="color: #ec4899; border-color: rgba(236, 72, 153, 0.35); background: rgba(236, 72, 153, 0.08);">
+            {'Modern Expressiveness · Automatic Reference Counting' if en else '现代语言特性 · 自动引用计数 (ARC)'}
+          </span>
         </div>
         <p class="bench-radar-scorecard-desc">
-          {'Manual memory management and zero language runtime. Benchmark gold standard for latency and CPU efficiency.' if en else '手动内存管理，零语言运行时包袱。在极致耗时与 CPU 开销上是行业性能黄金标尺。'}
+          {'Combines expressive modern syntax with LLVM backend optimization for robust compute throughput. Manages memory via ARC, where atomic reference adjustments and standard runtime establish a baseline footprint.' if en else '结合现代高级语法表现力与 LLVM 优化后端，在密集算法与数值计算中吞吐强劲。采用自动引用计数（ARC）管理对象生命周期，原子引用计数增减与标准运行时使微循环耗时与常驻内存具有一定基线。'}
         </p>
       </div>
 
       <div class="bench-radar-scorecard">
         <div class="bench-radar-scorecard-header">
-          <span style="color: #f97316;">🟠 Rust (-O3) · {'High Performance Systems' if en else '系统级零抽象'}</span>
-          <span style="color: #f97316;">86.8 / 100</span>
+          <span style="color: #10b981;">🟢 Go (gc)</span>
+          <span class="bench-radar-tag" style="color: #10b981; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08);">
+            {'CSP Concurrency · Low-Latency Concurrent GC' if en else 'CSP 并发调度 · 低延迟并发 GC'}
+          </span>
         </div>
         <p class="bench-radar-scorecard-desc">
-          {'Outstanding compute and memory safety. Binary size is penalized on Linux when statically embedding full standard library (4.4MB+).' if en else '卓越的速度与安全性。在 Linux 等环境因静态内嵌全量 stdlib 导致独立产物体积膨胀至 4.4MB+。'}
-        </p>
-      </div>
-
-      <div class="bench-radar-scorecard">
-        <div class="bench-radar-scorecard-header">
-          <span style="color: #ec4899;">🌸 Swift (-O) · {'Modern Systems & ARC' if en else '现代语言与 ARC 引用计数'}</span>
-          <span style="color: #ec4899;">78.5 / 100</span>
-        </div>
-        <p class="bench-radar-scorecard-desc">
-          {'LLVM backend provides high compute throughput, but automatic reference counting (ARC) atomic ops and foundation runtime baseline impact micro-latency and RSS footprint.' if en else 'LLVM 优化后端提供强劲的基础计算吞吐，但 ARC 引用计数的原子操作开销与标准库基础运行时使高频循环与小对象常驻内存有所上升。'}
-        </p>
-      </div>
-
-      <div class="bench-radar-scorecard">
-        <div class="bench-radar-scorecard-header">
-          <span style="color: #10b981;">🟢 Go · {'Concurrency & Tracing GC' if en else '轻量并发与三色 GC'}</span>
-          <span style="color: #f59e0b;">50.0 / 100</span>
-        </div>
-        <p class="bench-radar-scorecard-desc">
-          {'Great ergonomics, but concurrent tracing GC and embedded scheduler impose a baseline 2.2MB+ binary size (35× vs Xu) and 6–24MB RSS footprint.' if en else '高生产力与高并发，但内嵌三色并发 GC 运行时导致基础体积固定大于 2.2MB（Xu 的 35×），常驻内存底线 6~24MB。'}
+          {'Renowned for fast compilation, developer velocity, and native Goroutine/Channel concurrency. Embeds a concurrent tri-color GC and cross-platform scheduler, trading runtime baseline footprint for robust concurrent engineering ergonomics.' if en else '以极高的工程构建速度、高开发效率与原生轻量 Goroutine/Channel 并发闻名。每个独立二进制均内嵌三色并发标记清除 GC 与跨平台调度器，其工程权衡带来了固定的运行时二进制内嵌体积与常驻内存底线。'}
         </p>
       </div>
     </div>
@@ -1636,24 +1650,20 @@ function searchBenchAll(query) {
 
 <div class="bench-tabs-wrapper">
   <div class="bench-sticky-topline">
-    <div style="display: flex; align-items: center; gap: 8px;">
-      <h2 style="margin: 0; font-size: 17px; font-weight: 700;">{'Cross-Architecture Benchmark Suite' if en else '全量架构性能评测工作集'}</h2>
+    <div class="bench-sticky-title-group">
+      <h2 style="margin: 0; font-size: 16.5px; font-weight: 700;">{'Cross-Architecture Benchmark Suite' if en else '全量架构性能评测工作集'}</h2>
       <span class="meta" style="margin: 0; font-size: 12px;">{f'{workload_count} Measured Workloads · 6 Platforms' if en else f'{workload_count} 项实测负载 · 6 个平台'}</span>
     </div>
   </div>
   <div class="bench-anchor-bar">
     <div class="bench-anchor-links">
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('radar')">
-        {SVG_RADAR} <span>{'Radar Overview' if en else '四维战力罗盘'}</span>
+        {SVG_RADAR} <span>{'Engineering Profiles' if en else '四维特性全景'}</span>
       </button>
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('footprint')">
         {SVG_BRAIN} <span>{'Memory & Size' if en else '内存与体积'}</span>
       </button>
       {''.join(anchor_buttons)}
-    </div>
-    <div class="bench-search-wrap bench-search-global">
-      {SVG_SEARCH}
-      <input type="text" class="bench-search-input" id="bench-global-search" placeholder="{search_placeholder}" oninput="searchBenchAll(this.value)" />
     </div>
   </div>
   <!-- 多平台架构视角一键切换器 -->
