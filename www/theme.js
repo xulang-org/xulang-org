@@ -64,6 +64,9 @@
 
     // Initialize code block copy and run toolbars
     initCodeToolbars();
+
+    // Initialize hero install tab switcher
+    initHeroInstallTabs();
   });
 
   // 侧边栏菜单分组折叠/收起与滚动控制
@@ -197,7 +200,7 @@
 
       // 4. Shell / Terminal Commands
       // Note: Must match 'xu run main.xu'
-      if (/^(?:xu\s+(?:run|build|test|fmt|check|doc|map|doctor|setup|install|get|hello|up|update|env|--version|-v)|git\s+|curl\s+|wget\s+|python3?\s+|make\s+|cd\s+|mkdir\s+|clang\s+|gcc\s+|\$|npm\s+|brew\s+|cargo\s+|docker\s+|tar\s+|unzip\s+)/.test(firstLine) ||
+      if (/^(?:xu\s+(?:run|build|test|fmt|check|doc|map|doctor|setup|install|get|init|up|update|env|--version|-v)|git\s+|curl\s+|irm\s+|wget\s+|python3?\s+|make\s+|cd\s+|mkdir\s+|clang\s+|gcc\s+|\$|npm\s+|brew\s+|cargo\s+|docker\s+|tar\s+|unzip\s+)/.test(firstLine) ||
           (lines.length === 1 && firstLine.startsWith('xu ')) ||
           /^XUPROXY=|^XU_|^export\s+/.test(firstLine)) {
         return 'shell';
@@ -410,6 +413,41 @@
       }
 
       header.appendChild(actions);
+    });
+  }
+
+  function initHeroInstallTabs() {
+    if (typeof document.querySelectorAll !== 'function') return;
+    var installs = document.querySelectorAll('.hero-install');
+    if (!installs || !installs.length) return;
+    var isWin = /windows|win32|win64/i.test((typeof navigator !== 'undefined' && (navigator.userAgent || navigator.platform)) || '');
+    installs.forEach(function (box) {
+      if (!box || typeof box.querySelectorAll !== 'function') return;
+      var tabs = box.querySelectorAll('.hero-install-tab');
+      var panes = box.querySelectorAll('.hero-install-pane');
+      if (!tabs || !panes) return;
+      function switchTab(target) {
+        tabs.forEach(function (tab) {
+          var active = tab.getAttribute('data-tab') === target;
+          tab.classList.toggle('is-active', active);
+          tab.setAttribute('aria-selected', String(active));
+        });
+        panes.forEach(function (pane) {
+          var active = pane.getAttribute('data-pane') === target;
+          pane.classList.toggle('is-active', active);
+        });
+      }
+      tabs.forEach(function (tab) {
+        if (typeof tab.addEventListener === 'function') {
+          tab.addEventListener('click', function () {
+            var t = tab.getAttribute('data-tab');
+            if (t) switchTab(t);
+          });
+        }
+      });
+      if (isWin) {
+        switchTab('win');
+      }
     });
   }
 })();

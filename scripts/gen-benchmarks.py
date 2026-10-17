@@ -1423,7 +1423,7 @@ def render_page(data: dict, lang: str) -> str:
           <i class="xi xi-copy"></i> <span id="bench-modal-copy-text">{modal_copy_text}</span>
         </button>
         <button type="button" class="bench-modal-btn-close" onclick="closeBenchCodeModal()" aria-label="Close">
-          <i class="xi xi-x"></i>
+          <i class="xi xi-close"></i>
         </button>
       </div>
     </div>
