@@ -41,7 +41,141 @@
 <h2>3. .xulib 内部结构与二进制规范</h2>
 <p><code>.xulib</code> 是自描述的二进制容器（版本规范 <code>xulib-1</code>），其布局紧凑清晰：</p>
 
-<pre><code class="language-diagram">+-------------------------------------------------------+
+<div class="xulib-binary-spec" role="region" aria-label=".xulib 二进制结构规范">
+  <div class="spec-header">
+    <div class="spec-header-left">
+      <span class="spec-badge"><i class="xi xi-file-code"></i> 二进制容器规范</span>
+      <span class="spec-version">格式：<code>xulib-1</code></span>
+    </div>
+    <div class="spec-header-right">
+      <span class="spec-tag">自描述 · 多平台 · 零运行时开销</span>
+    </div>
+  </div>
+
+  <div class="binary-layers">
+    <!-- Layer 1: Magic -->
+    <div class="binary-layer layer-magic">
+      <div class="layer-offset">0x00..0x06 (7 Bytes)</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-lock"></i> 魔数标识 (Magic Header)</div>
+        <div class="layer-detail">
+          <code>"XULIB\x01\x00"</code>
+          <span class="layer-desc">固定 7 字节，用于识别有效的 <code>.xulib</code> 二进制容器并校验主版本</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 2: Fixed Header -->
+    <div class="binary-layer layer-fixed-header">
+      <div class="layer-offset">0x07..0x0E (8 Bytes)</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-sliders"></i> 固定头部字段 (Fixed Header)</div>
+        <div class="fixed-fields-grid">
+          <div class="fixed-field">
+            <span class="field-name">Version</span>
+            <span class="field-type">u16 (小端序)</span>
+            <span class="field-val">= 1</span>
+            <span class="field-desc">容器格式次版本号</span>
+          </div>
+          <div class="fixed-field">
+            <span class="field-name">Flags</span>
+            <span class="field-type">u16 (位掩码)</span>
+            <span class="field-val">= 0</span>
+            <span class="field-desc">保留标志位</span>
+          </div>
+          <div class="fixed-field">
+            <span class="field-name">Manifest Length</span>
+            <span class="field-type">u32 (小端序)</span>
+            <span class="field-val">N 字节</span>
+            <span class="field-desc">紧随其后的 JSON 契约长度</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 3: JSON Manifest -->
+    <div class="binary-layer layer-manifest">
+      <div class="layer-offset">0x0F..0x0F+N (N Bytes)</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-file-text"></i> JSON 契约清单 (JSON Manifest · UTF-8 紧凑文本)</div>
+        <div class="manifest-entries-grid">
+          <div class="manifest-entry">
+            <code>module</code>
+            <span>模块全局唯一标识 (例如 <code>"native_add"</code>)</span>
+          </div>
+          <div class="manifest-entry">
+            <code>abi</code>
+            <span>原生接口协议版本号 (例如 <code>"xu-c-1"</code>)</span>
+          </div>
+          <div class="manifest-entry">
+            <code>exports</code>
+            <span>导出的函数名、参数类型列表与返回值类型契约</span>
+          </div>
+          <div class="manifest-entry">
+            <code>slices</code>
+            <span>各目标平台切片元数据及 SHA-256 签名散列</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 4: Slice Index Table -->
+    <div class="binary-layer layer-index">
+      <div class="layer-offset">Table Header + Entries</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-list"></i> 切片索引表 (Slice Index Table)</div>
+        <div class="slice-count-row">
+          <span class="tag-label">切片总数:</span>
+          <code>Slice Count (u32)</code>
+          <span class="tag-desc">指示随后连续排列的切片条目数量</span>
+        </div>
+        <div class="slice-entry-spec">
+          <div class="entry-field"><code>target_len (u16)</code> + <code>target_name</code> (如 <code>"macos-arm64"</code>)</div>
+          <div class="entry-field"><code>kind_len (u8)</code> + <code>kind</code> (<code>"archive"</code> / <code>"object"</code>)</div>
+          <div class="entry-field"><code>file_offset (u64)</code> + <code>file_size (u64)</code></div>
+          <div class="entry-field"><code>sha256 (32B)</code> 二进制散列校验</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 5: Payloads -->
+    <div class="binary-layer layer-payload">
+      <div class="layer-offset">Payload Offsets</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-box"></i> 多架构切片负载网格 (Multi-Arch Payload Slices)</div>
+        <div class="payload-cards-grid">
+          <div class="payload-card macos">
+            <div class="payload-badge"><i class="xi xi-apple"></i> macOS 切片</div>
+            <div class="payload-type">Unix 静态归档 <code>.a</code></div>
+            <div class="payload-details">
+              <span>Mach-O 机器码原生对象</span>
+              <span class="payload-meta-tag">+ <code>xu.o</code> (含 <code>__DATA,__xumeta</code>)</span>
+            </div>
+          </div>
+          <div class="payload-card linux">
+            <div class="payload-badge"><i class="xi xi-terminal"></i> Linux 切片</div>
+            <div class="payload-type">Unix 静态归档 <code>.a</code></div>
+            <div class="payload-details">
+              <span>Linux ELF 机器码原生对象</span>
+              <span class="payload-meta-tag">+ <code>xu.o</code> (含 <code>.xumeta</code>)</span>
+            </div>
+          </div>
+          <div class="payload-card windows">
+            <div class="payload-badge"><i class="xi xi-monitor"></i> Windows 切片</div>
+            <div class="payload-type">静态库 <code>.a</code> / <code>.lib</code></div>
+            <div class="payload-details">
+              <span>Windows COFF 机器码原生对象</span>
+              <span class="payload-meta-tag">+ <code>xu.o</code> (含 <code>.xumeta</code>)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <details class="raw-diagram-details">
+    <summary><i class="xi xi-code"></i> 点击展开原始 ASCII 二进制规范图</summary>
+    <pre><code class="language-diagram">+-------------------------------------------------------+
 | Magic (7B): "XULIB\x01\x00"                           |
 +-------------------------------------------------------+
 | Version (u16=1) | Flags (u16=0) | Manifest Length (u32)|
@@ -65,26 +199,78 @@
 |   - 切片 2: 标准 Unix .a (含 Linux ELF 对象)          |
 |   - 切片 3: 标准 .a / .lib (含 Windows COFF 对象)      |
 +-------------------------------------------------------+</code></pre>
+  </details>
+</div>
 
 <p class="note"><strong>巧妙的双面兼容设计</strong>：每个平台的切片本质是一个标准的 <code>.a</code> 静态归档库。它将<strong>由外部原生工具链（如 C / C++ / Rust）编译出的原生业务对象（如 <code>sqlite3.o</code>、<code>bridge.o</code>）</strong>，与一份<strong>格式合规并包含 Xu 导出类型签名的元数据对象（<code>xu.o</code>）</strong>统一打包在一起。操作系统的通用链接器直接链接这些原生的业务机器码，而 Xu 编译器则读取 <code>xu.o</code> 专用 <code>.xumeta</code> 段（Mach-O 下为 <code>__DATA,__xumeta</code>）中的类型契约完成编译期安全检查，两者互不干扰。</p>
 
 <h2>4. 完整的 7 个开发动作指南</h2>
 
-<pre><code class="language-diagram">动作一：编写 C 桥接源码 (bridge.c)
-    ↓
-动作二：声明类型元数据契约 (native.json)
-    ↓
-动作三：单目标切片静态编译 (xunative compile)
-    ↓
-动作四：多目标切片聚合打包 (xunative pack -> module.xulib)
-    ↓
-动作五：在工程项目配置中声明原生模块 (xu.xun native:)
-    ↓
-动作六：在 Xu 源码中导入与调用 (main.xu)
-    ↓
-动作七：一键静态链接与运行验证 (xu build / xu run)</code></pre>
+<div class="doc-process-flow" role="region" aria-label="7 个开发动作指南流程图">
+  <div class="flow-header">
+    <div class="flow-title"><i class="xi xi-flow"></i> 原生模块全生命周期 7 个开发动作流程图</div>
+    <div class="flow-subtitle">点击任一步骤可快速跳转至对应操作说明与完整代码示例</div>
+  </div>
+  <div class="flow-steps-grid">
+    <a href="#action-1" class="flow-step-card">
+      <div class="step-badge">1</div>
+      <div class="step-body">
+        <div class="step-name">编写 C 桥接源码</div>
+        <div class="step-meta"><code>bridge.c</code> · 导出 <code>xu_native</code> 规范符号</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-2" class="flow-step-card">
+      <div class="step-badge">2</div>
+      <div class="step-body">
+        <div class="step-name">声明类型元数据契约</div>
+        <div class="step-meta"><code>native.json</code> · 声明函数签名与 ABI 契约</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-3" class="flow-step-card">
+      <div class="step-badge">3</div>
+      <div class="step-body">
+        <div class="step-name">单目标切片静态编译</div>
+        <div class="step-meta"><code>xunative compile</code> · 生成原生机器码切片</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-4" class="flow-step-card">
+      <div class="step-badge">4</div>
+      <div class="step-body">
+        <div class="step-name">多目标切片聚合打包</div>
+        <div class="step-meta"><code>xunative pack</code> → 跨平台分发 <code>module.xulib</code></div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-5" class="flow-step-card">
+      <div class="step-badge">5</div>
+      <div class="step-body">
+        <div class="step-name">在工程清单声明原生模块</div>
+        <div class="step-meta"><code>xu.xun</code> · 添加 <code>native:</code> 字段依赖</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-6" class="flow-step-card">
+      <div class="step-badge">6</div>
+      <div class="step-body">
+        <div class="step-name">在 Xu 源码中导入与调用</div>
+        <div class="step-meta"><code>main.xu</code> · 强类型安全检查与原生调用</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-7" class="flow-step-card flow-step-highlight">
+      <div class="step-badge">7</div>
+      <div class="step-body">
+        <div class="step-name">一键静态链接与运行验证</div>
+        <div class="step-meta"><code>xu build</code> / <code>xu run</code> · 零运行时开销执行</div>
+      </div>
+    </a>
+  </div>
+</div>
 
-<h3>动作一：编写 C 桥接源码 (<code>bridge.c</code>)</h3>
+<h3 id="action-1">动作一：编写 C 桥接源码 (<code>bridge.c</code>)</h3>
 <p>包含官方头文件 <code>xu_native.h</code>，使用 <code>XU_NATIVE_SYMBOL(...)</code> 宏导出函数，自动抹平 Apple Mach-O（下划线前缀）与 Linux ELF/Windows COFF 的符号命名差异：</p>
 
 <pre><code class="language-c">#include "xu_native.h"
@@ -138,7 +324,7 @@ void XU_NATIVE_SYMBOL(xu_native_add_reset_counter)(void) { g_counter = 0; }
 void XU_NATIVE_SYMBOL(xu_native_add_add_to_counter)(xu_int delta) { g_counter += delta; }
 xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</code></pre>
 
-<h3>动作二：声明类型元数据契约清单 (<code>native.json</code>)</h3>
+<h3 id="action-2">动作二：声明类型元数据契约清单 (<code>native.json</code>)</h3>
 <pre><code class="language-json">{
   "module": "native_add",
   "abi": "xu-c-1",
@@ -155,7 +341,7 @@ xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</
   ]
 }</code></pre>
 
-<h3>动作三：单目标切片静态编译 (<code>xunative compile</code>)</h3>
+<h3 id="action-3">动作三：单目标切片静态编译 (<code>xunative compile</code>)</h3>
 <p>为各个受支持的目标平台分别生成带有元数据的 <code>.a</code> 切片：</p>
 <pre><code class="language-shell"># 针对 macOS Apple Silicon (ARM64)
 python3 path/to/xu/scripts/xunative.py compile \
@@ -167,7 +353,7 @@ python3 path/to/xu/scripts/xunative.py compile \
   --manifest native.json --target macos-x64 bridge.c \
   -o native/native_add-x64.a</code></pre>
 
-<h3>动作四：全目标切片聚合打包 (<code>xunative pack</code>)</h3>
+<h3 id="action-4">动作四：全目标切片聚合打包 (<code>xunative pack</code>)</h3>
 <p>将单目标切片聚合装载为全平台自描述的便携式 <code>.xulib</code> 文件：</p>
 <pre><code class="language-shell">python3 path/to/xu/scripts/xunative.py pack \
   --manifest native.json \
@@ -175,7 +361,7 @@ python3 path/to/xu/scripts/xunative.py compile \
   --slice macos-x64=native/native_add-x64.a \
   -o native/native_add.xulib</code></pre>
 
-<h3>动作五：在工程项目配置中声明原生模块 (<code>xu.xun</code>)</h3>
+<h3 id="action-5">动作五：在工程项目配置中声明原生模块 (<code>xu.xun</code>)</h3>
 <pre><code class="language-xun">module: my_project
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
@@ -183,7 +369,7 @@ xu: !ver {{xu_version}}
 native:
   native_add: file:./native/native_add.xulib</code></pre>
 
-<h3>动作六：在 Xu 源码中导入与调用 (<code>main.xu</code>)</h3>
+<h3 id="action-6">动作六：在 Xu 源码中导入与调用 (<code>main.xu</code>)</h3>
 <pre><code class="language-xu">@main
 
 #native_add
@@ -224,7 +410,7 @@ fn main() int {
     &lt;&lt; 0
 }</code></pre>
 
-<h3>动作七：一键静态构建与运行验证</h3>
+<h3 id="action-7">动作七：一键静态构建与运行验证</h3>
 <pre><code class="language-shell"># 编译为原生机器码可执行文件并运行
 xu run .</code></pre>
 

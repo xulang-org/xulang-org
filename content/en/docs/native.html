@@ -41,7 +41,141 @@
 <h2>3. .xulib Binary Layout</h2>
 <p><code>.xulib</code> is a self-describing binary container (specification <code>xulib-1</code>):</p>
 
-<pre><code class="language-diagram">+-------------------------------------------------------+
+<div class="xulib-binary-spec" role="region" aria-label=".xulib Binary Layout Specification">
+  <div class="spec-header">
+    <div class="spec-header-left">
+      <span class="spec-badge"><i class="xi xi-file-code"></i> Binary Container Spec</span>
+      <span class="spec-version">Format: <code>xulib-1</code></span>
+    </div>
+    <div class="spec-header-right">
+      <span class="spec-tag">Self-describing · Multi-arch · Zero Runtime Overhead</span>
+    </div>
+  </div>
+
+  <div class="binary-layers">
+    <!-- Layer 1: Magic -->
+    <div class="binary-layer layer-magic">
+      <div class="layer-offset">0x00..0x06 (7 Bytes)</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-lock"></i> Magic Header</div>
+        <div class="layer-detail">
+          <code>"XULIB\x01\x00"</code>
+          <span class="layer-desc">Fixed 7 bytes identifying valid <code>.xulib</code> binary container and major version</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 2: Fixed Header -->
+    <div class="binary-layer layer-fixed-header">
+      <div class="layer-offset">0x07..0x0E (8 Bytes)</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-sliders"></i> Fixed Header Fields</div>
+        <div class="fixed-fields-grid">
+          <div class="fixed-field">
+            <span class="field-name">Version</span>
+            <span class="field-type">u16 (little-endian)</span>
+            <span class="field-val">= 1</span>
+            <span class="field-desc">Container format minor version</span>
+          </div>
+          <div class="fixed-field">
+            <span class="field-name">Flags</span>
+            <span class="field-type">u16 (bitmask)</span>
+            <span class="field-val">= 0</span>
+            <span class="field-desc">Reserved flags</span>
+          </div>
+          <div class="fixed-field">
+            <span class="field-name">Manifest Length</span>
+            <span class="field-type">u32 (little-endian)</span>
+            <span class="field-val">N bytes</span>
+            <span class="field-desc">Length of trailing JSON contract</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 3: JSON Manifest -->
+    <div class="binary-layer layer-manifest">
+      <div class="layer-offset">0x0F..0x0F+N (N Bytes)</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-file-text"></i> JSON Manifest (UTF-8 Compact Text)</div>
+        <div class="manifest-entries-grid">
+          <div class="manifest-entry">
+            <code>module</code>
+            <span>Global module identifier (e.g. <code>"native_add"</code>)</span>
+          </div>
+          <div class="manifest-entry">
+            <code>abi</code>
+            <span>Native interface ABI version (e.g. <code>"xu-c-1"</code>)</span>
+          </div>
+          <div class="manifest-entry">
+            <code>exports</code>
+            <span>Exported function signatures, params and return types</span>
+          </div>
+          <div class="manifest-entry">
+            <code>slices</code>
+            <span>Per-platform slice metadata & SHA-256 digests</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 4: Slice Index Table -->
+    <div class="binary-layer layer-index">
+      <div class="layer-offset">Table Header + Entries</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-list"></i> Slice Index Table</div>
+        <div class="slice-count-row">
+          <span class="tag-label">Slice Count:</span>
+          <code>Slice Count (u32)</code>
+          <span class="tag-desc">Indicates number of subsequent contiguous slice entries</span>
+        </div>
+        <div class="slice-entry-spec">
+          <div class="entry-field"><code>target_len (u16)</code> + <code>target_name</code> (e.g. <code>"macos-arm64"</code>)</div>
+          <div class="entry-field"><code>kind_len (u8)</code> + <code>kind</code> (<code>"archive"</code> / <code>"object"</code>)</div>
+          <div class="entry-field"><code>file_offset (u64)</code> + <code>file_size (u64)</code></div>
+          <div class="entry-field"><code>sha256 (32B)</code> binary digest verification</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Layer 5: Payloads -->
+    <div class="binary-layer layer-payload">
+      <div class="layer-offset">Payload Offsets</div>
+      <div class="layer-content">
+        <div class="layer-title"><i class="xi xi-box"></i> Multi-Arch Payload Slices</div>
+        <div class="payload-cards-grid">
+          <div class="payload-card macos">
+            <div class="payload-badge"><i class="xi xi-apple"></i> macOS Slice</div>
+            <div class="payload-type">Unix Static Archive <code>.a</code></div>
+            <div class="payload-details">
+              <span>Mach-O native object files</span>
+              <span class="payload-meta-tag">+ <code>xu.o</code> (with <code>__DATA,__xumeta</code>)</span>
+            </div>
+          </div>
+          <div class="payload-card linux">
+            <div class="payload-badge"><i class="xi xi-terminal"></i> Linux Slice</div>
+            <div class="payload-type">Unix Static Archive <code>.a</code></div>
+            <div class="payload-details">
+              <span>Linux ELF native object files</span>
+              <span class="payload-meta-tag">+ <code>xu.o</code> (with <code>.xumeta</code>)</span>
+            </div>
+          </div>
+          <div class="payload-card windows">
+            <div class="payload-badge"><i class="xi xi-monitor"></i> Windows Slice</div>
+            <div class="payload-type">Static Library <code>.a</code> / <code>.lib</code></div>
+            <div class="payload-details">
+              <span>Windows COFF native object files</span>
+              <span class="payload-meta-tag">+ <code>xu.o</code> (with <code>.xumeta</code>)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <details class="raw-diagram-details">
+    <summary><i class="xi xi-code"></i> Click to expand Raw ASCII Specification</summary>
+    <pre><code class="language-diagram">+-------------------------------------------------------+
 | Magic (7B): "XULIB\x01\x00"                           |
 +-------------------------------------------------------+
 | Version (u16=1) | Flags (u16=0) | Manifest Length (u32)|
@@ -65,26 +199,78 @@
 |   - Slice 2: Standard Unix .a (Linux ELF objects)     |
 |   - Slice 3: Standard .a / .lib (Windows COFF objects)|
 +-------------------------------------------------------+</code></pre>
+  </details>
+</div>
 
 <p class="note"><strong>Clever Dual Compatibility Design</strong>: Each platform slice is fundamentally a standard <code>.a</code> static archive. It bundles <strong>native business logic objects (e.g. <code>sqlite3.o</code>, <code>bridge.o</code>) compiled by external toolchains (such as C, C++, Rust, or assembly)</strong> together with a <strong>fully compliant native metadata object member (<code>xu.o</code>)</strong>. The host platform linker directly links the native machine code symbols, while the Xu compiler inspects the <code>XUOBJ</code> type contract embedded in the dedicated <code>.xumeta</code> section (in Mach-O: <code>__DATA,__xumeta</code>) for compile-time type verification, achieving seamless zero-conflict coexistence.</p>
 
 <h2>4. The Complete 7 Development Actions</h2>
 
-<pre><code class="language-diagram">Action 1: Write C Bridge Source (bridge.c)
-    ↓
-Action 2: Declare Type Contract Manifest (native.json)
-    ↓
-Action 3: Compile Target Slices (xunative compile)
-    ↓
-Action 4: Pack Portable Archive (xunative pack -> module.xulib)
-    ↓
-Action 5: Declare Native Dependency (xu.xun native:)
-    ↓
-Action 6: Import & Call from Xu Code (main.xu)
-    ↓
-Action 7: Compile & Verify (xu build / xu run)</code></pre>
+<div class="doc-process-flow" role="region" aria-label="7 Development Actions Pipeline">
+  <div class="flow-header">
+    <div class="flow-title"><i class="xi xi-flow"></i> Native Module Lifecycle: 7 Development Actions</div>
+    <div class="flow-subtitle">Click any step to jump directly to instructions and sample code</div>
+  </div>
+  <div class="flow-steps-grid">
+    <a href="#action-1" class="flow-step-card">
+      <div class="step-badge">1</div>
+      <div class="step-body">
+        <div class="step-name">Write C Bridge Source</div>
+        <div class="step-meta"><code>bridge.c</code> · Export with <code>xu_native</code> macros</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-2" class="flow-step-card">
+      <div class="step-badge">2</div>
+      <div class="step-body">
+        <div class="step-name">Declare Type Contract Manifest</div>
+        <div class="step-meta"><code>native.json</code> · Function signatures & ABI versions</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-3" class="flow-step-card">
+      <div class="step-badge">3</div>
+      <div class="step-body">
+        <div class="step-name">Compile Target Slices</div>
+        <div class="step-meta"><code>xunative compile</code> · Generate native machine slices</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-4" class="flow-step-card">
+      <div class="step-badge">4</div>
+      <div class="step-body">
+        <div class="step-name">Pack Portable Archive</div>
+        <div class="step-meta"><code>xunative pack</code> → Multi-platform <code>module.xulib</code></div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-5" class="flow-step-card">
+      <div class="step-badge">5</div>
+      <div class="step-body">
+        <div class="step-name">Declare Native Dependency</div>
+        <div class="step-meta"><code>xu.xun</code> · Add <code>native:</code> field dependency</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-6" class="flow-step-card">
+      <div class="step-badge">6</div>
+      <div class="step-body">
+        <div class="step-name">Import & Call from Xu Code</div>
+        <div class="step-meta"><code>main.xu</code> · Strongly-typed safe invocations</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-7" class="flow-step-card flow-step-highlight">
+      <div class="step-badge">7</div>
+      <div class="step-body">
+        <div class="step-name">Compile & Verify Execution</div>
+        <div class="step-meta"><code>xu build</code> / <code>xu run</code> · Zero-overhead link</div>
+      </div>
+    </a>
+  </div>
+</div>
 
-<h3>Action 1: Write C Bridge Source (<code>bridge.c</code>)</h3>
+<h3 id="action-1">Action 1: Write C Bridge Source (<code>bridge.c</code>)</h3>
 <p>Include <code>xu_native.h</code> and wrap export declarations with <code>XU_NATIVE_SYMBOL(...)</code> to reconcile Mach-O leading underscore conventions with ELF/COFF:</p>
 
 <pre><code class="language-c">#include "xu_native.h"
@@ -138,7 +324,7 @@ void XU_NATIVE_SYMBOL(xu_native_add_reset_counter)(void) { g_counter = 0; }
 void XU_NATIVE_SYMBOL(xu_native_add_add_to_counter)(xu_int delta) { g_counter += delta; }
 xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</code></pre>
 
-<h3>Action 2: Declare Type Contract Manifest (<code>native.json</code>)</h3>
+<h3 id="action-2">Action 2: Declare Type Contract Manifest (<code>native.json</code>)</h3>
 <pre><code class="language-json">{
   "module": "native_add",
   "abi": "xu-c-1",
@@ -155,7 +341,7 @@ xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</
   ]
 }</code></pre>
 
-<h3>Action 3: Compile Target Slices (<code>xunative compile</code>)</h3>
+<h3 id="action-3">Action 3: Compile Target Slices (<code>xunative compile</code>)</h3>
 <pre><code class="language-shell"># macOS Apple Silicon (ARM64)
 python3 path/to/xu/scripts/xunative.py compile \
   --manifest native.json --target macos-arm64 bridge.c \
@@ -166,14 +352,14 @@ python3 path/to/xu/scripts/xunative.py compile \
   --manifest native.json --target macos-x64 bridge.c \
   -o native/native_add-x64.a</code></pre>
 
-<h3>Action 4: Pack Multi-Target Archive (<code>xunative pack</code>)</h3>
+<h3 id="action-4">Action 4: Pack Multi-Target Archive (<code>xunative pack</code>)</h3>
 <pre><code class="language-shell">python3 path/to/xu/scripts/xunative.py pack \
   --manifest native.json \
   --slice macos-arm64=native/native_add-arm64.a \
   --slice macos-x64=native/native_add-x64.a \
   -o native/native_add.xulib</code></pre>
 
-<h3>Action 5: Declare Native Dependency (<code>xu.xun</code>)</h3>
+<h3 id="action-5">Action 5: Declare Native Dependency (<code>xu.xun</code>)</h3>
 <pre><code class="language-xun">module: my_project
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
@@ -181,7 +367,7 @@ xu: !ver {{xu_version}}
 native:
   native_add: file:./native/native_add.xulib</code></pre>
 
-<h3>Action 6: Import & Call from Xu Code (<code>main.xu</code>)</h3>
+<h3 id="action-6">Action 6: Import & Call from Xu Code (<code>main.xu</code>)</h3>
 <pre><code class="language-xu">@main
 
 #native_add
@@ -222,7 +408,7 @@ fn main() int {
     &lt;&lt; 0
 }</code></pre>
 
-<h3>Action 7: Compile & Verify Execution</h3>
+<h3 id="action-7">Action 7: Compile & Verify Execution</h3>
 <pre><code class="language-shell">xu run .</code></pre>
 
 <p>The console prints the verified results:</p>
