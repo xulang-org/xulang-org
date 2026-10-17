@@ -4,7 +4,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-XU_VERSION_DEFAULT="0.8.11"
+XU_VERSION_DEFAULT="0.8.12"
 for version_file in "$SCRIPT_DIR/VERSION" "$SCRIPT_DIR/../VERSION"; do
     if [[ -f "$version_file" ]]; then XU_VERSION_DEFAULT="$(cat "$version_file")"; break; fi
 done

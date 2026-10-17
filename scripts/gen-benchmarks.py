@@ -202,7 +202,7 @@ BENCH_LANGS_CONFIG = [
     },
     {
         "key": "c",
-        "name": "C (-O3)",
+        "name": "C (best O1–O3)",
         "cls": "fill-c",
         "row_cls": "row-c",
         "color": "#0ea5e9",
@@ -210,7 +210,7 @@ BENCH_LANGS_CONFIG = [
     },
     {
         "key": "rust",
-        "name": "Rust (-O3)",
+        "name": "Rust (best O1–O3)",
         "cls": "fill-rust",
         "row_cls": "row-rust",
         "color": "#f97316",
@@ -274,6 +274,11 @@ BENCH_METRICS_CONFIG = [
 ]
 
 
+def comparable_metric(value: float | None) -> bool:
+    return (isinstance(value, (int, float)) and not isinstance(value, bool)
+            and math.isfinite(value) and value > 0)
+
+
 def get_bench_impl_metric(b: dict | None, lang_key: str, metric_key: str) -> float | None:
     if not b:
         return None
@@ -281,10 +286,13 @@ def get_bench_impl_metric(b: dict | None, lang_key: str, metric_key: str) -> flo
     target = None
     if lang_key == "Xu":
         target = impls.get("Xu")
-    elif lang_key == "c":
-        target = impls.get("clang -O3") or impls.get("clang -O2") or impls.get("clang -O1")
-    elif lang_key == "rust":
-        target = impls.get("rustc -O3") or impls.get("rustc -O2") or impls.get("rustc -O1")
+    elif lang_key in ("c", "rust"):
+        prefix = "clang" if lang_key == "c" else "rustc"
+        choices = [impls[f"{prefix} -O{i}"] for i in (1, 2, 3)
+                   if comparable_metric(impls.get(f"{prefix} -O{i}", {}).get("wall_ms"))]
+        # Keep RSS, CPU and size attached to the same fastest-wall-time
+        # artifact selected by the importer, rather than mixing opt levels.
+        target = min(choices, key=lambda impl: impl["wall_ms"]) if choices else None
     elif lang_key == "swift":
         target = impls.get("swiftc -O")
     elif lang_key == "go":
@@ -293,11 +301,49 @@ def get_bench_impl_metric(b: dict | None, lang_key: str, metric_key: str) -> flo
     if not target:
         return None
     val = target.get(metric_key)
-    if val is None or val < 0:
+    if (not isinstance(val, (int, float)) or isinstance(val, bool)
+            or not math.isfinite(val) or val < 0):
+        return None
+    if val == 0 and metric_key not in ("wall_ms", "cpu_ms"):
         return None
     if metric_key == "bytes":
         return val / 1024.0  # KiB
     return float(val)
+
+
+def workload_metric_values(b_name: str, platforms: dict, metric_key: str) -> dict:
+    """Both chart and table use the same fixed six-platform cohort."""
+    values = {lang["key"]: {} for lang in BENCH_LANGS_CONFIG}
+    for cfg in PLATFORMS_CONFIG:
+        pid = cfg["id"]
+        platform = platforms.get(pid, {})
+        bench = next((b for b in platform.get("benches", []) if b["name"] == b_name), None)
+        for lang in values:
+            value = get_bench_impl_metric(bench, lang, metric_key)
+            if metric_key == "rss_mib" and platform.get("rss_validated") is False:
+                value = None
+            values[lang][pid] = value
+    return values
+
+
+def cross_platform_metric(values: dict) -> tuple[float | None, int, int]:
+    samples = [values.get(cfg["id"]) for cfg in PLATFORMS_CONFIG]
+    valid = [value for value in samples if comparable_metric(value)]
+    complete = len(valid) == len(samples)
+    return (statistics.median(valid) if complete else None, len(valid), len(samples))
+
+
+def incomplete_metric_text(covered: int, total: int, en: bool) -> str:
+    label = "comparable" if en else "可比数据"
+    title = ("Excluded from the aggregate: all target platforms need comparable measurements."
+             if en else "未参与综合比较：全部目标平台都须有可比实测数据。")
+    return f'— <small title="{title}">{label} {covered}/{total}</small>'
+
+
+def zero_timing_text(unit: str, en: bool) -> str:
+    title = ("Below timer resolution; excluded from ratios and ranking."
+             if en else "计时精度不足，不参与倍率与排名。")
+    return f'<span title="{title}">0.00 {unit}*</span>'
 
 
 def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: bool) -> str:
@@ -316,28 +362,20 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
         ("go", "Go <small>native</small>", "go", False),
     ]
 
-    table_data = {}
-    for cls_key, label, lk, is_xu in langs_def:
-        table_data[lk] = {}
-        for c in active_configs:
-            pid = c["id"]
-            b = next((x for x in platforms[pid].get("benches", []) if x["name"] == b_name), None)
-            table_data[lk][pid] = get_bench_impl_metric(b, lk, mk)
+    table_data = workload_metric_values(b_name, platforms, mk)
 
     p_best_map = {}
     for c in active_configs:
         pid = c["id"]
         col_vals = [table_data[lk][pid] for _, _, lk, _ in langs_def if table_data[lk].get(pid) is not None and table_data[lk][pid] > 0]
-        if col_vals:
+        if len(col_vals) >= 2:
             p_best_map[pid] = min(col_vals)
 
-    lang_meds = {}
-    for cls_key, label, lk, is_xu in langs_def:
-        valid_vals = [table_data[lk][pid] for pid in [c["id"] for c in active_configs] if table_data[lk].get(pid) is not None and table_data[lk][pid] > 0]
-        lang_meds[lk] = statistics.median(valid_vals) if valid_vals else None
+    summaries = {lk: cross_platform_metric(values) for lk, values in table_data.items()}
+    lang_meds = {lk: summary[0] for lk, summary in summaries.items()}
 
     all_meds = [m for m in lang_meds.values() if m is not None and m > 0]
-    best_med = min(all_meds) if all_meds else None
+    best_med = min(all_meds) if len(all_meds) >= 2 else None
 
     th_cols = [f'<th class="bench-td-lang-cell" style="width: 14%;">{"Language" if en else "实现语言"}</th>']
     for c in active_configs:
@@ -352,7 +390,7 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
         )
 
     med_hdr_title = "Cross-Platform" if en else "全平台中位数"
-    med_hdr_sub = "Median" if en else "综合基准"
+    med_hdr_sub = "6/6 required" if en else "仅 6/6 参评"
     th_cols.append(
         f'<th class="bench-th-platform bench-th-median" style="width: 12.8%;">'
         f'  <div class="bench-th-pname"><i class="xi xi-chart-bar" style="color:var(--xu-brand);"></i> <span>{med_hdr_title}</span> <span class="bench-med-badge">{med_hdr_sub}</span></div>'
@@ -430,6 +468,8 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
                         )
                     else:
                         cells.append(f'<td class="num">{val_text}</td>')
+            elif val == 0:
+                cells.append(f'<td class="meta">{zero_timing_text(unit, en)}</td>')
             else:
                 cells.append('<td class="meta">—</td>')
 
@@ -452,7 +492,8 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
             else:
                 cells.append(f'<td class="num bench-cell-median"><strong>{m_text}</strong></td>')
         else:
-            cells.append('<td class="meta bench-cell-median">—</td>')
+            _, covered, total = summaries[lk]
+            cells.append(f'<td class="meta bench-cell-median">{incomplete_metric_text(covered, total, en)}</td>')
 
         row_cls = ' class="bench-row-xu"' if is_xu else ''
         rows_html.append(f'<tr{row_cls}>{"".join(cells)}</tr>')
@@ -562,6 +603,8 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
     for idx, m_cfg in enumerate(BENCH_METRICS_CONFIG):
         mk = m_cfg["key"]
         icon = m_cfg["icon"]
+        metric_values = workload_metric_values(b_name, platforms, mk)
+        summaries = {lk: cross_platform_metric(values) for lk, values in metric_values.items()}
         title = m_cfg["title_en"] if en else m_cfg["title_zh"]
         is_active = (idx == 0)
         active_cls = " active" if is_active else ""
@@ -655,6 +698,8 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
         title = m_cfg["title_en"] if en else m_cfg["title_zh"]
         badge = m_cfg["badge_en"] if en else m_cfg["badge_zh"]
         icon = m_cfg["icon"]
+        metric_values = workload_metric_values(b_name, platforms, mk)
+        summaries = {lk: cross_platform_metric(values) for lk, values in metric_values.items()}
 
         # 计算每个平台的数据
         p_data = {}
@@ -663,38 +708,35 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
             for lcfg in BENCH_LANGS_CONFIG:
                 lk = lcfg["key"]
                 if pid == "all":
-                    vals = []
-                    for c in active_configs:
-                        b = next((x for x in platforms[c["id"]].get("benches", []) if x["name"] == b_name), None)
-                        v = get_bench_impl_metric(b, lk, mk)
-                        if v is not None:
-                            vals.append(v)
-                    val_final = statistics.median(vals) if vals else None
+                    val_final = summaries[lk][0]
                 else:
-                    b = next((x for x in platforms[pid].get("benches", []) if x["name"] == b_name), None)
-                    val_final = get_bench_impl_metric(b, lk, mk)
+                    val_final = metric_values[lk][pid]
                 lang_vals.append((lk, val_final))
 
             valid_nums = [v for lk, v in lang_vals if v is not None and v > 0]
             max_v = max(valid_nums) if valid_nums else 1.0
-            min_v = min(valid_nums) if valid_nums else 1.0
+            min_v = min(valid_nums) if len(valid_nums) >= 2 else None
 
             p_map = {}
             for lk, v in lang_vals:
                 if v is None:
                     pct = 0.0
-                    txt = "—"
+                    _, covered, total = summaries[lk]
+                    txt = incomplete_metric_text(covered, total, en) if pid == "all" else "—"
+                elif v == 0:
+                    pct = 0.0
+                    txt = zero_timing_text(unit, en)
                 else:
-                    pct = max(6.0, min(100.0, (v / max_v) * 100.0)) if max_v > 0 else 10.0
-                    ratio = round(v / min_v, 1) if min_v > 0 else 1.0
+                    pct = (v / max_v) * 100.0
+                    ratio = round(v / min_v, 1) if min_v is not None else None
                     v_str = f"{v:.2f}" if v < 100 else f"{v:.1f}"
                     if unit == "KiB" and v >= 1000:
                         v_str = f"{v:,.0f}"
 
-                    is_best = abs(v - min_v) < 1e-4
+                    is_best = min_v is not None and abs(v - min_v) < 1e-4
                     badge_best = f' <span class="bench-bar-badge-best">{"Best" if en else "最优"}</span>' if is_best else ""
 
-                    if is_best or abs(ratio - 1.0) < 0.04:
+                    if ratio is None or is_best or abs(ratio - 1.0) < 0.04:
                         txt = f"{v_str} {unit}{badge_best}"
                     else:
                         txt = f'{v_str} {unit} <small style="opacity:0.7">({ratio:.1f}×)</small>'
@@ -744,9 +786,9 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
 
     bars_title = "4-Dimension Real Measurements" if en else "4 核心维度横向条形对比 (各平台即时联动)"
     bars_hint = (
-        "Interactive: select target platform above · Lower bar is better"
+        "Aggregate requires 6/6 comparable platforms · * Below timer resolution, not ranked"
         if en
-        else "条形长度真实反映物理开销 · 越短越优 · 可在顶栏一键切换各平台真实数据"
+        else "综合仅比较 6/6 平台完整数据 · * 计时精度不足，不参与排名"
     )
 
     return f"""

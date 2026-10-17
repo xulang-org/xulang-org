@@ -83,6 +83,6 @@ Automated deployment is configured in `.github/workflows/pages.yml`:
 
 This repository is open-sourced under the [MIT License](LICENSE).
 
-## Xu 0.8.11
+## Xu 0.8.12
 
-The site selects the published stable 0.8.11 SDK. Development builds remain separate. To refresh the benchmark page, download one complete six-platform Actions run and use `scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD`, then `python3 scripts/gen-benchmarks.py`. Import verifies compiler identities, source closure, fixed point, workload completeness and stdout. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
+The site selects the published stable 0.8.12 SDK. Development builds remain separate. To refresh the benchmark page, download one complete six-platform Actions run and use `scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD`, then `python3 scripts/gen-benchmarks.py`. Import verifies compiler identities, source closure, fixed point, workload completeness and stdout. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.

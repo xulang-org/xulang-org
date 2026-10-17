@@ -36,7 +36,7 @@ $TempExtract = $null
 try {
 $SourceDir = $null
 if (-not $Version) {
-    $Version = "0.8.11"
+    $Version = "0.8.12"
     foreach ($VersionFile in @("$ScriptDir\VERSION", "$ScriptDir\..\VERSION")) {
         if (Test-Path $VersionFile) { $Version = (Get-Content $VersionFile -Raw).Trim(); break }
     }
