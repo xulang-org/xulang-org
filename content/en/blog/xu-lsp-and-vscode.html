@@ -1,0 +1,55 @@
+<!--title: Xu LSP & vscode-xu: Native Language Server Protocol and Editor Ecosystem-->
+<p class="crumb"><a href="/en/blog">Blog</a> / Ecosystem Updates</p>
+<p class="meta">2026-10-17 · Language Server & Tooling</p>
+<h1>Xu LSP & vscode-xu: Native Language Server Protocol and Editor Ecosystem</h1>
+<p class="banner">The natively self-hosted <code>xu-lsp</code> daemon is now live, providing real-time diagnostics, cross-module definition jumps, hover documentation, and rename refactoring; the official VS Code extension is renamed to <code>vscode-xu</code>.</p>
+<p>Until recently, editing Xu code relied primarily on TextMate grammar highlighting, while diagnostics required manual command-line invocation of <code>xu check</code>. As part of the 0.8.13 development cycle, Xu introduces its first official, natively self-hosted Language Server Protocol (LSP) daemon: <strong><code>xu-lsp</code></strong> (invoked seamlessly via <code>xu lsp</code>). In tandem, the official VS Code extension repository has been restructured and renamed to <a href="https://github.com/xulang-org/vscode-xu">vscode-xu</a>.</p>
+
+<h2>Pure self-hosted architecture, free from Oracle dependencies</h2>
+<p>Designed under Xu's sibling tool model, <code>xu-lsp</code> is written entirely in Xu itself. It directly leverages standard library modules including <code>#encoding/json</code>, <code>#xu/format</code>, and <code>#os</code>. Built as an independent binary at <code>bin/xu-lsp</code>, it is dispatched transparently by the compiler via <code>xu lsp</code>, completely eliminating runtime dependencies on the Rust primer (bootstrap oracle).</p>
+
+<h2>8 core LSP capabilities ready out of the box</h2>
+<ul>
+  <li><strong>Real-time Syntax & Type Diagnostics (Live Diagnostics)</strong>:
+    Monitors in-memory edit events and performs instantaneous verification without disk round-trips, streaming diagnostics immediately via <code>textDocument/publishDiagnostics</code> as you type.
+  </li>
+  <li><strong>One-click Code Formatting (Document Formatting)</strong>:
+    Triggers <code>textDocument/formatting</code> (Shift+Option+F / Shift+Alt+F) directly through Xu's official standard library formatting engine <code>#xu/format</code>.
+  </li>
+  <li><strong>Cross-Module & Stdlib Go-to-Definition</strong>:
+    Pressing F12 on import statements (such as <code>#strings</code> or <code>#encoding/json</code>) jumps straight to the module's entry source file. Jumping on calls like <code>strings.split</code> penetrates directly into the standard library function definition. Full support for sibling files within the same package and local symbols is also included.
+  </li>
+  <li><strong>Rich Markdown Hover Tooltips</strong>:
+    Hovering over keywords, primitive types (<code>int</code>, <code>string</code>, <code>struct</code>, <code>xu</code>), or built-ins displays signature details. Hovering over user-defined or standard library functions extracts preceding consecutive <code>//</code> doc comments and renders them into formatted Markdown cards.
+  </li>
+  <li><strong>Document Symbols & Outline</strong>:
+    Extracts all top-level functions, receiver methods, structs, enums, and constants with accurate source ranges, lighting up VS Code's Outline view and <code>Cmd+Shift+O</code> navigation.
+  </li>
+  <li><strong>Intelligent Code Completion</strong>:
+    Contextually auto-completes language keywords, built-in functions, and local symbols declared in the current file and module.
+  </li>
+  <li><strong>Full Workspace Find All References</strong>:
+    Press <code>Shift+F12</code> to locate all symbol references with strict lexical boundary token matching, spanning across sibling package files while filtering out comments to prevent false positives.
+  </li>
+  <li><strong>Safe Symbol Renaming Refactoring (Rename Symbol)</strong>:
+    Press <code>F2</code> to safely rename symbols with built-in keyword protection (safeguarding core keywords like <code>fn</code> and <code>struct</code>) and generating compliant <code>WorkspaceEdit</code> payloads for atomic updates.
+  </li>
+</ul>
+
+<h2>Official extension renamed to vscode-xu</h2>
+<p>To align with established conventions across the modern programming language ecosystem (such as <code>vscode-go</code>, <code>vscode-rust</code>, and <code>vscode-zig</code>), the official editor extension repository has transitioned from <code>vscode</code> to <a href="https://github.com/xulang-org/vscode-xu">vscode-xu</a>. The compiler's automated installation scripts and companion repository discovery logic have been updated accordingly.</p>
+
+<h2>Editor setup example</h2>
+<pre><code>// VS Code / Cursor: settings.json
+{
+  "xu.languageServerPath": "xu",
+  "files.associations": {
+    "*.xu": "xu"
+  }
+}</code></pre>
+
+<p>For editors such as Neovim (via <code>nvim-lspconfig</code>) or Helix, configuring the language server command as <code>xu lsp</code> brings the exact same modern IDE capabilities to your terminal workflow.</p>
+
+<h2>Getting started</h2>
+<p>Build the latest binary by running <code>make xu-lsp</code> or <code>make tools</code> in the compiler checkout. Install the freshly packaged <code>vscode-xu</code> extension, reload your editor window, and enjoy native IDE intelligence in Xu.</p>
+<p><a href="/en/docs/vscode">VS Code / Cursor Guide</a> · <a href="/en/docs/start">Quickstart</a> · <a href="https://github.com/xulang-org/vscode-xu">vscode-xu repository</a></p>

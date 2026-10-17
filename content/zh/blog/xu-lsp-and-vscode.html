@@ -1,0 +1,55 @@
+<!--title: Xu LSP 与 vscode-xu：原生语言服务协议支持与编辑器生态升级-->
+<p class="crumb"><a href="/blog">博客</a> / 生态进展</p>
+<p class="meta">2026-10-17 · 语言服务与编辑器工具</p>
+<h1>Xu LSP 与 vscode-xu：原生语言服务协议支持与编辑器生态升级</h1>
+<p class="banner">纯原生自举实现的 <code>xu-lsp</code> 语言服务正式落地，支持实时诊断、跨模块跳转、文档悬停与重命名重构；官方 VS Code 扩展规范化更名为 <code>vscode-xu</code>。</p>
+<p>在以往的开发体验中，Xu 语言在编辑器端主要依赖 TextMate 语法高亮，语法与类型诊断需在终端中手动执行 <code>xu check</code>。随着 Xu 0.8.13 开发周期的推进，Xu 迎来了首个官方、自举实现的语言服务协议服务端——<strong><code>xu-lsp</code></strong>（命令行统一入口 <code>xu lsp</code>）。同时，官方 VS Code 扩展仓库正式重命名为 <a href="https://github.com/xulang-org/vscode-xu">vscode-xu</a>。</p>
+
+<h2>纯自举架构，告别 Oracle 镜像</h2>
+<p><code>xu-lsp</code> 按照 Xu 体系的同级伴生工具（Sibling Tool）架构设计，完全采用 Xu 语言自身编写，直接复用标准库原生的 <code>#encoding/json</code>、<code>#xu/format</code>、<code>#os</code> 与编译驱动。它作为独立工具编译产出为 <code>bin/xu-lsp</code>，主编译器驱动 <code>xu</code> 通过 <code>xu lsp</code> 无缝调度，彻底告别了对 Rust primer（bootstrap oracle）的运行时依赖。</p>
+
+<h2>已就绪的核心 LSP 8 大能力</h2>
+<ul>
+  <li><strong>实时语法与类型诊断（Live Diagnostics）</strong>：
+    监听编辑器的实时编辑事件，将未存盘内存缓冲区交由编译器高速校验，并在输入时即刻推送错误诊断标注（<code>textDocument/publishDiagnostics</code>），无需频繁手动存盘。
+  </li>
+  <li><strong>代码一键格式化（Document Formatting）</strong>：
+    在编辑器中按快捷键（Shift+Option+F / Shift+Alt+F）直接触发 <code>textDocument/formatting</code>，无损复用 Xu 标准库官方格式化引擎 <code>#xu/format</code>。
+  </li>
+  <li><strong>跨模块与标准库定义跳转（Go to Definition）</strong>：
+    在导入语句（如 <code>#strings</code>、<code>#encoding/json</code>）上按 F12 可直接打开对应标准库入口源文件；光标在形如 <code>strings.split</code> 的调用处按 F12，自动穿透跳转至目标函数定义；同时支持同模块跨文件定义定位与当前文件符号定位。
+  </li>
+  <li><strong>富文本 Markdown 文档悬停（Hover Tooltips）</strong>：
+    鼠标悬停在关键字、原语类型（<code>int</code>、<code>string</code>、<code>struct</code>、<code>xu</code> 等）或内置函数上，即刻呈现语法签名与说明；悬停在用户自定义或标准库函数上，自动提取前置多行 <code>//</code> 注释并原汁原味渲染为 Markdown 卡片。
+  </li>
+  <li><strong>文档符号大纲（Document Symbols & Outline）</strong>：
+    完整提取源文件内所有顶层函数、接收者方法、结构体、枚举与常量及其代码区间，完美点亮 VS Code 的 Outline 大纲视图与 <code>Cmd+Shift+O</code> 快速符号导航。
+  </li>
+  <li><strong>智能代码补全（Code Completion）</strong>：
+    提供关键字、核心内置函数以及当前文件与同模块局部已声明符号的自动补全联想。
+  </li>
+  <li><strong>全工程 / 跨文件查找所有引用（Find All References）</strong>：
+    按 <code>Shift+F12</code> 检索所有引用位置。支持精确词法边界分词匹配（杜绝子串误伤），跨当前文件与同目录文件检索，并智能过滤注释内容，防止伪引用干扰。
+  </li>
+  <li><strong>安全符号重构重命名（Rename Symbol）</strong>：
+    按 <code>F2</code> 触发重命名。具备关键字安全防御（保护 <code>fn</code>、<code>struct</code> 等语言核心关键字），生成标准 <code>WorkspaceEdit</code>，一键批量安全更新所有调用处。
+  </li>
+</ul>
+
+<h2>官方扩展重命名为 vscode-xu</h2>
+<p>为符合主流编程语言社区的生态命名惯例（如 <code>vscode-go</code>、<code>vscode-rust</code>、<code>vscode-zig</code>），官方编辑器扩展仓库由原先的 <code>vscode</code> 正式更名为 <a href="https://github.com/xulang-org/vscode-xu">vscode-xu</a>。编译器 SDK 自动化安装脚本与伴生仓库解析机制已全面适配。</p>
+
+<h2>编辑器接入示例</h2>
+<pre><code>// VS Code / Cursor: settings.json
+{
+  "xu.languageServerPath": "xu",
+  "files.associations": {
+    "*.xu": "xu"
+  }
+}</code></pre>
+
+<p>对于 Neovim（搭配 <code>nvim-lspconfig</code>）或 Helix 编辑器，只需将 LSP 服务命令配置为 <code>xu lsp</code>，即可在不同终端和编辑器中享受一致的现代语言服务体验。</p>
+
+<h2>获取与试用</h2>
+<p>在 Xu 源码仓库中执行 <code>make xu-lsp</code> 或 <code>make tools</code> 即可生成最新的 <code>bin/xu-lsp</code>。安装最新构建的 <code>vscode-xu</code> 插件后，重启窗口即可享受完整的 Xu 现代 IDE 交互体验。</p>
+<p><a href="/docs/vscode">VS Code / Cursor 指南</a> · <a href="/docs/start">快速开始</a> · <a href="https://github.com/xulang-org/vscode-xu">vscode-xu 仓库</a></p>
