@@ -171,6 +171,8 @@ class StaticSiteTests(unittest.TestCase):
         output = self.workspace / 'with-wasm-output'
         site.build(source, output, '/repo', require_playground=True)
         self.assertIn('data-wasm-available="true"', (output / 'playground/index.html').read_text())
+        self.assertRegex((output / 'playground/index.html').read_text(),
+                         r'<link rel="preload" href="/repo/xu-play\.wasm\?v=[0-9a-f]{16}" as="fetch" type="application/wasm" crossorigin>')
         for asset in ('xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
             self.assertTrue((output / asset).is_file(), asset)
 

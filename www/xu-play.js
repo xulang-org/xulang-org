@@ -137,6 +137,7 @@
       }
       button.disabled = true;
       status(text('正在加载…', 'Loading…'));
+      startWorker();
       fetch(examplesUrl)
         .then(function (response) {
           if (!response.ok) throw new Error('HTTP ' + response.status);
@@ -164,7 +165,6 @@
             var current = examples[select && select.value] || examples.hello;
             if (help && current) help.textContent = current.description[en ? 'en' : 'zh'];
           }
-          startWorker();
         })
         .catch(function () {
           failure(text('示例加载失败，请重试。', 'Could not load examples. Please retry.'));

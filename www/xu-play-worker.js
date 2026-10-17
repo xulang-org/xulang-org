@@ -10,7 +10,17 @@ self.onmessage = async function (event) {
       wasmUrl.search = self.location.search;
       const response = await fetch(wasmUrl);
       if (!response.ok) throw new Error('Could not load Xu playground (HTTP ' + response.status + ')');
-      runtime = await createRuntime(await response.arrayBuffer());
+      let module;
+      if (typeof WebAssembly.compileStreaming === 'function') {
+        try {
+          module = await WebAssembly.compileStreaming(response.clone());
+        } catch (_) {
+          module = await WebAssembly.compile(await response.arrayBuffer());
+        }
+      } else {
+        module = await WebAssembly.compile(await response.arrayBuffer());
+      }
+      runtime = await createRuntime(module);
       self.postMessage({type: 'ready'});
     } else if (event.data.type === 'run') {
       if (!runtime) throw new Error('Xu playground is not ready');

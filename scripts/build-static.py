@@ -103,6 +103,11 @@ class RewriteHTML(HTMLParser):
         raw = self.get_starttag_text()
         localized = not any(name == 'hreflang' for name, _ in attrs)
         raw = URL_ATTR.sub(lambda m: m[1] + m[2] + self.rewrite_url(m[3], localized) + m[2], raw)
+        if tag == 'link' and re.search(r'''href\s*=\s*["'][^"']*/xu-play\.wasm["']''', raw):
+            if not self.playground:
+                return
+            if self.asset_key:
+                raw = raw.replace("xu-play.wasm", "xu-play.wasm?v=" + self.asset_key)
         if tag == 'script' and re.search(r'''src\s*=\s*["'][^"']*/xu-play\.js["']''', raw):
             if self.asset_key:
                 raw = raw.replace("xu-play.js", "xu-play.js?v=" + self.asset_key)

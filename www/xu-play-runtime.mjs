@@ -1,6 +1,8 @@
 // Host bridge only: Xu source is parsed, checked and interpreted inside WASM.
-export async function createRuntime(bytes) {
-  const module = await WebAssembly.compile(bytes);
+export async function createRuntime(bytesOrModule) {
+  const module = (bytesOrModule instanceof WebAssembly.Module)
+    ? bytesOrModule
+    : await WebAssembly.compile(bytesOrModule);
   if (WebAssembly.Module.imports(module).length) {
     throw new Error('Xu playground unexpectedly requires host imports');
   }
