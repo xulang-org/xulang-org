@@ -132,3 +132,59 @@ test('unsupported floating-point execution fails explicitly', async () => {
   assert.notEqual(comparison.exit, 0);
   assert.match(comparison.stderr, /floating-point.*not supported/);
 });
+
+test('tutorial 05 error handling and interface method dispatch', async () => {
+  const runtime = await createRuntime(bytes);
+  const result = runtime.run(`@main
+#errors
+fn read_name(ok bool) string {
+    if !ok {
+        >> errors.new("empty name")
+    }
+    << "ada"
+}
+fn load_or_fallback(ok bool) string {
+    << read_name(ok) or (err) {
+        println(err.msg())
+        << "fallback"
+    }
+}
+fn main() int {
+    s := load_or_fallback(false)
+    println(s)
+    << 0
+}`);
+  assert.equal(result.exit, 0, result.stderr);
+  assert.equal(result.stdout, 'empty name\nfallback\n');
+});
+
+test('tutorial 06 ownership and string push_str', async () => {
+  const runtime = await createRuntime(bytes);
+  const result = runtime.run(`@main
+fn append_bang(s &mut string) {
+    s.push_str("!")
+}
+fn main() int {
+    mut owned := "hi"
+    append_bang(mut &owned)
+    println(owned)
+    << 0
+}`);
+  assert.equal(result.exit, 0, result.stderr);
+  assert.equal(result.stdout, 'hi!\n');
+});
+
+test('tutorial 09 temp/any dynamic boxing and type test', async () => {
+  const runtime = await createRuntime(bytes);
+  const result = runtime.run(`@main
+fn main() int {
+    let box: temp = 7
+    println(box is int)
+    v := box as int
+    println(v)
+    << 0
+}`);
+  assert.equal(result.exit, 0, result.stderr);
+  assert.equal(result.stdout, 'true\n7\n');
+});
+

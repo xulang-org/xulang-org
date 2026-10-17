@@ -41,8 +41,9 @@ def build(root: Path, xu: Path, compiler: Path):
         subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-O0', '-o', str(wasm)], cwd=xu, env=env, check=True)
     if (xu / 'VERSION').read_text().strip() != version:
         raise RuntimeError('Xu SDK version changed during the build; rebuild from a fixed SDK')
+    site_version = (root / 'VERSION').read_text().strip() if (root / 'VERSION').is_file() else version
     (wasm.parent / 'build.json').write_text(json.dumps({
-        'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest(),
+        'xu_version': site_version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest(),
     }, indent=2) + '\n')
     print(f'Pure Xu playground built: {wasm}')
 
