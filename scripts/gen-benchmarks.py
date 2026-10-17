@@ -797,7 +797,7 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
   <div class="bench-radar-body">
     <!-- 雷达图矢量 SVG：基于 47 项负载实测中位数几何标准化比例绘制 -->
     <div class="bench-radar-svg-wrap">
-      <svg class="bench-radar-svg" viewBox="-80 0 540 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <svg class="bench-radar-svg" viewBox="-140 0 620 320" fill="none" xmlns="http://www.w3.org/2000/svg">
         <!-- 同心菱形网格刻度 (25%, 50%, 75%, 100%) -->
         <polygon points="190,45 305,160 190,275 75,160" stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="3,3" fill="none"/>
         <polygon points="190,74 276,160 190,246 104,160" stroke="currentColor" stroke-opacity="0.12" stroke-dasharray="3,3" fill="none"/>
@@ -878,7 +878,7 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
         <div class="bench-radar-scorecard-header">
           <span style="color: #ec4899;">🌸 Swift (swiftc -O)</span>
           <span class="bench-radar-tag" style="color: #ec4899; border-color: rgba(236, 72, 153, 0.35); background: rgba(236, 72, 153, 0.08);">
-            {'Modern Expressive · Auto ARC' if en else '现代语言特性 · 自动 ARC'}
+            {'Modern Syntax · Auto ARC' if en else '现代语法特性 · 自动 ARC'}
           </span>
         </div>
         <p class="bench-radar-scorecard-desc">
@@ -1343,9 +1343,6 @@ def render_page(data: dict, lang: str) -> str:
     # 2. 全语言四维综合战力罗盘 (置顶大盘)
     radar_section = render_radar_overview_section(platforms, en)
 
-    # 3. 内存与体积横向综合评测
-    footprint_section = render_footprint_integrated_section(platforms, en)
-
     # 阳光公开与严谨复现承诺 (Transparency Charter)
     charter_section = render_transparency_charter_section(meta, en)
 
@@ -1680,10 +1677,7 @@ function searchBenchAll(query) {
 <!-- 1. 全语言四维综合战力罗盘 (置顶大盘) -->
 {radar_section}
 
-<!-- 2. 全平台内存与体积横向综合评测 (位于 Control Flow 之上) -->
-{footprint_section}
-
-<!-- 3. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 6 平台详细数据表) -->
+<!-- 2. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 6 平台详细数据表) -->
 {''.join(category_sections)}
 
 <!-- 评测准则与环境审计公示专区 -->

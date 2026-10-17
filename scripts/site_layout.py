@@ -1,6 +1,7 @@
 """Shared navigation and page shell for the static official site."""
 
 from html import escape
+import json
 from pathlib import Path
 from string import Template
 
@@ -172,6 +173,149 @@ def sidebar(route: str, en: bool, xu_version: str = '') -> str:
     )
 
 
+def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str, str]:
+    origin = "https://xulang.org"
+    if route in ('/', '/zh'):
+        url_en = f"{origin}/"
+        url_zh = f"{origin}/zh/"
+        canonical_url = url_en if en else url_zh
+    elif route == '/404':
+        url_en = f"{origin}/"
+        url_zh = f"{origin}/zh/"
+        canonical_url = f"{origin}/404.html"
+    else:
+        bare_route = route if en else (route[3:] or '/')
+        url_en = f"{origin}{bare_route.rstrip('/')}/"
+        url_zh = f"{origin}/zh{bare_route.rstrip('/')}/"
+        canonical_url = url_en if en else url_zh
+
+    bare_path = route if en else (route[3:] or '/')
+    bare_path = bare_path.strip('/')
+
+    if not bare_path:
+        if en:
+            desc = f"Official portal for Xu v{xu_version} — rock-solid memory safety with zero runtime GC overhead, supersonic native AOT & WebAssembly compilation, user-space coroutines, and typed channels."
+        else:
+            desc = f"Xu 编程语言官方网站 (v{xu_version}) — 坚若磐石、零 GC 运行时开销、超音速原生 AOT 与 WebAssembly 编译的系统级编程语言，具备确定性 RAII 所有权、轻量协程与类型安全通道。"
+    elif bare_path == 'benchmarks':
+        if en:
+            desc = f"Comprehensive 13-task cross-language performance and memory benchmarks comparing Xu v{xu_version} against C, Rust, Go, and Swift across ARM64 and x86-64 platforms."
+        else:
+            desc = f"Xu 编程语言 (v{xu_version}) 全量跨语言与双架构（ARM64 / x86_64）基准测试，涵盖 13 项经典算法负载与 C、Rust、Go、Swift 实测性能及内存对比。"
+    elif bare_path == 'playground':
+        if en:
+            desc = f"Interactive in-browser WebAssembly playground for Xu v{xu_version}. Compile, borrow-check, and execute Xu code client-side with zero installation."
+        else:
+            desc = f"Xu 编程语言 (v{xu_version}) 在线 WebAssembly 演练场。纯浏览器端客户端沙盒，即时编译、借用检查与执行 Xu 代码，免本地安装。"
+    elif bare_path == 'download':
+        if en:
+            desc = f"Download official Xu v{xu_version} compiler SDK and toolchain for macOS, Linux, and Windows. One-line automated install scripts and release packages."
+        else:
+            desc = f"下载官方 Xu (v{xu_version}) 编译器 SDK 与工具链（macOS、Linux、Windows）。支持一键自动化安装脚本与原生二进制发行包。"
+    elif bare_path.startswith('docs/tutorial'):
+        if en:
+            desc = f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
+        else:
+            desc = f"{title} — Xu 编程语言实战系列教程，系统讲解语法结构、所有权机制、高并发通道与系统级网络编程。"
+    elif bare_path.startswith('docs/lang'):
+        if en:
+            desc = f"{title} — Official language specification, memory model, concurrency architecture, and formal grammar for Xu."
+        else:
+            desc = f"{title} — Xu 编程语言官方规范：语法定义、内存模型与所有权语义、并发调度架构与 EBNF 文法。"
+    elif bare_path.startswith('api'):
+        if en:
+            desc = f"Official API reference for {title} in the Xu v{xu_version} standard library and extended package ecosystem."
+        else:
+            desc = f"Xu 编程语言 (v{xu_version}) 标准库与扩展包官方 API 参考文档：{title}。"
+    elif bare_path.startswith('blog'):
+        if en:
+            desc = f"{title} — Engineering blog post and release updates from the Xu programming language team."
+        else:
+            desc = f"{title} — Xu 编程语言团队官方技术博客与版本发布动态。"
+    else:
+        if en:
+            desc = f"{title} — Documentation, guides, and tools for the Xu systems programming language."
+        else:
+            desc = f"{title} — Xu 系统级编程语言官方文档、工具与开发者指南。"
+
+    keywords = (
+        "Xu, Xu programming language, xulang, systems programming, AOT compiler, zero GC, memory safety, RAII, coroutines, channels, WebAssembly, WASM, performance benchmarks"
+        if en else
+        "Xu, Xu语言, 系统级编程语言, AOT编译器, 零GC, 内存安全, 所有权模型, 协程, 信道, WebAssembly, 性能评测"
+    )
+
+    og_type = "website" if bare_path in ('', 'playground', 'benchmarks', 'download', '404') else "article"
+    og_locale = "en_US" if en else "zh_CN"
+
+    if not bare_path:
+        schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "WebSite",
+                    "@id": f"{origin}/#website",
+                    "url": f"{origin}/",
+                    "name": "Xu Programming Language",
+                    "description": desc,
+                    "inLanguage": ["en", "zh-CN"]
+                },
+                {
+                    "@type": "Organization",
+                    "@id": f"{origin}/#organization",
+                    "name": "Xu Programming Language Organization",
+                    "url": f"{origin}/",
+                    "logo": f"{origin}/xu_classic.svg",
+                    "sameAs": [
+                        "https://github.com/xulang-org",
+                        "https://x.com/xulang_org"
+                    ]
+                },
+                {
+                    "@type": "SoftwareApplication",
+                    "@id": f"{origin}/#software",
+                    "name": "Xu",
+                    "operatingSystem": "macOS, Linux, Windows, WebAssembly",
+                    "applicationCategory": "DeveloperApplication",
+                    "softwareVersion": xu_version,
+                    "license": "https://opensource.org/licenses/MIT",
+                    "offers": {
+                        "@type": "Offer",
+                        "price": "0",
+                        "priceCurrency": "USD"
+                    }
+                }
+            ]
+        }
+    else:
+        schema = {
+            "@context": "https://schema.org",
+            "@type": "TechArticle" if bare_path.startswith(('docs', 'api')) else "Article",
+            "headline": title,
+            "description": desc,
+            "url": canonical_url,
+            "inLanguage": "en" if en else "zh-CN",
+            "publisher": {
+                "@type": "Organization",
+                "name": "Xu Programming Language",
+                "url": f"{origin}/",
+                "logo": f"{origin}/xu_classic.svg"
+            }
+        }
+
+    schema_json_ld = f'<script type="application/ld+json">\n{json.dumps(schema, ensure_ascii=False, indent=2)}\n  </script>'
+
+    return {
+        'meta_description': escape(desc, quote=True),
+        'meta_keywords': escape(keywords, quote=True),
+        'canonical_url': canonical_url,
+        'url_en': url_en,
+        'url_zh': url_zh,
+        'og_type': og_type,
+        'og_locale': og_locale,
+        'schema_json_ld': schema_json_ld,
+    }
+
+
 def render(root: Path, title: str, route: str, body: str, xu_version: str) -> str:
     en = not (route == '/zh' or route.startswith('/zh/'))
     prefix = '' if en else '/zh'
@@ -209,6 +353,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     other = ('/zh' if route == '/' else '/zh' + route) if en else (route[3:] or '/')
     if route == '/404':
         other = '/zh'
+    meta = get_seo_meta(route, title, en, xu_version)
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
     return template.substitute(
         lang='en' if en else 'zh-CN', title=escape(title), home=home,
@@ -223,4 +368,5 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         social_label='Official accounts' if en else '官方帐号',
         menu_label='Navigation menu' if en else '导航菜单',
         nav_label='Main navigation' if en else '主导航',
+        **meta,
     )

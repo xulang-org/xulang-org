@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import json
 import hashlib
 from html import escape, unescape
@@ -269,9 +270,64 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     parser = RewriteHTML(base, set(pages), playground, asset_key)
     parser.feed(render(root, '404 · Xu', '/404', body, xu_version))
     (output / '404.html').write_text(''.join(parser.parts), encoding='utf-8')
+    generate_sitemap(output, pages, base)
     (output / '.nojekyll').touch()
     check_links(output, base)
     return len(pages)
+
+
+def generate_sitemap(output: Path, pages: dict[str, Path], base: str = '') -> None:
+    origin = "https://xulang.org"
+    entries = []
+    today = datetime.date.today().isoformat()
+    for route in sorted(pages.keys()):
+        en_route = route if not (route == '/zh' or route.startswith('/zh/')) else (route[3:] or '/')
+        zh_route = ('/zh' if route == '/' else '/zh' + route) if en_route == route else route
+
+        path = base + (route.rstrip('/') + '/' if route != '/' else '/')
+        en_path = base + (en_route.rstrip('/') + '/' if en_route != '/' else '/')
+        zh_path = base + (zh_route.rstrip('/') + '/' if zh_route != '/' else '/zh/')
+
+        loc = f"{origin}{path}"
+        en_url = f"{origin}{en_path}"
+        zh_url = f"{origin}{zh_path}"
+
+        if route in ('/', '/zh'):
+            priority = "1.0"
+            changefreq = "daily"
+        elif any(route.endswith(x) for x in ('/docs/start', '/download', '/playground', '/benchmarks')):
+            priority = "0.9"
+            changefreq = "weekly"
+        elif 'docs/' in route:
+            priority = "0.8"
+            changefreq = "weekly"
+        elif 'api' in route:
+            priority = "0.7"
+            changefreq = "monthly"
+        else:
+            priority = "0.6"
+            changefreq = "monthly"
+
+        entries.append(
+            '  <url>\n'
+            f'    <loc>{loc}</loc>\n'
+            f'    <lastmod>{today}</lastmod>\n'
+            f'    <changefreq>{changefreq}</changefreq>\n'
+            f'    <priority>{priority}</priority>\n'
+            f'    <xhtml:link rel="alternate" hreflang="en" href="{en_url}"/>\n'
+            f'    <xhtml:link rel="alternate" hreflang="zh-CN" href="{zh_url}"/>\n'
+            f'    <xhtml:link rel="alternate" hreflang="x-default" href="{en_url}"/>\n'
+            '  </url>'
+        )
+
+    sitemap_xml = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"\n'
+        '        xmlns:xhtml="http://www.w3.org/1999/xhtml">\n'
+        + '\n'.join(entries) + '\n'
+        '</urlset>\n'
+    )
+    (output / 'sitemap.xml').write_text(sitemap_xml, encoding='utf-8')
 
 
 def main() -> None:

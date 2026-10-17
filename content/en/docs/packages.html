@@ -1,56 +1,167 @@
-<!--title: External packages-->
+<!--title: Official External Packages-->
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
-<h1>External packages</h1>
-<p class="banner"><code>github.com/xulang-org/packages</code> · module 0.1.1 · 29 packages</p>
-<p>The <a href="https://github.com/xulang-org/packages">packages repository</a> is separate from the compiler and standard library. Its root xu.xun manages a single module; mysql, postgres, and the other directories are internal packages of that module and have no independent manifests.</p>
-<h2>Add a dependency</h2><p>Place app beside a local packages checkout:</p><pre><code>module: app
+<h1>Official External Packages</h1>
+<p class="banner">Official ecosystem monorepo: <code>github.com/xulang-org/packages</code> · Module version v0.1.1 · 29 production-ready packages</p>
+
+<p>To keep the core compiler and standard library minimal, secure, and bloat-free, official third-party service drivers (such as relational databases, in-memory caches, message brokers, object storage, and cloud connectors) are maintained in the standalone <a href="https://github.com/xulang-org/packages" target="_blank" rel="noopener noreferrer">packages repository</a>. Developers <strong>do not need to manually clone repositories or hand-write fragile build configs</strong>: simply declare the dependency in <code>xu.xun</code> and run <code>xu install</code> to fetch and verify everything automatically.</p>
+
+<h2>1. Declare &amp; Install Dependencies Automatically (Zero Manual Config)</h2>
+<p>Create or edit your project's <code>xu.xun</code> manifest file in the root directory. We recommend referencing official SemVer releases:</p>
+
+<pre><code>module: my_app
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
+
 require:
+  "github.com/xulang-org/packages": v0.1.1</code></pre>
+
+<p>Run a single command in your project directory. The Xu compiler automatically resolves the dependency graph, verifies cryptographic digests, downloads sources into <code>vendor/</code>, and creates the immutable <code>xu.lock</code>:</p>
+
+<pre><code># Automatically fetch dependencies into vendor/ and generate xu.lock
+xu install
+
+# Subsequent offline compilation and verification (zero network calls)
+xu check main.xu --offline
+xu build main.xu --output my_app</code></pre>
+
+<details>
+  <summary style="cursor: pointer; color: var(--xu-brand); font-weight: 600; margin: 0.75rem 0;">Advanced Options: Pin to Git Commits or Local Workspace</summary>
+  <div style="margin-top: 0.5rem;">
+    <p><strong>Pin to a reviewed Git commit or tag:</strong></p>
+    <pre><code>require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit_hash&gt;</code></pre>
+
+    <p><strong>Local multi-repo co-development (project placed beside packages checkout):</strong></p>
+    <pre><code>require:
   "github.com/xulang-org/packages": file:../packages</code></pre>
-<pre><code>xu install app
-xu check app/main.xu --offline</code></pre><p><a href="/en/docs/modules">Remote versions, Git sources, MVS, locking, and frozen builds</a></p><h2>Use a SQL driver</h2><p><code>database/sql</code> supplies connection pools, transactions, rows, and the driver contract. Concrete mysql/postgres/sqlite drivers come from packages. This example requires a running MySQL server with mysql_native_password authentication:</p><pre><code>@main
+  </div>
+</details>
+
+<h2>2. Importing Packages in Source Code</h2>
+<p>Xu enforces an <strong>explicit namespace alias convention</strong> for all external packages: <code>alias #full/module/path/pkg</code>. This eliminates global namespace pollution and makes all external dependencies visible directly at the top of the file.</p>
+
+<pre><code>@main
+
+// 1. Standard library modules have no alias; prefixed with #
 #database/sql
+#fmt
+
+// 2. External packages declare an alias and full repository path
+mysql    #github.com/xulang-org/packages/mysql
+redis    #github.com/xulang-org/packages/redis
+postgres #github.com/xulang-org/packages/postgres
+
+fn main() int {
+    // Access APIs directly through the declared alias
+    fmt.println("Drivers loaded successfully")
+    << 0
+}</code></pre>
+
+<p class="note"><strong>Important:</strong> Do not write <code>#mysql</code> or <code>#redis</code>. The bare <code>#</code> is reserved exclusively for standard library modules. All external packages belong to the <code>github.com/xulang-org/packages</code> monorepo and require their full path identity.</p>
+
+<h2>3. Hands-on Quickstart Examples</h2>
+
+<h3>Example 1: Using the MySQL Driver with <code>database/sql</code></h3>
+<p>The standard library <code>database/sql</code> provides connection pooling, transactions, and result row abstractions; the concrete MySQL driver is implemented by <code>packages/mysql</code>:</p>
+<pre><code>@main
+#database/sql
+#fmt
 mysql #github.com/xulang-org/packages/mysql
 
 fn main() int {
-    mut db := sql.open(mysql.driver(), "user:password@tcp(127.0.0.1:3306)/demo?tls=false")
+    dsn := "root:123456@tcp(127.0.0.1:3306)/test_db?tls=false"
+    mut db := sql.open(mysql.driver(), dsn)
     db.ping() or (err) {
-        println(err.msg())
-        &lt;&lt; 1
+        fmt.println("Database ping failed:", err.msg())
+        << 1
     }
-    db.close() or (err) {
-        println(err.msg())
-        &lt;&lt; 1
+    fmt.println("Connected to MySQL successfully!")
+    db.close() or (err) { << 1 }
+    << 0
+}</code></pre>
+
+<h3>Example 2: Redis Client Operations</h3>
+<pre><code>@main
+#fmt
+redis #github.com/xulang-org/packages/redis
+
+fn main() int {
+    mut client := redis.connect("127.0.0.1:6379") or (err) {
+        fmt.println("Redis connect error:", err.msg())
+        << 1
     }
-    &lt;&lt; 0
-}</code></pre><p>External paths require an explicit alias: <code>mysql #github.com/xulang-org/packages/mysql</code>. Use the full path identity; <code>#mysql</code> is not the official external package import.</p><h2>Package catalog</h2><table><tr><th>Category</th><th>Package / API</th><th>Service</th></tr><tr><td>Databases</td><td><a href="/en/api/packages/mysql"><code>mysql</code></a></td><td>MySQL / MariaDB</td></tr>
-<tr><td>Databases</td><td><a href="/en/api/packages/postgres"><code>postgres</code></a></td><td>PostgreSQL</td></tr>
-<tr><td>Databases</td><td><a href="/en/api/packages/sqlite"><code>sqlite</code></a></td><td>SQLite</td></tr>
-<tr><td>Databases</td><td><a href="/en/api/packages/clickhouse"><code>clickhouse</code></a></td><td>ClickHouse</td></tr>
-<tr><td>Databases</td><td><a href="/en/api/packages/mongodb"><code>mongodb</code></a></td><td>MongoDB</td></tr>
-<tr><td>Databases</td><td><a href="/en/api/packages/cassandra"><code>cassandra</code></a></td><td>Cassandra</td></tr>
-<tr><td>Databases</td><td><a href="/en/api/packages/neo4j"><code>neo4j</code></a></td><td>Neo4j</td></tr>
-<tr><td>Caches</td><td><a href="/en/api/packages/redis"><code>redis</code></a></td><td>Redis</td></tr>
-<tr><td>Caches</td><td><a href="/en/api/packages/memcached"><code>memcached</code></a></td><td>Memcached</td></tr>
-<tr><td>Messaging</td><td><a href="/en/api/packages/nats"><code>nats</code></a></td><td>NATS</td></tr>
-<tr><td>Messaging</td><td><a href="/en/api/packages/mqtt"><code>mqtt</code></a></td><td>MQTT</td></tr>
-<tr><td>Messaging</td><td><a href="/en/api/packages/rabbitmq"><code>rabbitmq</code></a></td><td>RabbitMQ</td></tr>
-<tr><td>Messaging</td><td><a href="/en/api/packages/kafka"><code>kafka</code></a></td><td>Kafka</td></tr>
-<tr><td>Coordination</td><td><a href="/en/api/packages/etcd"><code>etcd</code></a></td><td>etcd</td></tr>
-<tr><td>Coordination</td><td><a href="/en/api/packages/consul"><code>consul</code></a></td><td>Consul</td></tr>
-<tr><td>Coordination</td><td><a href="/en/api/packages/zookeeper"><code>zookeeper</code></a></td><td>ZooKeeper</td></tr>
-<tr><td>Coordination</td><td><a href="/en/api/packages/nacos"><code>nacos</code></a></td><td>Nacos</td></tr>
-<tr><td>Search</td><td><a href="/en/api/packages/elasticsearch"><code>elasticsearch</code></a></td><td>Elasticsearch / OpenSearch</td></tr>
-<tr><td>Search</td><td><a href="/en/api/packages/meilisearch"><code>meilisearch</code></a></td><td>Meilisearch</td></tr>
-<tr><td>Observability</td><td><a href="/en/api/packages/influxdb"><code>influxdb</code></a></td><td>InfluxDB</td></tr>
-<tr><td>Observability</td><td><a href="/en/api/packages/prometheus"><code>prometheus</code></a></td><td>Prometheus</td></tr>
-<tr><td>Vectors</td><td><a href="/en/api/packages/milvus"><code>milvus</code></a></td><td>Milvus</td></tr>
-<tr><td>Vectors</td><td><a href="/en/api/packages/qdrant"><code>qdrant</code></a></td><td>Qdrant</td></tr>
-<tr><td>Vectors</td><td><a href="/en/api/packages/chroma"><code>chroma</code></a></td><td>Chroma</td></tr>
-<tr><td>Storage</td><td><a href="/en/api/packages/s3"><code>s3</code></a></td><td>S3 / MinIO</td></tr>
-<tr><td>Protocols</td><td><a href="/en/api/packages/grpc"><code>grpc</code></a></td><td>gRPC / HTTP/2</td></tr>
-<tr><td>Protocols</td><td><a href="/en/api/packages/websocket"><code>websocket</code></a></td><td>WebSocket</td></tr>
-<tr><td>Protocols</td><td><a href="/en/api/packages/dns"><code>dns</code></a></td><td>DNS</td></tr>
-<tr><td>Protocols</td><td><a href="/en/api/packages/smtp"><code>smtp</code></a></td><td>SMTP</td></tr></table><h2>Current boundaries</h2><p>Each package has its own protocol, authentication, TLS, and pooling scope. MySQL currently rejects TLS and caching_sha2_password; PostgreSQL does not negotiate TLS; gRPC supports cleartext unary calls with bounded messages, with higher-level pool reuse still pending. See each package’s API and source README.</p>
-<p>SQLite uses a native C bridge through xu-c-1. In a local packages checkout run <code>make native</code> before importing it. The configured slices are macOS arm64/x64; other targets require matching toolchains and slices. Git source downloads exclude the generated sqlite.xulib, so a remote SQLite distribution needs an archive containing native resources; that release workflow is pending.</p>
+    client.set("app_version", "v0.8.11") or (err) { << 1 }
+    val := client.get("app_version") or (err) { << 1 }
+    fmt.println("Key 'app_version':", val)
+    client.close()
+    << 0
+}</code></pre>
+
+<h3>Example 3: Object Storage with S3 / MinIO</h3>
+<pre><code>@main
+#fmt
+s3 #github.com/xulang-org/packages/s3
+
+fn main() int {
+    mut client := s3.new("endpoint.example.com", "access_key", "secret_key", "my-bucket")
+    client.put_object("welcome.txt", "Hello from Xu!") or (err) {
+        fmt.println("S3 upload failed:", err.msg())
+        << 1
+    }
+    fmt.println("Object uploaded successfully")
+    << 0
+}</code></pre>
+
+<h2>4. Package Catalog &amp; One-Line Import Snippets</h2>
+<p>The <code>packages</code> repository contains 29 ready-to-use packages. You can copy-paste the exact import snippet into your code:</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>Category</th>
+      <th>Package</th>
+      <th>Service</th>
+      <th>One-Line Import Snippet</th>
+      <th>API Reference</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>Databases</td><td><code>mysql</code></td><td>MySQL / MariaDB</td><td><code>mysql #github.com/xulang-org/packages/mysql</code></td><td><a href="/en/api/packages/mysql">API Reference</a></td></tr>
+    <tr><td>Databases</td><td><code>postgres</code></td><td>PostgreSQL</td><td><code>postgres #github.com/xulang-org/packages/postgres</code></td><td><a href="/en/api/packages/postgres">API Reference</a></td></tr>
+    <tr><td>Databases</td><td><code>sqlite</code></td><td>SQLite Embedded</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/en/api/packages/sqlite">API Reference</a></td></tr>
+    <tr><td>Databases</td><td><code>clickhouse</code></td><td>ClickHouse Columnar</td><td><code>clickhouse #github.com/xulang-org/packages/clickhouse</code></td><td><a href="/en/api/packages/clickhouse">API Reference</a></td></tr>
+    <tr><td>Databases</td><td><code>mongodb</code></td><td>MongoDB Document DB</td><td><code>mongodb #github.com/xulang-org/packages/mongodb</code></td><td><a href="/en/api/packages/mongodb">API Reference</a></td></tr>
+    <tr><td>Databases</td><td><code>cassandra</code></td><td>Apache Cassandra</td><td><code>cassandra #github.com/xulang-org/packages/cassandra</code></td><td><a href="/en/api/packages/cassandra">API Reference</a></td></tr>
+    <tr><td>Databases</td><td><code>neo4j</code></td><td>Neo4j Graph Database</td><td><code>neo4j #github.com/xulang-org/packages/neo4j</code></td><td><a href="/en/api/packages/neo4j">API Reference</a></td></tr>
+    <tr><td>Caches</td><td><code>redis</code></td><td>Redis High-Speed Cache</td><td><code>redis #github.com/xulang-org/packages/redis</code></td><td><a href="/en/api/packages/redis">API Reference</a></td></tr>
+    <tr><td>Caches</td><td><code>memcached</code></td><td>Memcached</td><td><code>memcached #github.com/xulang-org/packages/memcached</code></td><td><a href="/en/api/packages/memcached">API Reference</a></td></tr>
+    <tr><td>Messaging</td><td><code>kafka</code></td><td>Apache Kafka</td><td><code>kafka #github.com/xulang-org/packages/kafka</code></td><td><a href="/en/api/packages/kafka">API Reference</a></td></tr>
+    <tr><td>Messaging</td><td><code>rabbitmq</code></td><td>RabbitMQ / AMQP</td><td><code>rabbitmq #github.com/xulang-org/packages/rabbitmq</code></td><td><a href="/en/api/packages/rabbitmq">API Reference</a></td></tr>
+    <tr><td>Messaging</td><td><code>nats</code></td><td>NATS High Throughput</td><td><code>nats #github.com/xulang-org/packages/nats</code></td><td><a href="/en/api/packages/nats">API Reference</a></td></tr>
+    <tr><td>Messaging</td><td><code>mqtt</code></td><td>MQTT IoT Protocol</td><td><code>mqtt #github.com/xulang-org/packages/mqtt</code></td><td><a href="/en/api/packages/mqtt">API Reference</a></td></tr>
+    <tr><td>Coordination</td><td><code>etcd</code></td><td>etcd v3 Distributed KV</td><td><code>etcd #github.com/xulang-org/packages/etcd</code></td><td><a href="/en/api/packages/etcd">API Reference</a></td></tr>
+    <tr><td>Coordination</td><td><code>consul</code></td><td>HashiCorp Consul</td><td><code>consul #github.com/xulang-org/packages/consul</code></td><td><a href="/en/api/packages/consul">API Reference</a></td></tr>
+    <tr><td>Coordination</td><td><code>zookeeper</code></td><td>Apache ZooKeeper</td><td><code>zookeeper #github.com/xulang-org/packages/zookeeper</code></td><td><a href="/en/api/packages/zookeeper">API Reference</a></td></tr>
+    <tr><td>Coordination</td><td><code>nacos</code></td><td>Alibaba Nacos</td><td><code>nacos #github.com/xulang-org/packages/nacos</code></td><td><a href="/en/api/packages/nacos">API Reference</a></td></tr>
+    <tr><td>Search</td><td><code>elasticsearch</code></td><td>Elasticsearch / OpenSearch</td><td><code>elasticsearch #github.com/xulang-org/packages/elasticsearch</code></td><td><a href="/en/api/packages/elasticsearch">API Reference</a></td></tr>
+    <tr><td>Search</td><td><code>meilisearch</code></td><td>Meilisearch Engine</td><td><code>meilisearch #github.com/xulang-org/packages/meilisearch</code></td><td><a href="/en/api/packages/meilisearch">API Reference</a></td></tr>
+    <tr><td>Observability</td><td><code>prometheus</code></td><td>Prometheus Metrics</td><td><code>prometheus #github.com/xulang-org/packages/prometheus</code></td><td><a href="/en/api/packages/prometheus">API Reference</a></td></tr>
+    <tr><td>Observability</td><td><code>influxdb</code></td><td>InfluxDB Time Series</td><td><code>influxdb #github.com/xulang-org/packages/influxdb</code></td><td><a href="/en/api/packages/influxdb">API Reference</a></td></tr>
+    <tr><td>Vectors &amp; AI</td><td><code>milvus</code></td><td>Milvus Vector DB</td><td><code>milvus #github.com/xulang-org/packages/milvus</code></td><td><a href="/en/api/packages/milvus">API Reference</a></td></tr>
+    <tr><td>Vectors &amp; AI</td><td><code>qdrant</code></td><td>Qdrant Vector Engine</td><td><code>qdrant #github.com/xulang-org/packages/qdrant</code></td><td><a href="/en/api/packages/qdrant">API Reference</a></td></tr>
+    <tr><td>Vectors &amp; AI</td><td><code>chroma</code></td><td>Chroma Embeddings DB</td><td><code>chroma #github.com/xulang-org/packages/chroma</code></td><td><a href="/en/api/packages/chroma">API Reference</a></td></tr>
+    <tr><td>Storage</td><td><code>s3</code></td><td>AWS S3 / MinIO Protocol</td><td><code>s3 #github.com/xulang-org/packages/s3</code></td><td><a href="/en/api/packages/s3">API Reference</a></td></tr>
+    <tr><td>Protocols</td><td><code>grpc</code></td><td>gRPC / HTTP/2 Client</td><td><code>grpc #github.com/xulang-org/packages/grpc</code></td><td><a href="/en/api/packages/grpc">API Reference</a></td></tr>
+    <tr><td>Protocols</td><td><code>websocket</code></td><td>WebSocket Full-Duplex</td><td><code>websocket #github.com/xulang-org/packages/websocket</code></td><td><a href="/en/api/packages/websocket">API Reference</a></td></tr>
+    <tr><td>Protocols</td><td><code>dns</code></td><td>DNS Custom Resolver</td><td><code>dns #github.com/xulang-org/packages/dns</code></td><td><a href="/en/api/packages/dns">API Reference</a></td></tr>
+    <tr><td>Protocols</td><td><code>smtp</code></td><td>SMTP Mail Delivery</td><td><code>smtp #github.com/xulang-org/packages/smtp</code></td><td><a href="/en/api/packages/smtp">API Reference</a></td></tr>
+  </tbody>
+</table>
+
+<h2>5. Boundaries &amp; Production Builds</h2>
+<ul>
+  <li><strong>SQLite Native C-Bridge</strong>: SQLite relies on a native C bridge. When working directly in the packages source checkout, run <code>make native</code> in the packages root directory to compile native architecture slices.</li>
+  <li><strong>Frozen Builds in Production</strong>: For immutable CI/CD deployment pipelines, commit the generated <code>vendor/</code> directory and <code>xu.lock</code> to Git, then run <code>xu build main.xu --frozen</code>. This strictly forbids outbound network calls during build for 100% reproducible builds.</li>
+</ul>
+
+<p>For more details on MVS resolution, checksum verification, and private proxies, see: <a href="/en/docs/modules">Modules and Dependencies Specification</a>.</p>

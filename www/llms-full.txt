@@ -1,0 +1,198 @@
+# Xu Programming Language — Full Documentation & Language Specification
+
+Official Website: https://xulang.org
+Repository: https://github.com/xulang-org/xu
+Version: Stable 0.8.11
+License: MIT License
+
+---
+
+## 1. Executive Overview & Positioning
+
+Xu is a modern systems programming language compiled Ahead-Of-Time (AOT) to native machine code (ARM64, x86-64) and WebAssembly (WASM).
+It combines:
+- Deterministic memory safety with zero garbage collection (zero GC / RAII)
+- High-throughput language-level concurrency with coroutines (`xu f()`) and typed channels (`chan T`)
+- Clean, ergonomic, semicolon-free syntax ("Thin Syntax")
+- Unified single-binary toolchain (`xu build`, `xu run`, `xu test`, `xu bench`, `xu fmt`)
+- Rich standard library covering async networking, TLS/GMTLS (SM2, SM3, SM4), SQL, and native WebView desktop UI.
+
+### Architectural Comparison
+- **Xu vs. C/C++**: Xu guarantees complete compile-time memory safety without data races, null pointer dereferences, or undefined behavior (UB), while delivering identical zero-runtime overhead and pure native machine speed.
+- **Xu vs. Rust**: Xu provides static borrow checking and deterministic RAII destruction without the mental overhead of explicit lifetime annotations (`'a`). Concurrency is built into the language via user-space coroutines and channels rather than external async runtimes.
+- **Xu vs. Go**: Xu provides Go-like joyful concurrency (`xu` instead of `go`, `chan` pipelines) but compiles to zero-GC native binaries. It has zero Stop-The-World (STW) pauses, sub-millisecond cold start times, and minimal memory footprints.
+
+---
+
+## 2. Language Syntax & Mental Model
+
+### Declarations & Mutability
+Bindings are immutable by default:
+```xu
+a := 10             // int
+msg := "hello"      // string
+pi := 3.1415926     // float64
+flag := true        // bool
+```
+Mutable bindings require the `mut` keyword:
+```xu
+mut count := 0
+count = count + 1
+```
+
+### Control Flow
+Xu avoids parentheses around conditions and does not use semicolons:
+```xu
+if x > 0 {
+    // then branch
+} else if x == 0 {
+    // zero branch
+} else {
+    // else branch
+}
+```
+
+Loops:
+```xu
+// Infinite loop
+for {
+    if done {
+        <- // break
+    }
+    -> // continue
+}
+
+// Conditional loop
+for condition {
+    // loop body
+}
+
+// Iteration
+for item in collection {
+    // process item
+}
+```
+
+### Flow Operators
+- `<< expr`: return from function with expression
+- `<<`: return void
+- `>> expr`: throw / propagate an error (`errors.Error`)
+- `or (err) { ... }`: catch error from an expression
+- `<<< expr`: exit process immediately with status code
+- `<-`: break from current loop
+- `->`: continue to next loop iteration
+
+### Error Handling Pattern
+Errors in Xu are concrete values that implement the error interface. Functions return errors explicitly or throw them with `>>`:
+```xu
+fn parse_number(s: string) int {
+    if s.is_empty() {
+        >> errors.new("empty string")
+    }
+    << strconv.parse_int(s) or (err) {
+        >> err
+    }
+}
+```
+
+### Functions, Structs, and Methods
+```xu
+struct Point {
+    x: int
+    y: int
+}
+
+fn (p: &Point) distance_squared() int {
+    << p.x * p.x + p.y * p.y
+}
+
+fn (p: &mut Point) translate(dx: int, dy: int) {
+    p.x = p.x + dx
+    p.y = p.y + dy
+    <<
+}
+```
+
+---
+
+## 3. Memory Model & Ownership
+
+Xu's memory management is fully static and deterministic:
+1. **Single Owner**: Every value has exactly one owning binding at any time. When the owner goes out of scope, the value's destructor is automatically and deterministically invoked (RAII).
+2. **Move Semantics**: Assigning or passing an owned value transfers ownership. Using a moved-from value causes a compile-time error.
+3. **Borrowing**:
+   - `&T`: Shared (immutable) borrow. Any number of active shared borrows may coexist.
+   - `&mut T`: Exclusive (mutable) borrow. Only one active exclusive borrow is permitted at any given time, preventing data races and iterator invalidation statically.
+4. **Zero GC**: No memory tracking at runtime, no reference counting headers by default, no garbage collection pause times.
+
+---
+
+## 4. Concurrency Model (CSP)
+
+Xu adopts Communicating Sequential Processes (CSP):
+- **Coroutines**: Spawned with the `xu` keyword:
+  ```xu
+  xu worker_function(arg1, arg2)
+  ```
+  Coroutines are lightweight, scheduled in user space, and scale to hundreds of thousands of concurrent tasks.
+- **Channels**: First-class typed communication pipes:
+  ```xu
+  // Unbuffered synchronous channel
+  sync_ch := chan[string]()
+
+  // Buffered channel with capacity 100
+  buf_ch := chan[int](100)
+
+  // Send
+  buf_ch.send(42)
+
+  // Receive
+  val := buf_ch.recv() or (err) {
+      // Channel closed
+  }
+  ```
+
+---
+
+## 5. Toolchain & Project Configuration
+
+The compiler is invoked via the `xu` CLI:
+- `xu build [flags]`: Compile project into native machine binary.
+- `xu run <entry.xu>`: Instantly compile and run.
+- `xu test [flags]`: Run unit tests (`@test` annotations).
+- `xu bench [flags]`: Run performance benchmarks.
+- `xu fmt`: Auto-format all `.xu` source files according to official style rules.
+
+Project Manifest: `xu.xun`
+```xun
+module: myapp
+version: 1.0.0
+xu: !ver 0.8.11
+
+dependencies:
+  packages/redis: 0.1.1
+  packages/postgres: 0.1.1
+```
+
+---
+
+## 6. Standard Library Overview
+
+- **Core**: `errors`, `fmt`, `flag`, `cmp`, `context`, `sync`, `time`, `runtime`, `maps`, `slices`, `sort`, `testing`
+- **Text & Binary**: `strings`, `bytes`, `strconv`, `unicode`, `regexp`, `html`, `encoding/json`, `encoding/hex`, `encoding/base64`, `encoding/binary`
+- **IO & OS**: `io`, `io/fs`, `os`, `os/exec`, `os/signal`, `os/user`, `bufio`, `path`, `log`
+- **Networking**: `net`, `net/http`, `net/http/cookiejar`, `net/http/httptest`, `net/netip`, `net/url`, `net/smtp`
+- **Cryptography & Security**: `crypto/sm2`, `crypto/sm3`, `crypto/sm4`, `crypto/sm9`, `crypto/zuc`, `crypto/gmtls`, `crypto/tls`, `crypto/rand`, `crypto/sha256`
+- **Database & Ecosystem**: `database/sql`, `database/sql/driver`, and 29 extended packages (Redis, Postgres, MySQL, Kafka, ClickHouse, SQLite, Etcd, Elasticsearch, NATS, Qdrant, Milvus, Chroma, S3, etc.)
+- **GUI & Desktop**: `ui`, `ui/webview`, `ui/draw`
+
+---
+
+## 7. Performance Benchmarks Summary
+
+In standardized 13-task algorithmic benchmarks across ARM64 (Apple Silicon, AWS Graviton) and x86-64 (Linux, Windows):
+- **Execution Time**: Xu performs within 1.0x–1.2x of optimized C (Clang -O3) and Rust (rustc -O3), significantly outperforming GC-based languages.
+- **Memory Overhead**: Zero GC ensures peak RSS memory remains minimal and strictly bounded, with deterministic drops freeing resources immediately when scopes exit.
+- **Compilation Speed**: The AOT compiler is designed for sub-second developer turnaround cycles.
+
+For detailed numbers, charts, and reproduction suites, visit: https://xulang.org/benchmarks/

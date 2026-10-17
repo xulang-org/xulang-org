@@ -1,0 +1,187 @@
+# Xu Programming Language
+
+> Rock-solid memory safety with zero runtime GC overhead, supersonic native AOT & WebAssembly compilation, lightweight user-space coroutines, and type-safe channel concurrency.
+
+Official Website: https://xulang.org
+GitHub Organization: https://github.com/xulang-org
+Primary Repository: https://github.com/xulang-org/xu
+Official Documentation: https://xulang.org/docs/start/
+Benchmarks: https://xulang.org/benchmarks/
+Online WebAssembly Playground: https://xulang.org/playground/
+License: MIT License
+
+## Executive Summary & Core Identity
+Xu (pronounced /ʃuː/, file extension `.xu`) is a modern statically-typed, Ahead-Of-Time (AOT) compiled systems programming language created for cloud-native backend services, low-latency infrastructure, and systems software. Xu delivers deterministic RAII memory safety with zero garbage collection (zero GC), combined with native, first-class lightweight coroutines (`xu f()`) and typed channels (`chan T`). It provides a lean, readable syntax without semicolons, redundant parentheses, or manual lifetime annotations.
+
+## Key Technical Pillars
+
+1. **Deterministic Ownership & Zero GC (RAII)**
+   - No Stop-The-World garbage collection pauses or runtime background sweeps.
+   - Strict compile-time unique ownership model with deterministic RAII scoping drops.
+   - Borrow semantics: `&T` for immutable/shared borrow, `&mut T` for exclusive mutable borrow.
+   - Data race freedom statically guaranteed at compile time.
+
+2. **Native Lightweight Coroutines & Typed Channels (CSP)**
+   - Language-level first-class concurrency.
+   - Coroutine spawning with intuitive syntax: `xu f(arg1, arg2)`.
+   - Channels for inter-coroutine communication: `ch := chan[int](cap)`.
+   - Synchronous unbuffered and asynchronous buffered channels.
+
+3. **Expressive & Lean Syntax ("Thin Syntax")**
+   - Clean, semicolon-free, paren-free control statements.
+   - Distinctive, readable flow operators:
+     - `<< expr` : return value
+     - `>> expr` : throw / propagate error
+     - `or (err) { ... }` : catch / handle error
+     - `<<< expr` : process exit
+     - `<-` : loop break
+     - `->` : loop continue
+   - Pattern matching via `match expr { pat => body }`.
+   - Module imports via `#pkg` or `#local_pkg`.
+
+4. **Batteries-Included Toolchain & Native Manifest**
+   - Single unified CLI `xu` for compilation, execution, testing, benchmarking, and formatting:
+     - `xu build` : compile to native binary
+     - `xu run <file>` : compile and run in one step
+     - `xu test` : execute unit and integration test suites
+     - `xu bench` : run benchmark tasks
+     - `xu fmt` : canonical source code formatter
+   - Native manifest: `xu.xun` for module identity, versioning, dependencies, and build profiles.
+
+5. **Multi-Platform Native AOT & WebAssembly**
+   - Directly compiles to native machine code on ARM64 and x86-64 across macOS, Linux, and Windows.
+   - In-browser zero-server WebAssembly (WASM) runner compiled directly from Xu sources.
+
+## Core Syntax Quick Reference
+
+### Hello World (`main.xu`)
+```xu
+@main
+#fmt
+
+fn main() {
+    fmt.println("Hello, Xu!")
+    <<
+}
+```
+
+### Variables, Mutability & Ownership
+```xu
+// Immutable binding by default
+name := "Xu"
+count := 42
+
+// Mutable binding
+mut counter := 0
+counter = counter + 1
+
+// Borrowing
+fn read_data(data: &string) {
+    fmt.println(*data)
+    <<
+}
+
+fn mutate_data(data: &mut int) {
+    *data = *data + 10
+    <<
+}
+```
+
+### Error Handling (`>>` and `or`)
+```xu
+#errors
+#fmt
+
+fn divide(a: int, b: int) int {
+    if b == 0 {
+        >> errors.new("division by zero")
+    }
+    << a / b
+}
+
+fn run() {
+    result := divide(10, 0) or (err) {
+        fmt.println("Caught error:", err.message())
+        << 0
+    }
+}
+```
+
+### Coroutines and Channels (`xu` and `chan`)
+```xu
+#fmt
+
+fn worker(id: int, jobs: chan[int], results: chan[int]) {
+    for {
+        job := jobs.recv() or (err) {
+            <- // break on channel close
+        }
+        results.send(job * 2)
+    }
+    <<
+}
+
+fn main() {
+    jobs := chan[int](10)
+    results := chan[int](10)
+
+    xu worker(1, jobs, results)
+
+    jobs.send(21)
+    ans := results.recv() or (err) { << }
+    fmt.println("Result:", ans) // 42
+    <<
+}
+```
+
+## External Packages Ecosystem (`github.com/xulang-org/packages`)
+Third-party database drivers, caches, and cloud connectors are maintained in the official monorepo `github.com/xulang-org/packages` (29 packages). Zero manual configuration needed:
+
+1. **Declare in `xu.xun`**:
+```xun
+module: my_app
+version: !ver 0.1.0
+xu: !ver 0.8.11
+
+require:
+  "github.com/xulang-org/packages": v0.1.1
+```
+
+2. **Automated Install**:
+```bash
+xu install
+```
+Resolves dependencies into `vendor/` and records digests in `xu.lock`.
+
+3. **Import with Explicit Alias**:
+```xu
+@main
+#database/sql
+mysql #github.com/xulang-org/packages/mysql
+redis #github.com/xulang-org/packages/redis
+
+fn main() int {
+    mut db := sql.open(mysql.driver(), "user:pass@tcp(127.0.0.1:3306)/demo")
+    mut r := redis.connect("127.0.0.1:6379") or (err) { << 1 }
+    << 0
+}
+```
+Catalog covers: `mysql`, `postgres`, `sqlite`, `clickhouse`, `mongodb`, `cassandra`, `neo4j`, `redis`, `memcached`, `kafka`, `rabbitmq`, `nats`, `mqtt`, `etcd`, `consul`, `zookeeper`, `nacos`, `elasticsearch`, `meilisearch`, `prometheus`, `influxdb`, `milvus`, `qdrant`, `chroma`, `s3`, `grpc`, `websocket`, `dns`, `smtp`.
+
+
+## Documentation & Learning Endpoints
+- Getting Started: https://xulang.org/docs/start/
+- Installation Guide: https://xulang.org/docs/install/
+- Interactive WebAssembly Playground: https://xulang.org/playground/
+- Comprehensive Tutorial (Chapters 01–16): https://xulang.org/docs/tutorial/01/
+- Language Specifications:
+  - Design Goals: https://xulang.org/docs/lang/goals/
+  - Syntax Freeze: https://xulang.org/docs/lang/syntax/
+  - Memory Model & Ownership: https://xulang.org/docs/lang/memory/
+  - Concurrency Model: https://xulang.org/docs/lang/concurrency/
+  - Type System: https://xulang.org/docs/lang/types/
+  - Grammar (EBNF): https://xulang.org/docs/lang/ebnf/
+- Standard Library & Package API Reference: https://xulang.org/api/
+- 13-Task Benchmark Dashboard (ARM64 & x86_64): https://xulang.org/benchmarks/
+- Release Blog & Changelog: https://xulang.org/blog/
+- Full Context Corpus for LLMs: https://xulang.org/llms-full.txt

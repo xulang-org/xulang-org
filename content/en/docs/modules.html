@@ -3,26 +3,29 @@
 <h1>Modules and dependencies</h1>
 <p class="banner">Xu {{xu_version}} · signed checksum logs since 0.8.4 · dependency snapshot overhaul since 0.8.6 · multi-target verification and distribution in 0.8.8</p>
 <p>A directory project uses <code>xu.xun</code>. <code>module:</code> is the module identity, <code>version:</code> its own version, and <code>xu:</code> the Xu version it targets. External imports require an explicit alias and a matching root module in <code>require:</code>.</p>
-<h2>Local development</h2>
-<p>With packages beside your app, write app/xu.xun:</p>
+<h2>Declare and Install Dependencies (Automated Resolution)</h2>
+<p>For standard projects, we recommend referencing official SemVer releases without manual clones or complex configs:</p>
 <pre><code>module: app
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
 require:
-  "github.com/xulang-org/packages": file:../packages</code></pre>
+  "github.com/xulang-org/packages": v0.1.1</code></pre>
+<p>Run <code>xu install</code> in your project root. The compiler automatically resolves dependencies into <code>vendor/</code> and writes the cryptographic lockfile <code>xu.lock</code>. In code, import subpackages with an explicit alias:</p>
 <pre><code>@main
 mysql #github.com/xulang-org/packages/mysql
 
 fn main() {
     _ := mysql.driver()
 }</code></pre>
-<p><code>file:</code> is relative to the declaring manifest. Use the root module in require; select mysql, postgres, or other subpackages in the import. Neither XUPATH nor a short import such as #mysql substitutes for this declaration.</p><h2>Remote modules and version selection</h2><p>Use a reviewed immutable Git commit, or an exact SemVer minimum requirement when the matching version tag is available:</p>
-<pre><code>require:
+<p>Declare the root module <code>github.com/xulang-org/packages</code> in require, and select concrete packages (such as <code>mysql</code>, <code>redis</code>, <code>postgres</code>) in code. See the full catalog in <a href="/en/docs/packages">Official External Packages</a>.</p>
+<h2>Version Selection &amp; Alternate Locators</h2><p>In addition to SemVer releases, you can pin to a reviewed immutable Git commit, or use a relative path for local co-development:</p>
+<pre><code># Option A: Pin to a Git commit
+require:
   "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit&gt;
 
-# Alternative, when this version is available:
+# Option B: Local workspace co-development (app placed beside packages)
 require:
-  "github.com/xulang-org/packages": v0.1.1</code></pre>
+  "github.com/xulang-org/packages": file:../packages</code></pre>
 <p>Choose one require block and replace &lt;commit&gt; with an actual commit. MVS reads all reachable version manifests and selects the highest minimum requirement for each module. It does not query latest or interpret version ranges. v2+ modules use a matching /vN path suffix. Explicit file/Git/tar sources remain supported; conflicting sources fail.</p><h2>Install, lock, and build offline</h2><pre><code>xu install app
 xu check app/main.xu --offline
 xu build app/main.xu --frozen --output app/program</code></pre>

@@ -3,26 +3,29 @@
 <h1>模块与依赖</h1>
 <p class="banner">Xu {{xu_version}} · 0.8.4 签名校验日志 · 0.8.6 依赖图快照重构 · 0.8.8 跨架构依赖验证与构建分发规范</p>
 <p>目录项目使用 <code>xu.xun</code>。<code>module:</code> 是模块身份，<code>version:</code> 是模块自身版本，<code>xu:</code> 是所用 Xu 版本。外部导入必须明确别名，并在 <code>require:</code> 中声明所属根模块。</p>
-<h2>本机开发</h2><p>让 app 与 packages 目录同级，在 app/xu.xun 中写：</p>
+<h2>声明与安装依赖（自动化解析）</h2><p>普通项目推荐直接声明官方 SemVer 发布版本，无需手动克隆或手写构建参数：</p>
 <pre><code>module: app
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
 require:
-  "github.com/xulang-org/packages": file:../packages</code></pre>
+  "github.com/xulang-org/packages": v0.1.1</code></pre>
+<p>在项目根目录运行 <code>xu install</code>，编译器将自动下载到 <code>vendor/</code> 并生成校验锁 <code>xu.lock</code>。代码中使用显式别名导入需要的子包：</p>
 <pre><code>@main
 mysql #github.com/xulang-org/packages/mysql
 
 fn main() {
     _ := mysql.driver()
 }</code></pre>
-<p><code>file:</code> 相对于声明它的清单。require 写根模块，导入再选择 mysql、postgres 等子包；XUPATH 和 <code>#mysql</code> 短路径不能替代这份声明。</p><h2>远程模块与版本选择</h2><p>可选择审查过的不可变 Git 提交；来源中已有对应版本标签时，也可声明精确 SemVer 最低要求：</p>
-<pre><code>require:
+<p>require 声明官方根模块 <code>github.com/xulang-org/packages</code>，代码中通过完整子路径导入具体包（如 <code>mysql</code>、<code>redis</code>、<code>postgres</code>）。完整清单见 <a href="/docs/packages">官方扩展包 (Packages)</a>。</p>
+<h2>版本选择与来源定位</h2><p>除 SemVer 发行版外，还可以指定已审查的不可变 Git 提交，或在本地协同研发时使用相对路径：</p>
+<pre><code># 方式 A：指定 Git 提交
+require:
   "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit&gt;
 
-# Alternative, when this version is available:
+# 方式 B：本地协同开发（让 app 与 packages 目录同级）
 require:
-  "github.com/xulang-org/packages": v0.1.1</code></pre>
-<p>以上 require 块二选一，&lt;commit&gt; 须换成真实提交。MVS 读取全部可达版本的清单，为每个模块选择图中最高的最低要求，不查询 latest，也不接受版本范围。v2 及以上模块使用匹配的 <code>/vN</code> 路径后缀。显式 file/Git/tar 来源继续支持，来源冲突会报错。</p><h2>安装、锁定与离线构建</h2><pre><code>xu install app
+  "github.com/xulang-org/packages": file:../packages</code></pre>
+<p>MVS（最小版本选择）读取全部可达版本的清单，为每个模块选择图中最高的最低要求，不查询 latest，也不接受浮动版本范围。v2 及以上模块使用匹配的 <code>/vN</code> 路径后缀。显式 file/Git/tar 来源继续支持，来源冲突会报错。</p><h2>安装、锁定与离线构建</h2><pre><code>xu install app
 xu check app/main.xu --offline
 xu build app/main.xu --frozen --output app/program</code></pre>
 <table><tr><th>模式</th><th>行为</th></tr><tr><td>默认</td><td>允许下载并建立锁条目；已锁定内容不匹配时失败。</td></tr>

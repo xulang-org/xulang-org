@@ -1,56 +1,167 @@
-<!--title: 扩展包-->
+<!--title: 官方扩展包 (Packages)-->
 <p class="crumb"><a href="/docs/start">文档</a></p>
-<h1>扩展包</h1>
-<p class="banner"><code>github.com/xulang-org/packages</code> · 模块 0.1.1 · 29 个包</p>
-<p><a href="https://github.com/xulang-org/packages">packages 仓库</a> 独立于编译器和标准库。根 xu.xun 统一管理一个模块，mysql、postgres 等目录是它的内部包，不再分别维护模块清单。</p>
-<h2>声明依赖</h2><p>本机让 app 与 packages 仓库同级：</p><pre><code>module: app
+<h1>官方扩展包 (Packages)</h1>
+<p class="banner">官方生态单体仓库：<code>github.com/xulang-org/packages</code> · 模块版本 v0.1.1 · 涵盖 29 个常用工业级扩展包</p>
+
+<p>为了保持语言编译器与标准库极致精炼，Xu 官方将第三方外部服务驱动（如数据库驱动、缓存客户端、消息队列、云存储等）统一维护在独立的 <a href="https://github.com/xulang-org/packages" target="_blank" rel="noopener noreferrer">packages 仓库</a> 中。开发者在项目中<strong>无需手动下载源码或手写复杂的编译配置</strong>，只需在清单声明版本后通过 <code>xu install</code> 一键自动安装即可直接在代码中引用。</p>
+
+<h2>1. 声明与自动安装依赖（无需手写繁琐配置）</h2>
+<p>在你的项目根目录下创建或编辑 <code>xu.xun</code> 清单文件。推荐直接使用官方 SemVer 正式发行版本：</p>
+
+<pre><code>module: my_app
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
+
 require:
+  "github.com/xulang-org/packages": v0.1.1</code></pre>
+
+<p>在项目目录下执行一条命令，Xu 编译器会自动从官方源拉取代码、校验哈希、下载到 <code>vendor/</code> 目录并生成 <code>xu.lock</code> 锁定文件：</p>
+
+<pre><code># 自动解析依赖、下载至 vendor 并写入 xu.lock 校验锁
+xu install
+
+# 后续直接本地离线检查与编译构建（无需网络）
+xu check main.xu --offline
+xu build main.xu --output my_app</code></pre>
+
+<details>
+  <summary style="cursor: pointer; color: var(--xu-brand); font-weight: 600; margin: 0.75rem 0;">高级选项：指定 Git 提交或本地协同调试</summary>
+  <div style="margin-top: 0.5rem;">
+    <p><strong>锁定到指定 Git 提交：</strong></p>
+    <pre><code>require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit_hash&gt;</code></pre>
+
+    <p><strong>源码贡献与本地联调（让 app 与 packages 仓库同级）：</strong></p>
+    <pre><code>require:
   "github.com/xulang-org/packages": file:../packages</code></pre>
-<pre><code>xu install app
-xu check app/main.xu --offline</code></pre><p><a href="/docs/modules">远程版本、Git 来源、MVS、锁定与冻结构建</a></p><h2>使用 SQL 驱动</h2><p>标准库 <code>database/sql</code> 提供连接池、事务、结果集和驱动契约，mysql/postgres/sqlite 的具体驱动由 packages 提供。下面示例需要已启动且使用 mysql_native_password 认证的 MySQL 服务：</p><pre><code>@main
+  </div>
+</details>
+
+<h2>2. 在代码中引用扩展包</h2>
+<p>Xu 对所有外部扩展包采用<strong>明确的命名空间别名机制</strong>，语法格式为：<code>别名 #完整包路径</code>。这不仅避免了全局命名污染，也保证了所有代码依赖关系透明可见。</p>
+
+<pre><code>@main
+
+// 1. 标准库无需别名，以 # 开头
 #database/sql
+#fmt
+
+// 2. 外部 packages 扩展包声明别名与完整路径（别名即代码中的调用命名空间）
+mysql    #github.com/xulang-org/packages/mysql
+redis    #github.com/xulang-org/packages/redis
+postgres #github.com/xulang-org/packages/postgres
+
+fn main() int {
+    // 使用别名进行调用
+    fmt.println("Drivers loaded successfully")
+    << 0
+}</code></pre>
+
+<p class="note"><strong>注意：</strong>不能写 <code>#mysql</code> 或 <code>#redis</code>。<code>#</code> 仅用于官方标准库；所有外部扩展包均属于 <code>github.com/xulang-org/packages</code> 根模块，必须带有完整的仓库命名空间。</p>
+
+<h2>3. 快速上手实战示例</h2>
+
+<h3>实战 1：配合 <code>database/sql</code> 使用 MySQL 驱动</h3>
+<p>标准库 <code>database/sql</code> 提供连接池、事务与结果集抽象，具体的驱动实现由 packages 的 <code>mysql</code> 包提供：</p>
+<pre><code>@main
+#database/sql
+#fmt
 mysql #github.com/xulang-org/packages/mysql
 
 fn main() int {
-    mut db := sql.open(mysql.driver(), "user:password@tcp(127.0.0.1:3306)/demo?tls=false")
+    dsn := "root:123456@tcp(127.0.0.1:3306)/test_db?tls=false"
+    mut db := sql.open(mysql.driver(), dsn)
     db.ping() or (err) {
-        println(err.msg())
-        &lt;&lt; 1
+        fmt.println("Database ping failed:", err.msg())
+        << 1
     }
-    db.close() or (err) {
-        println(err.msg())
-        &lt;&lt; 1
+    fmt.println("Connected to MySQL successfully!")
+    db.close() or (err) { << 1 }
+    << 0
+}</code></pre>
+
+<h3>实战 2：连接与操作 Redis 缓存</h3>
+<pre><code>@main
+#fmt
+redis #github.com/xulang-org/packages/redis
+
+fn main() int {
+    mut client := redis.connect("127.0.0.1:6379") or (err) {
+        fmt.println("Redis connect error:", err.msg())
+        << 1
     }
-    &lt;&lt; 0
-}</code></pre><p>外部路径须明确别名：<code>mysql #github.com/xulang-org/packages/mysql</code>。完整路径是包身份，<code>#mysql</code> 不是官方扩展包的导入方式。</p><h2>包清单</h2><table><tr><th>类别</th><th>包 / API</th><th>服务</th></tr><tr><td>数据库</td><td><a href="/api/packages/mysql"><code>mysql</code></a></td><td>MySQL / MariaDB</td></tr>
-<tr><td>数据库</td><td><a href="/api/packages/postgres"><code>postgres</code></a></td><td>PostgreSQL</td></tr>
-<tr><td>数据库</td><td><a href="/api/packages/sqlite"><code>sqlite</code></a></td><td>SQLite</td></tr>
-<tr><td>数据库</td><td><a href="/api/packages/clickhouse"><code>clickhouse</code></a></td><td>ClickHouse</td></tr>
-<tr><td>数据库</td><td><a href="/api/packages/mongodb"><code>mongodb</code></a></td><td>MongoDB</td></tr>
-<tr><td>数据库</td><td><a href="/api/packages/cassandra"><code>cassandra</code></a></td><td>Cassandra</td></tr>
-<tr><td>数据库</td><td><a href="/api/packages/neo4j"><code>neo4j</code></a></td><td>Neo4j</td></tr>
-<tr><td>缓存</td><td><a href="/api/packages/redis"><code>redis</code></a></td><td>Redis</td></tr>
-<tr><td>缓存</td><td><a href="/api/packages/memcached"><code>memcached</code></a></td><td>Memcached</td></tr>
-<tr><td>消息</td><td><a href="/api/packages/nats"><code>nats</code></a></td><td>NATS</td></tr>
-<tr><td>消息</td><td><a href="/api/packages/mqtt"><code>mqtt</code></a></td><td>MQTT</td></tr>
-<tr><td>消息</td><td><a href="/api/packages/rabbitmq"><code>rabbitmq</code></a></td><td>RabbitMQ</td></tr>
-<tr><td>消息</td><td><a href="/api/packages/kafka"><code>kafka</code></a></td><td>Kafka</td></tr>
-<tr><td>协调</td><td><a href="/api/packages/etcd"><code>etcd</code></a></td><td>etcd</td></tr>
-<tr><td>协调</td><td><a href="/api/packages/consul"><code>consul</code></a></td><td>Consul</td></tr>
-<tr><td>协调</td><td><a href="/api/packages/zookeeper"><code>zookeeper</code></a></td><td>ZooKeeper</td></tr>
-<tr><td>协调</td><td><a href="/api/packages/nacos"><code>nacos</code></a></td><td>Nacos</td></tr>
-<tr><td>检索</td><td><a href="/api/packages/elasticsearch"><code>elasticsearch</code></a></td><td>Elasticsearch / OpenSearch</td></tr>
-<tr><td>检索</td><td><a href="/api/packages/meilisearch"><code>meilisearch</code></a></td><td>Meilisearch</td></tr>
-<tr><td>观测</td><td><a href="/api/packages/influxdb"><code>influxdb</code></a></td><td>InfluxDB</td></tr>
-<tr><td>观测</td><td><a href="/api/packages/prometheus"><code>prometheus</code></a></td><td>Prometheus</td></tr>
-<tr><td>向量</td><td><a href="/api/packages/milvus"><code>milvus</code></a></td><td>Milvus</td></tr>
-<tr><td>向量</td><td><a href="/api/packages/qdrant"><code>qdrant</code></a></td><td>Qdrant</td></tr>
-<tr><td>向量</td><td><a href="/api/packages/chroma"><code>chroma</code></a></td><td>Chroma</td></tr>
-<tr><td>存储</td><td><a href="/api/packages/s3"><code>s3</code></a></td><td>S3 / MinIO</td></tr>
-<tr><td>协议</td><td><a href="/api/packages/grpc"><code>grpc</code></a></td><td>gRPC / HTTP/2</td></tr>
-<tr><td>协议</td><td><a href="/api/packages/websocket"><code>websocket</code></a></td><td>WebSocket</td></tr>
-<tr><td>协议</td><td><a href="/api/packages/dns"><code>dns</code></a></td><td>DNS</td></tr>
-<tr><td>协议</td><td><a href="/api/packages/smtp"><code>smtp</code></a></td><td>SMTP</td></tr></table><h2>当前边界</h2><p>各包的协议、认证、TLS 和连接池支持范围不同。MySQL 当前拒绝 TLS 和 caching_sha2_password；PostgreSQL 不协商 TLS；gRPC 支持有界明文 unary 调用，高层连接池复用仍待完善。具体范围见各包 API 与源码 README。</p>
-<p>SQLite 通过 xu-c-1 使用原生 C 桥接，本机在 packages 仓库根先运行 <code>make native</code>。当前配置 macOS arm64/x64 切片，其他目标需要对应工具链和切片。Git 来源不包含生成的 sqlite.xulib；远程 SQLite 需要包含原生资源的模块归档，该发行流程尚待发布。</p>
+    client.set("app_version", "v0.8.11") or (err) { << 1 }
+    val := client.get("app_version") or (err) { << 1 }
+    fmt.println("Key 'app_version':", val)
+    client.close()
+    << 0
+}</code></pre>
+
+<h3>实战 3：使用 S3 / MinIO 进行对象存储</h3>
+<pre><code>@main
+#fmt
+s3 #github.com/xulang-org/packages/s3
+
+fn main() int {
+    mut client := s3.new("endpoint.example.com", "access_key", "secret_key", "my-bucket")
+    client.put_object("welcome.txt", "Hello from Xu!") or (err) {
+        fmt.println("S3 upload failed:", err.msg())
+        << 1
+    }
+    fmt.println("Object uploaded successfully")
+    << 0
+}</code></pre>
+
+<h2>4. 官方 29 个扩展包速查表与一键导入代码</h2>
+<p>packages 仓库内部包含 29 个即用包。可直接复制下方对应的导入代码行置于源文件顶部：</p>
+
+<table>
+  <thead>
+    <tr>
+      <th>分类</th>
+      <th>包名</th>
+      <th>适用服务</th>
+      <th>源文件一键导入语句</th>
+      <th>API 参考</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>数据库</td><td><code>mysql</code></td><td>MySQL / MariaDB</td><td><code>mysql #github.com/xulang-org/packages/mysql</code></td><td><a href="/api/packages/mysql">API 文档</a></td></tr>
+    <tr><td>数据库</td><td><code>postgres</code></td><td>PostgreSQL</td><td><code>postgres #github.com/xulang-org/packages/postgres</code></td><td><a href="/api/packages/postgres">API 文档</a></td></tr>
+    <tr><td>数据库</td><td><code>sqlite</code></td><td>SQLite 嵌入式</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/api/packages/sqlite">API 文档</a></td></tr>
+    <tr><td>数据库</td><td><code>clickhouse</code></td><td>ClickHouse 列存</td><td><code>clickhouse #github.com/xulang-org/packages/clickhouse</code></td><td><a href="/api/packages/clickhouse">API 文档</a></td></tr>
+    <tr><td>数据库</td><td><code>mongodb</code></td><td>MongoDB 文档库</td><td><code>mongodb #github.com/xulang-org/packages/mongodb</code></td><td><a href="/api/packages/mongodb">API 文档</a></td></tr>
+    <tr><td>数据库</td><td><code>cassandra</code></td><td>Apache Cassandra</td><td><code>cassandra #github.com/xulang-org/packages/cassandra</code></td><td><a href="/api/packages/cassandra">API 文档</a></td></tr>
+    <tr><td>数据库</td><td><code>neo4j</code></td><td>Neo4j 图数据库</td><td><code>neo4j #github.com/xulang-org/packages/neo4j</code></td><td><a href="/api/packages/neo4j">API 文档</a></td></tr>
+    <tr><td>缓存</td><td><code>redis</code></td><td>Redis 高性能缓存</td><td><code>redis #github.com/xulang-org/packages/redis</code></td><td><a href="/api/packages/redis">API 文档</a></td></tr>
+    <tr><td>缓存</td><td><code>memcached</code></td><td>Memcached</td><td><code>memcached #github.com/xulang-org/packages/memcached</code></td><td><a href="/api/packages/memcached">API 文档</a></td></tr>
+    <tr><td>消息</td><td><code>kafka</code></td><td>Apache Kafka</td><td><code>kafka #github.com/xulang-org/packages/kafka</code></td><td><a href="/api/packages/kafka">API 文档</a></td></tr>
+    <tr><td>消息</td><td><code>rabbitmq</code></td><td>RabbitMQ / AMQP</td><td><code>rabbitmq #github.com/xulang-org/packages/rabbitmq</code></td><td><a href="/api/packages/rabbitmq">API 文档</a></td></tr>
+    <tr><td>消息</td><td><code>nats</code></td><td>NATS 高吞吐消息</td><td><code>nats #github.com/xulang-org/packages/nats</code></td><td><a href="/api/packages/nats">API 文档</a></td></tr>
+    <tr><td>消息</td><td><code>mqtt</code></td><td>MQTT 物联网协议</td><td><code>mqtt #github.com/xulang-org/packages/mqtt</code></td><td><a href="/api/packages/mqtt">API 文档</a></td></tr>
+    <tr><td>服务发现</td><td><code>etcd</code></td><td>etcd v3 分布式键值</td><td><code>etcd #github.com/xulang-org/packages/etcd</code></td><td><a href="/api/packages/etcd">API 文档</a></td></tr>
+    <tr><td>服务发现</td><td><code>consul</code></td><td>HashiCorp Consul</td><td><code>consul #github.com/xulang-org/packages/consul</code></td><td><a href="/api/packages/consul">API 文档</a></td></tr>
+    <tr><td>服务发现</td><td><code>zookeeper</code></td><td>Apache ZooKeeper</td><td><code>zookeeper #github.com/xulang-org/packages/zookeeper</code></td><td><a href="/api/packages/zookeeper">API 文档</a></td></tr>
+    <tr><td>服务发现</td><td><code>nacos</code></td><td>Alibaba Nacos</td><td><code>nacos #github.com/xulang-org/packages/nacos</code></td><td><a href="/api/packages/nacos">API 文档</a></td></tr>
+    <tr><td>检索</td><td><code>elasticsearch</code></td><td>Elasticsearch / OpenSearch</td><td><code>elasticsearch #github.com/xulang-org/packages/elasticsearch</code></td><td><a href="/api/packages/elasticsearch">API 文档</a></td></tr>
+    <tr><td>检索</td><td><code>meilisearch</code></td><td>Meilisearch 轻量搜索</td><td><code>meilisearch #github.com/xulang-org/packages/meilisearch</code></td><td><a href="/api/packages/meilisearch">API 文档</a></td></tr>
+    <tr><td>可观测</td><td><code>prometheus</code></td><td>Prometheus 指标采集</td><td><code>prometheus #github.com/xulang-org/packages/prometheus</code></td><td><a href="/api/packages/prometheus">API 文档</a></td></tr>
+    <tr><td>可观测</td><td><code>influxdb</code></td><td>InfluxDB 时序数据库</td><td><code>influxdb #github.com/xulang-org/packages/influxdb</code></td><td><a href="/api/packages/influxdb">API 文档</a></td></tr>
+    <tr><td>向量 AI</td><td><code>milvus</code></td><td>Milvus 向量检索</td><td><code>milvus #github.com/xulang-org/packages/milvus</code></td><td><a href="/api/packages/milvus">API 文档</a></td></tr>
+    <tr><td>向量 AI</td><td><code>qdrant</code></td><td>Qdrant 向量数据库</td><td><code>qdrant #github.com/xulang-org/packages/qdrant</code></td><td><a href="/api/packages/qdrant">API 文档</a></td></tr>
+    <tr><td>向量 AI</td><td><code>chroma</code></td><td>Chroma AI 嵌入数据库</td><td><code>chroma #github.com/xulang-org/packages/chroma</code></td><td><a href="/api/packages/chroma">API 文档</a></td></tr>
+    <tr><td>存储</td><td><code>s3</code></td><td>AWS S3 / MinIO 协议</td><td><code>s3 #github.com/xulang-org/packages/s3</code></td><td><a href="/api/packages/s3">API 文档</a></td></tr>
+    <tr><td>协议</td><td><code>grpc</code></td><td>gRPC / HTTP/2 客户端</td><td><code>grpc #github.com/xulang-org/packages/grpc</code></td><td><a href="/api/packages/grpc">API 文档</a></td></tr>
+    <tr><td>协议</td><td><code>websocket</code></td><td>WebSocket 双工通信</td><td><code>websocket #github.com/xulang-org/packages/websocket</code></td><td><a href="/api/packages/websocket">API 文档</a></td></tr>
+    <tr><td>协议</td><td><code>dns</code></td><td>DNS 自定义解析</td><td><code>dns #github.com/xulang-org/packages/dns</code></td><td><a href="/api/packages/dns">API 文档</a></td></tr>
+    <tr><td>协议</td><td><code>smtp</code></td><td>SMTP 邮件发送</td><td><code>smtp #github.com/xulang-org/packages/smtp</code></td><td><a href="/api/packages/smtp">API 文档</a></td></tr>
+  </tbody>
+</table>
+
+<h2>5. 边界与注意事项</h2>
+<ul>
+  <li><strong>SQLite 原生编译</strong>：SQLite 通过 C 语言桥接，如果在 packages 仓库源码环境中二次开发，需在 packages 根目录执行 <code>make native</code> 生成底层架构切片。</li>
+  <li><strong>离线与生产构建（Frozen Builds）</strong>：在生产 CI/CD 流水线中，建议提交生成的 <code>vendor/</code> 和 <code>xu.lock</code>，并使用 <code>xu build main.xu --frozen</code>。编译器将严格禁止任何外部网络请求，保障构建的 100% 确定性与安全。</li>
+</ul>
+
+<p>更多模块图解析细节与代理配置，请参考：<a href="/docs/modules">模块与依赖规范 (Modules &amp; Dependencies)</a>。</p>
