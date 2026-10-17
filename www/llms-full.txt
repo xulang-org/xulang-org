@@ -166,13 +166,17 @@ The compiler is invoked via the `xu` CLI:
 Project Manifest: `xu.xun`
 ```xun
 module: myapp
-version: 1.0.0
+version: !ver 0.1.0
 xu: !ver 0.8.12
 
-dependencies:
-  packages/redis: 0.1.1
-  packages/postgres: 0.1.1
+require:
+  "github.com/xulang-org/packages": v0.1.1
 ```
+Installation and lockfile:
+```bash
+xu install
+```
+Dependencies are downloaded to `vendor/` and locked with cryptographic hashes in `xu.lock`. Build with `--offline` or `--frozen` for air-gapped reproducibility.
 
 ---
 
@@ -196,3 +200,26 @@ In standardized 13-task algorithmic benchmarks across ARM64 (Apple Silicon, AWS 
 - **Compilation Speed**: The AOT compiler is designed for sub-second developer turnaround cycles.
 
 For detailed numbers, charts, and reproduction suites, visit: https://xulang.org/benchmarks/
+
+---
+
+## 8. Compiler Architecture & Frequently Asked Questions (FAQ)
+
+### Does the Xu compiler use LLVM? Why a custom native backend?
+**No, the Xu compiler does not use LLVM**.
+The compiler (`src/cmd/compile/`) implements an entirely self-hosted, lightweight Mid-level Intermediate Representation (MIR), linear scan register allocators, and direct machine code emitters. It outputs native Mach-O, ELF, PE, and WebAssembly binaries directly.
+- **Sub-Second Compilation Speed**: LLVM's enormous pass pipeline is the primary reason C++ and Rust suffer from slow compilation. Xu targets Go-like compilation speeds (hundreds of milliseconds for tens of thousands of lines).
+- **Single Compact Binary (~15MB)**: Completely eliminates external C++ runtime libraries (`libLLVM`, `libc++`). The compiler is an autonomous single binary.
+- **Zero-Dependency Native Cross-Compilation**: Built-in instruction encoders (ARM64, x86-64, LoongArch64, RISC-V, WASM) allow cross-compiling with a single flag (`--target linux-arm64`) without host cross-compilers or sysroots.
+- **Direct Semantic Synergy**: High-level ownership and borrow liveness ranges are maintained in MIR, avoiding the abstraction penalty of lowering through generic LLVM IR.
+
+### Does Xu use a garbage collector (GC)?
+**No**. Memory is deterministically reclaimed through compile-time single-ownership tracking and RAII scoping drops, verified by static borrow checking (`&T` and `&mut T`). There are zero Stop-The-World (STW) pauses.
+
+### How does Xu compare to Rust and Go?
+- **Vs. Rust**: Zero runtime overhead and memory safety **without manual lifetime annotations (`<'a>`)**, with first-class language coroutines and channels without external async frameworks.
+- **Vs. Go**: Zero-GC native machine code without runtime STW latency, baseline memory footprint bloat, or background GC threads.
+
+### How are packages installed?
+The official `packages` monorepo supplies 29 production drivers. Specify `require: "github.com/xulang-org/packages": v0.1.1` in `xu.xun` and execute `xu install`. Dependencies are fetched into `vendor/` and secured with `xu.lock`.
+

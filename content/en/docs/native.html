@@ -1,0 +1,149 @@
+<!--title: Native Modules & .xulib Specification-->
+<p class="crumb"><a href="/docs/start">Docs</a></p>
+<h1>Native Modules &amp; .xulib Specification</h1>
+<p class="banner">Xu {{xu_version}} · Native C/C++ Interoperability · Generic .a Archives and Portable .xulib Multi-Target Slices</p>
+
+<p>In systems programming, integrating with existing C/C++ libraries is a foundational requirement. Xu provides first-class native interoperability. Developers frequently ask: <strong>"Why does Xu introduce <code>.xulib</code>? Isn't the standard generic <code>.a</code> (static archive) sufficient?"</strong></p>
+
+<p>This document details Xu's native interoperability design, clarifying the roles of generic static libraries versus <code>.xulib</code>, internal binary container specifications, and the end-to-end build and link pipelines.</p>
+
+<h2>1. Core Conclusion: Generic .a vs. .xulib</h2>
+<ul>
+  <li><strong>Standard Generic <code>.a</code> (Unix Static Archives) are fully supported as first-class citizens</strong>: You can compile standard <code>.a</code> archives with system compilers (such as <code>clang</code>, <code>gcc</code>, or <code>msvc</code>) and link them directly via <code>xu build main.xu module.a</code> or the <code>native:</code> section in <code>xu.xun</code>. Final assembly is performed by your host linker (<code>ld</code>, <code>clang</code>, or <code>lld</code>).</li>
+  <li><strong><code>.xulib</code> is a "Multi-Target Slice Container with ABI Manifest" designed for cross-platform distribution</strong>: It is not a proprietary machine-code format. Internally, it bundles <strong>standard, platform-native <code>.a</code> archive slices</strong>, augmented with strongly-typed manifest contracts (JSON Manifest) and cryptographic SHA-256 integrity checks.</li>
+</ul>
+
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Dimension</th><th>Generic <code>.a</code> Archive</th><th>Portable <code>.xulib</code> Container</th></tr></thead>
+<tbody>
+<tr><td><strong>Primary Use Case</strong></td><td>Single-target development, local ad-hoc debugging, private C integration</td><td>Cross-platform ecosystem distribution, reusable libraries (e.g. <code>packages/sqlite</code>)</td></tr>
+<tr><td><strong>Architecture Scope</strong></td><td>Single target/architecture only (e.g., <code>linux-x64</code> only or <code>macos-arm64</code> only)</td><td><strong>Unified multi-target packaging</strong> (bundles all target slices in a single file)</td></tr>
+<tr><td><strong>Platform Switching</strong></td><td>Requires manual OS/Arch matrix switching in build scripts</td><td><strong>Compiler automatically selects the slice matching <code>--target</code></strong> transparently</td></tr>
+<tr><td><strong>Type Safety</strong></td><td>Bare symbol table only; parameter and return types are lost</td><td><strong>Embedded JSON Manifest &amp; XUOBJ metadata</strong> for compile-time type verification</td></tr>
+<tr><td><strong>Integrity Verification</strong></td><td>No built-in tamper check</td><td>Each slice is verified against its embedded SHA-256 digest upon extraction</td></tr>
+</tbody></table></div>
+
+<h2>2. Why Generic .a Fails at Cross-Platform Package Distribution</h2>
+
+<h3>① Fragmentation Across Systems and Architectures</h3>
+<p>Traditional Unix <code>.a</code> archives created by <code>ar</code> contain object files for only one operating system and CPU architecture (Mach-O on macOS, ELF on Linux, PE/COFF on Windows). While Apple provides Universal Binaries via <code>lipo</code>, it only works within the Apple ecosystem. Without a unified container, a native library author would have to distribute distinct files like <code>sqlite_linux_x64.a</code>, <code>sqlite_macos_arm64.a</code>, and <code>sqlite_windows_x64.a</code>, forcing consumers to write complex platform dispatch logic.</p>
+
+<h3>② Lack of Function Signatures and Type Safety Contracts</h3>
+<p>C symbol tables contain only symbol names (e.g. <code>_sqlite3_open</code>). Without header files, the compiler cannot verify whether function parameters or return types match at compile time, leading to silent link errors or runtime memory corruptions. <code>.xulib</code> embeds type metadata directly in the artifact.</p>
+
+<h3>③ Eliminating Local Toolchain Prerequisites for Consumers</h3>
+<p>Without precompiled multi-target archives, distributing native dependencies forces consumers to compile C code locally during <code>xu install</code>, requiring pre-installed C compilers and header files. <code>.xulib</code> enables package maintainers to publish precompiled multi-platform slices, delivering true zero-dependency installation.</p>
+
+<h2>3. .xulib Internal Binary Structure</h2>
+<p><code>.xulib</code> is a self-describing binary container (specification <code>xulib-1</code>):</p>
+
+<pre><code>+-------------------------------------------------------+
+| Magic (7B): "XULIB\x01\x00"                           |
++-------------------------------------------------------+
+| Version (u16=1) | Flags (u16=0) | Manifest Length (u32)|
++-------------------------------------------------------+
+| JSON Manifest (UTF-8 compact text)                    |
+|   - module: Module identity (e.g. "sqlite_native")     |
+|   - abi: Native ABI protocol version (e.g. "xu-c-1")   |
+|   - exports: Exported functions, param &amp; return types  |
+|   - slices: Target slice descriptors and SHA-256 sums  |
++-------------------------------------------------------+
+| Slice Count (u32)                                     |
++-------------------------------------------------------+
+| Slice Table Entries (one per target):                 |
+|   - target_len (u16) + target_name (e.g. "macos-arm64")|
+|   - kind_len (u8) + kind ("archive" or "object")      |
+|   - file_offset (u64) + file_size (u64)               |
+|   - sha256 (32B binary hash)                          |
++-------------------------------------------------------+
+| Payload Area:                                         |
+|   - Slice 1: Standard Unix .a (Mach-O + xu.o metadata)|
+|   - Slice 2: Standard Unix .a (Linux ELF objects)     |
+|   - Slice 3: Standard .a / .lib (Windows COFF objects)|
++-------------------------------------------------------+</code></pre>
+
+<p class="note"><strong>Clever Dual Compatibility Design</strong>: Slices contain standard object files compiled by host C compilers, but also embed a dedicated <code>.xumeta</code> section (in Mach-O: <code>__DATA,__xumeta</code>). The Xu compiler reads the <code>XUOBJ</code> metadata from this section, while standard host linkers treat it as passive static data.</p>
+
+<h2>4. Compilation &amp; Link Pipeline</h2>
+<pre><code>Source Phase: Write C bridge sources and native.json
+    ↓
+Packaging Phase:
+    xunative compile -> Compile individual .a slices per architecture
+    xunative pack    -> Bundle slices and native.json into module.xulib
+    ↓
+Consumption Phase: Declare in project xu.xun
+    native:
+      sqlite_native: file:./native/sqlite.xulib
+    ↓
+Build Phase (xu build):
+    1. Read Manifest -> Verify types for native function calls
+    2. Match --target -> Extract matching .a slice and verify SHA-256
+    3. Invoke Host Linker -> Statically link Xu objects with extracted .a</code></pre>
+
+<h2>5. Quick Start Example</h2>
+
+<h3>Step 1: Write C Bridge Source</h3>
+<pre><code>#include &lt;stdint.h&gt;
+
+#if defined(__APPLE__)
+#define XU_NATIVE_SYMBOL(name) _xu_native_add_##name
+#else
+#define XU_NATIVE_SYMBOL(name) xu_native_add_##name
+#endif
+
+int64_t XU_NATIVE_SYMBOL(add)(int64_t a, int64_t b) {
+    return a + b;
+}</code></pre>
+
+<h3>Step 2: Define Type Metadata (native.json)</h3>
+<pre><code>{
+  "module": "native_add",
+  "abi": "xu-c-1",
+  "exports": [
+    {"name": "add", "params": ["int", "int"], "ret": "int"}
+  ]
+}</code></pre>
+
+<h3>Step 3: Compile Slices and Pack into .xulib</h3>
+<pre><code># 1. Compile target slices
+python3 path/to/xunative.py compile \
+  --manifest native.json --target macos-arm64 bridge.c -o native/add-arm64.a
+
+python3 path/to/xunative.py compile \
+  --manifest native.json --target macos-x64 bridge.c -o native/add-x64.a
+
+# 2. Pack slices into portable .xulib
+python3 path/to/xunative.py pack \
+  --manifest native.json \
+  --slice macos-arm64=native/add-arm64.a \
+  --slice macos-x64=native/add-x64.a \
+  -o native/native_add.xulib</code></pre>
+
+<h3>Step 4: Use in Project</h3>
+<p>Declare the native mapping in <code>xu.xun</code>:</p>
+<pre><code>module: my_project
+version: !ver 0.1.0
+xu: !ver {{xu_version}}
+
+native:
+  native_add: file:./native/native_add.xulib</code></pre>
+
+<p>Invoke in Xu code with type safety:</p>
+<pre><code>@main
+#fmt
+native_add #native_add
+
+fn main() int {
+    ans := native_add.add(20, 22)
+    fmt.println("Result from C:", ans) // 42
+    << 0
+}</code></pre>
+
+<h2>6. Frequently Asked Questions (FAQ)</h2>
+<p><strong>Q: Can I use plain <code>.a</code> directly if I only target one platform locally?</strong><br>
+A: Yes! You can specify <code>native_add: file:./native/add-arm64.a</code> in <code>xu.xun</code> or pass it on the command line via <code>xu build main.xu ./native/add-arm64.a</code>.</p>
+
+<p><strong>Q: Does <code>.xulib</code> introduce runtime overhead?</strong><br>
+A: <strong>Zero runtime overhead</strong>. <code>.xulib</code> operates purely at compile/link time. The extracted slice is statically linked by the platform linker, producing the exact same binary output as manual static linking.</p>
+
+<p><a href="/docs/modules">Modules &amp; Dependencies</a> · <a href="/docs/packages">External Packages</a> · <a href="/docs/cli">CLI Reference</a></p>

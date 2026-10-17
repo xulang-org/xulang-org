@@ -1,6 +1,24 @@
 <!--title: Toolchain-->
-<p class="crumb"><a href="/en/docs/start">Docs</a> / Language</p>
+<p class="crumb"><a href="/docs/start">Docs</a> / Language</p>
 <h1>Toolchain</h1>
 <p>Xu {{xu_version}} provides <code>build</code>, <code>run</code>, <code>check</code>, <code>test</code>, <code>install</code>, <code>fmt</code>, <code>map</code>, <code>doc</code>, and <code>doctor</code>. Product builds self-host with the Xu compiler; the frozen Rust bootstrap serves as a primer and correctness oracle.</p>
 <p>The default target is the host. Use <code>--target linux-arm64</code> or XUOS/XUARCH for cross-compilation. XUPATH uses <code>:</code> on Unix and <code>;</code> on Windows, independently of the target. External imports still require xu.xun mappings.</p>
-<p>Ordinary AOT builds emit native output directly. Desktop host code and native extensions such as SQLite require their platform toolchains. <code>--emit-obj</code> emits XUOBJ; <code>--shared</code> exports primitive int/bool/string/f64/i32/u32/u8 signatures.</p><p><a href="/en/docs/cli">CLI options</a> · <a href="/en/docs/modules">Dependencies and frozen builds</a></p>
+<p>Ordinary AOT builds emit native output directly. Desktop host code and native extensions such as SQLite require their platform toolchains. <code>--emit-obj</code> emits XUOBJ; <code>--shared</code> exports primitive int/bool/string/f64/i32/u32/u8 signatures.</p>
+
+<h2>Native Inputs &amp; .a / .xulib Specification</h2>
+<p>When compiling executables, <code>xu build</code> and <code>xu run</code> support accepting native static archives on the command line or declaring module mappings in the <code>native:</code> section of <code>xu.xun</code>:</p>
+<pre><code># Command-line input
+xu build main.xu module.a -o main
+xu build main.xu module.xulib -o main
+
+# Or declared in xu.xun
+native:
+  sqlite_native: file:./native/sqlite.xulib</code></pre>
+<p>The toolchain natively supports both standard generic <code>.a</code> (Unix static archives) and portable <code>.xulib</code> multi-target slice containers:</p>
+<ul>
+  <li><strong>Generic <code>.a</code> Archives</strong>: Directly linked on a single platform, suitable for local development and debugging. The archive embeds an object slice (<code>xu.o</code>) containing export signatures, linked by the platform host linker.</li>
+  <li><strong>Portable <code>.xulib</code> Containers</strong>: Designed for cross-platform ecosystem distribution. While generic <code>.a</code> archives are tied to a single architecture and lack parameter/return type contracts, <code>.xulib</code> bundles a strongly-typed JSON Manifest alongside standard <code>.a</code> slices for all target platforms. During <code>xu build</code>, the compiler selects the matching slice by <code>--target</code>, verifies its SHA-256 digest, enforces static type constraints, and produces zero-overhead native machine code.</li>
+</ul>
+<p>The companion tool <code>xunative.py</code> provides <code>compile</code> (C compilation with injected metadata), <code>archive</code> (packaging precompiled objects), and <code>pack</code> (bundling slices into .xulib). Run <code>xu doctor</code> to inspect host linker and C toolchain availability.</p>
+
+<p><a href="/docs/cli">CLI options</a> · <a href="/docs/modules">Dependencies and frozen builds</a> · <a href="/docs/native">Native modules &amp; .xulib</a></p>

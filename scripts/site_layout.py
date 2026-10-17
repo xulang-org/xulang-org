@@ -8,7 +8,9 @@ from string import Template
 DOC_GROUPS = [
     ('xi-bookmark', '起步', 'Start', [
         ('start', '起步', 'Get started'), ('install', '安装', 'Install'),
+        ('faq', '常见问题', 'FAQ'),
         ('modules', '模块与依赖', 'Modules and dependencies'), ('packages', '扩展包', 'External packages'),
+        ('native', '原生模块与 .xulib', 'Native modules & .xulib'),
     ]),
     ('xi-code', '教程', 'Tutorial', [
         (f'tutorial/{i:02}', f'{i:02} {label}', f'{i:02} {label}')
@@ -215,6 +217,11 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             desc = f"Download official Xu v{xu_version} compiler SDK and toolchain for macOS, Linux, and Windows. One-line automated install scripts and release packages."
         else:
             desc = f"下载官方 Xu (v{xu_version}) 编译器 SDK 与工具链（macOS、Linux、Windows）。支持一键自动化安装脚本与原生二进制发行包。"
+    elif bare_path.startswith('docs/faq'):
+        if en:
+            desc = f"Frequently Asked Questions (FAQ) for Xu v{xu_version} — Technical details on custom native backend vs LLVM, zero-GC memory safety, compilation speed, packages & xu install, and concurrency."
+        else:
+            desc = f"Xu 编程语言 (v{xu_version}) 常见问题解答 (FAQ) — 深度解析自研原生后端与不依赖 LLVM 的架构考量、零 GC 内存安全、毫秒级编译速度、packages 与 xu install 依赖体系、WASM 及并发模型。"
     elif bare_path.startswith('docs/tutorial'):
         if en:
             desc = f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
@@ -242,13 +249,80 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             desc = f"{title} — Xu 系统级编程语言官方文档、工具与开发者指南。"
 
     keywords = (
-        "Xu, Xu programming language, xulang, systems programming, AOT compiler, zero GC, memory safety, RAII, coroutines, channels, WebAssembly, WASM, performance benchmarks"
+        "Xu, Xu programming language, xulang, systems programming, AOT compiler, zero GC, memory safety, RAII, coroutines, channels, WebAssembly, WASM, performance benchmarks, LLVM alternative"
         if en else
-        "Xu, Xu语言, 系统级编程语言, AOT编译器, 零GC, 内存安全, 所有权模型, 协程, 信道, WebAssembly, 性能评测"
+        "Xu, Xu语言, 系统级编程语言, AOT编译器, 零GC, 内存安全, 所有权模型, 协程, 信道, WebAssembly, 性能评测, LLVM"
     )
 
     og_type = "website" if bare_path in ('', 'playground', 'benchmarks', 'download', '404') else "article"
     og_locale = "en_US" if en else "zh_CN"
+
+    faq_entities = [
+        {
+            "@type": "Question",
+            "name": "Does the Xu compiler use LLVM? Why a custom native backend?" if en else "Xu 编译器是否使用了 LLVM？为什么采用自研后端？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No, Xu does not use LLVM. The compiler utilizes a completely self-hosted, custom MIR (Mid-level Intermediate Representation), register allocators, and direct machine code emitters that output native Mach-O, ELF, PE, and WASM binaries. LLVM's massive pass pipeline causes slow C++/Rust compile cycles; Xu targets Go-like sub-second compilation speeds, produces a compact single-binary compiler (~15MB), and requires zero external C++ runtime libraries." if en else "没有使用 LLVM。Xu 编译器采用完全自主研发的轻量 MIR（中间表示）、寄存器分配器与直接原生机器码发射器，直出 Mach-O、ELF、PE 与 WASM 二进制。LLVM pass 链庞大沉重，是 C++/Rust 编译龟速的根源；Xu 追求类似 Go 的亚秒级极致编译速度，且编译器本身为单文件极简二进制（约 15MB），零外置 C++ 动态库依赖，真正开箱即用。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Does Xu use a garbage collector (GC)?" if en else "Xu 语言是否有垃圾回收（GC）？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "No. Xu has zero runtime GC overhead and no Stop-The-World (STW) pauses. Memory is managed deterministically through compile-time single-ownership tracking and RAII scoping drop, complemented by static shared (&T) and exclusive (&mut T) borrow checking." if en else "没有。Xu 完全不依赖任何运行时垃圾回收器（Zero GC），没有 Stop-The-World (STW) 暂停。内存由编译期唯一所有权跟踪与 RAII 作用域析构确定性释放，并通过 &T 共享借用与 &mut T 独占借用在编译阶段彻底消除悬垂指针、内存泄漏与多线程数据竞争。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How does Xu compare to Rust and Go?" if en else "Xu 相比 Rust 与 Go 有哪些区别？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Compared to Rust, Xu delivers memory safety and zero runtime overhead without complex lifetime annotations (<'a>), offering first-class language-level coroutines and channels without bulky async runtimes. Compared to Go, Xu compiles to true zero-GC native machine code without runtime STW latency, baseline memory bloat, or background GC threads." if en else "相比 Rust，Xu 在提供同等确定性零成本内存安全的同时，去除了复杂的显式生命周期标注（如 <'a>），并将轻量协程与通信通道作为语言一等公民内置，无需引入笨重的外部异步运行时；相比 Go，Xu 保持了轻快直观的并发体验，但编译为零 GC 原生机器码，完全没有并发三色标记清除 GC 的内存常驻底线与停顿延迟。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How fast are Xu's compilation speed and runtime throughput?" if en else "Xu 的编译速度与实际执行性能如何？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Compilation is blazing fast (typical multi-thousand-line projects compile in hundreds of milliseconds). Runtime performance is top-tier: in our reproducible 13-task algorithmic benchmarks across ARM64 and x86-64, Xu executes within 1.0x–1.2x of optimized C (Clang -O3) and Rust (rustc -O3), with physical memory footprints far lower than GC-based languages." if en else "编译速度极快，由于自研原生后端摆脱了重型中间层，典型数万行工程在数百毫秒内即可完成编译构建；执行性能顶尖，在 13 项严格跨语言同构基准评测中，Xu 在绝大多数计算密集型任务中达到 C (Clang -O3) 与 Rust (rustc -O3) 1.0x~1.2x 的极致执行速度，且物理内存开销显著低于含 GC 运行时的语言。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How are third-party packages installed and referenced?" if en else "如何管理与安装第三方 packages 扩展包？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Zero manual configuration. The official ecosystem monorepo packages provides 29 production-grade drivers (Redis, MySQL, Postgres, Kafka, S3, gRPC, etc.). Simply declare the version in xu.xun (e.g. require: \"github.com/xulang-org/packages\": v0.1.1) and run xu install to fetch dependencies into vendor/ and generate xu.lock." if en else "零手动配置。官方维护了涵盖 29 个常用生产级外部服务驱动的 packages 仓库（Redis、MySQL、Postgres、Kafka、S3、gRPC 等）。开发者只需在 xu.xun 声明版本（如 require: \"github.com/xulang-org/packages\": v0.1.1），执行 xu install 即可一键自动下载并生成校验锁 xu.lock，支持 --offline 离线与 --frozen 生产构建。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "Does Xu support WebAssembly (WASM) out of the box?" if en else "Xu 是否原生支持 WebAssembly (WASM)？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Yes, first-class native support. The compiler directly emits wasm32 binary modules (xu build --target wasm32) without Emscripten or external dependencies. The interactive in-browser Playground on xulang.org compiles the Xu compiler itself directly to WebAssembly to run client-side." if en else "原生一等公民支持。编译器内建 wasm32 直接后端（xu build --target wasm32），无需 Emscripten 或外置工具。官网上的在线演练场（Playground）正是将 Xu 编译器源码直接编译为 WASM，纯浏览器前端运行，免安装即可体验实时语法编译与借用检查。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How does C interoperability (FFI) work in Xu?" if en else "如何与现有 C 语言代码库进行互操作 (C FFI)？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Xu conforms to standard System V and AAPCS native C calling conventions (ABI). You can interface with native C libraries through lightweight bridge shims or export C-compatible dynamic libraries (--shared) to interoperate with OS system APIs or embedded C drivers (such as SQLite in packages)." if en else "Xu 遵循标准 System V / AAPCS 原生 C 调用约定（ABI）。可以通过轻量 C 桥接或直接导出 C ABI 兼容的函数签名与动态库（--shared），无缝集成操作系统原生底层库或嵌入式 C 代码（如 packages 中的 SQLite 驱动）。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What operating systems and CPU architectures are supported?" if en else "Xu 目前支持哪些操作系统与 CPU 芯片架构？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Native multi-platform matrix: operating systems include macOS (Darwin), Linux, Windows (PE AOT), and WebAssembly; hardware architectures include ARM64 (Apple Silicon / AWS Graviton), x86-64 (Intel / AMD), LoongArch64, RISC-V 64/32, and Linux ARM32." if en else "原生支持主流跨端全矩阵：操作系统覆盖 macOS、Linux、Windows (PE AOT) 及 WebAssembly；CPU 架构支持 ARM64 (Apple Silicon / AWS Graviton)、x86-64 (Intel / AMD)、LoongArch64 (龙芯)、RISC-V 64/32 及 Linux ARM32。"
+            }
+        }
+    ]
 
     if not bare_path:
         schema = {
@@ -286,8 +360,30 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
                         "price": "0",
                         "priceCurrency": "USD"
                     }
+                },
+                {
+                    "@type": "FAQPage",
+                    "@id": f"{origin}/#faq",
+                    "name": "Xu Frequently Asked Questions" if en else "Xu 编程语言常见问题解答",
+                    "mainEntity": faq_entities
                 }
             ]
+        }
+    elif bare_path == 'docs/faq':
+        schema = {
+            "@context": "https://schema.org",
+            "@type": "FAQPage",
+            "headline": title,
+            "description": desc,
+            "url": canonical_url,
+            "inLanguage": "en" if en else "zh-CN",
+            "mainEntity": faq_entities,
+            "publisher": {
+                "@type": "Organization",
+                "name": "Xu Programming Language",
+                "url": f"{origin}/",
+                "logo": f"{origin}/xu_classic.svg"
+            }
         }
     else:
         schema = {
