@@ -1,42 +1,188 @@
-<!--title: CLI-->
+<!--title: CLI & Toolchain Reference-->
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
-<h1>CLI</h1>
-<p class="banner">Xu {{xu_version}} · <code>xu --help</code></p>
-<table><tr><th>Command</th><th>Role</th></tr><tr><td><code>xu build &lt;file|dir&gt;</code></td><td>AOT compilation; directories require xu.xun and combine sources without recursion</td></tr>
-<tr><td><code>xu run &lt;file|dir&gt; [-- args]</code></td><td>Compile and run for the host; temporary output is removed unless --output is supplied</td></tr>
-<tr><td><code>xu check &lt;file|dir&gt;</code></td><td>Parse, type-check, and borrow-check without emitting an executable</td></tr>
-<tr><td><code>xu test &lt;file|dir&gt;</code></td><td>Build and run fn test_* from test.&lt;name&gt;.xu files</td></tr>
-<tr><td><code>xu install [dir]</code></td><td>Resolve require:, verify dependencies, and populate vendor; defaults to the current directory</td></tr>
-<tr><td><code>xu fmt [path...] [-w]</code></td><td>Format; -w rewrites files</td></tr>
-<tr><td><code>xu map [path...]</code></td><td>Generate a flowchart; Mermaid by default, --graph opens a canvas</td></tr>
-<tr><td><code>xu doc [path...] [--public] [--serve]</code></td><td>Extract Markdown declarations or start a local XUDOCS preview</td></tr>
-<tr><td><code>xu doctor [--target T]</code></td><td>Check host tools and desktop packaging prerequisites</td></tr>
-<tr><td><code>xu setup [options]</code></td><td>Launch native Setup installer GUI wizard or run silent global install (provided by sibling <code>xu-setup</code>)</td></tr>
-<tr><td><code>xu up</code> / <code>xu update</code></td><td>Download and install the official GitHub release package for this system, updating the compiler, tools and standard library</td></tr>
-<tr><td><code>xu --version</code></td><td>Show the actual compiler version and host target</td></tr></table>
-<h2>Build options</h2><p>Build, run, and test optimize automatically. Use <code>--no-opt</code> to disable optimization or <code>--debug-build</code> for an unoptimized build with DWARF line tables. <code>--debug</code> adds debug information without changing optimization; <code>--timings</code> prints phase statistics. Target <code>--target wasm32</code> compiles directly into standard WebAssembly modules.</p>
-<pre><code>xu build hello.xu --output hello
-xu run hello.xu -- arg1
-xu build hello.xu --debug-build --output hello-debug
-xu build app/main.xu --target wasm32 --output dist/app.wasm
-xu check app/main.xu --offline
-xu build app/main.xu --frozen --output app/program
+<h1>CLI &amp; Toolchain Reference</h1>
+<p class="banner">Xu {{xu_version}} · Unified single-binary driver <code>xu &lt;subcommand&gt; [flags]</code></p>
+
+<p>The <code>xu</code> command line tool uses a unified single-binary driver architecture, integrating the AOT compiler, semantic checker, test runner, dependency package manager, code formatter, documentation extractor, flowchart mapper, and atomic release updater into a single toolchain.</p>
+
+<h2>Subcommand Overview</h2>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Command</th><th>Syntax</th><th>Core Purpose</th></tr></thead>
+<tbody>
+<tr><td><code>build</code></td><td><code>xu build &lt;file|dir&gt; [flags]</code></td><td>AOT compile into native machine executables, shared libraries, WebAssembly modules, or desktop apps</td></tr>
+<tr><td><code>run</code></td><td><code>xu run &lt;file|dir&gt; [flags] [-- args]</code></td><td>Compile and immediately execute on the host machine; cleans up temp artifacts unless <code>-o</code> is provided</td></tr>
+<tr><td><code>check</code></td><td><code>xu check &lt;file|dir&gt; [flags]</code></td><td>Perform lexical, parser, type, and ownership/borrow checking without emitting binary files</td></tr>
+<tr><td><code>test</code></td><td><code>xu test &lt;file|dir&gt; [flags]</code></td><td>Automatically build a test runner and execute <code>fn test_*</code> assertion suites and <code>fn bench_*</code> benchmarks</td></tr>
+<tr><td><code>get</code></td><td><code>xu get &lt;module&gt;@&lt;version&gt; [--offline]</code></td><td><strong>(New in 0.8.12)</strong> Add or update an explicit dependency, write to <code>xu.xun</code>, download to <code>vendor/</code>, and refresh <code>xu.lock</code></td></tr>
+<tr><td><code>install</code></td><td><code>xu install [dir] [--offline]</code></td><td>Resolve the full dependency graph declared in <code>xu.xun</code> via MVS, download to <code>vendor/</code>, and verify locks</td></tr>
+<tr><td><code>fmt</code></td><td><code>xu fmt [path...] [-w]</code></td><td>Format source files according to official style; <code>-w</code> rewrites files in place (defaults to stdout)</td></tr>
+<tr><td><code>doc</code></td><td><code>xu doc [path...] [-o file] [--public] [--serve]</code></td><td>Extract doc comments to Markdown, or start the built-in XUDOCS Web live documentation server</td></tr>
+<tr><td><code>map</code></td><td><code>xu map [path...] [-o file] [--graph]</code></td><td>Analyze code control flows and call graphs to emit Mermaid flowcharts or raw canvas lines</td></tr>
+<tr><td><code>doctor</code></td><td><code>xu doctor [--target T] [--desktop]</code></td><td>Verify host toolchain health, native linkers, C headers, and desktop packaging prerequisites</td></tr>
+<tr><td><code>setup</code></td><td><code>xu setup [--prefix DIR] [-y] [--cli]</code></td><td>Launch the native GUI installer wizard or run silent global environment configuration</td></tr>
+<tr><td><code>up / update</code></td><td><code>xu update [--check] [--version V]</code></td><td>Check and download official GitHub releases to atomically update the local compiler and standard library</td></tr>
+<tr><td><code>env</code></td><td><code>xu env [var...]</code></td><td>Print active toolchain runtime environment variables and effective build configurations</td></tr>
+<tr><td><code>hello</code></td><td><code>xu hello [output]</code></td><td>Directly emit a verified standalone Hello World native executable without needing any source files</td></tr>
+<tr><td><code>--version</code></td><td><code>xu --version</code></td><td>Display compiler version banner, Git identity, and host machine target</td></tr>
+</tbody></table></div>
+
+<h2>1. Compilation &amp; Execution (build / run / check)</h2>
+
+<h3>Input Rules</h3>
+<ul>
+  <li><strong>File input</strong>: <code>xu build main.xu</code>. Single or multiple <code>.xu</code> files are compiled directly.</li>
+  <li><strong>Directory input</strong>: <code>xu build app/</code>. The target directory <strong>must contain a <code>xu.xun</code> manifest</strong>; compiles every <code>*.xu</code> in that directory as one unified package (non-recursive).</li>
+  <li><strong>Native archives</strong>: Supports passing <code>module.a</code> or <code>module.xulib</code> directly on the CLI to link native module archives.</li>
+</ul>
+
+<h3>Cross-Compilation Targets (--target)</h3>
+<p>Every official <code>xu</code> compiler binary natively includes all backend architectures out of the box with zero external cross-compiler toolchain setups:</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Target (<code>--target</code>)</th><th>Operating System &amp; Architecture</th><th>Binary Output Format</th></tr></thead>
+<tbody>
+<tr><td><code>macos-arm64</code></td><td>Apple Silicon macOS</td><td>Mach-O arm64</td></tr>
+<tr><td><code>macos-x64</code></td><td>Intel macOS</td><td>Mach-O x86_64</td></tr>
+<tr><td><code>linux-arm64</code></td><td>Linux aarch64</td><td>ELF 64-bit aarch64</td></tr>
+<tr><td><code>linux-x64</code></td><td>Linux x86_64</td><td>ELF 64-bit x86_64</td></tr>
+<tr><td><code>linux-loongarch64</code></td><td>Linux LoongArch64</td><td>ELF 64-bit loongarch64</td></tr>
+<tr><td><code>linux-riscv64</code></td><td>Linux RISC-V 64</td><td>ELF 64-bit riscv64</td></tr>
+<tr><td><code>linux-arm32</code></td><td>Linux 32-bit ARM (armv7)</td><td>ELF 32-bit armhf</td></tr>
+<tr><td><code>windows-x64</code></td><td>Windows 64-bit x86_64</td><td>PE32+ x86-64</td></tr>
+<tr><td><code>windows-arm64</code></td><td>Windows 64-bit ARM64</td><td>PE32+ ARM64</td></tr>
+<tr><td><code>wasm32</code></td><td>Modern Web Browsers &amp; WASM runtimes</td><td>Standard WebAssembly <code>.wasm</code> (slot ABI, zero host imports)</td></tr>
+<tr><td><code>thumbv7em-none</code></td><td>Cortex-M4/M7 Microcontrollers</td><td>Bare-metal static ELF / firmware binary</td></tr>
+<tr><td><code>riscv32imac-none</code></td><td>32-bit RISC-V Embedded Chips</td><td>Bare-metal firmware binary</td></tr>
+</tbody></table></div>
+
+<h3>Build &amp; Optimization Flags</h3>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>-o, --output &lt;path&gt;</code></td><td>Specify destination binary path. Windows automatically appends <code>.exe</code>.</td></tr>
+<tr><td><code>--no-opt</code></td><td>Disable all MIR optimizations and default register allocation (disables inlining and reduction) for fastest compile speeds.</td></tr>
+<tr><td><code>--debug-build</code></td><td>Unoptimized source build with full DWARF line tables and debug symbols.</td></tr>
+<tr><td><code>--debug</code></td><td>Emit DWARF line tables while preserving full O2-level compiler optimizations.</td></tr>
+<tr><td><code>--timings</code></td><td>Print detailed phase timings across parsing, MIR optimizations, RA, and codegen to stderr.</td></tr>
+<tr><td><code>--offline</code></td><td>Offline build: strictly resolves dependencies from local <code>vendor/</code> or cache without network requests.</td></tr>
+<tr><td><code>--frozen</code></td><td>Frozen build: offline and requires exact matches with <code>xu.lock</code>; rejects any missing dependencies.</td></tr>
+<tr><td><code>--desktop</code></td><td>Desktop packaging mode: invokes <code>xu-desktop</code> to produce macOS <code>.app</code>, Windows <code>.exe</code>, or Linux ELF bundles.</td></tr>
+<tr><td><code>--www &lt;dir&gt;</code></td><td>Desktop packaging: specify an alternate static web asset directory to embed (overrides <code>www/</code>).</td></tr>
+<tr><td><code>--emit-obj</code></td><td>Emit native <code>XUOBJ</code> object files for external system linkers instead of final executables.</td></tr>
+<tr><td><code>--cover</code></td><td>Instrument basic blocks with execution coverage counters.</td></tr>
+</tbody></table></div>
+
+<h3>Examples</h3>
+<pre><code># 1. Compile and execute
+xu build main.xu -o myapp
+xu run main.xu -- --port 8080 --verbose
+
+# 2. Cross-compile directly to WebAssembly
+xu build src/calc.xu --target wasm32 -o dist/calc.wasm
+
+# 3. Production frozen and offline build
+xu build . --frozen -o release/server
+
+# 4. View compiler phase breakdown and register allocation metrics
+xu build main.xu --timings -o server</code></pre>
+
+<h2>2. Automated Testing (test)</h2>
+<p><code>xu test</code> discovers and builds automated test runners. Any source file containing <code>fn test_*</code> (or named <code>test.*.xu</code>) runs natively:</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Option</th><th>Description</th></tr></thead>
+<tbody>
+<tr><td><code>-run &lt;REGEXP&gt;</code></td><td>Filter: only run test functions matching the regular expression.</td></tr>
+<tr><td><code>-v</code></td><td>Verbose: output execution status and elapsed time for each test function.</td></tr>
+<tr><td><code>-count &lt;N&gt;</code></td><td>Repeat the test suite N times (up to 100 times) to diagnose flaky concurrency bugs.</td></tr>
+<tr><td><code>-failfast</code></td><td>Immediately stop after the first assertion failure.</td></tr>
+<tr><td><code>-list</code></td><td>List matching test names and exit 0 without executing tests.</td></tr>
+<tr><td><code>-short</code></td><td>Short run: sets <code>testing.short()</code> to true to skip expensive integration scenarios.</td></tr>
+<tr><td><code>-bench &lt;REGEXP&gt;</code></td><td>Also run performance benchmark functions matching the regex (<code>fn bench_*</code>).</td></tr>
+<tr><td><code>--cover</code></td><td>Collect and display basic-block code coverage statistics upon completion.</td></tr>
+</tbody></table></div>
+
+<pre><code># Run all tests with timing logs
 xu test app/ -v
-xu doc src/net --public --output net.md
-xu doc src/net --public --serve --addr 127.0.0.1:6060</code></pre>
-<p>Directory build/check skip test files. Test options include <code>-run</code>, <code>-v</code>, <code>-count</code>, <code>-failfast</code>, <code>-list</code>, <code>-short</code>, <code>-bench</code>, and <code>--cover</code>. <code>xu lsp</code> is not implemented.</p>
-<h2>Dependency Management (xu install)</h2>
-<p><code>xu install</code> is the built-in, zero-config package installation command. It parses the <code>require:</code> block in your project's <code>xu.xun</code>, resolves the dependency graph via MVS, verifies SHA-256 integrity digests, downloads sources into <code>vendor/</code>, and creates or updates <code>xu.lock</code>:</p>
-<pre><code>xu install                      # Resolve xu.xun in current directory and install to vendor/
-xu install app                  # Target a specific project directory
-xu install --offline            # Offline mode: use local caches only without network calls</code></pre>
-<p>Once installed, no manual paths or build configurations are needed. Simply run <code>xu check main.xu --offline</code> or <code>xu build main.xu</code>. See <a href="/en/docs/packages">Official External Packages</a> and <a href="/en/docs/modules">Modules and Dependencies</a>.</p>
-<h2>Update the toolchain</h2>
-<pre><code>xu up --check
-xu up
-xu update --version {{xu_version}}
-xu update --prefix /path/to/sdk</code></pre>
-<p>The default selects the latest official GitHub Release and downloads the release package matching the host architecture. The installation is atomically replaced after download and verification succeed. <code>--check</code> only checks versions; <code>--force</code> permits reinstalling or downgrading. Development checkouts require <code>--prefix</code> to install to a separate directory.</p>
-<p><code>--target</code> &gt; <code>XUOS</code> + <code>XUARCH</code> &gt; the running compiler’s host target。In PowerShell prefer <code>--output</code>。</p>
-<p><code>--offline</code> / <code>--frozen</code>: <a href="/en/docs/modules">Modules and dependencies</a>。<code>--desktop</code>: <a href="/en/docs/ui">UI / WebView</a>。</p>
-<p class="note"><code>xu doc --serve</code> serves <code>/</code>、<code>/docs.md</code>、<code>/health</code>。Use xu check for diagnostics.</p>
+
+# Run only networking tests and stop on first error
+xu test . -run "net_.*" -failfast
+
+# Execute SHA-256 benchmarks
+xu test . -bench "bench_sha256"</code></pre>
+
+<h2>3. Package &amp; Dependency Management (get / install)</h2>
+
+<p>The 0.8.x series delivers a reproducible, hermetic package management model:</p>
+
+<h3><code>xu get &lt;module&gt;@&lt;version&gt;</code> (New in 0.8.12)</h3>
+<p>Explicitly add or update a dependency root in the current project:</p>
+<pre><code>xu get github.com/xulang-org/packages@v0.1.1</code></pre>
+<ul>
+  <li><strong>Explicit versions required</strong>: Must specify a strict SemVer tag (e.g. <code>@v0.1.1</code>); rejects <code>@latest</code> or open ranges to ensure reproducibility.</li>
+  <li><strong>Transactional safety</strong>: Updates <code>require:</code> in <code>xu.xun</code>, resolves dependencies, downloads sources to <code>vendor/</code>, verifies SHA-256 digests, and writes <code>xu.lock</code>. If network or checksum validation fails, it <strong>automatically rolls back</strong> with zero project corruption.</li>
+  <li><strong>Offline resolution</strong>: Supports <code>xu get &lt;module&gt;@&lt;version&gt; --offline</code> using existing local caches.</li>
+</ul>
+
+<h3><code>xu install [dir]</code></h3>
+<p>Populate and verify the entire vendor tree matching the project's <code>xu.xun</code>:</p>
+<pre><code>xu install                      # Install dependencies for current directory
+xu install --offline            # Offline mode: use local cache (~/.xu/pkg) only</code></pre>
+<p>See <a href="/en/docs/packages">Official Packages Catalog</a> and <a href="/en/docs/modules">Modules and Dependency Specifications</a>.</p>
+
+<h2>4. Code Quality &amp; Documentation (fmt / doc / map)</h2>
+
+<h3><code>xu fmt</code>: Code Formatting</h3>
+<pre><code>xu fmt src/main.xu -w           # Rewrite single file in place
+xu fmt src/ -w                  # Recursively format all .xu sources in src/
+xu fmt main.xu                  # Emit formatted result to stdout without file writes</code></pre>
+
+<h3><code>xu doc</code>: API Extraction &amp; Web Server</h3>
+<pre><code># 1. Extract public API signatures into Markdown
+xu doc src/net --public -o docs/net.md
+
+# 2. Launch built-in XUDOCS Web documentation preview (defaults to 127.0.0.1:6060)
+xu doc src/ --serve --addr 127.0.0.1:8080</code></pre>
+<p class="note">The <code>--serve</code> HTTP server provides interactive navigation at <code>/</code>, raw Markdown at <code>/docs.md</code>, and a <code>/health</code> probe endpoint.</p>
+
+<h3><code>xu map</code>: Code Topologies &amp; Call Graphs</h3>
+<pre><code># Generate Mermaid flowchart diagram
+xu map src/main.xu -o flow.mmd
+
+# Output machine-parseable node and edge data lines for custom visualizers
+xu map src/ --graph</code></pre>
+
+<h2>5. System Maintenance &amp; Updates (doctor / setup / update)</h2>
+
+<h3><code>xu doctor</code>: Diagnostics</h3>
+<pre><code>xu doctor                       # Check host linkers and toolchain health
+xu doctor --desktop             # Verify desktop packaging dependencies (WebKitGTK, GTK4, WebView2, MinGW)</code></pre>
+
+<h3><code>xu setup</code>: Native Installer</h3>
+<p>The companion <code>xu-setup</code> utility includes a self-rendering GUI installer and silent console modes:</p>
+<pre><code>xu setup -y                     # Silent automated install to global PATH and XU_ROOT
+xu setup --prefix /opt/xu -y   # Install into a custom target directory
+xu setup --cli                  # Force CLI interactive mode on headless servers</code></pre>
+
+<h3><code>xu up / xu update</code>: Official Release Updates</h3>
+<p>Upgrade the <code>xu</code> toolchain and standard library atomically from official GitHub Releases:</p>
+<pre><code>xu up --check                   # Check if a new official release is available
+xu up                           # Upgrade to the latest stable release
+xu update --version {{xu_version}}        # Pin or downgrade to a specific version
+xu update --force               # Reinstall the current version</code></pre>
+
+<h2>6. Environment Variables (xu env)</h2>
+<p>Run <code>xu env</code> to inspect active toolchain configurations. Common control variables include:</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Variable</th><th>Default</th><th>Description &amp; Usage</th></tr></thead>
+<tbody>
+<tr><td><code>XU_ROOT</code></td><td><code>~/.xu</code></td><td>Root directory of the active Xu toolchain and compiler installation.</td></tr>
+<tr><td><code>XU_STDLIB_ROOT</code></td><td><code>$XU_ROOT/src</code></td><td>Explicit path to standard library sources.</td></tr>
+<tr><td><code>XUPATH</code></td><td>(empty)</td><td>Package search paths (<code>:</code> on Unix, <code>;</code> on Windows).</td></tr>
+<tr><td><code>XU_CACHE</code></td><td><code>~/.xu/pkg</code></td><td>Local cache directory for remote modules and tarball archives.</td></tr>
+<tr><td><code>XUPROXY</code></td><td><code>direct</code></td><td>Module proxy URL. Use <code>,</code> for 404 fallback and <code>|</code> for network error fallback.</td></tr>
+<tr><td><code>XUPRIVATE</code></td><td>(empty)</td><td>Glob pattern matching private module paths to bypass public proxies.</td></tr>
+<tr><td><code>XUSUMDB</code></td><td><code>direct</code></td><td>Checksum database server; set to <code>off</code> to keep trust-on-first-use (TOFU).</td></tr>
+<tr><td><code>XUOS</code></td><td>(host OS)</td><td>Default target OS when <code>--target</code> is omitted (linux, macos, windows, none).</td></tr>
+<tr><td><code>XUARCH</code></td><td>(host arch)</td><td>Default target arch when <code>--target</code> is omitted (arm64, x64, riscv64, etc.).</td></tr>
+</tbody></table></div>
+
+<p><a href="/en/docs/start">Getting Started</a> · <a href="/en/docs/modules">Modules Specification</a> · <a href="/en/docs/install">Installation Guide</a></p>

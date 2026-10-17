@@ -1,42 +1,188 @@
-<!--title: 命令行-->
+<!--title: 命令行与工具链参考-->
 <p class="crumb"><a href="/docs/start">文档</a></p>
-<h1>命令行</h1>
-<p class="banner">Xu {{xu_version}} · <code>xu --help</code></p>
-<table><tr><th>命令</th><th>作用</th></tr><tr><td><code>xu build &lt;file|dir&gt;</code></td><td>AOT 编译；目录须有 xu.xun，合并当前目录的源码，不递归</td></tr>
-<tr><td><code>xu run &lt;file|dir&gt; [-- args]</code></td><td>编译并运行，仅本机目标；默认清理临时产物，--output 保留产物</td></tr>
-<tr><td><code>xu check &lt;file|dir&gt;</code></td><td>解析、类型与借用检查，不生成可执行文件</td></tr>
-<tr><td><code>xu test &lt;file|dir&gt;</code></td><td>构建测试程序并执行 test.&lt;name&gt;.xu 中的 fn test_*</td></tr>
-<tr><td><code>xu install [dir]</code></td><td>解析 require:，校验依赖并生成 vendor；默认当前目录</td></tr>
-<tr><td><code>xu fmt [path...] [-w]</code></td><td>格式化；-w 原地写回</td></tr>
-<tr><td><code>xu map [path...]</code></td><td>生成流程图；默认 Mermaid，--graph 打开画布</td></tr>
-<tr><td><code>xu doc [path...] [--public] [--serve]</code></td><td>提取 Markdown 声明文档，或启动本地 XUDOCS 预览</td></tr>
-<tr><td><code>xu doctor [--target T]</code></td><td>检查本机工具链与桌面打包环境</td></tr>
-<tr><td><code>xu setup [options]</code></td><td>启动原生 Setup 安装向导或执行静默全局安装（由配套 <code>xu-setup</code> 提供）</td></tr>
-<tr><td><code>xu up</code> / <code>xu update</code></td><td>从 GitHub 下载匹配当前系统的 Release 安装包，更新编译器、工具和标准库</td></tr>
-<tr><td><code>xu --version</code></td><td>显示实际编译器版本与本机目标</td></tr></table>
-<h2>构建选项</h2><p>build、run、test 默认自动优化。<code>--no-opt</code> 关闭优化；<code>--debug-build</code> 生成不优化且带 DWARF 行号的产物。<code>--debug</code> 保持优化并添加调试信息，<code>--timings</code> 打印阶段统计。使用 <code>--target wasm32</code> 可直接生成标准 WebAssembly 模块产物。</p>
-<pre><code>xu build hello.xu --output hello
-xu run hello.xu -- arg1
-xu build hello.xu --debug-build --output hello-debug
-xu build app/main.xu --target wasm32 --output dist/app.wasm
-xu check app/main.xu --offline
-xu build app/main.xu --frozen --output app/program
+<h1>命令行与工具链参考</h1>
+<p class="banner">Xu {{xu_version}} · 统一单二进制驱动 <code>xu &lt;subcommand&gt; [flags]</code></p>
+
+<p><code>xu</code> 采用统一单二进制驱动架构，原生集成了 AOT 编译器、语义检查器、单测运行器、依赖包管理、代码格式化、文档提取、流程图绘制以及在线热更新等完整工具链。</p>
+
+<h2>子命令速查表</h2>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>子命令</th><th>语法</th><th>核心作用</th></tr></thead>
+<tbody>
+<tr><td><code>build</code></td><td><code>xu build &lt;file|dir&gt; [flags]</code></td><td>AOT 编译为原生机器码二进制、共享库、WebAssembly 模块或跨平台桌面程序</td></tr>
+<tr><td><code>run</code></td><td><code>xu run &lt;file|dir&gt; [flags] [-- args]</code></td><td>编译并立即运行（仅限本机架构）；默认自动清理临时产物，指定 <code>-o</code> 可持久化保留</td></tr>
+<tr><td><code>check</code></td><td><code>xu check &lt;file|dir&gt; [flags]</code></td><td>执行词法、语法解析与类型/所有权借用检查，不生成二进制目标文件</td></tr>
+<tr><td><code>test</code></td><td><code>xu test &lt;file|dir&gt; [flags]</code></td><td>自动扫描测试源码并构建运行器，批量执行 <code>fn test_*</code> 与 <code>fn bench_*</code></td></tr>
+<tr><td><code>get</code></td><td><code>xu get &lt;module&gt;@&lt;version&gt; [--offline]</code></td><td><strong>(0.8.12 新增)</strong> 显式添加或升级依赖，写入 <code>xu.xun</code>，下载至 <code>vendor/</code> 并更新 <code>xu.lock</code></td></tr>
+<tr><td><code>install</code></td><td><code>xu install [dir] [--offline]</code></td><td>根据现有 <code>xu.xun</code> 的 <code>require:</code> 规则解析依赖图，批量下载至 <code>vendor/</code> 并校验锁文件</td></tr>
+<tr><td><code>fmt</code></td><td><code>xu fmt [path...] [-w]</code></td><td>按官方统一排版规范格式化源码；<code>-w</code> 原地写回，默认输出到 stdout</td></tr>
+<tr><td><code>doc</code></td><td><code>xu doc [path...] [-o file] [--public] [--serve]</code></td><td>提取文档注释生成 Markdown，或启动内置 XUDOCS Web 实时文档预览服务</td></tr>
+<tr><td><code>map</code></td><td><code>xu map [path...] [-o file] [--graph]</code></td><td>分析源码分支与调用链，生成 Mermaid 流程图或拓扑连线数据</td></tr>
+<tr><td><code>doctor</code></td><td><code>xu doctor [--target T] [--desktop]</code></td><td>检查本机宿主工具链、C 链接器及桌面打包所需依赖库的完整性</td></tr>
+<tr><td><code>setup</code></td><td><code>xu setup [--prefix DIR] [-y] [--cli]</code></td><td>启动原生图形安装向导或执行静默全局环境变量自动配置</td></tr>
+<tr><td><code>up / update</code></td><td><code>xu update [--check] [--version V]</code></td><td>直接从 GitHub Releases 检测并下载官方最新构建，原子热更新本地工具链</td></tr>
+<tr><td><code>env</code></td><td><code>xu env [var...]</code></td><td>打印当前 Xu 编译器工具链的核心环境变量与有效运行配置</td></tr>
+<tr><td><code>hello</code></td><td><code>xu hello [output]</code></td><td>直接生成一份已验证的参考 Hello World 原生二进制，用于快速验证系统执行权限</td></tr>
+<tr><td><code>--version</code></td><td><code>xu --version</code></td><td>显示当前自举编译器的确切版本、Git 标识及本机目标平台</td></tr>
+</tbody></table></div>
+
+<h2>1. 编译与运行 (build / run / check)</h2>
+
+<h3>输入规则</h3>
+<ul>
+  <li><strong>文件输入</strong>：<code>xu build main.xu</code>。单个或多个 <code>.xu</code> 文件直接参与编译。</li>
+  <li><strong>目录输入</strong>：<code>xu build app/</code>。目标目录<strong>必须包含 <code>xu.xun</code> 清单</strong>，会将该目录下所有 <code>*.xu</code> 源码合并编译为一个包，不递归遍历子目录。</li>
+  <li><strong>静态库链接</strong>：支持在命令行直接追加 <code>module.a</code> 或 <code>module.xulib</code> 原生静态库归档参与目标链接。</li>
+</ul>
+
+<h3>全平台交叉编译目标 (--target)</h3>
+<p>Xu 编译器全平台原生内置全部架构后端，无需安装额外工具链即可直接跨平台生成：</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>目标平台 (<code>--target</code>)</th><th>系统与架构</th><th>输出格式</th></tr></thead>
+<tbody>
+<tr><td><code>macos-arm64</code></td><td>Apple Silicon macOS</td><td>Mach-O arm64</td></tr>
+<tr><td><code>macos-x64</code></td><td>Intel macOS</td><td>Mach-O x86_64</td></tr>
+<tr><td><code>linux-arm64</code></td><td>Linux aarch64</td><td>ELF 64-bit aarch64</td></tr>
+<tr><td><code>linux-x64</code></td><td>Linux x86_64</td><td>ELF 64-bit x86_64</td></tr>
+<tr><td><code>linux-loongarch64</code></td><td>Linux 龙芯 LoongArch64</td><td>ELF 64-bit loongarch64</td></tr>
+<tr><td><code>linux-riscv64</code></td><td>Linux RISC-V 64</td><td>ELF 64-bit riscv64</td></tr>
+<tr><td><code>linux-arm32</code></td><td>Linux 32-bit ARM (armv7)</td><td>ELF 32-bit armhf</td></tr>
+<tr><td><code>windows-x64</code></td><td>Windows 64-bit x86_64</td><td>PE32+ x86-64</td></tr>
+<tr><td><code>windows-arm64</code></td><td>Windows 64-bit ARM64</td><td>PE32+ ARM64</td></tr>
+<tr><td><code>wasm32</code></td><td>现代浏览器 / WASM 运行时</td><td>标准 WebAssembly <code>.wasm</code>（内存槽位 ABI，零外部导入）</td></tr>
+<tr><td><code>thumbv7em-none</code></td><td>Cortex-M4/M7 微控制器</td><td>Bare-metal 裸机静态 ELF / 固件二进制</td></tr>
+<tr><td><code>riscv32imac-none</code></td><td>32-bit RISC-V 嵌入式芯片</td><td>Bare-metal 裸机固件二进制</td></tr>
+</tbody></table></div>
+
+<h3>编译与优化选项</h3>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>选项</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>-o, --output &lt;path&gt;</code></td><td>指定输出文件路径。Windows 平台自动附加 <code>.exe</code> 扩展名。</td></tr>
+<tr><td><code>--no-opt</code></td><td>关闭全部 MIR 优化与默认寄存器分配（禁用函数内联与激进折减），极速构建。</td></tr>
+<tr><td><code>--debug-build</code></td><td>无优化构建，同时生成标准 DWARF 行号表与调试信息。</td></tr>
+<tr><td><code>--debug</code></td><td>在保留高优化（O2 级别）的前提下生成 DWARF 行号表。</td></tr>
+<tr><td><code>--timings</code></td><td>在标准错误 stderr 输出解析、MIR 优化、寄存器分配与代码生成的精确阶段耗时统计。</td></tr>
+<tr><td><code>--offline</code></td><td>离线构建模式：仅从本地 <code>vendor/</code> 或缓存目录读取依赖，绝不触发网络请求。</td></tr>
+<tr><td><code>--frozen</code></td><td>冻结构建模式：离线且严格匹配现有的 <code>xu.lock</code>；若依赖缺失或摘要不符则强制失败。</td></tr>
+<tr><td><code>--desktop</code></td><td>图形桌面程序打包模式：调用 <code>xu-desktop</code> 打包（生成 macOS <code>.app</code>、Windows <code>.exe</code>、Linux ELF）。</td></tr>
+<tr><td><code>--www &lt;dir&gt;</code></td><td>桌面打包时指定嵌入的本地静态前端资产目录（覆盖默认 <code>www/</code>）。</td></tr>
+<tr><td><code>--emit-obj</code></td><td>生成目标平台的 <code>XUOBJ</code> 中间对象文件供外部目标链接器使用，而不直接生成可执行文件。</td></tr>
+<tr><td><code>--cover</code></td><td>在基本块插桩覆盖率计数器，用于覆盖率收集与分析。</td></tr>
+</tbody></table></div>
+
+<h3>常用示例</h3>
+<pre><code># 1. 常规编译与运行
+xu build main.xu -o myapp
+xu run main.xu -- --port 8080 --verbose
+
+# 2. 交叉编译为 WebAssembly 模块并在浏览器中使用
+xu build src/calc.xu --target wasm32 -o dist/calc.wasm
+
+# 3. 生产环境严格离线与冻结构建
+xu build . --frozen -o release/server
+
+# 4. 打印编译管线详细性能与耗时统计
+xu build main.xu --timings -o server</code></pre>
+
+<h2>2. 自动化测试 (test)</h2>
+<p><code>xu test</code> 自动识别并编译测试用例。任何包含 <code>fn test_*</code> 的源文件（或 <code>test.*.xu</code>）均可被直接执行：</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>测试选项</th><th>说明</th></tr></thead>
+<tbody>
+<tr><td><code>-run &lt;REGEXP&gt;</code></td><td>正则过滤：仅运行函数名匹配该正则表达式的测试用例。</td></tr>
+<tr><td><code>-v</code></td><td>详细模式：打印每个独立用例的执行状态（<code>PASS</code>/<code>FAIL</code>）与物理耗时。</td></tr>
+<tr><td><code>-count &lt;N&gt;</code></td><td>重复执行测试套件 N 次（最大支持 100 次，用于复现偶发并发问题）。</td></tr>
+<tr><td><code>-failfast</code></td><td>一旦发生第一个断言失败立即停止后续测试。</td></tr>
+<tr><td><code>-list</code></td><td>列出所有符合匹配规则的用例名称并正常退出，不实际执行测试。</td></tr>
+<tr><td><code>-short</code></td><td>快速测试模式：在代码中 <code>testing.short()</code> 将判定为 true，用例可主动跳过耗时场景。</td></tr>
+<tr><td><code>-bench &lt;REGEXP&gt;</code></td><td>同时执行名称匹配正则的性能基准用例（<code>fn bench_*</code>）。</td></tr>
+<tr><td><code>--cover</code></td><td>在测试完成后汇总并打印代码块覆盖率统计数据。</td></tr>
+</tbody></table></div>
+
+<pre><code># 运行项目下所有单测并输出耗时详情
 xu test app/ -v
-xu doc src/net --public --output net.md
-xu doc src/net --public --serve --addr 127.0.0.1:6060</code></pre>
-<p>目录 build/check 跳过测试文件。测试选项包括 <code>-run</code>、<code>-v</code>、<code>-count</code>、<code>-failfast</code>、<code>-list</code>、<code>-short</code>、<code>-bench</code> 与 <code>--cover</code>。<code>xu lsp</code> 仍未实现。</p>
-<h2>依赖安装与管理 (xu install)</h2>
-<p><code>xu install</code> 是官方开箱即用的包管理命令。它自动读取项目根目录下的 <code>xu.xun</code> 清单，根据 <code>require:</code> 规则解析依赖图，校验 SHA-256 完整性摘要并下载源码至本地 <code>vendor/</code>，同时自动建立或更新 <code>xu.lock</code> 校验锁：</p>
-<pre><code>xu install                      # 解析当前目录 xu.xun 并下载所有依赖到 vendor/
-xu install app                  # 指定项目目录进行解析与安装
-xu install --offline            # 离线模式：仅使用本地缓存，不触发网络请求</code></pre>
-<p>安装完成后，无需手动配置任何编译器路径，后续直接运行 <code>xu check main.xu --offline</code> 或 <code>xu build main.xu</code> 即可编译。详见 <a href="/docs/packages">官方扩展包指南</a> 与 <a href="/docs/modules">模块与依赖规范</a>。</p>
-<h2>更新工具链</h2>
-<pre><code>xu up --check
-xu up
-xu update --version {{xu_version}}
-xu update --prefix /path/to/sdk</code></pre>
-<p>默认选择 GitHub 最新正式 Release，下载并验证匹配当前系统架构的发布包。验证通过后原子替换安装目录。<code>--check</code> 只检查版本，<code>--force</code> 允许同版本重新安装或降级。开发仓库须用 <code>--prefix</code> 安装到独立目录，以免覆盖研发源码。</p>
-<p><code>--target</code> &gt; <code>XUOS</code> + <code>XUARCH</code> &gt; 当前编译器的本机目标。PowerShell 建议用 <code>--output</code>。</p>
-<p><code>--offline</code> / <code>--frozen</code>: <a href="/docs/modules">模块与依赖</a>。<code>--desktop</code>: <a href="/docs/ui">UI / WebView</a>。</p>
-<p class="note"><code>xu doc --serve</code> 提供 <code>/</code>、<code>/docs.md</code>、<code>/health</code>。诊断请用 xu check。</p>
+
+# 仅运行匹配网络相关测试，并在遇到第一个错误时中断
+xu test . -run "net_.*" -failfast
+
+# 运行性能基准测试
+xu test . -bench "bench_sha256"</code></pre>
+
+<h2>3. 依赖包管理 (get / install)</h2>
+
+<p>0.8.x 提供了现代化、零外部依赖的中心化包管理体系，彻底杜绝隐式版本带来的供应链漂移：</p>
+
+<h3><code>xu get &lt;module&gt;@&lt;version&gt;</code> (0.8.12 核心新增)</h3>
+<p>在当前项目根目录下显式添加或更新单个依赖模块：</p>
+<pre><code>xu get github.com/xulang-org/packages@v0.1.1</code></pre>
+<ul>
+  <li><strong>显式版本约束</strong>：必须提供精确的 SemVer 版本（如 <code>@v0.1.1</code>）；拒绝使用 <code>@latest</code> 或通配符，从根源确保构建绝对确定性。</li>
+  <li><strong>事务原子保障</strong>：自动解析依赖图、下载源码到本地 <code>vendor/</code>、校验 SHA-256 完整性并更新 <code>xu.xun</code> 和 <code>xu.lock</code>。若过程中断或网络失败，<strong>自动原子回滚</strong>，不破坏现有工程。</li>
+  <li><strong>离线更新</strong>：支持 <code>xu get &lt;module&gt;@&lt;version&gt; --offline</code>，仅使用本地已有的包缓存完成添加。</li>
+</ul>
+
+<h3><code>xu install [dir]</code></h3>
+<p>根据项目 <code>xu.xun</code> 中已声明的 <code>require:</code> 规则，一键还原整个依赖拓扑图至本地 <code>vendor/</code>：</p>
+<pre><code>xu install                      # 还原当前目录项目依赖
+xu install --offline            # 离线模式：仅使用本地全局缓存 (~/.xu/pkg)</code></pre>
+<p>详见 <a href="/docs/packages">官方扩展包列表</a> 与 <a href="/docs/modules">模块与依赖规范细则</a>。</p>
+
+<h2>4. 代码工具与文档 (fmt / doc / map)</h2>
+
+<h3><code>xu fmt</code>：官方标准格式化</h3>
+<pre><code>xu fmt src/main.xu -w           # 原地格式化单个文件
+xu fmt src/ -w                  # 递归格式化 src/ 下的所有 .xu 源码
+xu fmt main.xu                  # 仅将格式化结果输出至终端 stdout，不修改原文件</code></pre>
+
+<h3><code>xu doc</code>：API 文档提取与实时预览</h3>
+<pre><code># 1. 提取所有公开 API 生成 Markdown 文档
+xu doc src/net --public -o docs/net.md
+
+# 2. 启动内置 XUDOCS Web 实时文档服务器 (默认监听 127.0.0.1:6060)
+xu doc src/ --serve --addr 127.0.0.1:8080</code></pre>
+<p class="note"><code>--serve</code> 启动的 HTTP 服务内置提供 <code>/</code> 交互浏览、<code>/docs.md</code> 原始 Markdown 以及 <code>/health</code> 健康检查端点。</p>
+
+<h3><code>xu map</code>：源码拓扑与流程图生成</h3>
+<pre><code># 生成标准 Mermaid flowchart 流程图
+xu map src/main.xu -o flow.mmd
+
+# 输出轻量机器可读的节点与连线数据，供绘图画布渲染
+xu map src/ --graph</code></pre>
+
+<h2>5. 系统维护与在线更新 (doctor / setup / update)</h2>
+
+<h3><code>xu doctor</code>：环境健康体检</h3>
+<pre><code>xu doctor                       # 诊断当前系统 C 链接器与基础编译工具
+xu doctor --desktop             # 诊断桌面打包工具链 (WebKitGTK, GTK4, WebView2, MinGW)</code></pre>
+
+<h3><code>xu setup</code>：原生安装向导</h3>
+<p>配套的 <code>xu-setup</code> 拥有自绘纯原生图形向导与控制台静默模式，可随时重新配置全局环境：</p>
+<pre><code>xu setup -y                     # 静默一键配置全局 PATH 与 XU_ROOT
+xu setup --prefix /opt/xu -y   # 指定目标安装目录进行安装
+xu setup --cli                  # 强制控制台交互模式 (无图形界面的服务器)</code></pre>
+
+<h3><code>xu up / xu update</code>：官方 Release 热升级</h3>
+<p>直接自举更新 <code>xu</code> 自身及伴生工具链，支持自动校验 SHA-256 签名并执行原子替换：</p>
+<pre><code>xu up --check                   # 仅检查官方 GitHub Releases 是否有新版本
+xu up                           # 自动下载并升级至最新正式稳定版
+xu update --version {{xu_version}}        # 锁定并更新/降级至指定版本
+xu update --force               # 强制重新安装当前相同版本</code></pre>
+
+<h2>6. 环境变量与全局配置 (xu env)</h2>
+<p>运行 <code>xu env</code> 可以快速打印当前工具链的有效环境变量配置。常用控制变量如下：</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>环境变量</th><th>默认值</th><th>作用与配置说明</th></tr></thead>
+<tbody>
+<tr><td><code>XU_ROOT</code></td><td><code>~/.xu</code></td><td>当前激活的 Xu 编译器与工具链安装根目录。</td></tr>
+<tr><td><code>XU_STDLIB_ROOT</code></td><td><code>$XU_ROOT/src</code></td><td>显式指定标准库源码所在目录。</td></tr>
+<tr><td><code>XUPATH</code></td><td>空</td><td>模块与包查找根路径（Unix 采用冒号 <code>:</code> 分隔，Windows 采用分号 <code>;</code>）。</td></tr>
+<tr><td><code>XU_CACHE</code></td><td><code>~/.xu/pkg</code></td><td>网络依赖包下载缓存目录。</td></tr>
+<tr><td><code>XUPROXY</code></td><td><code>direct</code></td><td>依赖模块代理服务器 URL。支持多代理逗号 <code>,</code>（404 时回退）与竖线 <code>|</code>（网络错误时回退）。</td></tr>
+<tr><td><code>XUPRIVATE</code></td><td>空</td><td>私有模块前缀通配符，匹配的模块自动绕过代理与公开校验服务。</td></tr>
+<tr><td><code>XUSUMDB</code></td><td><code>direct</code></td><td>固定公钥校验日志服务器；配置为 <code>off</code> 时保持首次使用信任（TOFU）。</td></tr>
+<tr><td><code>XUOS</code></td><td>当前宿主系统</td><td>当省略 <code>--target</code> 时默认采用的目标操作系统（linux, macos, windows, none）。</td></tr>
+<tr><td><code>XUARCH</code></td><td>当前宿主架构</td><td>当省略 <code>--target</code> 时默认采用的目标硬件架构（arm64, x64, riscv64 等）。</td></tr>
+</tbody></table></div>
+
+<p><a href="/docs/start">快速起步</a> · <a href="/docs/modules">模块与依赖规范</a> · <a href="/docs/install">安装指南</a></p>
