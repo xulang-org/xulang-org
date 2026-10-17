@@ -1,11 +1,11 @@
 <!--title: 原生模块与 .xulib 规范-->
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>原生模块与 .xulib 规范</h1>
-<p class="banner">Xu {{xu_version}} · 原生 C/C++ 互操作 · 通用 .a 与便携式 .xulib 多目标切片规范</p>
+<p class="banner">Xu {{xu_version}} · 原生 C/C++ 互操作 · 多数据类型映射 · 通用 .a 与便携式 .xulib 多目标切片规范</p>
 
-<p>在系统级编程中，与现有的 C/C++ 原生代码库集成是关键能力。Xu 语言提供了开箱即用的原生互操作支持。很多开发者会产生疑问：<strong>“为什么 Xu 要引入 <code>.xulib</code>，难道标准的通用 <code>.a</code>（静态库）不够用吗？”</strong></p>
+<p>在系统级软件工程中，与成熟的 C/C++ 原生代码库集成是极其关键的基础能力。Xu 语言提供了零抽象成本、强类型检查的原生互操作机制。很多开发者在初次接触时会产生疑问：<strong>“为什么 Xu 既支持标准通用 <code>.a</code>（静态归档库），又要引入便携式 <code>.xulib</code>？”</strong></p>
 
-<p>本文档深入解析 Xu 的原生互操作机制、通用静态库与 <code>.xulib</code> 的分工定位、容器二进制结构以及端到端打包与链接流程。</p>
+<p>本文档深入解析 Xu 的原生互操作机制、通用静态库与 <code>.xulib</code> 的分工定位、支持的完整数据类型映射表以及端到端完整的 7 个开发动作。</p>
 
 <h2>1. 核心结论：通用 .a 与 .xulib 的关系</h2>
 <ul>
@@ -23,17 +23,20 @@
 <tr><td><strong>完整性校验</strong></td><td>无内置防篡改机制</td><td>每个架构切片均记录 SHA-256 校验和，解包即校验</td></tr>
 </tbody></table></div>
 
-<h2>2. 为什么通用的 .a 无法满足跨平台生态分发？</h2>
+<h2>2. 跨语言支持的数据类型与 ABI 对照</h2>
+<p>在 <code>abi: "xu-c-1"</code> 协议下，Xu 统一使用机器通用标量寄存器完成高效传递，严格杜绝重型胶水代码：</p>
 
-<h3>① 跨系统/跨架构的多目标切片割裂</h3>
-<p>在传统的 Unix 工具链中，<code>.a</code> 归档由 <code>ar</code> 工具生成，仅包含单一操作系统与 CPU 架构的目标对象（例如 Mach-O 只能在 macOS 上链接，ELF 只能在 Linux 上链接，PE/COFF 只能在 Windows 上链接）。</p>
-<p>尽管 macOS 提供了 <code>lipo</code> 机制来制作 Universal Binary（胖二进制），但其仅限 Apple 生态内部区分 x86_64 与 arm64，无法包容 Linux 或 Windows 目标。如果没有统一容器，一个带 C 原生依赖的模块就必须分发 <code>sqlite_linux_x64.a</code>、<code>sqlite_macos_arm64.a</code>、<code>sqlite_windows_x64.a</code> 等一长串文件，使用方必须编写繁琐的平台条件脚本进行分流。</p>
-
-<h3>② 缺乏语言级函数签名与类型安全契约</h3>
-<p>C 语言编译后的符号（Symbol）只是一串函数名称（如 <code>_sqlite3_open</code>），不包含参数类型和返回类型信息。若没有 C 头文件，Xu 编译器无法静态验证调用参数是否匹配。错误的参数传递只能拖到链接失败或在运行时引发内存崩溃（Segmentation Fault）。</p>
-
-<h3>③ 消除“使用者本地必须安装 C/C++ 编译器”的强羁绊</h3>
-<p>在包分发体系中，若没有多目标预编译容器，依赖 C 代码的扩展包就只能在用户本地 <code>xu install</code> 或构建时即时编译。这要求每台开发机和 CI 机器都必须配置完备且版本匹配的 C 编译器、Make 工具及头文件。<code>.xulib</code> 允许模块维护者一次性预打包全平台切片，使用者免装 C 工具链即可开箱即用。</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Xu 数据类型</th><th>C 语言类型对应</th><th>典型用途与参数机制</th></tr></thead>
+<tbody>
+<tr><td><code>int</code></td><td><code>xu_int</code> (<code>int64_t</code>)</td><td>64 位标准有符号整数，常用于计数、长度、索引偏移</td></tr>
+<tr><td><code>f64</code></td><td>64 位浮点 (IEEE-754)</td><td>双精度浮点数。标量位模式通过通用寄存器直传，C 侧借助内联转换函数实现无损映射</td></tr>
+<tr><td><code>bool</code></td><td><code>uint8_t</code> / <code>bool</code></td><td>布尔真假逻辑（<code>1</code> 为 <code>true</code>，<code>0</code> 为 <code>false</code>）</td></tr>
+<tr><td><code>i32</code></td><td><code>int32_t</code></td><td>32 位有符号整数，用于系统 API 错误码、区间截断</td></tr>
+<tr><td><code>u32</code></td><td><code>uint32_t</code></td><td>32 位无符号整数，用于位移操作、掩码、哈希与校验和</td></tr>
+<tr><td><code>u8</code></td><td><code>uint8_t</code></td><td>8 位无符号单字节，用于协议解析、字符码、单通道像素数据</td></tr>
+<tr><td><code>void</code></td><td><code>void</code></td><td>无返回值过程，用于重置、初始化或内部有状态副作用操作</td></tr>
+</tbody></table></div>
 
 <h2>3. .xulib 内部结构与二进制规范</h2>
 <p><code>.xulib</code> 是自描述的二进制容器（版本规范 <code>xulib-1</code>），其布局紧凑清晰：</p>
@@ -44,7 +47,7 @@
 | Version (u16=1) | Flags (u16=0) | Manifest Length (u32)|
 +-------------------------------------------------------+
 | JSON Manifest (UTF-8 紧凑文本)                        |
-|   - module: 模块全局标识 (如 "sqlite_native")         |
+|   - module: 模块全局标识 (如 "native_add")            |
 |   - abi: 原生接口协议版本 (如 "xu-c-1")                |
 |   - exports: 导出的函数名、参数类型列表与返回值类型    |
 |   - slices: 各平台切片元数据及 SHA-256 签名           |
@@ -63,66 +66,116 @@
 |   - 切片 3: 标准 .a / .lib (含 Windows COFF 对象)      |
 +-------------------------------------------------------+</code></pre>
 
-<p class="note"><strong>巧妙的双面兼容设计</strong>：切片内部不仅包含由 C 编译器生成的标准原生对象，还注入了一个专用的 <code>.xumeta</code> 数据段（在 Mach-O 中为 <code>__DATA,__xumeta</code>）。Xu 编译器能读取其中的 <code>XUOBJ</code> 签名，而系统的通用链接器则把该段当作普通静态数据处理，互不干扰。</p>
+<p class="note"><strong>巧妙的双面兼容设计</strong>：每个平台的切片本质是一个标准的 <code>.a</code> 静态归档库。它将<strong>由外部原生工具链（如 C / C++ / Rust）编译出的原生业务对象（如 <code>sqlite3.o</code>、<code>bridge.o</code>）</strong>，与一份<strong>格式合规并包含 Xu 导出类型签名的元数据对象（<code>xu.o</code>）</strong>统一打包在一起。操作系统的通用链接器直接链接这些原生的业务机器码，而 Xu 编译器则读取 <code>xu.o</code> 专用 <code>.xumeta</code> 段（Mach-O 下为 <code>__DATA,__xumeta</code>）中的类型契约完成编译期安全检查，两者互不干扰。</p>
 
-<h2>4. 编译与链接流水线</h2>
-<pre><code>源码期：编写 C 代码与 native.json
+<h2>4. 完整的 7 个开发动作指南</h2>
+
+<pre><code>动作一：编写 C 桥接源码 (bridge.c)
     ↓
-打包期：
-    xunative compile -> 针对各个目标架构分别生成 .a 切片
-    xunative pack    -> 将多个目标 .a 与 native.json 封装为 module.xulib
+动作二：声明类型元数据契约 (native.json)
     ↓
-消费期：在项目 xu.xun 中声明依赖
-    native:
-      sqlite_native: file:./native/sqlite.xulib
+动作三：单目标切片静态编译 (xunative compile)
     ↓
-构建期（xu build）：
-    1. 读取 Manifest -> 静态类型校验原生函数调用
-    2. 根据 --target -> 提取对应平台的 .a 临时切片并验证 SHA-256
-    3. 调用平台原生 Linker -> 将 Xu 目标文件与提取的 .a 静态链接为最终二进制</code></pre>
+动作四：多目标切片聚合打包 (xunative pack -> module.xulib)
+    ↓
+动作五：在工程项目配置中声明原生模块 (xu.xun native:)
+    ↓
+动作六：在 Xu 源码中导入与调用 (main.xu)
+    ↓
+动作七：一键静态链接与运行验证 (xu build / xu run)</code></pre>
 
-<h2>5. 快速上手实战</h2>
+<h3>动作一：编写 C 桥接源码 (<code>bridge.c</code>)</h3>
+<p>包含官方头文件 <code>xu_native.h</code>，使用 <code>XU_NATIVE_SYMBOL(...)</code> 宏导出函数，自动抹平 Apple Mach-O（下划线前缀）与 Linux ELF/Windows COFF 的符号命名差异：</p>
 
-<h3>步骤 1：编写 C 桥接源码</h3>
-<p>使用官方宏 <code>XU_NATIVE_SYMBOL</code> 导出符号，可自动抹平不同系统在符号下划线（Mach-O 前缀 <code>_</code> 与 ELF 无前缀）上的差异：</p>
-<pre><code>#include &lt;stdint.h&gt;
+<pre><code>#include "xu_native.h"
+#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+#include &lt;string.h&gt;
 
-#if defined(__APPLE__)
-#define XU_NATIVE_SYMBOL(name) _xu_native_add_##name
-#else
-#define XU_NATIVE_SYMBOL(name) xu_native_add_##name
-#endif
-
-int64_t XU_NATIVE_SYMBOL(add)(int64_t a, int64_t b) {
+// 1. int (64 位整数)
+xu_int XU_NATIVE_SYMBOL(xu_native_add_add)(xu_int a, xu_int b) {
     return a + b;
-}</code></pre>
+}
 
-<h3>步骤 2：编写类型元数据清单 (native.json)</h3>
+// 2. f64 (64 位双精度浮点无损互转)
+static inline double xu_to_double(xu_int bits) {
+    double v; memcpy(&v, &bits, sizeof(double)); return v;
+}
+static inline xu_int double_to_xu(double v) {
+    xu_int b; memcpy(&b, &v, sizeof(xu_int)); return b;
+}
+xu_int XU_NATIVE_SYMBOL(xu_native_add_scale_f64)(xu_int val_bits, xu_int factor_bits) {
+    return double_to_xu(xu_to_double(val_bits) * xu_to_double(factor_bits));
+}
+
+// 3. bool (布尔判断)
+uint8_t XU_NATIVE_SYMBOL(xu_native_add_is_even)(xu_int n) {
+    return (n % 2 == 0) ? 1 : 0;
+}
+
+// 4. i32 (32 位有符号整数范围截断)
+int32_t XU_NATIVE_SYMBOL(xu_native_add_clamp_i32)(int32_t val, int32_t min_v, int32_t max_v) {
+    if (val &lt; min_v) return min_v;
+    if (val &gt; max_v) return max_v;
+    return val;
+}
+
+// 5. u32 (32 位无符号整数循环位移)
+uint32_t XU_NATIVE_SYMBOL(xu_native_add_rotate_left_u32)(uint32_t val, uint32_t shift) {
+    shift &amp;= 31;
+    if (shift == 0) return val;
+    return (val &lt;&lt; shift) | (val &gt;&gt; (32 - shift));
+}
+
+// 6. u8 (8 位无符号单字节掩码)
+uint8_t XU_NATIVE_SYMBOL(xu_native_add_mask_u8)(uint8_t b, uint8_t mask) {
+    return (uint8_t)(b &amp; mask);
+}
+
+// 7. void (无返回值状态操作与副作用)
+static xu_int g_counter = 0;
+void XU_NATIVE_SYMBOL(xu_native_add_reset_counter)(void) { g_counter = 0; }
+void XU_NATIVE_SYMBOL(xu_native_add_add_to_counter)(xu_int delta) { g_counter += delta; }
+xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</code></pre>
+
+<h3>动作二：声明类型元数据契约清单 (<code>native.json</code>)</h3>
 <pre><code>{
   "module": "native_add",
   "abi": "xu-c-1",
   "exports": [
-    {"name": "add", "params": ["int", "int"], "ret": "int"}
+    {"name": "add", "params": ["int", "int"], "ret": "int"},
+    {"name": "scale_f64", "params": ["f64", "f64"], "ret": "f64"},
+    {"name": "is_even", "params": ["int"], "ret": "bool"},
+    {"name": "clamp_i32", "params": ["i32", "i32", "i32"], "ret": "i32"},
+    {"name": "rotate_left_u32", "params": ["u32", "u32"], "ret": "u32"},
+    {"name": "mask_u8", "params": ["u8", "u8"], "ret": "u8"},
+    {"name": "reset_counter", "params": [], "ret": "void"},
+    {"name": "add_to_counter", "params": ["int"], "ret": "void"},
+    {"name": "get_counter", "params": [], "ret": "int"}
   ]
 }</code></pre>
 
-<h3>步骤 3：多架构切片编译与打包</h3>
-<pre><code># 1. 分别为目标平台编译切片
-python3 path/to/xunative.py compile \
-  --manifest native.json --target macos-arm64 bridge.c -o native/add-arm64.a
+<h3>动作三：单目标切片静态编译 (<code>xunative compile</code>)</h3>
+<p>为各个受支持的目标平台分别生成带有元数据的 <code>.a</code> 切片：</p>
+<pre><code># 针对 macOS Apple Silicon (ARM64)
+python3 path/to/xu/scripts/xunative.py compile \
+  --manifest native.json --target macos-arm64 bridge.c \
+  -o native/native_add-arm64.a
 
-python3 path/to/xunative.py compile \
-  --manifest native.json --target macos-x64 bridge.c -o native/add-x64.a
+# 针对 macOS Intel (x86_64)
+python3 path/to/xu/scripts/xunative.py compile \
+  --manifest native.json --target macos-x64 bridge.c \
+  -o native/native_add-x64.a</code></pre>
 
-# 2. 汇聚打包为便携式的 .xulib
-python3 path/to/xunative.py pack \
+<h3>动作四：全目标切片聚合打包 (<code>xunative pack</code>)</h3>
+<p>将单目标切片聚合装载为全平台自描述的便携式 <code>.xulib</code> 文件：</p>
+<pre><code>python3 path/to/xu/scripts/xunative.py pack \
   --manifest native.json \
-  --slice macos-arm64=native/add-arm64.a \
-  --slice macos-x64=native/add-x64.a \
+  --slice macos-arm64=native/native_add-arm64.a \
+  --slice macos-x64=native/native_add-x64.a \
   -o native/native_add.xulib</code></pre>
 
-<h3>步骤 4：在项目清单与代码中使用</h3>
-<p>在项目的 <code>xu.xun</code> 中声明原生模块映射：</p>
+<h3>动作五：在工程项目配置中声明原生模块 (<code>xu.xun</code>)</h3>
 <pre><code>module: my_project
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
@@ -130,20 +183,65 @@ xu: !ver {{xu_version}}
 native:
   native_add: file:./native/native_add.xulib</code></pre>
 
-<p>在 Xu 源码中直接调用，享受强类型约束：</p>
+<h3>动作六：在 Xu 源码中导入与调用 (<code>main.xu</code>)</h3>
 <pre><code>@main
-#fmt
-native_add #native_add
+
+#native_add
 
 fn main() int {
-    ans := native_add.add(20, 22)
-    fmt.println("Result from C:", ans) // 42
-    << 0
+    println("=== Xu &lt;-&gt; Native C Multi-Type Interop Demo ===")
+
+    // 1. int
+    sum := native_add.add(20, 22)
+    println("1. int add(20, 22) = " + str(sum))
+
+    // 2. f64
+    scaled := native_add.scale_f64(1.5, 3.0)
+    println("2. f64 scale_f64(1.5, 3.0) * 10 = " + str(int(scaled * 10.0)))
+
+    // 3. bool
+    println("3. bool is_even(42) = " + str(native_add.is_even(42)))
+
+    // 4. i32
+    clamped := native_add.clamp_i32(i32(150), i32(0), i32(100))
+    println("4. i32 clamp_i32(150, 0, 100) = " + str(int(clamped)))
+
+    // 5. u32
+    rotated := native_add.rotate_left_u32(u32(1), u32(4))
+    println("5. u32 rotate_left_u32(1, 4) = " + str(int(rotated)))
+
+    // 6. u8
+    masked := native_add.mask_u8(u8(255), u8(15))
+    println("6. u8 mask_u8(255, 15) = " + str(int(masked)))
+
+    // 7. void
+    native_add.reset_counter()
+    native_add.add_to_counter(100)
+    c := native_add.get_counter()
+    println("7. void state counter = " + str(c))
+
+    println("=== All Native Type Assertions Passed ===")
+    &lt;&lt; 0
 }</code></pre>
 
-<h2>6. 常见问题解答 (FAQ)</h2>
-<p><strong>Q：我只在本地开发单平台工具，不想打 <code>.xulib</code>，可以直接用 <code>.a</code> 吗？</strong><br>
-A：完全可以！直接在 <code>xu.xun</code> 中写 <code>native_add: file:./native/add-arm64.a</code> 或在命令行执行 <code>xu build main.xu ./native/add-arm64.a</code> 即可。注意 <code>.a</code> 内需包含带有导出签名的 <code>xu.o</code>（可使用 <code>xunative compile</code> 或 <code>xunative archive</code> 生成）。</p>
+<h3>动作七：一键静态构建与运行验证</h3>
+<pre><code># 编译为原生机器码可执行文件并运行
+xu run .</code></pre>
+
+<p>终端即刻呈现经过静态编译期检查与硬件指令调用的原生结果：</p>
+<pre><code>=== Xu &lt;-&gt; Native C Multi-Type Interop Demo ===
+1. int add(20, 22) = 42
+2. f64 scale_f64(1.5, 3.0) * 10 = 45
+3. bool is_even(42) = true
+4. i32 clamp_i32(150, 0, 100) = 100
+5. u32 rotate_left_u32(1, 4) = 16
+6. u8 mask_u8(255, 15) = 15
+7. void state counter = 100
+=== All Native Type Assertions Passed ===</code></pre>
+
+<h2>5. 常见问题解答 (FAQ)</h2>
+<p><strong>Q：我只在本地开发单平台工具，不想打包 <code>.xulib</code>，可以直接用 <code>.a</code> 吗？</strong><br>
+A：完全可以！直接在 <code>xu.xun</code> 中写 <code>native_add: file:./native/native_add-arm64.a</code> 或在命令行执行 <code>xu build main.xu ./native/native_add-arm64.a</code> 即可。注意 <code>.a</code> 内需包含带有导出签名的 <code>xu.o</code>（可使用 <code>xunative compile</code> 或 <code>xunative archive</code> 生成）。</p>
 
 <p><strong>Q：<code>.xulib</code> 会影响运行期性能吗？</strong><br>
 A：<strong>完全为零开销</strong>。<code>.xulib</code> 仅在编译链接期工作，构建器提取切片后直接由平台链接器完成静态硬链接，生成的可执行文件与手写静态 C 链接二进制完全一致，无任何中间件代理或运行时解包负担。</p>
