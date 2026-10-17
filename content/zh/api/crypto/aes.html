@@ -1,19 +1,93 @@
 <!--title: #crypto/aes-->
-<p class="crumb">API</p>
+<p class="crumb"><a href="/api">API</a> / crypto / aes</p>
 <h1><code>#crypto/aes</code></h1>
 <!--xu-api-version: 0.8.12-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#crypto/aes</code></p>
 <p class="meta">counts: 1 函数, 5 方法, 1 类型, 1 常量, 0 方法集</p>
-<p class="lead">AES-128/192/256 单块。CBC/CTR/GCM 见 crypto/cipher。</p>
+<p class="lead">FIPS-197 AES 高级加密标准（AES-128 / AES-192 / AES-256）单块加密。多分组与工作模式（CBC / CTR / GCM）见 <code>#crypto/cipher</code>。</p>
+
+<h2>模块概述</h2>
+<p><code>#crypto/aes</code> 实现了国家标准与工业通用的 AES（Rijndael）对称分组加密算法。支持 128 位、192 位与 256 位密钥长度，底层具备硬件指令自动加速与纯软件无分支查表自适应能力：</p>
+<ul>
+    <li><strong>密钥与轮数规格</strong>：
+        <ul>
+            <li><strong>AES-128</strong>：密钥长度 16 字节（128 位），10 轮加密。</li>
+            <li><strong>AES-192</strong>：密钥长度 24 字节（192 位），12 轮加密。</li>
+            <li><strong>AES-256</strong>：密钥长度 32 字节（256 位），14 轮加密。</li>
+        </ul>
+    </li>
+    <li><strong>分组长度</strong>：固定为 16 字节（128 位），即 <code>const block_size = 16</code>。</li>
+    <li><strong>硬件加速</strong>：运行时自动嗅探底层 CPU 指令集（x86_64 平台的 <code>AES-NI</code> 或 ARM64 平台的 <code>ARMv8 Cryptography Extensions</code>）。启用硬件加速时，<code>Cipher.hw_accel</code> 为 <code>true</code>，可在不占用 CPU 常规算力的情况下达到线速性能。</li>
+    <li><strong>工作模式与流扩展</strong>：本包专职处理严格的 16 字节底层单块加解密。处理变长明文时，请配合标准库 <a href="/zh/api/crypto/cipher"><code>#crypto/cipher</code></a>：
+        <ul>
+            <li><strong>CBC 模式</strong>：支持 PKCS#7 自动填充（<code>cipher.encrypt_cbc_pkcs7</code> / <code>cipher.decrypt_cbc_pkcs7</code>）。</li>
+            <li><strong>CTR 模式</strong>：基于计数器的流加密（<code>cipher.encrypt_ctr</code> / <code>cipher.decrypt_ctr</code>）。</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>代码示例</h2>
+
+<h3>1. 单块 AES-128 基础加解密</h3>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>示例</span></div><pre><code><span class="syn-prep">@main</span>
+<span class="syn-prep">#crypto/aes</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-comment">// 16 字节密钥（AES-128）</span>
+    key := <span class="syn-str">"0123456789abcdef"</span>
+    c := aes.new_cipher(&amp;key) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"初始化失败: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+
+    <span class="syn-comment">// 单块明文必须正好 16 字节</span>
+    block := <span class="syn-str">"16_bytes_secret!"</span>
+    enc := c.encrypt(&amp;block) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"加密失败: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+
+    dec := c.decrypt(&amp;enc) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"解密失败: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+    assert(dec == block)
+    println(<span class="syn-str">"单块加解密验证成功"</span>)
+    <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">0</span>
+}</code></pre></div>
+
+<h3>2. 搭配 <code>#crypto/cipher</code> 进行变长 AES-CBC + PKCS#7 填充加密</h3>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>示例</span></div><pre><code><span class="syn-prep">@main</span>
+<span class="syn-prep">#crypto/aes</span>
+<span class="syn-prep">#crypto/cipher</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    key := <span class="syn-str">"my-secret-key-16"</span> <span class="syn-comment">// 16 字节密钥</span>
+    iv := <span class="syn-str">"1234567890123456"</span>  <span class="syn-comment">// 16 字节初始向量</span>
+    c := aes.new_cipher(&amp;key) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+
+    <span class="syn-comment">// 任意长度的业务数据（自动 PKCS#7 填充并分块加密）</span>
+    msg := <span class="syn-str">"Xu systems language provides supersonic native AES encryption."</span>
+    enc := cipher.encrypt_cbc_pkcs7(&amp;c, &amp;iv, &amp;msg) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+    dec := cipher.decrypt_cbc_pkcs7(&amp;c, &amp;iv, &amp;enc) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+
+    assert(dec == msg)
+    println(<span class="syn-str">"CBC PKCS#7 解密还原成功"</span>)
+    <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">0</span>
+}</code></pre></div>
+
+<h2>API 详细声明</h2>
+
 <article class="api-item" id="const-block_size">
 <h2><code>const block_size</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> block_size = 16</code></pre></div>
 <h3>用途</h3>
-<p>公开常量 `block_size`。 值为 `16`</p>
+<p>AES 标准分组块长度（固定为 <code>16</code> 字节，即 128 位）。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
+
 <article class="api-item" id="struct-Cipher">
 <h2><code>struct Cipher</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cipher {
@@ -30,97 +104,97 @@
     <span class="syn-kw">pub</span> drk_bytes <span class="syn-type">string</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `Cipher`。</p>
-<h3>参数</h3>
+<p>已初始化的 AES 密码算法实例结构体，包含已编排的轮密钥扩展表、S 盒映射表以及硬件加速特征标识。</p>
+<h3>字段说明</h3>
 <dl class="api-params">
-<dt><code>nr</code> <span class="type">int</span></dt><dd>字段（int）</dd>
-<dt><code>rk</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
-<dt><code>sbox</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
-<dt><code>inv</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
-<dt><code>te</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
-<dt><code>td</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
-<dt><code>erk</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
-<dt><code>drk</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
-<dt><code>hw_accel</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
-<dt><code>rk_bytes</code> <span class="type">string</span></dt><dd>字段（string）</dd>
-<dt><code>drk_bytes</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>nr</code> <span class="type">int</span></dt><dd>加密总轮数（AES-128 为 10，AES-192 为 12，AES-256 为 14）。</dd>
+<dt><code>hw_accel</code> <span class="type">bool</span></dt><dd>是否启用了 CPU 原生硬件加速（如 AES-NI 或 ARMv8 Cryptography）。</dd>
+<dt><code>rk</code> <span class="type">[]int</span></dt><dd>扩展密钥表（32 位整数格式）。</dd>
+<dt><code>rk_bytes</code> <span class="type">string</span></dt><dd>硬件加速轮密钥字节序列。</dd>
+<dt><code>drk_bytes</code> <span class="type">string</span></dt><dd>硬件加速逆轮密钥字节序列。</dd>
 </dl>
 </article>
+
 <article class="api-item" id="new_cipher">
 <h2><code>new_cipher</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> new_cipher(key &amp;<span class="syn-type">string</span>) Cipher</code></pre></div>
 <h3>用途</h3>
-<p>构造 cipher。失败时 throw。</p>
+<p>基于提供的对称密钥创建并初始化 <code>Cipher</code> 实例。根据 <code>key.len</code> 自动选择加密强度：16 字节启用 AES-128，24 字节启用 AES-192，32 字节启用 AES-256。若密钥长度不是 16、24 或 32 字节，则抛出异常（throw <code>"crypto/aes: invalid key size"</code>）。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>key</code> <span class="type">&amp;string</span></dt><dd>键（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>key</code> <span class="type">&amp;string</span></dt><dd>密钥字符串借用，长度必须严格等于 16、24 或 32 字节。</dd>
 </dl>
 <h3>返回</h3>
-<p>Cipher — 该类型的值</p>
+<p><code>Cipher</code> — 已就绪的 AES 加密器实例。</p>
 </article>
+
 <article class="api-item" id="-Cipher-block_size">
 <h2><code>(&amp;Cipher) block_size</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) block_size() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Cipher` 上的方法：块尺寸。</p>
+<p>获取该密码器的分组块尺寸（固定返回 <code>16</code> 字节）。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>接收者 &amp;Cipher（借用）</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>密码器实例借用。</dd>
 </dl>
 <h3>返回</h3>
-<p>int — 该类型的值</p>
+<p><code>int</code> — 块大小（始终为 16）。</p>
 </article>
+
 <article class="api-item" id="-Cipher-encrypt">
 <h2><code>(&amp;Cipher) encrypt</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) encrypt(src &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Cipher` 上的方法：加密。失败时 throw。</p>
+<p>加密单个 16 字节分组。若 <code>src.len != 16</code>，抛出异常（throw <code>"crypto/aes: invalid block size"</code>）。若支持硬件加速，则直接调用底层 CPU 向量指令完成；否则执行高度优化的 32 位 Te 查表置换。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>接收者 &amp;Cipher（借用）</dd>
-<dt><code>src</code> <span class="type">&amp;string</span></dt><dd>源数据（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>密码器实例借用。</dd>
+<dt><code>src</code> <span class="type">&amp;string</span></dt><dd>待加密的单块明文字符串借用，长度必须严格为 16 字节。</dd>
 </dl>
 <h3>返回</h3>
-<p>string — 结果字符串</p>
+<p><code>string</code> — 16 字节密文结果字符串。</p>
 </article>
+
 <article class="api-item" id="-Cipher-encrypt_block">
 <h2><code>(&amp;Cipher) encrypt_block</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) encrypt_block(dst &amp;<span class="syn-kw">mut</span> []<span class="syn-type">int</span>, src &amp;[]<span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Cipher` 上的方法：加密块。失败时 throw。</p>
+<p>在内存数组级别就地加密单个 16 字节块，将 <code>src</code> 的 16 个字节密文写入 <code>dst</code>，免除额外字符串分配开销。若 <code>src.len != 16</code> 或 <code>dst.len != 16</code>，抛出异常。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>接收者 &amp;Cipher（借用）</dd>
-<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>目标（独占借用；类型 &amp;mut []int）</dd>
-<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>源数据（借用，调用方仍持有；类型 &amp;[]int）</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>密码器实例借用。</dd>
+<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>接收密文的目标整型数组（独占可变借用，长度必须为 16）。</dd>
+<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>待加密的明文字节数组（借用，长度必须为 16）。</dd>
 </dl>
 <h3>返回</h3>
-<p>bool — 是否成立</p>
+<p><code>bool</code> — 执行成功返回 <code>true</code>。</p>
 </article>
+
 <article class="api-item" id="-Cipher-decrypt">
 <h2><code>(&amp;Cipher) decrypt</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) decrypt(src &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Cipher` 上的方法：解密。失败时 throw。</p>
+<p>解密单个 16 字节密文分组。若 <code>src.len != 16</code>，抛出异常（throw <code>"crypto/aes: invalid block size"</code>）。返回解密后的 16 字节明文字符串。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>接收者 &amp;Cipher（借用）</dd>
-<dt><code>src</code> <span class="type">&amp;string</span></dt><dd>源数据（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>密码器实例借用。</dd>
+<dt><code>src</code> <span class="type">&amp;string</span></dt><dd>待解密的单块密文字符串借用，长度必须严格为 16 字节。</dd>
 </dl>
 <h3>返回</h3>
-<p>string — 结果字符串</p>
+<p><code>string</code> — 16 字节明文字符串结果。</p>
 </article>
+
 <article class="api-item" id="-Cipher-decrypt_block">
 <h2><code>(&amp;Cipher) decrypt_block</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) decrypt_block(dst &amp;<span class="syn-kw">mut</span> []<span class="syn-type">int</span>, src &amp;[]<span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Cipher` 上的方法：解密块。失败时 throw。</p>
+<p>在内存数组级别就地解密单个 16 字节密文块，将解密出的明文直接写入 <code>dst</code>。若 <code>src.len != 16</code> 或 <code>dst.len != 16</code>，抛出异常。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>接收者 &amp;Cipher（借用）</dd>
-<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>目标（独占借用；类型 &amp;mut []int）</dd>
-<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>源数据（借用，调用方仍持有；类型 &amp;[]int）</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>密码器实例借用。</dd>
+<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>接收明文的目标整型数组（独占可变借用，长度必须为 16）。</dd>
+<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>待解密的密文字节数组（借用，长度必须为 16）。</dd>
 </dl>
 <h3>返回</h3>
-<p>bool — 是否成立</p>
+<p><code>bool</code> — 执行成功返回 <code>true</code>。</p>
 </article>
