@@ -19,6 +19,7 @@
 <tr><td><code>doc</code></td><td><code>xu doc [path...] [-o file] [--public] [--serve]</code></td><td>Extract doc comments to Markdown, or start the built-in XUDOCS Web live documentation server</td></tr>
 <tr><td><code>map</code></td><td><code>xu map [path...] [-o file] [--graph]</code></td><td>Analyze code control flows and call graphs to emit Mermaid flowcharts or raw canvas lines</td></tr>
 <tr><td><code>doctor</code></td><td><code>xu doctor [--target T] [--desktop]</code></td><td>Verify host toolchain health, native linkers, C headers, and desktop packaging prerequisites</td></tr>
+<tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>Native C module compilation, <code>xu.o</code> metadata injection, <code>.xulib</code> multi-target packaging &amp; inspection</td></tr>
 <tr><td><code>setup</code></td><td><code>xu setup [--prefix DIR] [-y] [--cli]</code></td><td>Launch the native GUI installer wizard or run silent global environment configuration</td></tr>
 <tr><td><code>up / update</code></td><td><code>xu update [--check] [--version V]</code></td><td>Check and download official GitHub releases to atomically update the local compiler and standard library</td></tr>
 <tr><td><code>env</code></td><td><code>xu env [var...]</code></td><td>Print active toolchain runtime environment variables and effective build configurations</td></tr>
@@ -182,7 +183,21 @@ xu up                           # Upgrade to the latest stable release
 xu update --version {{xu_version}}        # Pin or downgrade to a specific version
 xu update --force               # Reinstall the current version</code></pre>
 
-<h2>6. Environment Variables (xu env)</h2>
+<h2>6. Native C Modules &amp; Packaging (xu native)</h2>
+<p>The companion tool <code>xu-native</code> is integrated as a first-class subcommand <code>xu native</code>, providing native C bridge building, metadata injection, and multi-slice container bundling without external scripts:</p>
+<pre><code># 1. Compile C sources and inject .xumeta into an archive slice (.a)
+xu native compile --manifest native.json --target macos-arm64 bridge.c -o native/native_add-arm64.a
+
+# 2. Bundle multi-target slices into a portable container (.xulib)
+xu native pack --manifest native.json --slice macos-arm64=native/native_add-arm64.a --slice macos-x64=native/native_add-x64.a -o native/native_add.xulib
+
+# 3. Inspect .xulib slice architectures, sizes, and SHA-256 digests
+xu native inspect native/native_add.xulib
+
+# 4. Extract a target slice from a .xulib container
+xu native extract native/native_add.xulib --target macos-arm64 -o slice.a</code></pre>
+
+<h2>7. Environment Variables (xu env)</h2>
 <p>Run <code>xu env</code> to inspect active toolchain configurations. Common control variables include:</p>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Variable</th><th>Default</th><th>Description &amp; Usage</th></tr></thead>

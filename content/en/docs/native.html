@@ -253,7 +253,7 @@
       <div class="step-badge">3</div>
       <div class="step-body">
         <div class="step-name">Compile Target Slices</div>
-        <div class="step-meta"><code>xunative compile</code> · Generate native machine slices</div>
+        <div class="step-meta"><code>xu native compile</code> · Generate native machine slices</div>
       </div>
     </a>
     <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
@@ -261,7 +261,7 @@
       <div class="step-badge">4</div>
       <div class="step-body">
         <div class="step-name">Pack Portable Archive</div>
-        <div class="step-meta"><code>xunative pack</code> → Multi-platform <code>module.xulib</code></div>
+        <div class="step-meta"><code>xu native pack</code> → Multi-platform <code>module.xulib</code></div>
       </div>
     </a>
     <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
@@ -362,23 +362,25 @@ xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</
   ]
 }</code></pre>
 
-<h3 id="action-3">Action 3: Compile Target Slices (<code>xunative compile</code>)</h3>
+<h3 id="action-3">Action 3: Compile Target Slices (<code>xu native compile</code>)</h3>
 <pre><code class="language-shell"># macOS Apple Silicon (ARM64)
-python3 path/to/xu/scripts/xunative.py compile \
+xu native compile \
   --manifest native.json --target macos-arm64 bridge.c \
   -o native/native_add-arm64.a
 
 # macOS Intel (x86_64)
-python3 path/to/xu/scripts/xunative.py compile \
+xu native compile \
   --manifest native.json --target macos-x64 bridge.c \
   -o native/native_add-x64.a</code></pre>
 
-<h3 id="action-4">Action 4: Pack Multi-Target Archive (<code>xunative pack</code>)</h3>
-<pre><code class="language-shell">python3 path/to/xu/scripts/xunative.py pack \
+<h3 id="action-4">Action 4: Pack Multi-Target Archive (<code>xu native pack</code>)</h3>
+<pre><code class="language-shell">xu native pack \
   --manifest native.json \
   --slice macos-arm64=native/native_add-arm64.a \
   --slice macos-x64=native/native_add-x64.a \
   -o native/native_add.xulib</code></pre>
+
+<p>You can also run <code>xu native inspect native/native_add.xulib</code> to verify container slices and SHA-256 digests, or extract slices with <code>xu native extract</code>.</p>
 
 <h3 id="action-5">Action 5: Declare Native Dependency (<code>xu.xun</code>)</h3>
 <pre><code class="language-xun">module: my_project
@@ -445,7 +447,7 @@ fn main() int {
 
 <h2>5. Frequently Asked Questions (FAQ)</h2>
 <p><strong>Q: Can I use single-platform <code>.a</code> directly without creating a <code>.xulib</code>?</strong><br>
-A: Yes! You can point directly to <code>native_add: file:./native/native_add-arm64.a</code> in <code>xu.xun</code> or pass it on the command line: <code>xu build main.xu ./native/native_add-arm64.a</code>. Ensure the archive contains the <code>xu.o</code> metadata member produced by <code>xunative compile</code> or <code>xunative archive</code>.</p>
+A: Yes! You can point directly to <code>native_add: file:./native/native_add-arm64.a</code> in <code>xu.xun</code> or pass it on the command line: <code>xu build main.xu ./native/native_add-arm64.a</code>. Ensure the archive contains the <code>xu.o</code> metadata member produced by <code>xu native compile</code> or <code>xu native archive</code>.</p>
 
 <p><strong>Q: Does <code>.xulib</code> introduce any runtime overhead?</strong><br>
 A: <strong>Zero runtime overhead</strong>. <code>.xulib</code> operates purely at compile time. The selected slice is directly fed to the native platform linker, producing an identical static binary with zero runtime wrappers.</p>

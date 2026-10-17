@@ -36,7 +36,7 @@ API_GROUPS = [
     ('xi-terminal', 'IO / OS', 'IO / OS', 'io io/fs os os/exec os/signal os/user bufio path log'.split()),
     ('xi-globe', '网络', 'Net', 'net net/http net/http/cookiejar net/http/httptest net/netip net/url'.split()),
     ('xi-binary', '编码', 'Encoding', 'encoding/json encoding/hex encoding/base64'.split()),
-    ('xi-shield-check', '密码与国密', 'Crypto', 'crypto/sm2 crypto/sm3 crypto/sm4 crypto/sm9 crypto/zuc crypto/gmtls crypto/tls crypto/rand crypto/x509/pkix crypto/sha256'.split()),
+    ('xi-shield-check', '密码与国密', 'Crypto', 'crypto/aes crypto/cipher crypto/sm2 crypto/sm3 crypto/sm4 crypto/sm9 crypto/zuc crypto/gmtls crypto/tls crypto/rand crypto/rsa crypto/sha256 crypto/sha512 crypto/sha1 crypto/sha3 crypto/md5 crypto/hmac crypto/x509 crypto/x509/pkix crypto/ecdsa crypto/ed25519 crypto/des crypto/rc4 crypto/subtle crypto/password crypto/jwt'.split()),
     ('xi-package', '压缩 / 图像 / 数学', 'Compress / image / math', 'compress/gzip image math'.split()),
     ('xi-database', '数据库', 'Database', 'database/sql database/sql/driver'.split()),
     ('xi-package', '扩展包', 'External packages', ['packages/' + name for name in

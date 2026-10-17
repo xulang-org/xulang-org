@@ -19,6 +19,7 @@
 <tr><td><code>doc</code></td><td><code>xu doc [path...] [-o file] [--public] [--serve]</code></td><td>提取文档注释生成 Markdown，或启动内置 XUDOCS Web 实时文档预览服务</td></tr>
 <tr><td><code>map</code></td><td><code>xu map [path...] [-o file] [--graph]</code></td><td>分析源码分支与调用链，生成 Mermaid 流程图或拓扑连线数据</td></tr>
 <tr><td><code>doctor</code></td><td><code>xu doctor [--target T] [--desktop]</code></td><td>检查本机宿主工具链、C 链接器及桌面打包所需依赖库的完整性</td></tr>
+<tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>原生 C 模块编译、<code>xu.o</code> 元数据注入、<code>.xulib</code> 便携切片多目标聚合打包与检视提取</td></tr>
 <tr><td><code>setup</code></td><td><code>xu setup [--prefix DIR] [-y] [--cli]</code></td><td>启动原生图形安装向导或执行静默全局环境变量自动配置</td></tr>
 <tr><td><code>up / update</code></td><td><code>xu update [--check] [--version V]</code></td><td>直接从 GitHub Releases 检测并下载官方最新构建，原子热更新本地工具链</td></tr>
 <tr><td><code>env</code></td><td><code>xu env [var...]</code></td><td>打印当前 Xu 编译器工具链的核心环境变量与有效运行配置</td></tr>
@@ -182,7 +183,21 @@ xu up                           # 自动下载并升级至最新正式稳定版
 xu update --version {{xu_version}}        # 锁定并更新/降级至指定版本
 xu update --force               # 强制重新安装当前相同版本</code></pre>
 
-<h2>6. 环境变量与全局配置 (xu env)</h2>
+<h2>6. 原生 C 模块与多目标打包 (xu native)</h2>
+<p>伴生原生工具 <code>xu-native</code> 已全面整合为一级子命令 <code>xu native</code>，负责在不依赖任何额外脚本的情况下完成跨平台原生 C 桥接库的构建、元数据嵌入与多架构切片聚合：</p>
+<pre><code># 1. 编译 C 源码并注入 .xumeta 规范切片 (.a)
+xu native compile --manifest native.json --target macos-arm64 bridge.c -o native/native_add-arm64.a
+
+# 2. 聚合多平台切片为便携式单一分发容器 (.xulib)
+xu native pack --manifest native.json --slice macos-arm64=native/native_add-arm64.a --slice macos-x64=native/native_add-x64.a -o native/native_add.xulib
+
+# 3. 检视 .xulib 容器切片架构、大小与 SHA-256 校验和
+xu native inspect native/native_add.xulib
+
+# 4. 从 .xulib 提取指定目标架构的切片
+xu native extract native/native_add.xulib --target macos-arm64 -o slice.a</code></pre>
+
+<h2>7. 环境变量与全局配置 (xu env)</h2>
 <p>运行 <code>xu env</code> 可以快速打印当前工具链的有效环境变量配置。常用控制变量如下：</p>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>环境变量</th><th>默认值</th><th>作用与配置说明</th></tr></thead>
