@@ -227,12 +227,32 @@ test('Unavailable WASM and unsupported browsers show inline feedback without sta
   }
 });
 
-test('Shell commands retain Copy without a Run action', async () => {
+test('Shell commands retain Copy without a Run action and show terminal controls', async () => {
   const {pres} = await mount({blocks: [{source: 'xu run main.xu'}]});
   const wrapper = pres[0].closest('.code-block-wrapper');
+  assert.ok(wrapper.classList.contains('block-kind-shell'));
+  assert.match(wrapper.querySelector('.code-block-header-title').innerHTML, /terminal-dots/);
   assert.ok(wrapper.querySelector('.code-copy-btn'));
+  assert.match(wrapper.querySelector('.code-copy-btn').innerHTML, /复制命令/);
   assert.equal(wrapper.querySelector('.code-run-btn'), null);
   assert.equal(wrapper.querySelector('.code-edit-btn'), null);
+});
+
+test('CLI help blocks retain Copy without Run action and show help badge', async () => {
+  const {pres} = await mount({blocks: [{source: 'xu help\nUsage: xu <subcommand> [flags]'}]});
+  const wrapper = pres[0].closest('.code-block-wrapper');
+  assert.ok(wrapper.classList.contains('block-kind-help'));
+  assert.ok(wrapper.querySelector('.code-copy-btn'));
+  assert.match(wrapper.querySelector('.code-copy-btn').innerHTML, /复制说明/);
+  assert.equal(wrapper.querySelector('.code-run-btn'), null);
+  assert.equal(wrapper.querySelector('.code-edit-btn'), null);
+});
+
+test('Browser HTMLCollection parent.children without indexOf does not throw', async () => {
+  const {pres} = await mount({blocks: [{source: '@main\nfn main() int { << 0 }'}]});
+  const wrapper = pres[0].closest('.code-block-wrapper');
+  assert.ok(wrapper.classList.contains('block-kind-xu'));
+  assert.ok(wrapper.querySelector('.code-run-btn'));
 });
 
 for (const en of [false, true]) {

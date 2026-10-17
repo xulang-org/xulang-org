@@ -146,17 +146,23 @@
 
       // Check for preceding output indicator in DOM if possible
       var parent = pre.parentNode;
-      if (parent && parent.children) {
-        var idx = parent.children.indexOf(pre);
-        if (idx > 0) {
-          var prev = parent.children[idx - 1];
-          if (prev && prev.textContent) {
-            var prevText = prev.textContent.trim().toLowerCase();
-            if (/^(?:运行输出|输出|output|stdout|stderr)$/i.test(prevText)) {
-              return 'output';
-            }
-          }
+      var prev = pre.previousElementSibling;
+      if (!prev && parent && parent.children) {
+        var children = Array.prototype.slice.call(parent.children);
+        var idx = children.indexOf(pre);
+        if (idx > 0) prev = children[idx - 1];
+      }
+      if (prev && prev.textContent) {
+        var prevText = prev.textContent.trim().toLowerCase();
+        if (/^(?:运行输出|输出|output|stdout|stderr)$/i.test(prevText)) {
+          return 'output';
         }
+      }
+
+      // 0. Explicit or Heuristic CLI Help
+      if (/\blang(?:uage)?-help\b|\bblock-help\b/.test(cls)) return 'help';
+      if (/^(?:xu\s+help\b|xu\s+.*--help\b|usage:|用法:|subcommands:|options:)/i.test(firstLine)) {
+        return 'help';
       }
 
       // 1. ASCII Diagram / Layout / Flowchart / Tree / EBNF
@@ -191,13 +197,13 @@
 
       // 4. Shell / Terminal Commands
       // Note: Must match 'xu run main.xu'
-      if (/^(?:xu\s+(?:run|build|test|fmt|check|doc|map|doctor|setup|install|get|hello|up|update|env|--version|-v)|git\s+|curl\s+|python3?\s+|make\s+|cd\s+|mkdir\s+|clang\s+|gcc\s+|\$)/.test(firstLine) ||
+      if (/^(?:xu\s+(?:run|build|test|fmt|check|doc|map|doctor|setup|install|get|hello|up|update|env|--version|-v)|git\s+|curl\s+|wget\s+|python3?\s+|make\s+|cd\s+|mkdir\s+|clang\s+|gcc\s+|\$|npm\s+|brew\s+|cargo\s+|docker\s+|tar\s+|unzip\s+)/.test(firstLine) ||
           (lines.length === 1 && firstLine.startsWith('xu ')) ||
-          /^XUPROXY=/.test(firstLine)) {
+          /^XUPROXY=|^XU_|^export\s+/.test(firstLine)) {
         return 'shell';
       }
       if (/^#(?:\s+|$)/.test(firstLine) && lines.some(function (l) {
-        return /^(?:xu\s+|python3?\s+|git\s+|curl\s+|make\s+|\$)/.test(l.trim());
+        return /^(?:xu\s+|python3?\s+|git\s+|curl\s+|make\s+|\$|cd\s+|clang\s+|gcc\s+)/.test(l.trim());
       })) {
         return 'shell';
       }
@@ -234,15 +240,20 @@
       var kindMeta = {
         xu: { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: '' },
         api: { icon: 'xi-interface xi-brand', title: isEn ? 'API Signature' : 'API 声明', badge: '<span class="code-badge">Xu</span>' },
-        shell: { icon: 'xi-terminal', title: isEn ? 'Terminal' : '终端命令', badge: '' },
-        diagram: { icon: 'xi-flow', title: isEn ? 'Specification & Flow' : '结构与说明图示', badge: '' },
-        output: { icon: 'xi-terminal-box', title: isEn ? 'Output' : '运行输出', badge: '' },
+        shell: { icon: 'xi-terminal', title: isEn ? 'Terminal' : '终端命令', badge: '<span class="code-badge terminal-badge">SHELL</span>' },
+        help: { icon: 'xi-help-circle', title: isEn ? 'Command Help & Options' : '命令帮助与参数说明', badge: '<span class="code-badge help-badge">' + (isEn ? 'HELP' : '帮助') + '</span>' },
+        diagram: { icon: 'xi-flow', title: isEn ? 'Specification & Architecture' : '结构与说明图示', badge: '<span class="code-badge diagram-badge">SPEC</span>' },
+        output: { icon: 'xi-terminal-box', title: isEn ? 'Output' : '运行输出', badge: '<span class="code-badge output-badge">OUTPUT</span>' },
         c: { icon: 'xi-code', title: isEn ? 'C / C++ Source' : '原生 C 源码', badge: '<span class="code-badge">C/C++</span>' },
         json: { icon: 'xi-file-code', title: isEn ? 'JSON Manifest' : 'JSON 契约清单', badge: '<span class="code-badge">JSON</span>' },
         xun: { icon: 'xi-file-code', title: isEn ? 'xu.xun Manifest' : 'xu.xun 工程清单', badge: '<span class="code-badge">Xun</span>' }
       }[kind] || { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: '' };
 
-      var titleHtml = '<i class="xi ' + kindMeta.icon + '"></i> <span>' + kindMeta.title + '</span>' + (kindMeta.badge ? ' ' + kindMeta.badge : '');
+      var dotsHtml = kind === 'shell'
+        ? '<span class="terminal-dots" aria-hidden="true"><span class="terminal-dot dot-red"></span><span class="terminal-dot dot-yellow"></span><span class="terminal-dot dot-green"></span></span>'
+        : '';
+
+      var titleHtml = dotsHtml + '<i class="xi ' + kindMeta.icon + '"></i> <span>' + kindMeta.title + '</span>' + (kindMeta.badge ? ' ' + kindMeta.badge : '');
 
       var wrapper = pre.closest('.code-block-wrapper');
       var header = null;
@@ -284,19 +295,23 @@
       var actions = document.createElement('div');
       actions.className = 'code-actions';
 
+      var copyLabel = copyText;
+      if (kind === 'shell') copyLabel = isEn ? 'Copy' : '复制命令';
+      else if (kind === 'help') copyLabel = isEn ? 'Copy' : '复制说明';
+
       // 复制按钮
       var copyBtn = document.createElement('button');
       copyBtn.type = 'button';
       copyBtn.className = 'code-action-btn code-copy-btn';
-      copyBtn.innerHTML = '<i class="xi xi-copy"></i> <span>' + copyText + '</span>';
-      copyBtn.title = isEn ? 'Copy code' : '复制代码';
+      copyBtn.innerHTML = '<i class="xi xi-copy"></i> <span>' + copyLabel + '</span>';
+      copyBtn.title = kind === 'shell' ? (isEn ? 'Copy command' : '复制终端命令') : (isEn ? 'Copy code' : '复制代码');
       copyBtn.addEventListener('click', function () {
         navigator.clipboard.writeText(currentCode()).then(function () {
           copyBtn.classList.add('copied');
           copyBtn.innerHTML = '<i class="xi xi-check"></i> <span>' + copiedText + '</span>';
           setTimeout(function () {
             copyBtn.classList.remove('copied');
-            copyBtn.innerHTML = '<i class="xi xi-copy"></i> <span>' + copyText + '</span>';
+            copyBtn.innerHTML = '<i class="xi xi-copy"></i> <span>' + copyLabel + '</span>';
           }, 1500);
         });
       });
@@ -326,7 +341,9 @@
             editorHelp = document.createElement('div');
             editorHelp.className = 'code-editor-help';
             editorHelp.id = editor.id + '-help';
-            editorHelp.textContent = isEn ? 'Run your changes with Run or Ctrl / Cmd + Enter.' : '修改后点击「运行」，或按 Ctrl / Cmd + Enter。';
+            editorHelp.innerHTML = '<i class="xi xi-info-circle"></i> <span>' +
+              (isEn ? 'Run your changes with Run or Ctrl / Cmd + Enter.' : '修改后点击「运行」，或按 Ctrl / Cmd + Enter。') +
+              '</span>';
             editor.setAttribute('aria-describedby', editorHelp.id);
             editor.addEventListener('keydown', function (event) {
               if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
