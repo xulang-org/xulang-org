@@ -125,6 +125,97 @@
         'fn main() int {\n    ' + lines.slice(start).join('\n    ') + '\n    << 0\n}\n';
     }
 
+    function detectBlockKind(pre, rawCode) {
+      var code = pre.querySelector('code');
+      var cls = ((code && code.className) || '') + ' ' + (pre.className || '');
+
+      // Explicit class markers
+      if (/\blang(?:uage)?-(?:sh|bash|shell|cmd)\b|\bblock-shell\b/.test(cls)) return 'shell';
+      if (/\blang(?:uage)?-(?:c|cpp)\b|\bblock-c\b/.test(cls)) return 'c';
+      if (/\blang(?:uage)?-json\b|\bblock-json\b/.test(cls)) return 'json';
+      if (/\blang(?:uage)?-(?:xun|yaml)\b|\bblock-xun\b/.test(cls)) return 'xun';
+      if (/\blang(?:uage)?-(?:diagram|ascii|tree)\b|\bblock-diagram\b/.test(cls)) return 'diagram';
+      if (/\blang(?:uage)?-(?:output|console)\b|\bblock-output\b/.test(cls)) return 'output';
+      if (/\bblock-api\b/.test(cls)) return 'api';
+      if (/\blang(?:uage)?-xu\b|\bblock-xu\b/.test(cls)) return 'xu';
+
+      if (pre.closest && pre.closest('.api-item')) return 'api';
+
+      var lines = rawCode.split('\n');
+      var firstLine = lines[0].trim();
+
+      // Check for preceding output indicator in DOM if possible
+      var parent = pre.parentNode;
+      if (parent && parent.children) {
+        var idx = parent.children.indexOf(pre);
+        if (idx > 0) {
+          var prev = parent.children[idx - 1];
+          if (prev && prev.textContent) {
+            var prevText = prev.textContent.trim().toLowerCase();
+            if (/^(?:运行输出|输出|output|stdout|stderr)$/i.test(prevText)) {
+              return 'output';
+            }
+          }
+        }
+      }
+
+      // 1. ASCII Diagram / Layout / Flowchart / Tree / EBNF
+      if (/^[+]{3,}|^[+]-+|^[|].*[|]$|^┌─|^└──|^├──/.test(firstLine)) {
+        return 'diagram';
+      }
+      if (lines.filter(function (l) { return /^[+]-+[-+]+$/.test(l.trim()) || /^[|].*[|]$/.test(l.trim()); }).length >= 2) {
+        return 'diagram';
+      }
+      if (lines.some(function (l) { return /^[ \t]*(?:↓|->|-->|=>|▼|▲)[ \t]*$/.test(l); })) {
+        return 'diagram';
+      }
+      if (/^[A-Za-z0-9_.-]+\/(?:[ \t]*\n)?/.test(rawCode) && (rawCode.indexOf('├──') !== -1 || rawCode.indexOf('└──') !== -1)) {
+        return 'diagram';
+      }
+      if (/^File\s*=\s*"@"/.test(rawCode) || (rawCode.indexOf('=') !== -1 && rawCode.indexOf('{') !== -1 && rawCode.indexOf('}') !== -1 && lines.some(function (l) { return /\.\s*$/.test(l.trim()); }))) {
+        return 'diagram';
+      }
+
+      // 2. Command Output
+      if (/^===\s*.*===\s*$/.test(firstLine) || /^(?:exit\s+\d+|output:\s*)/i.test(firstLine)) {
+        return 'output';
+      }
+      if (/^[0-9\s]+$/.test(rawCode) && lines.length <= 6 && !lines.some(function (l) { return l.indexOf(';') !== -1 || l.indexOf('=') !== -1; })) {
+        return 'output';
+      }
+
+      // 3. C / C++ Source Code
+      if (/^#include\s+[<"]/.test(firstLine) || /\bXU_NATIVE_SYMBOL\b/.test(rawCode) || /\bxu_int\b/.test(rawCode)) {
+        return 'c';
+      }
+
+      // 4. Shell / Terminal Commands
+      // Note: Must match 'xu run main.xu'
+      if (/^(?:xu\s+(?:run|build|test|fmt|check|doc|map|doctor|setup|install|get|hello|up|update|env|--version|-v)|git\s+|curl\s+|python3?\s+|make\s+|cd\s+|mkdir\s+|clang\s+|gcc\s+|\$)/.test(firstLine) ||
+          (lines.length === 1 && firstLine.startsWith('xu ')) ||
+          /^XUPROXY=/.test(firstLine)) {
+        return 'shell';
+      }
+      if (/^#(?:\s+|$)/.test(firstLine) && lines.some(function (l) {
+        return /^(?:xu\s+|python3?\s+|git\s+|curl\s+|make\s+|\$)/.test(l.trim());
+      })) {
+        return 'shell';
+      }
+
+      // 5. JSON Manifest
+      if ((firstLine === '{' || firstLine.startsWith('{')) && rawCode.endsWith('}') &&
+          (rawCode.indexOf('"module"') !== -1 || rawCode.indexOf('"abi"') !== -1 || rawCode.indexOf('"slices"') !== -1)) {
+        return 'json';
+      }
+
+      // 6. Xun Manifest (xu.xun)
+      if (/^module:\s+/m.test(rawCode) && (rawCode.indexOf('native:') !== -1 || rawCode.indexOf('require:') !== -1 || rawCode.indexOf('version:') !== -1)) {
+        return 'xun';
+      }
+
+      return 'xu';
+    }
+
     var pres = document.querySelectorAll('main.doc pre, main.home pre, .api-item pre');
     pres.forEach(function (pre) {
       if (pre.closest('#bench-src-modal') || pre.classList.contains('xu-play-out') || pre.querySelector('.code-actions')) return;
@@ -137,12 +228,28 @@
       var editorHelp = null;
       function currentCode() { return editor ? editor.value : rawCode; }
 
+      var kind = detectBlockKind(pre, rawCode);
+      var isRunnable = kind === 'xu' || kind === 'api';
+
+      var kindMeta = {
+        xu: { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: '' },
+        api: { icon: 'xi-interface xi-brand', title: isEn ? 'API Signature' : 'API 声明', badge: '<span class="code-badge">Xu</span>' },
+        shell: { icon: 'xi-terminal', title: isEn ? 'Terminal' : '终端命令', badge: '' },
+        diagram: { icon: 'xi-flow', title: isEn ? 'Specification & Flow' : '结构与说明图示', badge: '' },
+        output: { icon: 'xi-terminal-box', title: isEn ? 'Output' : '运行输出', badge: '' },
+        c: { icon: 'xi-code', title: isEn ? 'C / C++ Source' : '原生 C 源码', badge: '<span class="code-badge">C/C++</span>' },
+        json: { icon: 'xi-file-code', title: isEn ? 'JSON Manifest' : 'JSON 契约清单', badge: '<span class="code-badge">JSON</span>' },
+        xun: { icon: 'xi-file-code', title: isEn ? 'xu.xun Manifest' : 'xu.xun 工程清单', badge: '<span class="code-badge">Xun</span>' }
+      }[kind] || { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: '' };
+
+      var titleHtml = '<i class="xi ' + kindMeta.icon + '"></i> <span>' + kindMeta.title + '</span>' + (kindMeta.badge ? ' ' + kindMeta.badge : '');
+
       var wrapper = pre.closest('.code-block-wrapper');
       var header = null;
 
       if (!wrapper) {
         wrapper = document.createElement('div');
-        wrapper.className = 'code-block-wrapper';
+        wrapper.className = 'code-block-wrapper block-kind-' + kind;
         pre.parentNode.insertBefore(wrapper, pre);
 
         header = document.createElement('div');
@@ -150,17 +257,25 @@
 
         var titleSpan = document.createElement('span');
         titleSpan.className = 'code-block-header-title';
-        titleSpan.innerHTML = '<i class="xi xi-code xi-brand"></i> <span>Xu</span>';
+        titleSpan.innerHTML = titleHtml;
         header.appendChild(titleSpan);
 
         wrapper.appendChild(header);
         wrapper.appendChild(pre);
       } else {
+        wrapper.classList.add('block-kind-' + kind);
         header = wrapper.querySelector('.code-block-header');
         if (!header) {
           header = document.createElement('div');
           header.className = 'code-block-header';
           wrapper.insertBefore(header, wrapper.firstChild);
+        }
+        var titleSpan = header.querySelector('.code-block-header-title');
+        if (!titleSpan) {
+          titleSpan = document.createElement('span');
+          titleSpan.className = 'code-block-header-title';
+          titleSpan.innerHTML = titleHtml;
+          header.insertBefore(titleSpan, header.firstChild);
         }
       }
 
@@ -168,9 +283,6 @@
 
       var actions = document.createElement('div');
       actions.className = 'code-actions';
-
-      var firstLine = rawCode.split('\n')[0].trim();
-      var isShellCommand = /^(xu\s+(run|build|test|fmt)|git\s+|curl\s+|#(?:\s|!)|\$)/.test(firstLine) || (rawCode.indexOf('\n') === -1 && firstLine.startsWith('xu '));
 
       // 复制按钮
       var copyBtn = document.createElement('button');
@@ -190,8 +302,8 @@
       });
       actions.appendChild(copyBtn);
 
-      // 执行按钮（针对 Xu 代码）
-      if (!isShellCommand) {
+      // 执行按钮（针对可执行 Xu 代码与 API 沙盒）
+      if (isRunnable) {
         var editBtn = document.createElement('button');
         editBtn.type = 'button';
         editBtn.className = 'code-action-btn code-edit-btn';

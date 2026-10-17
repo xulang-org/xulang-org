@@ -4,13 +4,13 @@
 <p class="banner">Xu {{xu_version}} · 0.8.4 签名校验日志 · 0.8.6 依赖图快照重构 · 0.8.8 跨架构依赖验证与构建分发规范</p>
 <p>目录项目使用 <code>xu.xun</code>。<code>module:</code> 是模块身份，<code>version:</code> 是模块自身版本，<code>xu:</code> 是所用 Xu 版本。外部导入必须明确别名，并在 <code>require:</code> 中声明所属根模块。</p>
 <h2>声明与安装依赖（自动化解析）</h2><p>普通项目推荐直接声明官方 SemVer 发布版本，无需手动克隆或手写构建参数：</p>
-<pre><code>module: app
+<pre><code class="language-xun">module: app
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
 require:
   "github.com/xulang-org/packages": v0.1.1</code></pre>
 <p>在项目根目录运行 <code>xu install</code>，编译器将自动下载到 <code>vendor/</code> 并生成校验锁 <code>xu.lock</code>。代码中使用显式别名导入需要的子包：</p>
-<pre><code>@main
+<pre><code class="language-xu">@main
 mysql #github.com/xulang-org/packages/mysql
 
 fn main() {
@@ -18,20 +18,20 @@ fn main() {
 }</code></pre>
 <p>require 声明官方根模块 <code>github.com/xulang-org/packages</code>，代码中通过完整子路径导入具体包（如 <code>mysql</code>、<code>redis</code>、<code>postgres</code>）。完整清单见 <a href="/docs/packages">官方扩展包 (Packages)</a>。</p>
 <h2>版本选择与来源定位</h2><p>除 SemVer 发行版外，还可以指定已审查的不可变 Git 提交，或在本地协同研发时使用相对路径：</p>
-<pre><code># 方式 A：指定 Git 提交
+<pre><code class="language-xun"># 方式 A：指定 Git 提交
 require:
   "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit&gt;
 
 # 方式 B：本地协同开发（让 app 与 packages 目录同级）
 require:
   "github.com/xulang-org/packages": file:../packages</code></pre>
-<p>MVS（最小版本选择）读取全部可达版本的清单，为每个模块选择图中最高的最低要求，不查询 latest，也不接受浮动版本范围。v2 及以上模块使用匹配的 <code>/vN</code> 路径后缀。显式 file/Git/tar 来源继续支持，来源冲突会报错。</p><h2>安装、锁定与离线构建</h2><pre><code>xu install app
+<p>MVS（最小版本选择）读取全部可达版本的清单，为每个模块选择图中最高的最低要求，不查询 latest，也不接受浮动版本范围。v2 及以上模块使用匹配的 <code>/vN</code> 路径后缀。显式 file/Git/tar 来源继续支持，来源冲突会报错。</p><h2>安装、锁定与离线构建</h2><pre><code class="language-shell">xu install app
 xu check app/main.xu --offline
 xu build app/main.xu --frozen --output app/program</code></pre>
 <table><tr><th>模式</th><th>行为</th></tr><tr><td>默认</td><td>允许下载并建立锁条目；已锁定内容不匹配时失败。</td></tr>
 <tr><td><code>--offline</code></td><td>不下载，只使用本地来源、已校验缓存或 vendor；仍可建立锁条目。</td></tr>
 <tr><td><code>--frozen</code></td><td>隐含离线，要求已有匹配锁条目，不写依赖缓存或补锁；本地 file 依赖须先安装为 vendor 快照。</td></tr></table>
-<p>审查并提交 <code>xu.lock</code>。显式来源使用 v2 锁，版本图使用 v3 锁。<code>xu install</code> 在 vendor 中保留全部可达版本快照，支持离线重放 MVS 图。冻结依赖不冻结主项目源码或编译产物。<code>install --frozen</code>、<code>build --desktop</code> 搭配这两种模式会被拒绝。</p><h2>代理与私有模块</h2><pre><code>XUPROXY='https://proxy.example.com,direct' xu install app
+<p>审查并提交 <code>xu.lock</code>。显式来源使用 v2 锁，版本图使用 v3 锁。<code>xu install</code> 在 vendor 中保留全部可达版本快照，支持离线重放 MVS 图。冻结依赖不冻结主项目源码或编译产物。<code>install --frozen</code>、<code>build --desktop</code> 搭配这两种模式会被拒绝。</p><h2>代理与私有模块</h2><pre><code class="language-shell">XUPROXY='https://proxy.example.com,direct' xu install app
 XUPRIVATE='example.com/private/*' xu install app</code></pre><p><code>XUPROXY</code> 支持 HTTP(S)、绝对 file://、direct 与 off，默认 direct。逗号仅在 404/410 后回退；竖线允许请求错误后回退。身份或完整性不匹配始终失败。直接版本发现支持 GitHub 仓库，其他主机使用显式来源或配置的 Xu 代理。</p>
 <p><code>XUPRIVATE</code> 是逗号分隔的模块前缀 glob 列表；<code>XUNOPROXY</code> 默认沿用它并控制代理绕过。不假定公共 Xu 代理已上线，Go 模块代理中的清单不能作为 Xu 清单。</p>
 <h2>0.8.4 独立校验</h2>

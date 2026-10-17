@@ -41,7 +41,7 @@
 <h2>3. .xulib 内部结构与二进制规范</h2>
 <p><code>.xulib</code> 是自描述的二进制容器（版本规范 <code>xulib-1</code>），其布局紧凑清晰：</p>
 
-<pre><code>+-------------------------------------------------------+
+<pre><code class="language-diagram">+-------------------------------------------------------+
 | Magic (7B): "XULIB\x01\x00"                           |
 +-------------------------------------------------------+
 | Version (u16=1) | Flags (u16=0) | Manifest Length (u32)|
@@ -70,7 +70,7 @@
 
 <h2>4. 完整的 7 个开发动作指南</h2>
 
-<pre><code>动作一：编写 C 桥接源码 (bridge.c)
+<pre><code class="language-diagram">动作一：编写 C 桥接源码 (bridge.c)
     ↓
 动作二：声明类型元数据契约 (native.json)
     ↓
@@ -87,7 +87,7 @@
 <h3>动作一：编写 C 桥接源码 (<code>bridge.c</code>)</h3>
 <p>包含官方头文件 <code>xu_native.h</code>，使用 <code>XU_NATIVE_SYMBOL(...)</code> 宏导出函数，自动抹平 Apple Mach-O（下划线前缀）与 Linux ELF/Windows COFF 的符号命名差异：</p>
 
-<pre><code>#include "xu_native.h"
+<pre><code class="language-c">#include "xu_native.h"
 #include &lt;stdint.h&gt;
 #include &lt;stdbool.h&gt;
 #include &lt;string.h&gt;
@@ -139,7 +139,7 @@ void XU_NATIVE_SYMBOL(xu_native_add_add_to_counter)(xu_int delta) { g_counter +=
 xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</code></pre>
 
 <h3>动作二：声明类型元数据契约清单 (<code>native.json</code>)</h3>
-<pre><code>{
+<pre><code class="language-json">{
   "module": "native_add",
   "abi": "xu-c-1",
   "exports": [
@@ -157,7 +157,7 @@ xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</
 
 <h3>动作三：单目标切片静态编译 (<code>xunative compile</code>)</h3>
 <p>为各个受支持的目标平台分别生成带有元数据的 <code>.a</code> 切片：</p>
-<pre><code># 针对 macOS Apple Silicon (ARM64)
+<pre><code class="language-shell"># 针对 macOS Apple Silicon (ARM64)
 python3 path/to/xu/scripts/xunative.py compile \
   --manifest native.json --target macos-arm64 bridge.c \
   -o native/native_add-arm64.a
@@ -169,14 +169,14 @@ python3 path/to/xu/scripts/xunative.py compile \
 
 <h3>动作四：全目标切片聚合打包 (<code>xunative pack</code>)</h3>
 <p>将单目标切片聚合装载为全平台自描述的便携式 <code>.xulib</code> 文件：</p>
-<pre><code>python3 path/to/xu/scripts/xunative.py pack \
+<pre><code class="language-shell">python3 path/to/xu/scripts/xunative.py pack \
   --manifest native.json \
   --slice macos-arm64=native/native_add-arm64.a \
   --slice macos-x64=native/native_add-x64.a \
   -o native/native_add.xulib</code></pre>
 
 <h3>动作五：在工程项目配置中声明原生模块 (<code>xu.xun</code>)</h3>
-<pre><code>module: my_project
+<pre><code class="language-xun">module: my_project
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
 
@@ -184,7 +184,7 @@ native:
   native_add: file:./native/native_add.xulib</code></pre>
 
 <h3>动作六：在 Xu 源码中导入与调用 (<code>main.xu</code>)</h3>
-<pre><code>@main
+<pre><code class="language-xu">@main
 
 #native_add
 
@@ -225,11 +225,11 @@ fn main() int {
 }</code></pre>
 
 <h3>动作七：一键静态构建与运行验证</h3>
-<pre><code># 编译为原生机器码可执行文件并运行
+<pre><code class="language-shell"># 编译为原生机器码可执行文件并运行
 xu run .</code></pre>
 
 <p>终端即刻呈现经过静态编译期检查与硬件指令调用的原生结果：</p>
-<pre><code>=== Xu &lt;-&gt; Native C Multi-Type Interop Demo ===
+<pre><code class="language-output">=== Xu &lt;-&gt; Native C Multi-Type Interop Demo ===
 1. int add(20, 22) = 42
 2. f64 scale_f64(1.5, 3.0) * 10 = 45
 3. bool is_even(42) = true

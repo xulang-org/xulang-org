@@ -41,7 +41,7 @@
 <h2>3. .xulib Binary Layout</h2>
 <p><code>.xulib</code> is a self-describing binary container (specification <code>xulib-1</code>):</p>
 
-<pre><code>+-------------------------------------------------------+
+<pre><code class="language-diagram">+-------------------------------------------------------+
 | Magic (7B): "XULIB\x01\x00"                           |
 +-------------------------------------------------------+
 | Version (u16=1) | Flags (u16=0) | Manifest Length (u32)|
@@ -70,7 +70,7 @@
 
 <h2>4. The Complete 7 Development Actions</h2>
 
-<pre><code>Action 1: Write C Bridge Source (bridge.c)
+<pre><code class="language-diagram">Action 1: Write C Bridge Source (bridge.c)
     ↓
 Action 2: Declare Type Contract Manifest (native.json)
     ↓
@@ -87,7 +87,7 @@ Action 7: Compile & Verify (xu build / xu run)</code></pre>
 <h3>Action 1: Write C Bridge Source (<code>bridge.c</code>)</h3>
 <p>Include <code>xu_native.h</code> and wrap export declarations with <code>XU_NATIVE_SYMBOL(...)</code> to reconcile Mach-O leading underscore conventions with ELF/COFF:</p>
 
-<pre><code>#include "xu_native.h"
+<pre><code class="language-c">#include "xu_native.h"
 #include &lt;stdint.h&gt;
 #include &lt;stdbool.h&gt;
 #include &lt;string.h&gt;
@@ -139,7 +139,7 @@ void XU_NATIVE_SYMBOL(xu_native_add_add_to_counter)(xu_int delta) { g_counter +=
 xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</code></pre>
 
 <h3>Action 2: Declare Type Contract Manifest (<code>native.json</code>)</h3>
-<pre><code>{
+<pre><code class="language-json">{
   "module": "native_add",
   "abi": "xu-c-1",
   "exports": [
@@ -156,7 +156,7 @@ xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</
 }</code></pre>
 
 <h3>Action 3: Compile Target Slices (<code>xunative compile</code>)</h3>
-<pre><code># macOS Apple Silicon (ARM64)
+<pre><code class="language-shell"># macOS Apple Silicon (ARM64)
 python3 path/to/xu/scripts/xunative.py compile \
   --manifest native.json --target macos-arm64 bridge.c \
   -o native/native_add-arm64.a
@@ -167,14 +167,14 @@ python3 path/to/xu/scripts/xunative.py compile \
   -o native/native_add-x64.a</code></pre>
 
 <h3>Action 4: Pack Multi-Target Archive (<code>xunative pack</code>)</h3>
-<pre><code>python3 path/to/xu/scripts/xunative.py pack \
+<pre><code class="language-shell">python3 path/to/xu/scripts/xunative.py pack \
   --manifest native.json \
   --slice macos-arm64=native/native_add-arm64.a \
   --slice macos-x64=native/native_add-x64.a \
   -o native/native_add.xulib</code></pre>
 
 <h3>Action 5: Declare Native Dependency (<code>xu.xun</code>)</h3>
-<pre><code>module: my_project
+<pre><code class="language-xun">module: my_project
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
 
@@ -182,7 +182,7 @@ native:
   native_add: file:./native/native_add.xulib</code></pre>
 
 <h3>Action 6: Import & Call from Xu Code (<code>main.xu</code>)</h3>
-<pre><code>@main
+<pre><code class="language-xu">@main
 
 #native_add
 
@@ -223,10 +223,10 @@ fn main() int {
 }</code></pre>
 
 <h3>Action 7: Compile & Verify Execution</h3>
-<pre><code>xu run .</code></pre>
+<pre><code class="language-shell">xu run .</code></pre>
 
 <p>The console prints the verified results:</p>
-<pre><code>=== Xu &lt;-&gt; Native C Multi-Type Interop Demo ===
+<pre><code class="language-output">=== Xu &lt;-&gt; Native C Multi-Type Interop Demo ===
 1. int add(20, 22) = 42
 2. f64 scale_f64(1.5, 3.0) * 10 = 45
 3. bool is_even(42) = true

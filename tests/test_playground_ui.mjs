@@ -302,3 +302,41 @@ test('Import snippets can be edited and keep imports outside the generated main 
   assert.equal(workers[0].messages.at(-1).source,
     '@main\n\n#errors\n\nfn main() int {\n    println("imported")\n    << 0\n}\n');
 });
+
+test('Diagrams, C code, manifests, and outputs retain copy without run or edit buttons', async () => {
+  const blocks = [
+    {source: '+----------------+\n| Magic: XULIB   |\n+----------------+'},
+    {source: '#include "xu_native.h"\nxu_int add(xu_int a) { return a; }'},
+    {source: '{\n  "module": "test",\n  "abi": "xu-c-1"\n}'},
+    {source: 'module: test_proj\nversion: 1.0.0\nnative:\n  - name: test'},
+    {source: '=== Xu Native Demo ===\n42'}
+  ];
+  const {pres} = await mount({blocks});
+  const wrappers = pres.map(p => p.closest('.code-block-wrapper'));
+
+  assert.ok(wrappers[0].classList.contains('block-kind-diagram'));
+  assert.equal(wrappers[0].querySelector('.code-run-btn'), null);
+  assert.equal(wrappers[0].querySelector('.code-edit-btn'), null);
+  assert.ok(wrappers[0].querySelector('.code-copy-btn'));
+
+  assert.ok(wrappers[1].classList.contains('block-kind-c'));
+  assert.equal(wrappers[1].querySelector('.code-run-btn'), null);
+  assert.equal(wrappers[1].querySelector('.code-edit-btn'), null);
+  assert.ok(wrappers[1].querySelector('.code-copy-btn'));
+
+  assert.ok(wrappers[2].classList.contains('block-kind-json'));
+  assert.equal(wrappers[2].querySelector('.code-run-btn'), null);
+  assert.equal(wrappers[2].querySelector('.code-edit-btn'), null);
+  assert.ok(wrappers[2].querySelector('.code-copy-btn'));
+
+  assert.ok(wrappers[3].classList.contains('block-kind-xun'));
+  assert.equal(wrappers[3].querySelector('.code-run-btn'), null);
+  assert.equal(wrappers[3].querySelector('.code-edit-btn'), null);
+  assert.ok(wrappers[3].querySelector('.code-copy-btn'));
+
+  assert.ok(wrappers[4].classList.contains('block-kind-output'));
+  assert.equal(wrappers[4].querySelector('.code-run-btn'), null);
+  assert.equal(wrappers[4].querySelector('.code-edit-btn'), null);
+  assert.ok(wrappers[4].querySelector('.code-copy-btn'));
+});
+
