@@ -39,19 +39,102 @@
 </tbody></table></div>
 
 <h2>3. .xulib Binary Layout</h2>
-<p><code>.xulib</code> is a self-describing binary container (specification <code>xulib-1</code>). It follows a compact linear segment layout consisting of a magic signature, fixed header, manifest contract, slice index table, and multi-architecture payload slices:</p>
+<p><code>.xulib</code> is a self-describing multi-architecture static library container (specification <code>xulib-1</code>). It follows a compact linear segment layout consisting of a magic signature, fixed header, manifest contract, slice index table, and multi-architecture payload slices:</p>
+
+<!-- Physical Binary Layout Card (Replacing ASCII text block) -->
+<div class="binary-frame-card" role="region" aria-label=".xulib Physical Binary Layout Diagram">
+  <div class="binary-frame-header">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <i class="xi xi-cpu" style="color: var(--xu-brand, #E11D48);"></i>
+      <span>.xulib Physical Memory &amp; Disk Binary Layout</span>
+    </div>
+    <span class="frame-tag">SPEC xulib-1</span>
+  </div>
+  <div class="binary-frame-body">
+    <!-- Segment 1: Fixed Header -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell accent-cell" style="flex: 2.2;">
+        <div class="cell-offset"><i class="xi xi-hash"></i> 0x00..0x06 (7B)</div>
+        <div class="cell-title">Magic: "XULIB\x01\x00"</div>
+        <div class="cell-desc">Magic signature and major version check</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.2;">
+        <div class="cell-offset">0x07..0x08 (2B)</div>
+        <div class="cell-title">Version = 1</div>
+        <div class="cell-desc">u16 minor version</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.2;">
+        <div class="cell-offset">0x09..0x0A (2B)</div>
+        <div class="cell-title">Flags = 0</div>
+        <div class="cell-desc">u16 bitmask flags</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.8;">
+        <div class="cell-offset">0x0B..0x0E (4B)</div>
+        <div class="cell-title">Manifest Len = N</div>
+        <div class="cell-desc">u32 little-endian manifest length</div>
+      </div>
+    </div>
+
+    <!-- Segment 2: Manifest -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell full-width accent-cell">
+        <div class="cell-offset"><i class="xi xi-hash"></i> 0x0F..0x0F+N (N Bytes UTF-8)</div>
+        <div class="cell-title">JSON Manifest (Interface Contract &amp; Hash Manifest)</div>
+        <div class="cell-desc">Contains <code>module</code> identifier, <code>abi: "xu-c-1"</code>, <code>exports</code> typed signatures, and <code>slices</code> target SHA-256 digests</div>
+      </div>
+    </div>
+
+    <!-- Segment 3: Slice Index Table -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell" style="flex: 1.5;">
+        <div class="cell-offset">0x0F+N (4B)</div>
+        <div class="cell-title">Slice Count = M</div>
+        <div class="cell-desc">u32 little-endian slice count</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 4.5;">
+        <div class="cell-offset">Variable Length Entries</div>
+        <div class="cell-title">Slice Index Table (Target Architectures Index Array)</div>
+        <div class="cell-desc">Each entry records: <code>target_name</code>, <code>kind</code> (archive/object), <code>file_offset</code> &amp; <code>file_size</code>, and <code>sha256</code> integrity digest</div>
+      </div>
+    </div>
+
+    <!-- Segment 4: Payload Slices -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">macOS Slice Offset</div>
+        <div class="cell-title">macOS Slice (Mach-O)</div>
+        <div class="cell-desc">Standard Unix .a (<code>bridge.o</code> + <code>xu.o</code> <code>__DATA,__xumeta</code>)</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">Linux Slice Offset</div>
+        <div class="cell-title">Linux Slice (ELF)</div>
+        <div class="cell-desc">Standard Unix .a (native <code>.o</code> + <code>xu.o</code> <code>.xumeta</code>)</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">Windows Slice Offset</div>
+        <div class="cell-title">Windows Slice (COFF)</div>
+        <div class="cell-desc">Standard .a / .lib (native <code>.obj</code> + <code>xu.o</code> <code>.xumeta</code>)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p>Complete <code>.xulib</code> binary container specification table:</p>
 
 <div class="doc-table-wrap">
-  <table>
+  <table class="binary-spec-table">
     <thead>
       <tr>
         <th style="width: 22%;">Offset Range</th>
-        <th style="width: 20%;">Field Name</th>
-        <th style="width: 18%;">Type & Size</th>
-        <th>Specification & Semantic Description</th>
+        <th style="width: 22%;">Field Name</th>
+        <th style="width: 16%;">Type &amp; Size</th>
+        <th>Specification &amp; Semantic Description</th>
       </tr>
     </thead>
     <tbody>
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-cpu"></i> Segment 1: Fixed Container Header (15 Bytes)</td>
+      </tr>
       <tr>
         <td><code>0x00..0x06</code> (7 Bytes)</td>
         <td><strong>Magic Header</strong></td>
@@ -76,73 +159,69 @@
         <td><code>u32</code> (little-endian)</td>
         <td>Byte length $N$ of trailing JSON contract payload.</td>
       </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-code"></i> Segment 2: JSON Contract Manifest (N Bytes)</td>
+      </tr>
       <tr>
         <td><code>0x0F..0x0F+N</code> ($N$ Bytes)</td>
         <td><strong>JSON Manifest</strong></td>
         <td>UTF-8 Compact Text</td>
-        <td>Self-describing contract metadata: <code>module</code> (unique id), <code>abi</code> (protocol), <code>exports</code> (signatures), and <code>slices</code> (platform hashes).</td>
+        <td>
+          Self-describing contract metadata containing four key properties:<br>
+          • <code>module</code>: globally unique module namespace identifier (e.g. <code>"native_add"</code>)<br>
+          • <code>abi</code>: native interface protocol specification (e.g. <code>"xu-c-1"</code>)<br>
+          • <code>exports</code>: exported function names, parameter types, and return values<br>
+          • <code>slices</code>: target platform slice names and corresponding SHA-256 digests
+        </td>
+      </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-list"></i> Segment 3: Slice Index Table</td>
       </tr>
       <tr>
         <td>Trailing <code>0x0F+N</code> (4 Bytes)</td>
         <td><strong>Slice Count</strong></td>
         <td><code>u32</code> (little-endian)</td>
-        <td>Count of contiguous target architecture slice entries in the index table.</td>
+        <td>Count of contiguous target architecture slice entries in the index table ($M$).</td>
       </tr>
       <tr>
         <td>Contiguous Entries</td>
-        <td><strong>Slice Index Table</strong></td>
+        <td><strong>Slice Index Table Entries</strong></td>
         <td>Array of Variable Structs</td>
         <td>
           Contiguous slice entries, each containing:<br>
-          • <code>target_len (u16)</code> + <code>target_name</code> (e.g. <code>"macos-arm64"</code>)<br>
+          • <code>target_len (u16)</code> + <code>target_name</code> (e.g. <code>"macos-arm64"</code>, <code>"linux-x64"</code>)<br>
           • <code>kind_len (u8)</code> + <code>kind</code> (<code>"archive"</code> or <code>"object"</code>)<br>
-          • <code>file_offset (u64)</code> + <code>file_size (u64)</code> absolute offset & length<br>
+          • <code>file_offset (u64)</code> + <code>file_size (u64)</code> absolute offset &amp; length<br>
           • <code>sha256 (32 Bytes)</code> binary integrity digest
         </td>
       </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-cube"></i> Segment 4: Multi-Architecture Binary Payloads</td>
+      </tr>
       <tr>
-        <td>Payload Data Area</td>
-        <td><strong>Payload Slices</strong></td>
-        <td>Binary Slice Stream</td>
-        <td>
-          Standard native <code>.a</code> archives for each target:<br>
-          • <strong>macOS</strong>: Mach-O native object files + <code>xu.o</code> (with <code>__DATA,__xumeta</code>)<br>
-          • <strong>Linux</strong>: ELF native object files + <code>xu.o</code> (with <code>.xumeta</code>)<br>
-          • <strong>Windows</strong>: COFF native object files + <code>xu.o</code> (with <code>.xumeta</code>)
-        </td>
+        <td>Offset from Index</td>
+        <td><strong>macOS Slice (Mach-O)</strong></td>
+        <td>Standard Unix <code>.a</code></td>
+        <td>Mach-O native object files (e.g. <code>bridge.o</code>) + <code>xu.o</code> (with <code>__DATA,__xumeta</code> section).</td>
+      </tr>
+      <tr>
+        <td>Offset from Index</td>
+        <td><strong>Linux Slice (ELF)</strong></td>
+        <td>Standard Unix <code>.a</code></td>
+        <td>Linux ELF native object files + <code>xu.o</code> (with <code>.xumeta</code> section).</td>
+      </tr>
+      <tr>
+        <td>Offset from Index</td>
+        <td><strong>Windows Slice (COFF)</strong></td>
+        <td>Standard <code>.a</code> / <code>.lib</code></td>
+        <td>Windows COFF native object files + <code>xu.o</code> (with <code>.xumeta</code> section).</td>
       </tr>
     </tbody>
   </table>
 </div>
-
-<p>Complete <code>.xulib</code> binary container layout overview:</p>
-
-<pre><code class="language-diagram">+-------------------------------------------------------------------------+
-| 0x00..0x06 | Magic Header (7 Bytes): "XULIB\x01\x00"                     |
-+------------+--------------------+---------------------------------------+
-| 0x07..0x08 | Version (u16 = 1)  | 0x09..0x0A | Flags (u16 = 0)          |
-+------------+--------------------+------------+--------------------------+
-| 0x0B..0x0E | Manifest Length (u32, little-endian) = N bytes             |
-+-------------------------------------------------------------------------+
-| 0x0F..0x0F+N | JSON Manifest (N bytes UTF-8 compact text):                |
-|   - module: global unique identifier (e.g. "native_add")                |
-|   - abi: native interface ABI contract version (e.g. "xu-c-1")           |
-|   - exports: exported function names, parameter types and returns       |
-|   - slices: per-platform slice metadata & SHA-256 digests                |
-+-------------------------------------------------------------------------+
-| Slice Table Header (4 Bytes): Slice Count (u32, little-endian)          |
-+-------------------------------------------------------------------------+
-| Slice Index Table Entries (one per target slice):                       |
-|   - target_len (u16) + target_name (e.g. "macos-arm64", "linux-x64")     |
-|   - kind_len (u8) + kind ("archive" or "object")                        |
-|   - file_offset (u64) + file_size (u64)                                 |
-|   - sha256 (32 bytes binary integrity verification digest)              |
-+-------------------------------------------------------------------------+
-| Multi-Architecture Binary Payload Area (Payload Slices):                |
-|   - macOS Slice:   standard .a (Mach-O native objects + xu.o metadata)  |
-|   - Linux Slice:   standard .a (Linux ELF native objects + xu.o metadata)|
-|   - Windows Slice: standard .a/.lib (COFF native objects + xu.o metadata)|
-+-------------------------------------------------------------------------+</code></pre>
 
 <p class="note"><strong>Clever Dual Compatibility Design</strong>: Each platform slice is fundamentally a standard <code>.a</code> static archive. It bundles <strong>native business logic objects (e.g. <code>sqlite3.o</code>, <code>bridge.o</code>) compiled by external toolchains (such as C, C++, Rust, or assembly)</strong> together with a <strong>fully compliant native metadata object member (<code>xu.o</code>)</strong>. The host platform linker directly links the native machine code symbols, while the Xu compiler inspects the <code>XUOBJ</code> type contract embedded in the dedicated <code>.xumeta</code> section (in Mach-O: <code>__DATA,__xumeta</code>) for compile-time type verification, achieving seamless zero-conflict coexistence.</p>
 

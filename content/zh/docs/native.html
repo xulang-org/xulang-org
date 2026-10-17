@@ -39,19 +39,102 @@
 </tbody></table></div>
 
 <h2>3. .xulib 内部结构与二进制规范</h2>
-<p><code>.xulib</code> 是自描述的二进制容器（版本规范 <code>xulib-1</code>）。容器采用紧凑的线性段式布局，由魔数签名、定长头部、契约清单、切片索引表与二进制切片负载五大部分组成：</p>
+<p><code>.xulib</code> 是自描述的多架构静态库容器（规范版本 <code>xulib-1</code>）。容器采用紧凑的线性段式布局，由魔数签名、定长头部、契约清单、切片索引表与二进制切片负载五大部分组成：</p>
+
+<!-- 物理布局卡片可视化视图 (取代纯文本 ASCII 框) -->
+<div class="binary-frame-card" role="region" aria-label=".xulib 二进制物理段分布图">
+  <div class="binary-frame-header">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <i class="xi xi-cpu" style="color: var(--xu-brand, #E11D48);"></i>
+      <span>.xulib 二进制容器物理内存与磁盘排布图 (Physical Binary Layout)</span>
+    </div>
+    <span class="frame-tag">SPEC xulib-1</span>
+  </div>
+  <div class="binary-frame-body">
+    <!-- 第 1 段：固定头 -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell accent-cell" style="flex: 2.2;">
+        <div class="cell-offset"><i class="xi xi-hash"></i> 0x00..0x06 (7B)</div>
+        <div class="cell-title">Magic: "XULIB\x01\x00"</div>
+        <div class="cell-desc">魔数标识与主版本校验</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.2;">
+        <div class="cell-offset">0x07..0x08 (2B)</div>
+        <div class="cell-title">Version = 1</div>
+        <div class="cell-desc">u16 次版本号</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.2;">
+        <div class="cell-offset">0x09..0x0A (2B)</div>
+        <div class="cell-title">Flags = 0</div>
+        <div class="cell-desc">u16 扩展位掩码</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.8;">
+        <div class="cell-offset">0x0B..0x0E (4B)</div>
+        <div class="cell-title">Manifest Len = N</div>
+        <div class="cell-desc">u32 小端序清单长度</div>
+      </div>
+    </div>
+
+    <!-- 第 2 段：契约清单 -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell full-width accent-cell">
+        <div class="cell-offset"><i class="xi xi-hash"></i> 0x0F..0x0F+N (N Bytes UTF-8)</div>
+        <div class="cell-title">JSON Manifest (模块接口契约与签名清单)</div>
+        <div class="cell-desc">包含 <code>module</code> 命名空间、<code>abi: "xu-c-1"</code>、<code>exports</code> 导出函数与类型签名、<code>slices</code> 各架构 SHA-256 校验散列</div>
+      </div>
+    </div>
+
+    <!-- 第 3 段：切片索引表 -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell" style="flex: 1.5;">
+        <div class="cell-offset">0x0F+N 处 (4B)</div>
+        <div class="cell-title">Slice Count = M</div>
+        <div class="cell-desc">u32 小端序切片总数</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 4.5;">
+        <div class="cell-offset">连续变长索引项</div>
+        <div class="cell-title">Slice Index Table (架构切片索引表数组)</div>
+        <div class="cell-desc">每个切片顺序记录：<code>target_name</code>（目标三元组）、<code>kind</code>（archive/object）、<code>file_offset</code> 与 <code>file_size</code>、<code>sha256</code> 散列防篡改指纹</div>
+      </div>
+    </div>
+
+    <!-- 第 4 段：多架构负载数据 -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">macOS Slice 偏移处</div>
+        <div class="cell-title">macOS 切片 (Mach-O)</div>
+        <div class="cell-desc">标准 Unix .a（含 <code>bridge.o</code> + <code>xu.o</code> <code>__DATA,__xumeta</code>）</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">Linux Slice 偏移处</div>
+        <div class="cell-title">Linux 切片 (ELF)</div>
+        <div class="cell-desc">标准 Unix .a（含原生 <code>.o</code> + <code>xu.o</code> <code>.xumeta</code>）</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">Windows Slice 偏移处</div>
+        <div class="cell-title">Windows 切片 (COFF)</div>
+        <div class="cell-desc">标准 .a / .lib（含原生 <code>.obj</code> + <code>xu.o</code> <code>.xumeta</code>）</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p>完整的 <code>.xulib</code> 二进制容器物理字段规范对照表：</p>
 
 <div class="doc-table-wrap">
-  <table>
+  <table class="binary-spec-table">
     <thead>
       <tr>
         <th style="width: 22%;">偏移区间 (Offset)</th>
-        <th style="width: 20%;">字段名称 (Field)</th>
-        <th style="width: 18%;">类型与长度</th>
-        <th>规范定义与字段语义</th>
+        <th style="width: 22%;">字段名称 (Field)</th>
+        <th style="width: 16%;">类型与尺寸</th>
+        <th>规范定义与物理语义说明</th>
       </tr>
     </thead>
     <tbody>
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-cpu"></i> 物理段 1：固定容器文件头 (Fixed Container Header · 15 Bytes)</td>
+      </tr>
       <tr>
         <td><code>0x00..0x06</code> (7 Bytes)</td>
         <td><strong>魔数标识 (Magic)</strong></td>
@@ -74,75 +157,71 @@
         <td><code>0x0B..0x0E</code> (4 Bytes)</td>
         <td><strong>清单长度 (Manifest Len)</strong></td>
         <td><code>u32</code> (小端序)</td>
-        <td>紧随其后的 JSON 契约文本总字节数 $N$。</td>
+        <td>记录紧随其后的 JSON 契约文本总字节数 $N$。</td>
+      </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-code"></i> 物理段 2：契约元数据清单 (JSON Manifest · N Bytes)</td>
       </tr>
       <tr>
         <td><code>0x0F..0x0F+N</code> ($N$ Bytes)</td>
         <td><strong>契约清单 (Manifest)</strong></td>
         <td>UTF-8 紧凑文本</td>
-        <td>自描述元数据：包含 <code>module</code>（全局模块名）、<code>abi</code>（接口协议版本）、<code>exports</code>（函数签名）及 <code>slices</code>（各平台散列）。</td>
+        <td>
+          自描述元数据 JSON 对象，包含四个关键字段：<br>
+          • <code>module</code>：全局唯一的模块命名空间标识（如 <code>"native_add"</code>）<br>
+          • <code>abi</code>：原生接口协议规范版本（如 <code>"xu-c-1"</code>）<br>
+          • <code>exports</code>：导出的函数名、参数类型列表与返回值类型契约<br>
+          • <code>slices</code>：记录各目标平台的切片名及对应的 SHA-256 签名散列
+        </td>
+      </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-list"></i> 物理段 3：切片索引表 (Slice Index Table)</td>
       </tr>
       <tr>
-        <td><code>0x0F+N</code> 之后 (4 Bytes)</td>
+        <td><code>0x0F+N</code> 处 (4 Bytes)</td>
         <td><strong>切片总数 (Slice Count)</strong></td>
         <td><code>u32</code> (小端序)</td>
-        <td>记录索引表中连续排列的多架构目标切片数量。</td>
+        <td>记录索引表中连续排列的多架构目标切片数量 $M$。</td>
       </tr>
       <tr>
-        <td>连续索引项</td>
-        <td><strong>切片索引表 (Index Table)</strong></td>
-        <td>变长结构体连续数组</td>
+        <td>连续变长索引项</td>
+        <td><strong>切片索引表条目 (Entries)</strong></td>
+        <td>变长连续结构体数组</td>
         <td>
           每个切片条目顺序包含：<br>
-          • <code>target_len (u16)</code> + <code>target_name</code>（如 <code>"macos-arm64"</code>）<br>
+          • <code>target_len (u16)</code> + <code>target_name</code>（如 <code>"macos-arm64"</code>、<code>"linux-x64"</code>）<br>
           • <code>kind_len (u8)</code> + <code>kind</code>（<code>"archive"</code> 静态库或 <code>"object"</code> 单对象）<br>
-          • <code>file_offset (u64)</code> + <code>file_size (u64)</code> 绝对偏移与尺寸<br>
+          • <code>file_offset (u64)</code> + <code>file_size (u64)</code> 绝对文件偏移与切片尺寸<br>
           • <code>sha256 (32 Bytes)</code> 二进制散列防篡改校验码
         </td>
       </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-cube"></i> 物理段 4：多架构二进制切片负载 (Multi-Arch Payload Slices)</td>
+      </tr>
       <tr>
-        <td>负载数据区</td>
-        <td><strong>多目标负载 (Payloads)</strong></td>
-        <td>二进制切片字节流</td>
-        <td>
-          各平台标准的 <code>.a</code> 静态归档库：<br>
-          • <strong>macOS</strong>：Mach-O 机器码对象 + <code>xu.o</code>（含 <code>__DATA,__xumeta</code>）<br>
-          • <strong>Linux</strong>：ELF 机器码对象 + <code>xu.o</code>（含 <code>.xumeta</code>）<br>
-          • <strong>Windows</strong>：COFF 机器码对象 + <code>xu.o</code>（含 <code>.xumeta</code>）
-        </td>
+        <td>根据索引绝对偏移</td>
+        <td><strong>macOS 切片 (Mach-O)</strong></td>
+        <td>标准 Unix <code>.a</code></td>
+        <td>包含 Mach-O 机器码对象（如 <code>bridge.o</code>）+ <code>xu.o</code>（含 <code>__DATA,__xumeta</code> 符号段）。</td>
+      </tr>
+      <tr>
+        <td>根据索引绝对偏移</td>
+        <td><strong>Linux 切片 (ELF)</strong></td>
+        <td>标准 Unix <code>.a</code></td>
+        <td>包含 Linux ELF 机器码对象 + <code>xu.o</code>（含 <code>.xumeta</code> 符号段）。</td>
+      </tr>
+      <tr>
+        <td>根据索引绝对偏移</td>
+        <td><strong>Windows 切片 (COFF)</strong></td>
+        <td>标准 <code>.a</code> / <code>.lib</code></td>
+        <td>包含 Windows COFF 机器码对象 + <code>xu.o</code>（含 <code>.xumeta</code> 符号段）。</td>
       </tr>
     </tbody>
   </table>
 </div>
-
-<p>完整的 <code>.xulib</code> 二进制容器物理布局结构图：</p>
-
-<pre><code class="language-diagram">+-------------------------------------------------------------------------+
-| 0x00..0x06 | Magic Header (7 Bytes): "XULIB\x01\x00"                     |
-+------------+--------------------+---------------------------------------+
-| 0x07..0x08 | Version (u16 = 1)  | 0x09..0x0A | Flags (u16 = 0)          |
-+------------+--------------------+------------+--------------------------+
-| 0x0B..0x0E | Manifest Length (u32, 小端序) = N 字节                      |
-+-------------------------------------------------------------------------+
-| 0x0F..0x0F+N | JSON Manifest (N 字节 UTF-8 紧凑文本):                     |
-|   - module: 模块全局唯一标识 (如 "native_add")                          |
-|   - abi: 原生接口协议版本 (如 "xu-c-1")                                  |
-|   - exports: 导出的函数名、参数类型列表与返回值类型契约                  |
-|   - slices: 各目标平台切片元数据及 SHA-256 签名散列                      |
-+-------------------------------------------------------------------------+
-| 切片索引表开始处 (4 Bytes): Slice Count (u32, 小端序)                      |
-+-------------------------------------------------------------------------+
-| 切片索引表条目 (每个切片记录一条):                                       |
-|   - target_len (u16) + target_name (如 "macos-arm64", "linux-x64")      |
-|   - kind_len (u8) + kind ("archive" 或 "object")                        |
-|   - file_offset (u64) + file_size (u64)                                 |
-|   - sha256 (32 字节二进制散列防篡改校验)                                |
-+-------------------------------------------------------------------------+
-| 多架构二进制切片负载数据区 (Multi-Arch Payload Slices):                  |
-|   - macOS 切片:   Unix 标准 .a (含 Mach-O 原生对象 + xu.o 导出元数据)     |
-|   - Linux 切片:   Unix 标准 .a (含 Linux ELF 原生对象 + xu.o 导出元数据)  |
-|   - Windows 切片: 标准 .a / .lib (含 Windows COFF 原生对象 + xu.o 元数据) |
-+-------------------------------------------------------------------------+</code></pre>
 
 <p class="note"><strong>巧妙的双面兼容设计</strong>：每个平台的切片本质是一个标准的 <code>.a</code> 静态归档库。它将<strong>由外部原生工具链（如 C / C++ / Rust）编译出的原生业务对象（如 <code>sqlite3.o</code>、<code>bridge.o</code>）</strong>，与一份<strong>格式合规并包含 Xu 导出类型签名的元数据对象（<code>xu.o</code>）</strong>统一打包在一起。操作系统的通用链接器直接链接这些原生的业务机器码，而 Xu 编译器则读取 <code>xu.o</code> 专用 <code>.xumeta</code> 段（Mach-O 下为 <code>__DATA,__xumeta</code>）中的类型契约完成编译期安全检查，两者互不干扰。</p>
 
