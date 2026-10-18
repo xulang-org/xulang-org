@@ -15,7 +15,7 @@
 <p align="center">
   <a href="https://xulang.org"><img src="https://img.shields.io/badge/Site-xulang.org-rose" alt="Site"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <a href="https://xulang.org/benchmarks"><img src="https://img.shields.io/badge/Benchmarks-13%20Tasks-amber" alt="Benchmarks"></a>
+  <a href="https://xulang.org/benchmarks"><img src="https://img.shields.io/badge/Benchmarks-47%20Tasks-amber" alt="Benchmarks"></a>
   <a href="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml"><img src="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml/badge.svg" alt="Pages CI"></a>
 </p>
 
@@ -23,7 +23,7 @@
 
 站点聚合了以下核心模块：
 - 🌐 **双语官方主页与文档中心**：完整的中英文教程、语言规范、标准库与 API 手册（支持多语言无损路由切换）；
-- ⚡ **全平台 13 项跨语言性能大看板**：涵盖 ARM64、x86-64、Windows ARM64 等平台，支持即时动态过滤与直观图表对比；
+- ⚡ **全平台 47 项跨语言性能大看板**：涵盖 ARM64、x86-64、Windows ARM64 等平台，支持即时动态过滤与直观图表对比；
 - 🚀 **纯客户端 WebAssembly 在线演练场**：由 Xu 源码直接 AOT 编译为 WASM 沙箱，零服务器负担，浏览器内秒开演练；
 - 🎨 **品牌物料与 VI 资产**：官方 Logo、矢量标识与徽章设计。
 

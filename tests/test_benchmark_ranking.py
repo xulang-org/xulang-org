@@ -3,7 +3,6 @@ from copy import deepcopy
 from html import unescape
 from html.parser import HTMLParser
 import importlib.util
-import json
 from pathlib import Path
 import re
 import unittest
@@ -44,10 +43,6 @@ def median_cell(platforms, metric='wall_ms', language='swift', en=False):
 
 
 class BenchmarkRankingTests(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        cls.real = json.loads(benchmarks.DATA_FILE.read_text())['platforms']
-
     def fixture(self):
         platforms = {}
         for cfg in benchmarks.PLATFORMS_CONFIG:
@@ -58,11 +53,19 @@ class BenchmarkRankingTests(unittest.TestCase):
         return platforms
 
     def test_reported_swift_bug_cannot_win_all_architectures(self):
-        row = bars(self.real)
+        # Reproduce the original four-of-six coverage bug independently of
+        # the latest published measurements, which change on each release.
+        data = self.fixture()
+        for pid, wall in [('macos-arm64', 2.9), ('linux-arm64', 2.3),
+                          ('macos-x64', 3.1), ('linux-x64', 2.5)]:
+            data[pid]['benches'][0]['implementations']['swiftc -O']['wall_ms'] = wall
+        for pid in ('windows-arm64', 'windows-x64'):
+            data[pid]['benches'][0]['implementations'].pop('swiftc -O')
+        row = bars(data)
         self.assertEqual(row['data-pct-all'], '0.0')
         self.assertIn('4/6', row['data-txt-all'])
         self.assertNotIn('bench-bar-badge-best', row['data-txt-all'])
-        cell = median_cell(self.real)
+        cell = median_cell(data)
         self.assertIn('4/6', cell)
         self.assertNotIn('bench-cell-best', cell)
         self.assertNotIn('2.70ms', cell)

@@ -1092,10 +1092,11 @@ def render_transparency_charter_section(meta: dict, en: bool) -> str:
     ]
 
     p1_title = "100% Open-Source Implementations" if en else "100% 评测源码透明开放"
+    workload_count = meta["total_benches"]
     p1_desc = (
-        "Full implementations of all 13 workloads across Xu, C, Rust, Go, and Swift are publicly accessible. Inspect isomorphic algorithm structure instantly with the in-page 'View Source' modal or browse on GitHub."
+        f"Implementations for all {workload_count} workloads are publicly accessible, with Xu, C, Rust, Go, and Swift references where available. Inspect algorithm structure with the in-page 'View Source' modal or browse on GitHub."
         if en else
-        "全量 13 项基准算法在 Xu、C、Rust、Go、Swift 5 种语言下的实现源码全部公开。可在页面卡片一键点击【查看源码】弹窗对比或直达 GitHub 仓库，杜绝黑盒实现。"
+        f"全部 {workload_count} 项负载的实现源码公开，按适用范围提供 Xu、C、Rust、Go、Swift 对照。可在页面卡片点击【查看源码】对比算法结构，或直接查看 GitHub 仓库。"
     )
 
     p2_title = "Strict Isomorphic Workloads & No Bias" if en else "严禁私利 · 同构算法公平对照"
