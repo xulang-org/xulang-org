@@ -93,6 +93,7 @@ def sidebar(route: str, en: bool, xu_version: str = '') -> str:
         groups.append(('xi-chat', 'Blog', [
             (prefix + '/blog', 'Index' if en else '博客索引'),
             (prefix + '/blog/xu-lsp-and-vscode', 'Xu LSP & vscode-xu' if en else 'Xu LSP 与 vscode-xu'),
+            (prefix + '/blog/xu-0-8-13', 'Xu 0.8.13'),
             (prefix + '/blog/xu-0-8-12', 'Xu 0.8.12'),
             (prefix + '/blog/xu-0-8-11', 'Xu 0.8.11'),
             (prefix + '/blog/xu-0-8-8', 'Xu 0.8.8'),

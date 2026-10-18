@@ -1,0 +1,73 @@
+<p class="lead">FIPS-197 AES 高级加密标准（AES-128 / AES-192 / AES-256）单块加密。多分组与工作模式（CBC / CTR / GCM）见 <code>#crypto/cipher</code>。</p>
+
+<h2>模块概述</h2>
+<p><code>#crypto/aes</code> 实现了国家标准与工业通用的 AES（Rijndael）对称分组加密算法。支持 128 位、192 位与 256 位密钥长度，具体实现取决于编译目标与后端：</p>
+<ul>
+    <li><strong>密钥与轮数规格</strong>：
+        <ul>
+            <li><strong>AES-128</strong>：密钥长度 16 字节（128 位），10 轮加密。</li>
+            <li><strong>AES-192</strong>：密钥长度 24 字节（192 位），12 轮加密。</li>
+            <li><strong>AES-256</strong>：密钥长度 32 字节（256 位），14 轮加密。</li>
+        </ul>
+    </li>
+    <li><strong>分组长度</strong>：固定为 16 字节（128 位），即 <code>const block_size = 16</code>。</li>
+    <li><strong>硬件加速</strong>：可用性取决于编译目标与后端。<code>Cipher.hw_accel</code> 表示当前密码器是否使用硬件加速；CPU 支持相关指令不代表当前实现一定启用。</li>
+    <li><strong>工作模式与流扩展</strong>：本包专职处理严格的 16 字节底层单块加解密。处理变长明文时，请配合标准库 <a href="/zh/api/crypto/cipher"><code>#crypto/cipher</code></a>：
+        <ul>
+            <li><strong>CBC 模式</strong>：支持 PKCS#7 自动填充（<code>cipher.encrypt_cbc_pkcs7</code> / <code>cipher.decrypt_cbc_pkcs7</code>）。</li>
+            <li><strong>CTR 模式</strong>：基于计数器的流加密（<code>cipher.encrypt_ctr</code> / <code>cipher.decrypt_ctr</code>）。</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>代码示例</h2>
+
+<h3>1. 单块 AES-128 基础加解密</h3>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>示例</span></div><pre><code><span class="syn-prep">@main</span>
+<span class="syn-prep">#crypto/aes</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-comment">// 16 字节密钥（AES-128）</span>
+    key := <span class="syn-str">"0123456789abcdef"</span>
+    c := aes.new_cipher(&amp;key) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"初始化失败: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+
+    <span class="syn-comment">// 单块明文必须正好 16 字节</span>
+    block := <span class="syn-str">"16_bytes_secret!"</span>
+    enc := c.encrypt(&amp;block) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"加密失败: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+
+    dec := c.decrypt(&amp;enc) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"解密失败: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+    assert(dec == block)
+    println(<span class="syn-str">"单块加解密验证成功"</span>)
+    <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">0</span>
+}</code></pre></div>
+
+<h3>2. 搭配 <code>#crypto/cipher</code> 进行变长 AES-CBC + PKCS#7 填充加密</h3>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>示例</span></div><pre><code><span class="syn-prep">@main</span>
+<span class="syn-prep">#crypto/aes</span>
+<span class="syn-prep">#crypto/cipher</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    key := <span class="syn-str">"my-secret-key-16"</span> <span class="syn-comment">// 16 字节密钥</span>
+    iv := <span class="syn-str">"1234567890123456"</span>  <span class="syn-comment">// 16 字节初始向量</span>
+    c := aes.new_cipher(&amp;key) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+
+    <span class="syn-comment">// 任意长度的业务数据（自动 PKCS#7 填充并分块加密）</span>
+    msg := <span class="syn-str">"Xu systems language provides supersonic native AES encryption."</span>
+    enc := cipher.encrypt_cbc_pkcs7(&amp;c, &amp;iv, &amp;msg) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+    dec := cipher.decrypt_cbc_pkcs7(&amp;c, &amp;iv, &amp;enc) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+
+    assert(dec == msg)
+    println(<span class="syn-str">"CBC PKCS#7 解密还原成功"</span>)
+    <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">0</span>
+}</code></pre></div>
+
+<h2>API 详细声明</h2>

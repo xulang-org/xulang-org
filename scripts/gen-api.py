@@ -2032,7 +2032,7 @@ def render_item(pkg: Package, item: Item, lang: str, used_ids: dict) -> str:
     return "\n".join(parts)
 
 
-def render_page(pkg: Package, lang: str, xu_version: str = "") -> str:
+def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "") -> str:
     L = LABELS[lang]
     blurb = package_blurb(pkg, lang)
     counts = (
@@ -2046,7 +2046,7 @@ def render_page(pkg: Package, lang: str, xu_version: str = "") -> str:
         f"<h1><code>#{esc(pkg.import_path.split('#', 1)[1])}</code></h1>",
         f'<p class="meta">{L["import"]}: <code>{esc(pkg.import_path)}</code></p>',
         f'<p class="meta">{L["counts"]}: {esc(counts)}</p>',
-        f'<p class="lead">{esc(blurb)}</p>',
+        overview.strip() if overview else f'<p class="lead">{esc(blurb)}</p>',
     ]
     if xu_version:
         body.insert(3, f'<!--xu-api-version: {esc(xu_version)}-->\n<p class="banner">Xu {{{{xu_version}}}} API</p>')
@@ -2099,7 +2099,11 @@ def write_packages(site: str, packages: list[Package], xu_version: str = "") -> 
             rel = pkg.path + ".html"
             dest = os.path.join(root, rel)
             os.makedirs(os.path.dirname(dest), exist_ok=True)
-            html_text = render_page(pkg, lang, xu_version)
+            # Keep curated usage guides separate from generated declarations
+            # so release regeneration preserves examples and explanations.
+            guide = Path(site, "templates", "api-guides", lang, rel)
+            overview = guide.read_text(encoding="utf-8") if guide.is_file() else ""
+            html_text = render_page(pkg, lang, xu_version, overview)
             with open(dest, "w", encoding="utf-8") as f:
                 f.write(html_text)
         with open(os.path.join(root, "index.html"), "w", encoding="utf-8") as f:

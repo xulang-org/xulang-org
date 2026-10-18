@@ -83,6 +83,8 @@ make build                          # 打包集成到 dist/
 
 本项目采用 [MIT 许可证](LICENSE) 开源。
 
-## Xu 0.8.12
+## Xu 0.8.13
 
-官网选用已发布的 0.8.12 正式 SDK，开发版另行迭代。刷新基准页面时，下载同一次完整六平台 Actions 附件，运行 `scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD`，再执行 `python3 scripts/gen-benchmarks.py`。导入会验证编译器身份、源闭包、自举定点、完整负载与 stdout；未测项保留空缺，C、Rust 行取 O1/O2/O3 中位数最小值。
+官网选用已发布的 0.8.13 正式 SDK，开发版另行迭代。刷新基准页面时，下载同一次完整六平台 Actions 附件，运行 `scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD`，再执行 `python3 scripts/gen-benchmarks.py`。导入会验证编译器身份、源闭包、自举定点、完整负载与 stdout；未测项保留空缺，C、Rust 行取 O1/O2/O3 中位数最小值。
+
+API 手写说明与示例保存在 `templates/api-guides/`，生成时与所选 SDK 的公开声明合并。

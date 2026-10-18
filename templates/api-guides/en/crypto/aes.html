@@ -1,0 +1,73 @@
+<p class="lead">FIPS-197 AES (Advanced Encryption Standard: AES-128 / AES-192 / AES-256) block cipher. Modes and multi-block operations (CBC / CTR / GCM) live in <code>#crypto/cipher</code>.</p>
+
+<h2>Overview</h2>
+<p><code>#crypto/aes</code> implements the standard AES (Rijndael) symmetric block cipher. It supports 128-bit, 192-bit, and 256-bit key sizes. The active implementation depends on the compiler target and backend:</p>
+<ul>
+    <li><strong>Key Sizes and Rounds</strong>:
+        <ul>
+            <li><strong>AES-128</strong>: 16-byte (128-bit) key, 10 encryption rounds.</li>
+            <li><strong>AES-192</strong>: 24-byte (192-bit) key, 12 encryption rounds.</li>
+            <li><strong>AES-256</strong>: 32-byte (256-bit) key, 14 encryption rounds.</li>
+        </ul>
+    </li>
+    <li><strong>Block Size</strong>: Strictly 16 bytes (128 bits), defined as <code>const block_size = 16</code>.</li>
+    <li><strong>Hardware Acceleration</strong>: Availability depends on the compiler target and backend. <code>Cipher.hw_accel</code> reports whether the active cipher uses hardware acceleration; CPU support alone does not guarantee it.</li>
+    <li><strong>Cipher Modes &amp; Streaming</strong>: This package operates strictly on single 16-byte blocks. For arbitrary-length messages and modern cipher modes, use standard library <a href="/api/crypto/cipher"><code>#crypto/cipher</code></a>:
+        <ul>
+            <li><strong>CBC Mode</strong>: Supports PKCS#7 padding (<code>cipher.encrypt_cbc_pkcs7</code> / <code>cipher.decrypt_cbc_pkcs7</code>).</li>
+            <li><strong>CTR Mode</strong>: Counter-based keystream streaming (<code>cipher.encrypt_ctr</code> / <code>cipher.decrypt_ctr</code>).</li>
+        </ul>
+    </li>
+</ul>
+
+<h2>Examples</h2>
+
+<h3>1. Single-Block AES-128 Encryption &amp; Decryption</h3>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>Example</span></div><pre><code><span class="syn-prep">@main</span>
+<span class="syn-prep">#crypto/aes</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-comment">// 16-byte key for AES-128</span>
+    key := <span class="syn-str">"0123456789abcdef"</span>
+    c := aes.new_cipher(&amp;key) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Cipher init error: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+
+    <span class="syn-comment">// Single block must be exactly 16 bytes</span>
+    block := <span class="syn-str">"16_bytes_secret!"</span>
+    enc := c.encrypt(&amp;block) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Encryption error: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+
+    dec := c.decrypt(&amp;enc) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Decryption error: "</span> + err.msg())
+        <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span>
+    }
+    assert(dec == block)
+    println(<span class="syn-str">"Single-block roundtrip passed!"</span>)
+    <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">0</span>
+}</code></pre></div>
+
+<h3>2. Variable-Length AES-CBC with PKCS#7 Padding via <code>#crypto/cipher</code></h3>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>Example</span></div><pre><code><span class="syn-prep">@main</span>
+<span class="syn-prep">#crypto/aes</span>
+<span class="syn-prep">#crypto/cipher</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    key := <span class="syn-str">"my-secret-key-16"</span> <span class="syn-comment">// 16-byte key</span>
+    iv := <span class="syn-str">"1234567890123456"</span>  <span class="syn-comment">// 16-byte initialization vector</span>
+    c := aes.new_cipher(&amp;key) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+
+    <span class="syn-comment">// Arbitrary length payload with automatic PKCS#7 padding</span>
+    msg := <span class="syn-str">"Xu systems language provides supersonic native AES encryption."</span>
+    enc := cipher.encrypt_cbc_pkcs7(&amp;c, &amp;iv, &amp;msg) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+    dec := cipher.decrypt_cbc_pkcs7(&amp;c, &amp;iv, &amp;enc) <span class="syn-kw">or</span> (err) { <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">1</span> }
+
+    assert(dec == msg)
+    println(<span class="syn-str">"CBC PKCS#7 decrypted successfully!"</span>)
+    <span class="syn-kw">&lt;&lt;</span> <span class="syn-num">0</span>
+}</code></pre></div>
+
+<h2>Declarations</h2>

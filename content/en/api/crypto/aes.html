@@ -1,14 +1,14 @@
 <!--title: #crypto/aes-->
-<p class="crumb"><a href="/api">API</a> / crypto / aes</p>
+<p class="crumb">API</p>
 <h1><code>#crypto/aes</code></h1>
-<!--xu-api-version: 0.8.12-->
+<!--xu-api-version: 0.8.13-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#crypto/aes</code></p>
 <p class="meta">counts: 1 fns, 5 methods, 1 types, 1 consts, 0 ifaces</p>
 <p class="lead">FIPS-197 AES (Advanced Encryption Standard: AES-128 / AES-192 / AES-256) block cipher. Modes and multi-block operations (CBC / CTR / GCM) live in <code>#crypto/cipher</code>.</p>
 
 <h2>Overview</h2>
-<p><code>#crypto/aes</code> implements the standard AES (Rijndael) symmetric block cipher. It supports 128-bit, 192-bit, and 256-bit key sizes, with automatic hardware CPU acceleration and pure-software fallback:</p>
+<p><code>#crypto/aes</code> implements the standard AES (Rijndael) symmetric block cipher. It supports 128-bit, 192-bit, and 256-bit key sizes. The active implementation depends on the compiler target and backend:</p>
 <ul>
     <li><strong>Key Sizes and Rounds</strong>:
         <ul>
@@ -18,7 +18,7 @@
         </ul>
     </li>
     <li><strong>Block Size</strong>: Strictly 16 bytes (128 bits), defined as <code>const block_size = 16</code>.</li>
-    <li><strong>Hardware Acceleration</strong>: Automatically detects host CPU instruction support (<code>AES-NI</code> on x86_64, <code>ARMv8 Cryptography Extensions</code> on ARM64). When hardware acceleration is active, <code>Cipher.hw_accel</code> is set to <code>true</code>.</li>
+    <li><strong>Hardware Acceleration</strong>: Availability depends on the compiler target and backend. <code>Cipher.hw_accel</code> reports whether the active cipher uses hardware acceleration; CPU support alone does not guarantee it.</li>
     <li><strong>Cipher Modes &amp; Streaming</strong>: This package operates strictly on single 16-byte blocks. For arbitrary-length messages and modern cipher modes, use standard library <a href="/api/crypto/cipher"><code>#crypto/cipher</code></a>:
         <ul>
             <li><strong>CBC Mode</strong>: Supports PKCS#7 padding (<code>cipher.encrypt_cbc_pkcs7</code> / <code>cipher.decrypt_cbc_pkcs7</code>).</li>
@@ -78,16 +78,14 @@
 }</code></pre></div>
 
 <h2>Declarations</h2>
-
 <article class="api-item" id="const-block_size">
 <h2><code>const block_size</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> block_size = 16</code></pre></div>
 <h3>Purpose</h3>
-<p>Standard AES block size in bytes (always <code>16</code> bytes / 128 bits).</p>
+<p>block_size is the AES block size in bytes (16 bytes, 128 bits). Value `16`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
-
 <article class="api-item" id="struct-Cipher">
 <h2><code>struct Cipher</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Cipher {
@@ -104,97 +102,97 @@
     <span class="syn-kw">pub</span> drk_bytes <span class="syn-type">string</span>
 }</code></pre></div>
 <h3>Purpose</h3>
-<p>Represents an instantiated AES cipher with expanded round key schedules and hardware acceleration flags.</p>
-<h3>Fields</h3>
+<p>Cipher represents an instantiated AES cipher with expanded key schedule. Supports AES-128 (10 rounds), AES-192 (12 rounds), and AES-256 (14 rounds). Hardware acceleration (AES-NI / ARMv8 Crypto) is indicated by hw_accel.</p>
+<h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>nr</code> <span class="type">int</span></dt><dd>Number of encryption rounds (10 for AES-128, 12 for AES-192, 14 for AES-256).</dd>
-<dt><code>hw_accel</code> <span class="type">bool</span></dt><dd>Whether hardware CPU acceleration (AES-NI / ARMv8 Crypto) is active.</dd>
-<dt><code>rk</code> <span class="type">[]int</span></dt><dd>Expanded key schedule in 32-bit word format.</dd>
-<dt><code>rk_bytes</code> <span class="type">string</span></dt><dd>Raw key bytes for hardware-accelerated encryption.</dd>
-<dt><code>drk_bytes</code> <span class="type">string</span></dt><dd>Raw key bytes for hardware-accelerated decryption.</dd>
+<dt><code>nr</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>rk</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>sbox</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>inv</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>te</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>td</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>erk</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>drk</code> <span class="type">[]int</span></dt><dd>field ([]int)</dd>
+<dt><code>hw_accel</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>rk_bytes</code> <span class="type">string</span></dt><dd>field (string)</dd>
+<dt><code>drk_bytes</code> <span class="type">string</span></dt><dd>field (string)</dd>
 </dl>
 </article>
-
 <article class="api-item" id="new_cipher">
 <h2><code>new_cipher</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> new_cipher(key &amp;<span class="syn-type">string</span>) Cipher</code></pre></div>
 <h3>Purpose</h3>
-<p>Creates and returns a new <code>Cipher</code> instance from the given symmetric key. Selects algorithm based on <code>key.len</code>: 16 bytes for AES-128, 24 bytes for AES-192, 32 bytes for AES-256. Throws <code>"crypto/aes: invalid key size"</code> if the key length is not 16, 24, or 32 bytes.</p>
+<p>new_cipher creates and returns a new Cipher instance from the given key. The key argument must be 16 bytes (AES-128), 24 bytes (AES-192), or 32 bytes (AES-256). Throws an error if the key length is not 16, 24, or 32 bytes. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>key</code> <span class="type">&amp;string</span></dt><dd>Key string borrow, must be exactly 16, 24, or 32 bytes in length.</dd>
+<dt><code>key</code> <span class="type">&amp;string</span></dt><dd>key (borrowed; caller keeps it; type &amp;string)</dd>
 </dl>
 <h3>Returns</h3>
-<p><code>Cipher</code> — The initialized AES cipher instance.</p>
+<p>Cipher — a value of this type</p>
 </article>
-
 <article class="api-item" id="-Cipher-block_size">
 <h2><code>(&amp;Cipher) block_size</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) block_size() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Returns the cipher's block size in bytes (always <code>16</code>).</p>
+<p>block_size returns the cipher&#x27;s block size in bytes (always 16).</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>Cipher instance borrow.</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>receiver &amp;Cipher (borrow)</dd>
 </dl>
 <h3>Returns</h3>
-<p><code>int</code> — Block size (16).</p>
+<p>int — a value of this type</p>
 </article>
-
 <article class="api-item" id="-Cipher-encrypt">
 <h2><code>(&amp;Cipher) encrypt</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) encrypt(src &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Encrypts a single 16-byte block. Throws <code>"crypto/aes: invalid block size"</code> if <code>src.len != 16</code>. Uses CPU hardware acceleration when supported.</p>
+<p>encrypt encrypts a single 16-byte block from src and returns the 16-byte ciphertext string. Throws an error if src.len != 16. For multi-block or streaming encryption, use crypto/cipher. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>Cipher instance borrow.</dd>
-<dt><code>src</code> <span class="type">&amp;string</span></dt><dd>Single-block plaintext string borrow (strictly 16 bytes).</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>receiver &amp;Cipher (borrow)</dd>
+<dt><code>src</code> <span class="type">&amp;string</span></dt><dd>source (borrowed; caller keeps it; type &amp;string)</dd>
 </dl>
 <h3>Returns</h3>
-<p><code>string</code> — 16-byte ciphertext result string.</p>
+<p>string — result string</p>
 </article>
-
 <article class="api-item" id="-Cipher-encrypt_block">
 <h2><code>(&amp;Cipher) encrypt_block</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) encrypt_block(dst &amp;<span class="syn-kw">mut</span> []<span class="syn-type">int</span>, src &amp;[]<span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Encrypts a single 16-byte block in place from array <code>src</code> into array <code>dst</code> without string allocations. Throws if <code>src.len != 16</code> or <code>dst.len != 16</code>.</p>
+<p>encrypt_block encrypts a single 16-byte block from src into dst in place. Throws an error if src.len != 16 or dst.len != 16. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>Cipher instance borrow.</dd>
-<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>Destination byte array (exclusive mutable borrow, length 16).</dd>
-<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>Source byte array (borrow, length 16).</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>receiver &amp;Cipher (borrow)</dd>
+<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>destination (exclusive borrow; type &amp;mut []int)</dd>
+<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>source (borrowed; caller keeps it; type &amp;[]int)</dd>
 </dl>
 <h3>Returns</h3>
-<p><code>bool</code> — <code>true</code> upon successful encryption.</p>
+<p>bool — true or false</p>
 </article>
-
 <article class="api-item" id="-Cipher-decrypt">
 <h2><code>(&amp;Cipher) decrypt</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) decrypt(src &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Decrypts a single 16-byte ciphertext block. Throws <code>"crypto/aes: invalid block size"</code> if <code>src.len != 16</code>. Returns the 16-byte plaintext string.</p>
+<p>decrypt decrypts a single 16-byte block from src and returns the 16-byte plaintext string. Throws an error if src.len != 16. For multi-block or streaming decryption, use crypto/cipher. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>Cipher instance borrow.</dd>
-<dt><code>src</code> <span class="type">&amp;string</span></dt><dd>Single-block ciphertext string borrow (strictly 16 bytes).</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>receiver &amp;Cipher (borrow)</dd>
+<dt><code>src</code> <span class="type">&amp;string</span></dt><dd>source (borrowed; caller keeps it; type &amp;string)</dd>
 </dl>
 <h3>Returns</h3>
-<p><code>string</code> — 16-byte plaintext string.</p>
+<p>string — result string</p>
 </article>
-
 <article class="api-item" id="-Cipher-decrypt_block">
 <h2><code>(&amp;Cipher) decrypt_block</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Cipher) decrypt_block(dst &amp;<span class="syn-kw">mut</span> []<span class="syn-type">int</span>, src &amp;[]<span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Decrypts a single 16-byte block in place from array <code>src</code> into array <code>dst</code> without string allocations. Throws if <code>src.len != 16</code> or <code>dst.len != 16</code>.</p>
+<p>decrypt_block decrypts a single 16-byte block from src into dst in place. Throws an error if src.len != 16 or dst.len != 16. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>Cipher instance borrow.</dd>
-<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>Destination byte array (exclusive mutable borrow, length 16).</dd>
-<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>Source byte array (borrow, length 16).</dd>
+<dt><code>c</code> <span class="type">&amp;Cipher</span></dt><dd>receiver &amp;Cipher (borrow)</dd>
+<dt><code>dst</code> <span class="type">&amp;mut []int</span></dt><dd>destination (exclusive borrow; type &amp;mut []int)</dd>
+<dt><code>src</code> <span class="type">&amp;[]int</span></dt><dd>source (borrowed; caller keeps it; type &amp;[]int)</dd>
 </dl>
 <h3>Returns</h3>
-<p><code>bool</code> — <code>true</code> upon successful decryption.</p>
+<p>bool — true or false</p>
 </article>

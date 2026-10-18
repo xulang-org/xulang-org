@@ -13,8 +13,12 @@ import re
 def build(root: Path, xu: Path, compiler: Path):
     version = (xu / 'VERSION').read_text().strip()
     expected = os.environ.get('XU_RELEASE_VERSION', version)
+    site_version = (root / 'VERSION').read_text().strip()
     banner = subprocess.check_output([str(compiler), '--version'], cwd=xu, text=True)
-    if version != expected or not re.search(r'Xu Compiler Toolchain v' + re.escape(version) + r'\b', banner):
+    identity = re.search(r'Xu Compiler Toolchain v([0-9A-Za-z.-]+)(?:\s|$)', banner)
+    if (version != expected or site_version != version or
+            not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version) or
+            not identity or identity[1] != version):
         raise RuntimeError('Xu compiler, SDK sources and selected final release versions must match')
     help_text = subprocess.check_output([str(compiler), '--help'], cwd=xu, text=True)
     if 'wasm32' not in help_text:
@@ -35,15 +39,14 @@ def build(root: Path, xu: Path, compiler: Path):
     wasm = root / 'build/playground/xu-play.wasm'
     with tempfile.TemporaryDirectory(prefix='xu-play-build-') as temporary:
         env = os.environ.copy()
-        env.update(XU_STDLIB_ROOT=str(xu / 'src'), XUPATH='', XU_CACHE=temporary)
+        env.update(XU_ROOT=str(xu), XU_STDLIB_ROOT=str(xu / 'src'), XUPATH='', XU_CACHE=temporary)
         for name in ('XUOS', 'XUARCH', 'XU_BOOT_EXTRA', 'XU_SEED', 'XU_ALLOW_ORACLE_SEED'):
             env.pop(name, None)
         subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-O0', '-o', str(wasm)], cwd=xu, env=env, check=True)
     if (xu / 'VERSION').read_text().strip() != version:
         raise RuntimeError('Xu SDK version changed during the build; rebuild from a fixed SDK')
-    site_version = (root / 'VERSION').read_text().strip() if (root / 'VERSION').is_file() else version
     (wasm.parent / 'build.json').write_text(json.dumps({
-        'xu_version': site_version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest(),
+        'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest(),
     }, indent=2) + '\n')
     print(f'Pure Xu playground built: {wasm}')
 
