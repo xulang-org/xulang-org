@@ -53,8 +53,8 @@ class BenchmarkRankingTests(unittest.TestCase):
         return platforms
 
     def test_reported_swift_bug_cannot_win_all_architectures(self):
-        # Reproduce the original four-of-six coverage bug independently of
-        # the latest published measurements, which change on each release.
+        # Even when averaged over passed platforms, incomplete coverage (4/6)
+        # must never claim the "best" badge across all architectures.
         data = self.fixture()
         for pid, wall in [('macos-arm64', 2.9), ('linux-arm64', 2.3),
                           ('macos-x64', 3.1), ('linux-x64', 2.5)]:
@@ -62,13 +62,13 @@ class BenchmarkRankingTests(unittest.TestCase):
         for pid in ('windows-arm64', 'windows-x64'):
             data[pid]['benches'][0]['implementations'].pop('swiftc -O')
         row = bars(data)
-        self.assertEqual(row['data-pct-all'], '0.0')
+        self.assertNotEqual(row['data-pct-all'], '0.0')
         self.assertIn('4/6', row['data-txt-all'])
         self.assertNotIn('bench-bar-badge-best', row['data-txt-all'])
         cell = median_cell(data)
         self.assertIn('4/6', cell)
         self.assertNotIn('bench-cell-best', cell)
-        self.assertNotIn('2.70ms', cell)
+        self.assertIn('2.70ms', cell)
         self.assertIn('2.90 ms', row['data-txt-macos-arm64'])
         self.assertEqual(row['data-txt-windows-arm64'], '—')
 
@@ -131,7 +131,7 @@ class BenchmarkRankingTests(unittest.TestCase):
             for en in (False, True):
                 with self.subTest(metric=cfg['key'], en=en):
                     row = bars(data, cfg['key'], en=en)
-                    self.assertEqual(row['data-pct-all'], '0.0')
+                    self.assertNotEqual(row['data-pct-all'], '0.0')
                     self.assertIn('5/6', row['data-txt-all'])
                     self.assertNotIn('badge-best', row['data-txt-all'])
                     self.assertIn('5/6', median_cell(data, cfg['key'], en=en))

@@ -329,14 +329,13 @@ def workload_metric_values(b_name: str, platforms: dict, metric_key: str) -> dic
 def cross_platform_metric(values: dict) -> tuple[float | None, int, int]:
     samples = [values.get(cfg["id"]) for cfg in PLATFORMS_CONFIG]
     valid = [value for value in samples if comparable_metric(value)]
-    complete = len(valid) == len(samples)
-    return (statistics.median(valid) if complete else None, len(valid), len(samples))
+    return (statistics.median(valid) if valid else None, len(valid), len(samples))
 
 
 def incomplete_metric_text(covered: int, total: int, en: bool) -> str:
     label = "comparable" if en else "可比数据"
-    title = ("Excluded from the aggregate: all target platforms need comparable measurements."
-             if en else "未参与综合比较：全部目标平台都须有可比实测数据。")
+    title = ("No comparable measurements available on target platforms."
+             if en else "未获取到目标平台有效可比实测数据。")
     return f'— <small title="{title}">{label} {covered}/{total}</small>'
 
 
@@ -375,7 +374,9 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
     lang_meds = {lk: summary[0] for lk, summary in summaries.items()}
 
     all_meds = [m for m in lang_meds.values() if m is not None and m > 0]
-    best_med = min(all_meds) if len(all_meds) >= 2 else None
+    complete_meds = [m for lk, m in lang_meds.items()
+                     if m is not None and m > 0 and summaries[lk][1] == summaries[lk][2]]
+    best_med = min(complete_meds) if len(complete_meds) >= 2 else (min(all_meds) if len(all_meds) >= 2 else None)
 
     th_cols = [f'<th class="bench-td-lang-cell" style="width: 14%;">{"Language" if en else "实现语言"}</th>']
     for c in active_configs:
@@ -390,7 +391,7 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
         )
 
     med_hdr_title = "Cross-Platform" if en else "全平台中位数"
-    med_hdr_sub = "6/6 required" if en else "仅 6/6 参评"
+    med_hdr_sub = "6/6 for Best" if en else "6/6 参评最优"
     th_cols.append(
         f'<th class="bench-th-platform bench-th-median" style="width: 12.8%;">'
         f'  <div class="bench-th-pname"><i class="xi xi-chart-bar" style="color:var(--xu-brand);"></i> <span>{med_hdr_title}</span> <span class="bench-med-badge">{med_hdr_sub}</span></div>'
@@ -473,12 +474,13 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
             else:
                 cells.append('<td class="meta">—</td>')
 
-        # 全平台中位数
-        m_val = lang_meds.get(lk)
+        # 全平台中位数 / 实测均值
+        m_val, covered, total = summaries[lk]
         if m_val is not None and m_val > 0:
-            is_med_best = (best_med is not None and abs(m_val - best_med) < 1e-4)
+            is_med_best = (covered == total and best_med is not None and abs(m_val - best_med) < 1e-4)
             best_pill = f' <span class="bench-best-badge">{"Best" if en else "最优"}</span>' if is_med_best else ""
             m_text = format_metric_val(m_val)
+            sub_cov = f' <small title="{"Average across " + str(covered) + " passed platforms" if en else "已通过 " + str(covered) + " 个平台中位数"}" style="opacity:0.75; font-size:11px;">({covered}/{total})</small>' if covered < total else ''
             if is_med_best:
                 cells.append(
                     f'<td class="num bench-cell-median bench-cell-best">'
@@ -490,9 +492,8 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
                     f'</td>'
                 )
             else:
-                cells.append(f'<td class="num bench-cell-median"><strong>{m_text}</strong></td>')
+                cells.append(f'<td class="num bench-cell-median"><strong>{m_text}</strong>{sub_cov}</td>')
         else:
-            _, covered, total = summaries[lk]
             cells.append(f'<td class="meta bench-cell-median">{incomplete_metric_text(covered, total, en)}</td>')
 
         row_cls = ' class="bench-row-xu"' if is_xu else ''
@@ -715,10 +716,20 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
 
             valid_nums = [v for lk, v in lang_vals if v is not None and v > 0]
             max_v = max(valid_nums) if valid_nums else 1.0
-            min_v = min(valid_nums) if len(valid_nums) >= 2 else None
+
+            if pid == "all":
+                complete_nums = [summaries[lcfg["key"]][0] for lcfg in BENCH_LANGS_CONFIG
+                                 if summaries[lcfg["key"]][0] is not None
+                                 and summaries[lcfg["key"]][0] > 0
+                                 and summaries[lcfg["key"]][1] == summaries[lcfg["key"]][2]]
+                min_v = min(complete_nums) if len(complete_nums) >= 2 else (min(valid_nums) if valid_nums else None)
+            else:
+                min_v = min(valid_nums) if len(valid_nums) >= 2 else None
 
             p_map = {}
             for lk, v in lang_vals:
+                cov_info = summaries[lk] if pid == "all" else None
+                is_partial = (cov_info is not None and cov_info[1] < cov_info[2])
                 if v is None:
                     pct = 0.0
                     _, covered, total = summaries[lk]
@@ -733,10 +744,14 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
                     if unit == "KiB" and v >= 1000:
                         v_str = f"{v:,.0f}"
 
-                    is_best = min_v is not None and abs(v - min_v) < 1e-4
+                    is_best = (min_v is not None and abs(v - min_v) < 1e-4 and not is_partial)
                     badge_best = f' <span class="bench-bar-badge-best">{"Best" if en else "最优"}</span>' if is_best else ""
 
-                    if ratio is None or is_best or abs(ratio - 1.0) < 0.04:
+                    if is_partial:
+                        covered, total = cov_info[1], cov_info[2]
+                        ratio_str = f" · {ratio:.1f}×" if (ratio is not None and abs(ratio - 1.0) >= 0.04) else ""
+                        txt = f'{v_str} {unit} <small style="opacity:0.7">({covered}/{total}{ratio_str})</small>'
+                    elif ratio is None or is_best or abs(ratio - 1.0) < 0.04:
                         txt = f"{v_str} {unit}{badge_best}"
                     else:
                         txt = f'{v_str} {unit} <small style="opacity:0.7">({ratio:.1f}×)</small>'
@@ -786,9 +801,9 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
 
     bars_title = "4-Dimension Real Measurements" if en else "4 核心维度横向条形对比 (各平台即时联动)"
     bars_hint = (
-        "Aggregate requires 6/6 comparable platforms · * Below timer resolution, not ranked"
+        "Cross-platform aggregate (6/6 required for Best) · * Below timer resolution"
         if en
-        else "综合仅比较 6/6 平台完整数据 · * 计时精度不足，不参与排名"
+        else "全架构按已通过平台实测综合 (未满6平台不参评最优) · * 计时精度不足"
     )
 
     return f"""
