@@ -1,41 +1,119 @@
 <!--title: Modules and dependencies-->
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
 <h1>Modules and dependencies</h1>
-<p class="banner">Xu {{xu_version}} · signed checksum logs since 0.8.4 · dependency snapshot overhaul since 0.8.6 · multi-target verification and distribution in 0.8.8</p>
-<p>A directory project uses <code>xu.xun</code>. <code>module:</code> is the module identity, <code>version:</code> its own version, and <code>xu:</code> the Xu version it targets. External imports require an explicit alias and a matching root module in <code>require:</code>.</p>
-<h2>Declare and Install Dependencies (Automated Resolution)</h2>
-<p>For standard projects, we recommend referencing official SemVer releases without manual clones or complex configs:</p>
+<p class="banner">Xu {{xu_version}} · Signed checksum logs since 0.8.4 · Dependency snapshot overhaul since 0.8.6 · Multi-target verification &amp; distribution in 0.8.8</p>
+
+<p>A directory-based project uses <code>xu.xun</code> in the root directory as its module manifest. In this file: <code>module:</code> declares the module's identity and namespace, <code>version:</code> defines its project version, and <code>xu:</code> declares the targeted Xu compiler version. External imports require an explicit alias and a corresponding root module under <code>require:</code>.</p>
+
+<h2>1. Declare &amp; Install Dependencies (<code>xu get</code> / <code>xu install</code>)</h2>
+<p>Adding external dependencies to your project is straightforward. Standard projects should reference official SemVer releases without manual clones or manual compiler flags:</p>
+
+<h3>Method A: Use <code>xu get</code> for Instant Addition (Recommended)</h3>
+<p>Run a single command in your terminal. The compiler automatically edits <code>xu.xun</code>, downloads sources into <code>vendor/</code>, and creates or updates <code>xu.lock</code>:</p>
+
+<pre><code class="language-shell"># Fetch a specific SemVer release of the official packages monorepo
+xu get github.com/xulang-org/packages@v0.1.1</code></pre>
+
+<h3>Method B: Declare in <code>xu.xun</code> &amp; Run <code>xu install</code></h3>
+<p>Alternatively, edit <code>xu.xun</code> directly in the project root directory:</p>
+
 <pre><code class="language-xun">module: app
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
+
 require:
   "github.com/xulang-org/packages": v0.1.1</code></pre>
-<p>Run <code>xu install</code> in your project root. The compiler automatically resolves dependencies into <code>vendor/</code> and writes the cryptographic lockfile <code>xu.lock</code>. In code, import subpackages with an explicit alias:</p>
+
+<p>Then run <code>xu install</code> in your project root to resolve and download dependencies:</p>
+
+<pre><code class="language-shell"># Resolve dependency graph, write vendor/ directory, and generate xu.lock
+xu install</code></pre>
+
+<h3>Importing Packages in Source Code with Explicit Aliases</h3>
+<p>Import sub-packages in your <code>.xu</code> source files using explicit namespace aliases:</p>
+
 <pre><code class="language-xu">@main
+#fmt
 mysql #github.com/xulang-org/packages/mysql
 
-fn main() {
+fn main() int {
     _ := mysql.driver()
+    fmt.println("MySQL driver loaded successfully.")
+    &lt;&lt; 0
 }</code></pre>
-<p>Declare the root module <code>github.com/xulang-org/packages</code> in require, and select concrete packages (such as <code>mysql</code>, <code>redis</code>, <code>postgres</code>) in code. See the full catalog in <a href="/en/docs/packages">Official External Packages</a>.</p>
-<h2>Version Selection &amp; Alternate Locators</h2><p>In addition to SemVer releases, you can pin to a reviewed immutable Git commit, or use a relative path for local co-development:</p>
-<pre><code class="language-xun"># Option A: Pin to a Git commit
+
+<p>You declare the root repository <code>github.com/xulang-org/packages</code> under <code>require:</code>, then import concrete sub-packages in code (such as <code>mysql</code>, <code>redis</code>, <code>postgres</code>, <code>s3</code>). See the full package catalog in <a href="/en/docs/packages">Official External Packages</a>.</p>
+
+<h2>2. Version Selection &amp; Alternate Locators</h2>
+<p>In addition to SemVer releases, you can pin to a reviewed immutable Git commit or use a relative path for local co-development:</p>
+
+<pre><code class="language-xun"># Option A: Pin to a reviewed Git commit
 require:
   "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit&gt;
 
 # Option B: Local workspace co-development (app placed beside packages)
 require:
   "github.com/xulang-org/packages": file:../packages</code></pre>
-<p>Choose one require block and replace &lt;commit&gt; with an actual commit. MVS reads all reachable version manifests and selects the highest minimum requirement for each module. It does not query latest or interpret version ranges. v2+ modules use a matching /vN path suffix. Explicit file/Git/tar sources remain supported; conflicting sources fail.</p><h2>Install, lock, and build offline</h2><pre><code class="language-shell">xu install app
-xu check app/main.xu --offline
-xu build app/main.xu --frozen --output app/program</code></pre>
-<table><tr><th>Mode</th><th>Behavior</th></tr><tr><td>Default</td><td>May download and establish lock entries; existing content mismatches fail.</td></tr>
-<tr><td><code>--offline</code></td><td>No downloads. Uses local sources, verified cache, or vendor; may create lock entries.</td></tr>
-<tr><td><code>--frozen</code></td><td>Offline, existing matching lock entries required; no dependency cache or lock writes. Local file dependencies require an installed vendor snapshot.</td></tr></table>
-<p>Commit the reviewed <code>xu.lock</code>. Explicit sources use v2 locks; version graphs use v3. <code>xu install</code> retains all reachable version snapshots in vendor for offline MVS replay. Frozen dependency policy does not freeze your app sources or build output. <code>install --frozen</code> and <code>build --desktop</code> with these modes are rejected.</p><h2>Proxy and private modules</h2><pre><code class="language-shell">XUPROXY='https://proxy.example.com,direct' xu install app
-XUPRIVATE='example.com/private/*' xu install app</code></pre><p><code>XUPROXY</code> accepts HTTP(S), absolute file:// URLs, direct, and off; the default is direct. A comma falls back only on 404/410; a vertical bar allows fallback on request errors. Identity or integrity mismatches always fail. Direct version discovery supports GitHub repositories; other hosts need an explicit source or a configured Xu proxy.</p>
-<p><code>XUPRIVATE</code> is a comma-separated module-prefix glob list. <code>XUNOPROXY</code> defaults to it and controls proxy bypass. No public Xu proxy is assumed; Go module proxy manifests are not Xu manifests.</p>
-<h2>Checksum verification in 0.8.4</h2>
-<p><code>XUSUMDB</code> accepts a trusted Ed25519 verifier key and optional service URL. For SemVer modules, the client verifies the signed tree head, module digest, inclusion proof, and append consistency before accepting dependencies. With it unset or off, first-use trust remains in effect. <code>XUNOSUMDB</code> controls checksum bypass independently and defaults to XUPRIVATE.</p>
-<h2>Native Module Integration (C / Native)</h2><p>Beyond pure source packages, Xu supports native C/C++ libraries declared via the <code>native:</code> section in <code>xu.xun</code>. The compiler supports both standard generic <code>.a</code> archives and portable <code>.xulib</code> multi-target slice containers. See <a href="/docs/native">Native Modules &amp; .xulib Specification</a>.</p>
-<h2>Migrate from older versions</h2><p>Change old dotted package paths to slash paths; preserve dots in domain names, version numbers, and field/method access. Review changed module identities and legacy lock files before reinstalling. Do not delete a current lock merely to suppress a mismatch.</p><p><a href="/docs/packages">Use external packages</a> · <a href="/docs/native">Native modules &amp; .xulib</a></p>
+
+<p>Xu uses the <strong>MVS (Minimal Version Selection)</strong> algorithm, reading all reachable version manifests to select the highest minimum requirement for each module. MVS never queries <code>latest</code> or interprets floating version ranges. Modules with major version v2 or higher use a matching <code>/vN</code> path suffix. Explicit file, Git, and tar sources remain natively supported; conflicting sources result in explicit compiler errors.</p>
+
+<h2>3. Install, Lock, and Offline/Frozen Builds</h2>
+<p>For production CI/CD pipelines and enterprise deployments, Xu guarantees deterministic locking and reproducible offline builds:</p>
+
+<pre><code class="language-shell"># 1. Resolve and download dependencies during development
+xu install
+
+# 2. Check types and borrow rules offline (no downloads permitted)
+xu check main.xu --offline
+
+# 3. Completely frozen production release build (strictly pins existing lock)
+xu build main.xu --frozen --output app</code></pre>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Build Mode</th>
+      <th>Network &amp; Compiler Behavior Specification</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Default Mode</strong></td>
+      <td>Allows downloading and establishing lock entries; existing content hash mismatches immediately fail.</td>
+    </tr>
+    <tr>
+      <td><strong><code>--offline</code></strong></td>
+      <td>Forbids network calls; uses only local sources, verified cache, or <code>vendor/</code>; may create lock entries locally.</td>
+    </tr>
+    <tr>
+      <td><strong><code>--frozen</code></strong></td>
+      <td>Implies offline mode. Requires an exact matching lock entry; strictly forbids cache or lock writes; local <code>file:</code> dependencies must be pre-installed as <code>vendor/</code> snapshots.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>We recommend committing <code>xu.lock</code> to version control. Explicit sources use v2 locks; version graphs use v3 locks. <code>xu install</code> retains all reachable version snapshots in <code>vendor/</code> for offline MVS graph replay. Frozen dependency mode does not freeze your application sources or build outputs.</p>
+
+<h2>4. Proxy Servers and Private Modules (<code>XUPROXY</code> / <code>XUPRIVATE</code>)</h2>
+<pre><code class="language-shell"># Configure proxy mirror with direct fallback
+XUPROXY='https://proxy.example.com,direct' xu install
+
+# Configure enterprise private module patterns (bypassing public proxy and sumdb)
+XUPRIVATE='example.com/private/*' xu install</code></pre>
+
+<p><code>XUPROXY</code> accepts HTTP(S), absolute <code>file://</code> URLs, <code>direct</code>, and <code>off</code>; default is <code>direct</code>. A comma falls back only on 404/410; a vertical bar allows fallback on any request errors. Identity or integrity mismatches always fail immediately. Direct version discovery natively supports GitHub repositories; other code hosts require an explicit source or a configured Xu proxy.</p>
+
+<p><code>XUPRIVATE</code> is a comma-separated list of module-prefix globs; <code>XUNOPROXY</code> defaults to it and controls proxy bypass. Xu does not assume a public proxy is running; Go module proxy manifests cannot be parsed as Xu manifests.</p>
+
+<h2>5. Checksum Verification &amp; Append-Only Logs (<code>XUSUMDB</code>)</h2>
+<p>Since 0.8.4, Xu includes a cryptographic transparency checksum verification system. <code>XUSUMDB</code> accepts a trusted Ed25519 verifier key and optional service URL. For SemVer modules, the client verifies the signed tree head, module digest, inclusion proof, and append consistency before accepting dependencies. When unset or set to <code>off</code>, trust-on-first-use remains in effect. <code>XUNOSUMDB</code> controls checksum bypass independently and defaults to <code>XUPRIVATE</code>.</p>
+
+<h2>6. Native C/C++ Modules &amp; .xulib Support</h2>
+<p>Beyond pure source packages, Xu supports native C/C++ libraries declared via the <code>native:</code> section in <code>xu.xun</code>. The compiler supports both standard generic <code>.a</code> archives and portable <code>.xulib</code> multi-target slice containers. For full specifications, see <a href="/en/docs/native">Native Modules &amp; .xulib Specification</a>.</p>
+
+<h2>7. Migrating from Older Versions</h2>
+<p>Legacy dotted package paths have been modernized to standard slash (<code>/</code>) paths; dots are preserved in domain names, version numbers, and struct field/method access. When module identities or old lock formats change, re-run <code>xu install</code> after review to refresh the lockfile. Never delete <code>xu.lock</code> solely to suppress a checksum mismatch.</p>
+
+<p class="note"><strong>Related Reading:</strong> <a href="/en/docs/packages">Official External Packages Guide</a> · <a href="/en/docs/native">Native Modules &amp; .xulib Specification</a> · <a href="/en/docs/cli">CLI Command Reference</a></p>

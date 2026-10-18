@@ -1,30 +1,33 @@
 <!--title: 命令行与工具链参考-->
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>命令行与工具链参考</h1>
-<p class="banner">Xu {{xu_version}} · 统一单二进制驱动 <code>xu &lt;subcommand&gt; [flags]</code></p>
+<p class="banner">Xu {{xu_version}} · 统一单二进制驱动 <code>xu &lt;command&gt; [options] [arguments]</code></p>
 
-<p><code>xu</code> 采用统一单二进制驱动架构，原生集成了 AOT 编译器、语义检查器、单测运行器、依赖包管理、代码格式化、文档提取、流程图绘制以及在线热更新等完整工具链。</p>
+<p><code>xu</code> 采用统一单二进制驱动架构，原生集成了 AOT 编译器、语义检查器、测试运行器、依赖包管理、代码格式化、文档提取、流程图绘制、LSP 语言服务以及在线热更新等完整工具链。所有命令与子工具均已完整支持官方统一的 <code>--help</code> 与 <code>-h</code> 结构化排版帮助输出。</p>
 
 <h2>子命令速查表</h2>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>子命令</th><th>语法</th><th>核心作用</th></tr></thead>
 <tbody>
-<tr><td><code>build</code></td><td><code>xu build &lt;file|dir&gt; [flags]</code></td><td>AOT 编译为原生机器码二进制、共享库、WebAssembly 模块或跨平台桌面程序</td></tr>
-<tr><td><code>run</code></td><td><code>xu run &lt;file|dir&gt; [flags] [-- args]</code></td><td>编译并立即运行（仅限本机架构）；默认自动清理临时产物，指定 <code>-o</code> 可持久化保留</td></tr>
-<tr><td><code>check</code></td><td><code>xu check &lt;file|dir&gt; [flags]</code></td><td>执行词法、语法解析与类型/所有权借用检查，不生成二进制目标文件</td></tr>
-<tr><td><code>test</code></td><td><code>xu test &lt;file|dir&gt; [flags]</code></td><td>自动扫描测试源码并构建运行器，批量执行 <code>fn test_*</code> 与 <code>fn bench_*</code></td></tr>
-<tr><td><code>get</code></td><td><code>xu get &lt;module&gt;@&lt;version&gt; [--offline]</code></td><td><strong>(0.8.12 新增)</strong> 显式添加或升级依赖，写入 <code>xu.xun</code>，下载至 <code>vendor/</code> 并更新 <code>xu.lock</code></td></tr>
-<tr><td><code>install</code></td><td><code>xu install [dir] [--offline]</code></td><td>根据现有 <code>xu.xun</code> 的 <code>require:</code> 规则解析依赖图，批量下载至 <code>vendor/</code> 并校验锁文件</td></tr>
-<tr><td><code>fmt</code></td><td><code>xu fmt [path...] [-w]</code></td><td>按官方统一排版规范格式化源码；<code>-w</code> 原地写回，默认输出到 stdout</td></tr>
-<tr><td><code>doc</code></td><td><code>xu doc [path...] [-o file] [--public] [--serve]</code></td><td>提取文档注释生成 Markdown，或启动内置 XUDOCS Web 实时文档预览服务</td></tr>
-<tr><td><code>map</code></td><td><code>xu map [path...] [-o file] [--graph]</code></td><td>分析源码分支与调用链，生成 Mermaid 流程图或拓扑连线数据</td></tr>
-<tr><td><code>doctor</code></td><td><code>xu doctor [--target T] [--desktop]</code></td><td>检查本机宿主工具链、C 链接器及桌面打包所需依赖库的完整性</td></tr>
+<tr><td><code>build</code></td><td><code>xu build [options] &lt;input.xu...&gt; [native.a/.xulib...]</code></td><td>AOT 编译为原生机器码可执行文件、中间对象文件或跨平台桌面应用</td></tr>
+<tr><td><code>run</code></td><td><code>xu run [options] &lt;input.xu...&gt; [-- args]</code></td><td>编译并立即在宿主平台运行；默认自动清理临时产物，指定 <code>-o</code> 可持久化保留</td></tr>
+<tr><td><code>test</code></td><td><code>xu test [options] &lt;file.xu...&gt;</code></td><td>构建测试脚手架并批量执行 <code>fn test_*</code> 单元测试用例与 <code>fn bench_*</code> 基准测试</td></tr>
+<tr><td><code>check</code></td><td><code>xu check [options] &lt;file.xu...&gt;</code></td><td>执行词法、语法解析与类型/所有权借用检查，不发射目标机器码</td></tr>
+<tr><td><code>parse</code></td><td><code>xu parse [options] &lt;file.xu...&gt;</code></td><td>词法与语法解析，输出源码 AST 行、函数与声明统计信息</td></tr>
+<tr><td><code>init</code></td><td><code>xu init [options] [module]</code></td><td>在当前目录初始化规范的 <code>xu.xun</code> 清单与标准 <code>main.xu</code> 入口源码</td></tr>
+<tr><td><code>get</code></td><td><code>xu get [options] &lt;module&gt;@&lt;version&gt;</code></td><td><strong>(推荐)</strong> 显式添加或升级依赖，写入 <code>xu.xun</code>，下载至 <code>vendor/</code> 并更新 <code>xu.lock</code></td></tr>
+<tr><td><code>install</code></td><td><code>xu install [options] [dir]</code></td><td>根据现有 <code>xu.xun</code> 的 <code>require:</code> 规则解析依赖拓扑，批量下载至 <code>vendor/</code> 并校验锁</td></tr>
+<tr><td><code>fmt</code></td><td><code>xu fmt [options] &lt;file.xu...&gt;</code></td><td>按官方统一排版规范格式化源码；<code>-w</code> 原地写回，默认输出到 stdout</td></tr>
+<tr><td><code>doc</code></td><td><code>xu doc [options] [path...]</code></td><td>提取文档注释生成 Markdown，或 <code>--serve</code> 启动内置 XUDOCS Web 实时文档服务</td></tr>
+<tr><td><code>map</code></td><td><code>xu map [options] [path...]</code></td><td>分析源码分支与调用链，生成 Mermaid 流程图或拓扑连线数据</td></tr>
+<tr><td><code>doctor</code></td><td><code>xu doctor [options]</code></td><td>检查本机宿主工具链、C 链接器及桌面打包所需依赖库的完整性</td></tr>
 <tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>原生 C 模块编译、<code>xu.o</code> 元数据注入、<code>.xulib</code> 便携切片多目标聚合打包与检视提取</td></tr>
-<tr><td><code>setup</code></td><td><code>xu setup [--prefix DIR] [-y] [--cli]</code></td><td>启动原生图形安装向导或执行静默全局环境变量自动配置</td></tr>
-<tr><td><code>up / update</code></td><td><code>xu update [--check] [--version V]</code></td><td>直接从 GitHub Releases 检测并下载官方最新构建，原子热更新本地工具链</td></tr>
-<tr><td><code>env</code></td><td><code>xu env [var...]</code></td><td>打印当前 Xu 编译器工具链的核心环境变量与有效运行配置</td></tr>
-<tr><td><code>init</code></td><td><code>xu init [module]</code></td><td>在当前目录初始化规范的 <code>xu.xun</code> 工程清单与标准 <code>main.xu</code> 入口源码</td></tr>
-<tr><td><code>--version</code></td><td><code>xu --version</code></td><td>显示当前自举编译器的确切版本、Git 标识及本机目标平台</td></tr>
+<tr><td><code>setup</code></td><td><code>xu setup [options]</code></td><td>启动原生自绘图形向导或执行静默全局环境变量自动配置</td></tr>
+<tr><td><code>lsp</code></td><td><code>xu lsp [options]</code></td><td>启动标准 Language Server Protocol (JSON-RPC 2.0) 守护进程，为 VS Code/Cursor 提供代码服务</td></tr>
+<tr><td><code>up / update</code></td><td><code>xu update [options]</code> (或 <code>xu up</code>)</td><td>直接从 GitHub Releases 检测并下载官方最新构建，原子热更新本地工具链</td></tr>
+<tr><td><code>env</code></td><td><code>xu env [options] [var...]</code></td><td>打印当前 Xu 编译器工具链的核心环境变量与有效运行配置</td></tr>
+<tr><td><code>help</code></td><td><code>xu help [command]</code></td><td>查看总览帮助或具体子命令的详细用法（亦可直接加 <code>--help</code> / <code>-h</code>）</td></tr>
+<tr><td><code>--version</code></td><td><code>xu --version</code> (或 <code>--ver</code>)</td><td>显示当前自举编译器的确切版本、Git 标识及本机目标平台</td></tr>
 </tbody></table></div>
 
 <h2>1. 编译与运行 (build / run / check)</h2>
@@ -213,4 +216,68 @@ xu native extract native/native_add.xulib --target macos-arm64 -o slice.a</code>
 <tr><td><code>XUARCH</code></td><td>当前宿主架构</td><td>当省略 <code>--target</code> 时默认采用的目标硬件架构（arm64, x64, riscv64 等）。</td></tr>
 </tbody></table></div>
 
-<p><a href="/docs/start">快速起步</a> · <a href="/docs/modules">模块与依赖规范</a> · <a href="/docs/install">安装指南</a></p>
+<h2>8. 语言服务协议与编辑器支持 (xu lsp)</h2>
+<p>伴生工具 <code>xu-lsp</code> 原生实现了微软语言服务协议（Language Server Protocol, JSON-RPC 2.0），通过标准输入输出 stdin/stdout 与各类现代 IDE（VS Code、Cursor、Neovim、Helix 等）无缝协作：</p>
+<pre><code># 启动 LSP 守护进程（一般由编辑器插件后台自动启动）
+xu lsp
+
+# 查看 LSP 参数与使用说明
+xu lsp --help</code></pre>
+<p>核心服务能力包括：语法与借用错误实时诊断、F12 / Cmd+Click 跳转定义、Markdown 类型与文档悬停提示、符号大纲（Cmd+Shift+O）、智能代码补全、查找全部引用（Shift+F12）与重命名重构（F2）。详见 <a href="/docs/vscode">VS Code / Cursor 插件指南</a>。</p>
+
+<h2>9. 全命令帮助系统与规范排版 (help 与 --help)</h2>
+<p>Xu 遵从严格的 CLI 人机工程学设计规范，<strong>所有内置子命令及独立伴生工具均已完整支持官方统一的 <code>--help</code> 与 <code>-h</code> 帮助输出</strong>，并保证以标准退出码 0 退出，绝不因缺少业务参数报错：</p>
+
+<div class="doc-table-wrap"><table>
+<thead><tr><th>帮助调用形式</th><th>示例</th><th>效果与说明</th></tr></thead>
+<tbody>
+<tr><td><strong>子命令帮助标志</strong></td><td><code>xu build --help</code> 或 <code>xu build -h</code></td><td>打印该子命令的用法、参数说明与专属配置选项</td></tr>
+<tr><td><strong>分级帮助命令</strong></td><td><code>xu help build</code>、<code>xu help native</code></td><td>效果等价于 <code>--help</code>，与 Go / Cargo 体验一致</td></tr>
+<tr><td><strong>嵌套子命令帮助</strong></td><td><code>xu native compile --help</code></td><td>二级子命令同样完整支持独立专属帮助与选项说明</td></tr>
+<tr><td><strong>伴生工具自举帮助</strong></td><td><code>xu fmt --help</code>、<code>xu doctor --help</code></td><td>即使环境尚未安装对应伴生二进制，<code>xu</code> 亦能优雅展示标准帮助</td></tr>
+</tbody></table></div>
+
+<p>执行 <code>xu --help</code> 或 <code>xu help</code> 时，工具链将呈现美观对齐的现代分类终端排版：</p>
+<pre><code>$ xu --help
+usage: xu &lt;command&gt; [arguments]
+
+Build and execution commands:
+  build          compile Xu source files into an executable or library
+  run            compile and immediately execute a Xu program
+  test           build and run test harness binaries (fn test_*)
+  check          parse and type/borrow check without code generation
+
+Package and module commands:
+  init           initialize a new Xu module and create xu.xun manifest
+  get            add or update a pinned module dependency in xu.xun
+  install        download remote require: packages into vendor/
+  env            print Xu toolchain and environment variables
+
+Development and diagnostic tools:
+  fmt            format Xu source files via sibling xu-fmt
+  doc            render declarations as Markdown via sibling xu-doc
+  map            visualize source architecture flowchart via sibling xu-map
+  doctor         check host tools and dependencies via sibling xu-doctor
+  native         compile, archive, pack, and inspect native C modules
+  lsp            Language Server Protocol daemon via sibling xu-lsp
+  setup          launch native installer via sibling xu-setup
+
+Toolchain management:
+  up, update     download latest release and update toolchain
+  help           show help for xu or a specific subcommand
+  --ver, --version show toolchain version
+
+Common build options:
+  -o, --output OUT  output binary path (default &lt;stem&gt;; Windows &lt;stem&gt;.exe)
+  --target TARGET   target platform (default: host platform)
+  --offline         resolve dependencies from local cache/vendor; never download
+  --frozen          require offline build with existing lockfile
+  --cover           instrument block coverage (hosted targets only)
+  --debug-build     unoptimized source build with DWARF line tables
+  --no-opt          disable MIR optimization and register allocator
+  --debug           emit DWARF line tables without changing optimization
+  --timings         print per-phase timings and optimization stats on stderr
+
+Use "xu &lt;command&gt; --help" or "xu help &lt;command&gt;" for more information.</code></pre>
+
+<p><a href="/docs/start">快速起步</a> · <a href="/docs/modules">模块与依赖规范</a> · <a href="/docs/vscode">VS Code 插件指南</a> · <a href="/docs/install">安装指南</a></p>

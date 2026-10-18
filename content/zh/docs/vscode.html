@@ -1,9 +1,176 @@
-<!--title: VS Code-->
+<!--title: VS Code / Cursor 编辑器支持-->
 
 <p class="crumb"><a href="/docs/start">文档</a></p>
-<h1>VS Code / Cursor</h1>
-<p>扩展提供语法高亮（TextMate 文法 + 括号/注释）及语言服务支持（基于产品编译器内置的 <code>xu lsp</code>）。在独立 <a href="https://github.com/xulang-org/vscode-xu">vscode-xu 仓库</a> 维护。</p>
-<p>对齐词法：控制流关键字、struct enum chan map any、mut pub const、以及符号语句 &lt;&lt; &gt;&gt; &lt;&lt;&lt; -&gt; &lt;-。不是关键字：interface import return break continue Ok Err。</p>
-<p>在独立 vscode-xu 仓库根目录执行 <code>npm ci</code> 和 <code>npm run package</code> 打包 VSIX，再用 Cursor/VS Code 的 <em>Install from VSIX</em> 安装，然后 Reload Window。可把 <code>*.xu</code> 关联到 <code>xu</code>。</p>
-<p>语言服务能力：Xu 原生自举支持 <code>xu lsp</code>（伴生工具 <code>xu-lsp</code>），提供实时语法与类型诊断、格式化、跨文件/标准库跳转（F12）、Markdown 文档悬停、大纲（Cmd+Shift+O）、智能补全、查找所有引用（Shift+F12）与重命名重构（F2）。在编辑器的 <code>settings.json</code> 中配置 <code>"xu.languageServerPath": "xu"</code> 即可。</p>
-<p>MIT 协议。独立的 <a href="https://github.com/xulang-org/vscode-xu">vscode-xu 仓库</a> 与 Xu 主版本分别独立管理。</p>
+<h1>VS Code / Cursor 编辑器支持</h1>
+<p class="banner">官方 VS Code &amp; Cursor 插件 · 基于自举语言服务协议 (<code>xu lsp</code>) · 语法高亮 · 实时诊断 · 智能补全 · 跨文件跳转与重命名重构</p>
+
+<p>为了给开发者提供流畅、现代化的编码体验，Xu 官方在独立仓库 <a href="https://github.com/xulang-org/vscode-xu" target="_blank" rel="noopener noreferrer">vscode-xu</a> 中维护了官方编辑器扩展，原生深度兼容 <strong>Visual Studio Code</strong> 与 <strong>Cursor IDE</strong>。扩展由高精度的 TextMate 语法高亮文法与基于 Xu 编译器原生自举的<strong>语言服务协议（Language Server Protocol / LSP）</strong>双轮驱动。</p>
+
+<h2>1. 核心语言服务能力矩阵</h2>
+<p>基于编译器内置的 <code>xu lsp</code>（伴生工具 <code>xu-lsp</code>），扩展在编辑器中直接提供媲美工业级 IDE 的完整智能辅助能力：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>功能特性</th>
+      <th>快捷键 (macOS / Win)</th>
+      <th>能力与技术细节说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>精细语法高亮</strong></td>
+      <td>实时高亮</td>
+      <td>基于官方词法规范定制的 TextMate 文法，精准着色控制流、所有权与类型（<code>mut</code>、<code>struct</code>、<code>chan</code> 等）及特有符号语句（<code>&lt;&lt;</code>、<code>&gt;&gt;</code>、<code>&lt;&lt;&lt;</code>、<code>-&gt;</code>、<code>&lt;-</code>）。</td>
+    </tr>
+    <tr>
+      <td><strong>实时语法与类型诊断</strong></td>
+      <td>编辑时波浪线</td>
+      <td>在后台实时执行静态类型检查与所有权借用验证，在代码行内直接标红语法错误与类型推导不匹配，告别盲目调试。</td>
+    </tr>
+    <tr>
+      <td><strong>跨文件跳转定义</strong></td>
+      <td><code>F12</code> / <code>Cmd+Click</code></td>
+      <td>支持结构体、函数、全局常量、方法及接口实现的瞬间穿透跳转，甚至可无缝跳转至标准库（Stdlib）源代码定义位置。</td>
+    </tr>
+    <tr>
+      <td><strong>文档与类型签名悬停</strong></td>
+      <td>鼠标悬停 (Hover)</td>
+      <td>悬停在任意变量、结构体字段或函数调用上，立即浮现其准确类型签名、可变性标记（<code>mut</code>）以及 Markdown 格式注释文档。</td>
+    </tr>
+    <tr>
+      <td><strong>智能上下文补全</strong></td>
+      <td><code>Ctrl+Space</code></td>
+      <td>提供本地作用域变量、结构体字段、方法链、标准库函数以及在 <code>xu.xun</code> 声明的第三方扩展包 API 智能补全建议。</td>
+    </tr>
+    <tr>
+      <td><strong>查找所有引用</strong></td>
+      <td><code>Shift+F12</code></td>
+      <td>在整个工作区内快速检索指定符号的所有被调用点与引用位置，并以侧边栏引用树状列表清晰呈现。</td>
+    </tr>
+    <tr>
+      <td><strong>安全符号重命名重构</strong></td>
+      <td><code>F2</code></td>
+      <td>一键重命名函数、局部变量或结构体字段，LSP 引擎将在整个项目范围内安全且无遗漏地完成精准批量同步替换。</td>
+    </tr>
+    <tr>
+      <td><strong>代码大纲与面包屑</strong></td>
+      <td><code>Cmd+Shift+O</code> / <code>Ctrl+Shift+O</code></td>
+      <td>按层级快速罗列当前文件中的所有结构体定义、枚举以及函数符号，支持拼音或英文模糊搜索秒级定位。</td>
+    </tr>
+    <tr>
+      <td><strong>保存时自动格式化</strong></td>
+      <td><code>Cmd+S</code> / <code>Ctrl+S</code></td>
+      <td>保存文件时自动调用产品级 <code>xu fmt</code> 工具，严格规范缩进、括号布局与操作符两端留白，保持团队代码风格 100% 统一。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>2. 插件安装方式</h2>
+
+<h3>方式 A：从官方 VSIX 离线包安装（推荐）</h3>
+<p>在发布页面下载最新版 <code>vscode-xu-*.vsix</code> 安装包，通过终端或 IDE 界面安装：</p>
+
+<pre><code class="language-shell"># 通过 VS Code 命令行一键安装
+code --install-extension vscode-xu-0.8.12.vsix
+
+# 或者通过 Cursor 命令行安装
+cursor --install-extension vscode-xu-0.8.12.vsix</code></pre>
+
+<p>或者在 VS Code / Cursor 的扩展面板中，点击右上角 <strong><code>...</code></strong> 菜单，选择 <strong>Install from VSIX...</strong>，选取下载好的 <code>.vsix</code> 文件后执行 <strong>Reload Window</strong> 即可。</p>
+
+<h3>方式 B：从源码本地打包构建</h3>
+<p>若希望参与插件开发或体验仓库最新提交特性，可自行拉取仓库并打包：</p>
+
+<pre><code class="language-shell"># 克隆官方插件仓库
+git clone https://github.com/xulang-org/vscode-xu.git
+cd vscode-xu
+
+# 安装依赖并打包为 VSIX 安装包
+npm ci
+npm run package
+
+# 安装刚刚生成的 VSIX
+code --install-extension vscode-xu-*.vsix</code></pre>
+
+<h2>3. 推荐编辑器配置 (<code>settings.json</code>)</h2>
+<p>在 VS Code 或 Cursor 中按下 <code>Cmd+Shift+P</code>（macOS）或 <code>Ctrl+Shift+P</code>（Windows/Linux），输入 <strong>Preferences: Open User Settings (JSON)</strong>，添加以下推荐配置项：</p>
+
+<pre><code class="language-json">{
+  // 指定 Xu 编译器二进制路径（若已加入系统 PATH，填写 "xu" 即可）
+  "xu.languageServerPath": "xu",
+
+  // 语言服务器调试日志级别（开发插件时可设为 "messages" 或 "verbose"）
+  "xu.trace.server": "off",
+
+  // Xu 语言专用编辑器配置
+  "[xu]": {
+    "editor.defaultFormatter": "xulang-org.vscode-xu",
+    "editor.formatOnSave": true,
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "editor.suggestOnTriggerCharacters": true,
+    "editor.quickSuggestions": {
+      "other": true,
+      "comments": false,
+      "strings": true
+    }
+  }
+}</code></pre>
+
+<h2>4. 高效开发常用快捷键速查表</h2>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>开发操作</th>
+      <th>macOS 快捷键</th>
+      <th>Windows / Linux 快捷键</th>
+      <th>操作效果说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>跳转到符号定义</td>
+      <td><code>F12</code> 或 <code>Cmd+Click</code></td>
+      <td><code>F12</code> 或 <code>Ctrl+Click</code></td>
+      <td>跳转至函数、结构体、字段的原型定义源码</td>
+    </tr>
+    <tr>
+      <td>查看所有引用位置</td>
+      <td><code>Shift+F12</code></td>
+      <td><code>Shift+F12</code></td>
+      <td>在侧边弹窗中列出全工作区所有调用与引用</td>
+    </tr>
+    <tr>
+      <td>符号重命名重构</td>
+      <td><code>F2</code></td>
+      <td><code>F2</code></td>
+      <td>安全批量重命名当前光标处的标识符</td>
+    </tr>
+    <tr>
+      <td>快速文件大纲导航</td>
+      <td><code>Cmd+Shift+O</code></td>
+      <td><code>Ctrl+Shift+O</code></td>
+      <td>按输入筛选当前文件的函数、结构体大纲</td>
+    </tr>
+    <tr>
+      <td>手动格式化当前文档</td>
+      <td><code>Option+Shift+F</code></td>
+      <td><code>Alt+Shift+F</code></td>
+      <td>立即触发 <code>xu fmt</code> 规范化当前代码排版</td>
+    </tr>
+    <tr>
+      <td>触发代码智能提示</td>
+      <td><code>Ctrl+Space</code></td>
+      <td><code>Ctrl+Space</code></td>
+      <td>手动呼出上下文补全候选列表</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p class="note"><strong>开源许可证与版本管理：</strong>官方 VS Code 扩展采用宽松的 <strong>MIT 协议</strong>开源。独立的 <a href="https://github.com/xulang-org/vscode-xu" target="_blank" rel="noopener noreferrer">vscode-xu 仓库</a> 与 Xu 语言主干保持解耦并独立迭代，始终确保与最新发布的编译器标准语法保持 100% 对齐。</p>

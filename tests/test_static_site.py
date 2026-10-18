@@ -214,6 +214,31 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn('version: !ver ' + (ROOT / 'VERSION').read_text().strip(), manifest)
         self.assertRegex(manifest, r'(?m)^xu: !ver \d+\.\d+\.\d+$')
 
+    def test_older_measurements_keep_their_actual_version(self):
+        output = self.workspace / 'historical-benchmarks'
+        site.build(self.source, output)
+        measured = json.loads((self.source / 'www/benchmarks.json').read_text())['metadata']['xu_version']
+        page = (output / 'benchmarks/index.html').read_text()
+        self.assertIn('Measured Xu v' + measured, page)
+        self.assertEqual((output / 'benchmarks.json').read_bytes(),
+                         (self.source / 'www/benchmarks.json').read_bytes())
+
+    def test_future_or_relabelled_benchmarks_are_rejected(self):
+        source = self.workspace / 'invalid-benchmarks'
+        shutil.copytree(self.source, source)
+        data = source / 'www/benchmarks.json'
+        original = data.read_text()
+        future = json.loads(original)
+        future['metadata']['xu_version'] = '999.0.0'
+        data.write_text(json.dumps(future))
+        with self.assertRaisesRegex(ValueError, 'Benchmark version.*newer'):
+            site.build(source, self.workspace / 'future-benchmark-output')
+        data.write_text(original)
+        page = source / 'content/en/benchmarks.html'
+        page.write_text(page.read_text().replace('Measured Xu v', 'Relabelled Xu v'))
+        with self.assertRaisesRegex(ValueError, 'Benchmark measurement label'):
+            site.build(source, self.workspace / 'relabelled-benchmark-output')
+
     def test_mismatched_api_snapshot_cannot_be_relabelled_as_another_release(self):
         with self.assertRaisesRegex(ValueError, 'API version does not match'):
             site.build(self.source, self.workspace / 'wrong-version', xu_version='0.8.99')

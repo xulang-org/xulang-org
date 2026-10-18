@@ -1,30 +1,33 @@
 <!--title: CLI & Toolchain Reference-->
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
 <h1>CLI &amp; Toolchain Reference</h1>
-<p class="banner">Xu {{xu_version}} · Unified single-binary driver <code>xu &lt;subcommand&gt; [flags]</code></p>
+<p class="banner">Xu {{xu_version}} · Unified single-binary driver <code>xu &lt;command&gt; [options] [arguments]</code></p>
 
-<p>The <code>xu</code> command line tool uses a unified single-binary driver architecture, integrating the AOT compiler, semantic checker, test runner, dependency package manager, code formatter, documentation extractor, flowchart mapper, and atomic release updater into a single toolchain.</p>
+<p>The <code>xu</code> command line tool uses a unified single-binary driver architecture, integrating the AOT compiler, semantic checker, test runner, dependency package manager, code formatter, documentation extractor, flowchart mapper, LSP daemon, and atomic release updater into a single toolchain. Every command and sibling tool fully supports standard <code>--help</code> and <code>-h</code> structured help output.</p>
 
 <h2>Subcommand Overview</h2>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Command</th><th>Syntax</th><th>Core Purpose</th></tr></thead>
 <tbody>
-<tr><td><code>build</code></td><td><code>xu build &lt;file|dir&gt; [flags]</code></td><td>AOT compile into native machine executables, shared libraries, WebAssembly modules, or desktop apps</td></tr>
-<tr><td><code>run</code></td><td><code>xu run &lt;file|dir&gt; [flags] [-- args]</code></td><td>Compile and immediately execute on the host machine; cleans up temp artifacts unless <code>-o</code> is provided</td></tr>
-<tr><td><code>check</code></td><td><code>xu check &lt;file|dir&gt; [flags]</code></td><td>Perform lexical, parser, type, and ownership/borrow checking without emitting binary files</td></tr>
-<tr><td><code>test</code></td><td><code>xu test &lt;file|dir&gt; [flags]</code></td><td>Automatically build a test runner and execute <code>fn test_*</code> assertion suites and <code>fn bench_*</code> benchmarks</td></tr>
-<tr><td><code>get</code></td><td><code>xu get &lt;module&gt;@&lt;version&gt; [--offline]</code></td><td><strong>(New in 0.8.12)</strong> Add or update an explicit dependency, write to <code>xu.xun</code>, download to <code>vendor/</code>, and refresh <code>xu.lock</code></td></tr>
-<tr><td><code>install</code></td><td><code>xu install [dir] [--offline]</code></td><td>Resolve the full dependency graph declared in <code>xu.xun</code> via MVS, download to <code>vendor/</code>, and verify locks</td></tr>
-<tr><td><code>fmt</code></td><td><code>xu fmt [path...] [-w]</code></td><td>Format source files according to official style; <code>-w</code> rewrites files in place (defaults to stdout)</td></tr>
-<tr><td><code>doc</code></td><td><code>xu doc [path...] [-o file] [--public] [--serve]</code></td><td>Extract doc comments to Markdown, or start the built-in XUDOCS Web live documentation server</td></tr>
-<tr><td><code>map</code></td><td><code>xu map [path...] [-o file] [--graph]</code></td><td>Analyze code control flows and call graphs to emit Mermaid flowcharts or raw canvas lines</td></tr>
-<tr><td><code>doctor</code></td><td><code>xu doctor [--target T] [--desktop]</code></td><td>Verify host toolchain health, native linkers, C headers, and desktop packaging prerequisites</td></tr>
+<tr><td><code>build</code></td><td><code>xu build [options] &lt;input.xu...&gt; [native.a/.xulib...]</code></td><td>AOT compile into native machine executables, intermediate object files, or desktop apps</td></tr>
+<tr><td><code>run</code></td><td><code>xu run [options] &lt;input.xu...&gt; [-- args]</code></td><td>Compile and immediately execute on the host machine; cleans up temp artifacts unless <code>-o</code> is provided</td></tr>
+<tr><td><code>test</code></td><td><code>xu test [options] &lt;file.xu...&gt;</code></td><td>Build a test harness and execute <code>fn test_*</code> assertion suites and <code>fn bench_*</code> benchmarks</td></tr>
+<tr><td><code>check</code></td><td><code>xu check [options] &lt;file.xu...&gt;</code></td><td>Perform lexical, parser, type, and ownership/borrow checking without emitting machine code</td></tr>
+<tr><td><code>parse</code></td><td><code>xu parse [options] &lt;file.xu...&gt;</code></td><td>Lex and parse source files, printing one statistics line per file</td></tr>
+<tr><td><code>init</code></td><td><code>xu init [options] [module]</code></td><td>Initialize a canonical <code>xu.xun</code> manifest and starter <code>main.xu</code> source in the current directory</td></tr>
+<tr><td><code>get</code></td><td><code>xu get [options] &lt;module&gt;@&lt;version&gt;</code></td><td><strong>(Recommended)</strong> Add or update an explicit dependency, write to <code>xu.xun</code>, download to <code>vendor/</code>, and refresh <code>xu.lock</code></td></tr>
+<tr><td><code>install</code></td><td><code>xu install [options] [dir]</code></td><td>Resolve the full dependency graph declared in <code>xu.xun</code> via MVS, download to <code>vendor/</code>, and verify locks</td></tr>
+<tr><td><code>fmt</code></td><td><code>xu fmt [options] &lt;file.xu...&gt;</code></td><td>Format source files according to official style; <code>-w</code> rewrites files in place (defaults to stdout)</td></tr>
+<tr><td><code>doc</code></td><td><code>xu doc [options] [path...]</code></td><td>Extract doc comments to Markdown, or <code>--serve</code> to start the built-in XUDOCS Web live documentation server</td></tr>
+<tr><td><code>map</code></td><td><code>xu map [options] [path...]</code></td><td>Analyze code control flows and call graphs to emit Mermaid flowcharts or raw canvas lines</td></tr>
+<tr><td><code>doctor</code></td><td><code>xu doctor [options]</code></td><td>Verify host toolchain health, native linkers, C headers, and desktop packaging prerequisites</td></tr>
 <tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>Native C module compilation, <code>xu.o</code> metadata injection, <code>.xulib</code> multi-target packaging &amp; inspection</td></tr>
-<tr><td><code>setup</code></td><td><code>xu setup [--prefix DIR] [-y] [--cli]</code></td><td>Launch the native GUI installer wizard or run silent global environment configuration</td></tr>
-<tr><td><code>up / update</code></td><td><code>xu update [--check] [--version V]</code></td><td>Check and download official GitHub releases to atomically update the local compiler and standard library</td></tr>
-<tr><td><code>env</code></td><td><code>xu env [var...]</code></td><td>Print active toolchain runtime environment variables and effective build configurations</td></tr>
-<tr><td><code>init</code></td><td><code>xu init [module]</code></td><td>Initialize a canonical <code>xu.xun</code> manifest and starter <code>main.xu</code> source in the current directory</td></tr>
-<tr><td><code>--version</code></td><td><code>xu --version</code></td><td>Display compiler version banner, Git identity, and host machine target</td></tr>
+<tr><td><code>setup</code></td><td><code>xu setup [options]</code></td><td>Launch the native GUI installer wizard or run silent global environment configuration</td></tr>
+<tr><td><code>lsp</code></td><td><code>xu lsp [options]</code></td><td>Start Language Server Protocol (JSON-RPC 2.0) daemon for VS Code, Cursor, Neovim, etc.</td></tr>
+<tr><td><code>up / update</code></td><td><code>xu update [options]</code> (or <code>xu up</code>)</td><td>Check and download official GitHub releases to atomically update the local compiler and standard library</td></tr>
+<tr><td><code>env</code></td><td><code>xu env [options] [var...]</code></td><td>Print active toolchain runtime environment variables and effective build configurations</td></tr>
+<tr><td><code>help</code></td><td><code>xu help [command]</code></td><td>Display general help or detailed usage for a specific subcommand (or pass <code>--help</code> / <code>-h</code>)</td></tr>
+<tr><td><code>--version</code></td><td><code>xu --version</code> (or <code>--ver</code>)</td><td>Display compiler version banner, Git identity, and host machine target</td></tr>
 </tbody></table></div>
 
 <h2>1. Compilation &amp; Execution (build / run / check)</h2>
@@ -213,4 +216,68 @@ xu native extract native/native_add.xulib --target macos-arm64 -o slice.a</code>
 <tr><td><code>XUARCH</code></td><td>(host arch)</td><td>Default target arch when <code>--target</code> is omitted (arm64, x64, riscv64, etc.).</td></tr>
 </tbody></table></div>
 
-<p><a href="/en/docs/start">Getting Started</a> · <a href="/en/docs/modules">Modules Specification</a> · <a href="/en/docs/install">Installation Guide</a></p>
+<h2>8. Language Server Protocol &amp; IDEs (xu lsp)</h2>
+<p>The companion tool <code>xu-lsp</code> implements the standard Language Server Protocol (JSON-RPC 2.0) over stdin/stdout, integrating with modern editors (VS Code, Cursor, Neovim, Helix, etc.):</p>
+<pre><code># Start the LSP server daemon (usually managed by editor extensions)
+xu lsp
+
+# Show LSP options and flags
+xu lsp --help</code></pre>
+<p>Core capabilities: realtime syntax &amp; borrow diagnostics, F12 / Cmd+Click jump to definition, Markdown hover documentation, document symbol outline (Cmd+Shift+O), smart completion, find all references (Shift+F12), and symbol rename (F2). See <a href="/en/docs/vscode">VS Code / Cursor Guide</a>.</p>
+
+<h2>9. Subcommand Help &amp; Formatted Output (help &amp; --help)</h2>
+<p>Xu adheres to strict CLI ergonomic conventions: <strong>all built-in subcommands and sibling tools natively support standard <code>--help</code> and <code>-h</code></strong>, always exiting with status code 0:</p>
+
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Help Invocation</th><th>Example</th><th>Behavior &amp; Description</th></tr></thead>
+<tbody>
+<tr><td><strong>Subcommand Flag</strong></td><td><code>xu build --help</code> or <code>xu build -h</code></td><td>Prints synopsis, argument list, and dedicated options for the subcommand</td></tr>
+<tr><td><strong>Hierarchical Help</strong></td><td><code>xu help build</code>, <code>xu help native</code></td><td>Equivalent to <code>--help</code>, familiar to Go and Cargo users</td></tr>
+<tr><td><strong>Nested Subcommands</strong></td><td><code>xu native compile --help</code></td><td>Secondary subcommands provide dedicated syntax and flag references</td></tr>
+<tr><td><strong>Sibling Tool Help</strong></td><td><code>xu fmt --help</code>, <code>xu doctor --help</code></td><td>Gracefully prints formatted help even if sibling binaries are missing on PATH</td></tr>
+</tbody></table></div>
+
+<p>Running <code>xu --help</code> or <code>xu help</code> produces a clean, grouped, and beautifully aligned terminal layout:</p>
+<pre><code>$ xu --help
+usage: xu &lt;command&gt; [arguments]
+
+Build and execution commands:
+  build          compile Xu source files into an executable or library
+  run            compile and immediately execute a Xu program
+  test           build and run test harness binaries (fn test_*)
+  check          parse and type/borrow check without code generation
+
+Package and module commands:
+  init           initialize a new Xu module and create xu.xun manifest
+  get            add or update a pinned module dependency in xu.xun
+  install        download remote require: packages into vendor/
+  env            print Xu toolchain and environment variables
+
+Development and diagnostic tools:
+  fmt            format Xu source files via sibling xu-fmt
+  doc            render declarations as Markdown via sibling xu-doc
+  map            visualize source architecture flowchart via sibling xu-map
+  doctor         check host tools and dependencies via sibling xu-doctor
+  native         compile, archive, pack, and inspect native C modules
+  lsp            Language Server Protocol daemon via sibling xu-lsp
+  setup          launch native installer via sibling xu-setup
+
+Toolchain management:
+  up, update     download latest release and update toolchain
+  help           show help for xu or a specific subcommand
+  --ver, --version show toolchain version
+
+Common build options:
+  -o, --output OUT  output binary path (default &lt;stem&gt;; Windows &lt;stem&gt;.exe)
+  --target TARGET   target platform (default: host platform)
+  --offline         resolve dependencies from local cache/vendor; never download
+  --frozen          require offline build with existing lockfile
+  --cover           instrument block coverage (hosted targets only)
+  --debug-build     unoptimized source build with DWARF line tables
+  --no-opt          disable MIR optimization and register allocator
+  --debug           emit DWARF line tables without changing optimization
+  --timings         print per-phase timings and optimization stats on stderr
+
+Use "xu &lt;command&gt; --help" or "xu help &lt;command&gt;" for more information.</code></pre>
+
+<p><a href="/en/docs/start">Getting Started</a> · <a href="/en/docs/modules">Modules Specification</a> · <a href="/en/docs/vscode">VS Code Guide</a> · <a href="/en/docs/install">Installation Guide</a></p>

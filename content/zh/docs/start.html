@@ -2,25 +2,297 @@
 
 <p class="crumb">文档</p>
 <h1>起步</h1>
-<p class="banner">Xu {{xu_version}} 文档。请安装完整 SDK，并用 <code>xu --version</code> 核对实际编译器。</p>
-<p>Xu 是一门无 GC 的系统语言：薄语法、所有权与借用、静态 AOT。源文件扩展名 <code>.xu</code>，UTF-8。</p>
-<ol>
-<li>通过原生 Setup 程序或压缩包<a href="/docs/install">安装</a>本机 <code>xu</code>（或在浏览器直接打开 <a href="/playground">WebAssembly 演练场</a> 免安装体验）</li>
-<li>按主题学习 <a href="/docs/tutorial/01">教程 01–16</a>（从 <code>01 hello</code> 开始上手）</li>
-<li>查阅 <a href="/benchmarks">47 项实测跨语言性能与资源横测</a></li>
-<li>需要细则时打开 <a href="/docs/lang/goals">语言规范</a></li>
-</ol>
-<h2>一眼能认出来的记号</h2>
+<p class="banner">Xu {{xu_version}} 官方起步指南 · 现代化无 GC 系统级语言 · 静态 AOT 编译 · 所有权与借用 · 全功能轻薄工具链</p>
+
+<p>Xu 是一门无运行时垃圾回收（GC-free）的现代化高性能系统级编程语言。它融合了<strong>轻薄直观的语法设计</strong>、<strong>确定性编译期所有权与借用检查</strong>（Ownership & Borrowing），以及<strong>高效静态 AOT 原生编译</strong>。Xu 源码文件均采用标准 UTF-8 编码，文件扩展名为 <code>.xu</code>。</p>
+
+<!-- 4 步极速上手流程 -->
+<div class="doc-process-flow">
+  <div class="flow-header">
+    <div class="flow-title">
+      <i class="xi xi-code"></i>
+      <span>端到端 4 步极速上手流水线 (Quickstart Pipeline)</span>
+    </div>
+    <div class="flow-subtitle">从安装配置到项目初始化、编码实现与构建测试的标准化工程开发路径</div>
+  </div>
+
+  <div class="flow-steps-grid">
+    <div class="flow-step-card">
+      <div class="step-badge">1</div>
+      <div class="step-body">
+        <div class="step-name">安装 SDK 与检查编译器环境</div>
+        <div class="step-meta">执行 <code>xu --version</code> 验证工具链；或在浏览器直接打开 <a href="/playground">WebAssembly 演练场</a> 免安装即刻体验</div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card">
+      <div class="step-badge">2</div>
+      <div class="step-body">
+        <div class="step-name">初始化工程清单与项目结构</div>
+        <div class="step-meta">在终端运行 <code>xu init myapp</code> 自动生成规范化工程脚手架与 <code>xu.xun</code></div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card">
+      <div class="step-badge">3</div>
+      <div class="step-body">
+        <div class="step-name">编写入口与核心业务逻辑</div>
+        <div class="step-meta">首行声明 <code>@main</code>，按需导入标准库 <code>#fmt</code> 或外部驱动并编写函数</div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card flow-step-highlight">
+      <div class="step-badge">4</div>
+      <div class="step-body">
+        <div class="step-name">运行、单测与优化构建</div>
+        <div class="step-meta"><code>xu run .</code> 秒级执行 · <code>xu test .</code> 自动化单测 · <code>xu build -O2</code> 生产发布</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>1. 安装与开发环境准备</h2>
+<p>你可以通过官方原生安装程序或解压独立 SDK 压缩包完成本地安装。详细安装与环境变量配置请参阅 <a href="/docs/install">安装指南</a>。安装完成后，在终端打开并运行以下命令验证：</p>
+
+<pre><code class="language-shell"># 验证编译器主版本与底层构建信息
+xu --version
+
+# 查看全命令与规范排版帮助手册
+xu --help</code></pre>
+
+<p class="note"><strong>免安装体验：</strong>若暂未准备本地环境，可在浏览器中直接打开 <a href="/playground">WebAssembly 交互演练场</a>，在云端直接编写、编译并运行体验 Xu 代码。</p>
+
+<h2>2. 创建你的第一个项目 (<code>xu init</code>)</h2>
+<p>Xu 推荐以目录作为模块单元进行工程化组织。使用 <code>xu init</code> 命令可在指定目录中快速初始化一个符合官方规范的新工程：</p>
+
+<pre><code class="language-shell"># 创建并初始化 myapp 项目
+xu init myapp
+cd myapp</code></pre>
+
+<p>初始化生成的标准项目文件结构如下：</p>
+
+<div class="doc-table-wrap">
 <table>
-<tr><th>语句</th><th>含义</th></tr>
-<tr><td><code>&lt;&lt;</code> / <code>&lt;&lt; expr</code></td><td>返回</td></tr>
-<tr><td><code>&gt;&gt; expr</code></td><td>抛出 <code>errors.Error</code></td></tr>
-<tr><td><code>or (err) { }</code></td><td>接住错误</td></tr>
-<tr><td><code>&lt;&lt;&lt; expr</code></td><td>进程退出</td></tr>
-<tr><td><code>&lt;-</code></td><td>break（语句首、无操作数）</td></tr>
-<tr><td><code>-&gt;</code></td><td>continue</td></tr>
+  <thead>
+    <tr>
+      <th>文件 / 目录</th>
+      <th>类型</th>
+      <th>职责与规范说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>xu.xun</code></td>
+      <td>项目清单</td>
+      <td>声明模块名称、模块自身版本、所需编译器版本以及外部依赖 <code>require:</code></td>
+    </tr>
+    <tr>
+      <td><code>main.xu</code></td>
+      <td>可执行入口</td>
+      <td>程序的顶层主入口源码，以 <code>@main</code> 开头并包含 <code>fn main()</code> 函数</td>
+    </tr>
+    <tr>
+      <td><code>xu.lock</code></td>
+      <td>确定性校验锁</td>
+      <td>运行 <code>xu get</code> 或 <code>xu install</code> 后自动生成，锁定依赖图与 SHA-256 完整性摘要</td>
+    </tr>
+    <tr>
+      <td><code>vendor/</code></td>
+      <td>本地依赖快照</td>
+      <td>外部第三方扩展包的本地源码快照，支持无网络离线构建（<code>--offline</code> / <code>--frozen</code>）</td>
+    </tr>
+  </tbody>
 </table>
-<p>导入写 <code>#errors</code>。可执行包第一行 <code>@main</code>。协程写 <code>xu f(args)</code>，用 <code>chan</code> 传值。</p>
-<h2>模块与扩展包</h2>
-<p>项目使用 <code>xu.xun</code> 管理依赖。使用第三方服务驱动时，无需手写繁琐配置，只需在 <code>require:</code> 声明 <code>"github.com/xulang-org/packages": v0.1.1</code> 并执行 <code>xu install</code>，即可全自动解析并下载至本地 <code>vendor/</code>。详细指南见 <a href="/docs/packages">官方扩展包使用指南</a>、<a href="/docs/modules">模块与依赖规范</a> 与 <a href="/docs/native">原生模块与 .xulib 规范</a>。</p>
-<p>官方示例与教程命令在独立的 <a href="https://github.com/xulang-org/examples">examples</a> 仓库根执行，源码位于 examples/。</p>
+</div>
+
+<h2>3. 编写代码与语法速览</h2>
+<p>打开项目中的 <code>main.xu</code>，编写经典问候程序与基础错误处理：</p>
+
+<pre><code class="language-xu">@main
+#fmt
+#errors
+
+fn calculate_ratio(a: int, b: int) int {
+    if b == 0 {
+        // 使用 &gt;&gt; 抛出结构化错误
+        &gt;&gt; errors.new("division by zero")
+    }
+    // 使用 &lt;&lt; 返回计算结果
+    &lt;&lt; a / b
+}
+
+fn main() int {
+    fmt.println("Hello, Xu World!")
+
+    // 调用可能返回错误的函数，使用 or (err) 捕获降级
+    val := calculate_ratio(10, 2) or (err) {
+        fmt.println("Error:", err.msg())
+        &lt;&lt; 1
+    }
+
+    fmt.println("Result:", val)
+    &lt;&lt; 0
+}</code></pre>
+
+<h2>4. 一眼能认出来的核心记号</h2>
+<p>Xu 舍弃了冗余样板关键字，采用更加直观、富有表现力的符号式语句设计：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>记号 / 语法</th>
+      <th>功能分类</th>
+      <th>语义与设计规范</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>&lt;&lt;</code> / <code>&lt;&lt; expr</code></td>
+      <td>控制流</td>
+      <td>函数返回语句（Return）。无操作数时返回空（void），有操作数时返回表达式值。</td>
+    </tr>
+    <tr>
+      <td><code>&gt;&gt; expr</code></td>
+      <td>错误处理</td>
+      <td>抛出 <code>errors.Error</code> 结构化错误对象（Throw）。</td>
+    </tr>
+    <tr>
+      <td><code>or (err) { ... }</code></td>
+      <td>错误捕获</td>
+      <td>尾随错误接住块（Catch），在表达式发生错误时执行分支降级或提前中断。</td>
+    </tr>
+    <tr>
+      <td><code>&lt;&lt;&lt; expr</code></td>
+      <td>进程控制</td>
+      <td>进程立即退出（Process Exit），向操作系统返回指定的整数退出状态码。</td>
+    </tr>
+    <tr>
+      <td><code>&lt;-</code></td>
+      <td>循环控制</td>
+      <td>循环中断跳出（Break，位于语句开头且无操作数）。</td>
+    </tr>
+    <tr>
+      <td><code>-&gt;</code></td>
+      <td>循环控制</td>
+      <td>循环继续下一次迭代（Continue）。</td>
+    </tr>
+    <tr>
+      <td><code>mut name := val</code></td>
+      <td>所有权绑定</td>
+      <td>声明可变局部变量（默认变量绑定为不可变常量，修改需显式标记 <code>mut</code>）。</td>
+    </tr>
+    <tr>
+      <td><code>xu f(args)</code></td>
+      <td>轻量并发</td>
+      <td>派生轻量级协程并发执行函数 <code>f</code>，由底层无栈/轻量运行时统一调度。</td>
+    </tr>
+    <tr>
+      <td><code>chan&lt;T&gt;</code></td>
+      <td>并发通信</td>
+      <td>强类型通信通道，配合 <code>ch &lt;&lt; val</code> 发送与 <code>val := &lt;&lt; ch</code> 接收。</td>
+    </tr>
+    <tr>
+      <td><code>@main</code></td>
+      <td>包身份注解</td>
+      <td>位于文件第一行，指示当前文件属于可执行入口包，编译器将为其生成顶层 <code>main</code> 符号。</td>
+    </tr>
+    <tr>
+      <td><code>#pkg</code> / <code>alias #pkg</code></td>
+      <td>模块导入</td>
+      <td><code>#</code> 开头导入官方标准库；外部第三方依赖使用 <code>别名 #完整模块路径</code> 显式导入。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>5. 模块依赖与官方扩展包 (<code>xu get</code> / <code>xu install</code>)</h2>
+<p>在项目中需要接入数据库驱动、Redis 缓存或 S3 云存储等外部能力时，推荐使用一键安装命令：</p>
+
+<pre><code class="language-shell"># 一键声明、解析、下载官方扩展包至 vendor/ 并写入 xu.lock
+xu get github.com/xulang-org/packages@v0.1.1</code></pre>
+
+<p>或者在 <code>xu.xun</code> 的 <code>require:</code> 节直接声明依赖后执行 <code>xu install</code>：</p>
+
+<pre><code class="language-xun">module: myapp
+version: !ver 0.1.0
+xu: !ver {{xu_version}}
+
+require:
+  "github.com/xulang-org/packages": v0.1.1</code></pre>
+
+<p>在源码中直接以明确的别名命名空间引用具体功能模块（如 <code>mysql</code>、<code>redis</code>、<code>s3</code>）：</p>
+
+<pre><code class="language-xu">@main
+#fmt
+mysql #github.com/xulang-org/packages/mysql
+
+fn main() int {
+    _ := mysql.driver()
+    fmt.println("MySQL driver initialized.")
+    &lt;&lt; 0
+}</code></pre>
+
+<h2>6. 日常高频 CLI 常用工作流</h2>
+<p>Xu 提供了开箱即用的现代化命令行工具链，涵盖从编码检查到生产编译的全部环节：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>命令示例</th>
+      <th>工作阶段</th>
+      <th>功能作用说明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>xu run .</code></td>
+      <td>日常调试</td>
+      <td>自动分析当前目录依赖、快速编译并在内存中直接执行，开发体验极为流畅。</td>
+    </tr>
+    <tr>
+      <td><code>xu check .</code></td>
+      <td>即时检查</td>
+      <td>只执行语法、所有权生命周期和类型检查，不生成机器二进制，毫秒级快速反馈。</td>
+    </tr>
+    <tr>
+      <td><code>xu test .</code></td>
+      <td>质量保障</td>
+      <td>递归发现并并发运行当前目录下的所有 <code>test_*</code> 单元测试与基准验证。</td>
+    </tr>
+    <tr>
+      <td><code>xu fmt .</code></td>
+      <td>团队规范</td>
+      <td>自动格式化目录内全部 <code>.xu</code> 源码，遵循官方统一代码风格与缩进规范。</td>
+    </tr>
+    <tr>
+      <td><code>xu build -O2 -o bin/app</code></td>
+      <td>生产发布</td>
+      <td>启用最高级别机器码优化，生成独立且零依赖的原生静态可执行二进制。</td>
+    </tr>
+    <tr>
+      <td><code>xu lsp</code></td>
+      <td>编辑器集成</td>
+      <td>启动原生语言服务守护进程，为 VS Code / Cursor 等 IDE 提供智能辅助。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>7. 下一步探索与进阶阅读</h2>
+<p>掌握了基础概念之后，建议继续阅读以下进阶主题：</p>
+
+<ul>
+  <li><strong>按主题系统化学习：</strong>跟随 <a href="/docs/tutorial/01">教程 01–16</a> 从基础数据结构逐步深入到并发编程与借用生命周期。</li>
+  <li><strong>配置高效开发工具：</strong>阅读 <a href="/docs/vscode">VS Code / Cursor 配置指南</a>，开启代码补全、跳转（F12）与保存即格式化。</li>
+  <li><strong>浏览丰富生态驱动：</strong>在 <a href="/docs/packages">官方扩展包 (Packages)</a> 中查看 29 个经过工业级打磨的常用服务端驱动与一键导入代码。</li>
+  <li><strong>C/C++ 原生混合编程：</strong>查阅 <a href="/docs/native">原生模块与 .xulib 规范</a>，学习零成本链接通用 <code>.a</code> 与便携切片容器。</li>
+  <li><strong>语言严谨语义规范：</strong>深入研读 <a href="/docs/lang/goals">语言规范</a> 与 <a href="/benchmarks">47 项实测跨语言性能横测</a>。</li>
+</ul>
