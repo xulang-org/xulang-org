@@ -205,9 +205,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             desc = f"Xu 编程语言官方网站 (v{xu_version}) — 坚若磐石、零 GC 运行时开销、超音速原生 AOT 与 WebAssembly 编译的系统级编程语言，具备确定性 RAII 所有权、轻量协程与类型安全通道。"
     elif bare_path == 'benchmarks':
         if en:
-            desc = f"Comprehensive 13-task cross-language performance and memory benchmarks comparing Xu v{xu_version} against C, Rust, Go, and Swift across ARM64 and x86-64 platforms."
+            desc = "Cross-language runtime, CPU time, peak memory and binary-size measurements across Linux, macOS and Windows on ARM64 and x86-64. See the measured Xu version and source CI records."
         else:
-            desc = f"Xu 编程语言 (v{xu_version}) 全量跨语言与双架构（ARM64 / x86_64）基准测试，涵盖 13 项经典算法负载与 C、Rust、Go、Swift 实测性能及内存对比。"
+            desc = "Xu 跨语言运行耗时、CPU 时间、峰值内存与二进制体积实测，覆盖 Linux、macOS、Windows 的 ARM64 与 x86-64 平台，标注实际测量版本并提供来源 CI 记录。"
     elif bare_path == 'playground':
         if en:
             desc = f"Interactive in-browser WebAssembly playground for Xu v{xu_version}. Compile, borrow-check, and execute Xu code client-side with zero installation."
@@ -288,7 +288,7 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             "name": "How fast are Xu's compilation speed and runtime throughput?" if en else "Xu 的编译速度与实际执行性能如何？",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Compilation is blazing fast (typical multi-thousand-line projects compile in hundreds of milliseconds). Runtime performance is top-tier: in our reproducible 13-task algorithmic benchmarks across ARM64 and x86-64, Xu executes within 1.0x–1.2x of optimized C (Clang -O3) and Rust (rustc -O3), with physical memory footprints far lower than GC-based languages." if en else "编译速度极快，由于自研原生后端摆脱了重型中间层，典型数万行工程在数百毫秒内即可完成编译构建；执行性能顶尖，在 13 项严格跨语言同构基准评测中，Xu 在绝大多数计算密集型任务中达到 C (Clang -O3) 与 Rust (rustc -O3) 1.0x~1.2x 的极致执行速度，且物理内存开销显著低于含 GC 运行时的语言。"
+                "text": "Compare Xu with C, Rust, Go and Swift across 47 workloads on six ARM64 and x86-64 platforms. The benchmark dashboard reports per-platform runtime, CPU time, peak memory and binary size; C and Rust use the lowest measured O1–O3 median for each workload. Compilation timings are available in the source CI reports." if en else "47 项负载覆盖 ARM64、x86-64 六个平台，对照 Xu、C、Rust、Go 和 Swift。横测看板展示各平台的运行耗时、CPU 时间、峰值内存与二进制体积；C、Rust 按负载选取同平台 O1–O3 的最小实测中位数。编译耗时记录在来源 CI 的原始报告中。"
             }
         },
         {
