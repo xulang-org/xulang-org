@@ -30,6 +30,12 @@
         ? '<i class="xi xi-stop"></i> ' + text('停止运行', 'Stop')
         : '<i class="xi xi-play"></i> ' + (inline ? text('运行', 'Run') : text('运行代码', 'Run Code'));
     }
+    function readyStatus() {
+      var isMobile = typeof window !== 'undefined' && typeof window.innerWidth === 'number' && (window.innerWidth <= 640 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''));
+      return isMobile
+        ? text('就绪 · 点击「运行代码」', 'Ready · Tap Run Code')
+        : text('就绪 · Ctrl / Cmd + Enter 运行', 'Ready · Ctrl / Cmd + Enter to run');
+    }
     function status(value) { if (meta) meta.textContent = value; }
     function show(value, error) {
       output.textContent = value;
@@ -73,7 +79,7 @@
           ready = true;
           button.disabled = false;
           label(false);
-          status(text('就绪 · Ctrl / Cmd + Enter 运行', 'Ready · Ctrl / Cmd + Enter to run'));
+          status(readyStatus());
           if (pendingRun) {
             pendingRun = false;
             run();
@@ -109,7 +115,7 @@
         source.value = example.source;
         if (help) help.textContent = example.description[en ? 'en' : 'zh'];
         show(text('点击「运行代码」查看结果。', 'Click Run Code to see the result.'), false);
-        if (ready && !running) status(text('就绪 · Ctrl / Cmd + Enter 运行', 'Ready · Ctrl / Cmd + Enter to run'));
+        if (ready && !running) status(readyStatus());
       });
     }
     var autoRunCode = null;

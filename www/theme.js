@@ -344,8 +344,11 @@
             editorHelp = document.createElement('div');
             editorHelp.className = 'code-editor-help';
             editorHelp.id = editor.id + '-help';
+            var isTouchScreen = typeof window !== 'undefined' && typeof window.innerWidth === 'number' && (window.innerWidth <= 640 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''));
             editorHelp.innerHTML = '<i class="xi xi-info-circle"></i> <span>' +
-              (isEn ? 'Run your changes with Run or Ctrl / Cmd + Enter.' : '修改后点击「运行」，或按 Ctrl / Cmd + Enter。') +
+              (isTouchScreen
+                ? (isEn ? 'Run your changes with Run.' : '修改后点击「运行」。')
+                : (isEn ? 'Run your changes with Run or Ctrl / Cmd + Enter.' : '修改后点击「运行」，或按 Ctrl / Cmd + Enter。')) +
               '</span>';
             editor.setAttribute('aria-describedby', editorHelp.id);
             editor.addEventListener('keydown', function (event) {
