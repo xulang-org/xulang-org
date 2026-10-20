@@ -1,0 +1,40 @@
+<!--title: Xu 0.9.3：多参数自递归寄存器修复、Tree-Shaking 与全量跨语言性能横测-->
+<h1>Xu 0.9.3</h1>
+<p class="meta">2026-10-20 · 核心编译器稳定性、代码生成修复与全量横测</p>
+<p>Xu 0.9.3 是一个关键的编译器稳定性与正确性正式发布版本。下载 <a href="https://github.com/xulang-org/xu/releases/tag/v0.9.3">SDK、全平台原生 Setup 安装器、校验和与发布附件</a>。</p>
+
+<h2>核心编译器代码生成修复</h2>
+<p>在复杂数学计算与递归场景中，Xu 0.9.3 彻底修复了自递归多参数寄存器分配的底层冲突缺陷：</p>
+<ul>
+  <li><strong>自递归多参数寄存器保护</strong>：此前，当自递归调用作为二元表达式右操作数（如 <code>&lt;&lt; n * fact(n - 1)</code>）或在多参数自递归函数（如阿克曼函数 <code>ack(m, n)</code>、尾递归累加器 <code>helper(n, acc)</code>）中，后端寄存器分配器未排查前序已分配参数位置，导致后序参数在入口将前序参数值覆盖在同一个非易失寄存器（ARM64 <code>x19</code>/<code>x20</code>，x64 <code>RBX</code>/<code>R12</code>）中。修复后，每个标量参数均获得唯一独立的寄存器槽位，多参数深层递归与复杂嵌套表达式计算完全正确。</li>
+  <li><strong>未定义符号诊断健壮性增强</strong>：修复当调用未声明或拼写错误的函数符号时，类型检查器在输出错误后因未阻断执行继续索引 <code>c.fns[-1]</code> 导致编译器内部越界崩溃（<code>index out of bounds</code>）的缺陷，规范为干净的编译期诊断。</li>
+</ul>
+
+<h2>全语法覆盖与极端场景回归验证</h2>
+<p>本次版本伴随 8 大类极限语法与并发场景的全量矩阵回归：</p>
+<ul>
+  <li><strong>类型安全与所有权</strong>：编译期严格拦截常量数组越界、除零保护、双重可变借用（<code>&amp;mut</code>）冲突与 move 后再次使用。</li>
+  <li><strong>高级语法特性</strong>：全面验证柯里化闭包、泛型结构体（<code>struct Box#T</code>）、结构体 RAII 析构（<code>drop()</code>）、多参数泛型实例化与错误自动传播。</li>
+  <li><strong>高并发与通道通信</strong>：全面压测无缓冲通道汇合（<code>chan int{cap: 0}</code>）、带缓冲流水线、带 <code>close()</code> 通道消费及 100 协程高压并发求和，在 macOS 与 Linux 干净容器中表现出零偏差的一致性。</li>
+</ul>
+
+<h2>47 项全维度跨语言性能横测更新</h2>
+<p><a href="/zh/benchmarks">官方横测大盘</a>已全面升级为 2026 年 10 月 20 日基于 Xu 0.9.3 正式版本的最新实测数据：</p>
+<ul>
+  <li><strong>全自动化云端流水线</strong>：由 GitHub Actions CI（<a href="https://github.com/xulang-org/bench/actions/runs/39362068857" target="_blank" rel="noopener noreferrer">Run #39362068857</a>）在全新隔离环境中全自动完成，杜绝任何人工精选。</li>
+  <li><strong>6 大原生平台全覆盖</strong>：覆盖 <code>macOS ARM64</code>、<code>macOS x86_64</code>、<code>Linux ARM64</code>、<code>Linux x86_64</code>、<code>Windows ARM64</code> 与 <code>Windows x86_64</code>。</li>
+  <li><strong>47 个全维度基准负载</strong>：在控制流机制、数值算法、核心数据结构、文本/IO、现代密码学及并发通道全场景下，与 C（Clang O1–O3 最佳）、Rust（rustc O1–O3 最佳）、Swift 与 Go 进行同算法严格对照。</li>
+</ul>
+
+<h2>安装与迁移</h2>
+<p>推荐使用免提权单文件 Setup 安装器快速安装：</p>
+<ul>
+  <li><strong>macOS / Linux 一键在线安装</strong>：<code>curl -fsSL https://xulang.org/install.sh | bash</code></li>
+  <li><strong>Windows PowerShell 一键在线安装</strong>：<code>irm https://xulang.org/install.ps1 | iex</code></li>
+  <li><strong>单文件 Setup</strong>：直接运行 <code>./xu-setup-&lt;target&gt; -y</code>（Windows 下双击 <code>xu-setup-windows-x64.exe</code> 弹出图形向导），自动注册系统全局环境变量。</li>
+</ul>
+<p>在工程 <code>xu.xun</code> 中声明：</p>
+<pre><code>module: myapp
+version: !ver 0.1.0
+xu: !ver 0.9.3</code></pre>
+<p>运行 <code>xu --version</code> 确认当前编译器版本为 <code>0.9.3</code>。</p>

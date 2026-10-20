@@ -1,0 +1,40 @@
+<!--title: Xu 0.9.3: Self-Recursive Register Allocation Fix, Robust Diagnostics, and Full-Matrix Benchmarks-->
+<h1>Xu 0.9.3</h1>
+<p class="meta">2026-10-20 · Compiler Stability, Code Generation Fixes, and Multi-Platform Benchmarks</p>
+<p>Xu 0.9.3 is a critical stability and correctness release for the official self-hosted toolchain. Download <a href="https://github.com/xulang-org/xu/releases/tag/v0.9.3">SDKs, native single-file Setup installers, checksums, and release assets</a>.</p>
+
+<h2>Compiler Code Generation &amp; Diagnostic Fixes</h2>
+<p>In complex numerical computations and deep recursion scenarios, Xu 0.9.3 resolves key compiler backend and type checker defects:</p>
+<ul>
+  <li><strong>Callee-Saved Register Allocation Protection</strong>: Previously, when a self-recursive call appeared as the right operand of a binary expression (such as <code>&lt;&lt; n * fact(n - 1)</code>) or in multi-parameter self-recursive functions (such as the Ackermann function <code>ack(m, n)</code> or accumulators <code>helper(n, acc)</code>), the backend register allocator did not account for registers assigned to preceding parameters, overwriting earlier parameter values in the same callee-saved register (ARM64 <code>x19</code>/<code>x20</code>, x64 <code>RBX</code>/<code>R12</code>). With the fix, each scalar parameter receives a distinct register home, guaranteeing correctness in nested binary expressions and deep recursion.</li>
+  <li><strong>Robust Diagnostics on Undefined Symbols</strong>: Fixed a compiler internal out-of-bounds crash (<code>c.fns[-1]</code> indexing error) triggered when encountering undefined or misspelled function names, providing clean and actionable compile-time diagnostics.</li>
+</ul>
+
+<h2>Full Syntax &amp; Concurrency Matrix Validation</h2>
+<p>This release passes 8 comprehensive regression suites across native macOS and clean Linux containers:</p>
+<ul>
+  <li><strong>Memory &amp; Type Safety</strong>: Compile-time detection for array/slice index out-of-bounds, division by zero, double mutable borrow (<code>&amp;mut</code>) conflicts, and use-after-move errors.</li>
+  <li><strong>Advanced Language Features</strong>: Validated curried closures, generic structs (<code>struct Box#T</code>), deterministic RAII destructors (<code>drop()</code>), multi-parameter generics, and automatic error propagation with <code>or</code> blocks.</li>
+  <li><strong>High-Throughput Concurrency</strong>: Validated unbuffered channel rendezvous (<code>chan int{cap: 0}</code>), buffered pipelines, <code>close()</code> inspection and iteration, and 100-coroutine concurrent summation with zero deviation.</li>
+</ul>
+
+<h2>47-Workload Cross-Language Benchmarks Update</h2>
+<p>The <a href="/benchmarks">official benchmarks dashboard</a> is updated with measurements from 2026-10-20 on stable Xu 0.9.3:</p>
+<ul>
+  <li><strong>Automated Cloud Pipeline</strong>: Executed fully autonomously via GitHub Actions CI (<a href="https://github.com/xulang-org/bench/actions/runs/39362068857" target="_blank" rel="noopener noreferrer">Run #39362068857</a>) in clean VM environments across 6 platforms.</li>
+  <li><strong>6 Native Platforms</strong>: <code>macOS ARM64</code>, <code>macOS x86_64</code>, <code>Linux ARM64</code>, <code>Linux x86_64</code>, <code>Windows ARM64</code>, and <code>Windows x86_64</code>.</li>
+  <li><strong>47 Comprehensive Workloads</strong>: Compared against C (best Clang O1–O3), Rust (best rustc O1–O3), Swift, and Go under identical algorithms.</li>
+</ul>
+
+<h2>Installation &amp; Migration</h2>
+<p>Native single-file Setup installers are recommended for quick setup with automatic environment configuration:</p>
+<ul>
+  <li><strong>macOS / Linux One-Line Online Install</strong>: <code>curl -fsSL https://xulang.org/install.sh | bash</code></li>
+  <li><strong>Windows PowerShell One-Line Online Install</strong>: <code>irm https://xulang.org/install.ps1 | iex</code></li>
+  <li><strong>Standalone Setup Binary</strong>: Run <code>./xu-setup-&lt;target&gt; -y</code> (or double-click <code>xu-setup-windows-x64.exe</code> for GUI wizard on Windows).</li>
+</ul>
+<p>In your project manifest <code>xu.xun</code>, declare:</p>
+<pre><code>module: myapp
+version: !ver 0.1.0
+xu: !ver 0.9.3</code></pre>
+<p>Run <code>xu --version</code> to verify compiler version <code>0.9.3</code>.</p>
