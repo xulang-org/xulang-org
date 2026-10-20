@@ -1,0 +1,40 @@
+<!--title: Xu 0.9.4：完整借用检查、逐 pass MIR 验证与 SSA 循环优化-->
+<h1>Xu 0.9.4</h1>
+<p class="meta">2026-10-20 · 编译器一致性、MIR 验证与优化器改进</p>
+<p>Xu 0.9.4 是官方自举工具链的编译器一致性与优化器版本。下载 <a href="https://github.com/xulang-org/xu/releases/tag/v0.9.4">SDK、原生单文件 Setup 安装器、校验和与发布附件</a>。</p>
+
+<h2>类型检查与借用检查</h2>
+<ul>
+  <li><strong>完整的表达式覆盖</strong>：借用检查器现在遍历全部表达式种类，未知种类保守处理。像 <code>f(mut &amp;v, &amp;v)</code> 这样的别名，即使调用嵌套在类型转换或算术表达式中（例如 <code>int(f64(f(mut &amp;v, &amp;v)) * 32.0)</code>）也会被报告。</li>
+  <li><strong>跨迭代借用</strong>：循环体内产生的借用在回边上保持存活，与上一轮迭代借用的冲突会被诊断。</li>
+  <li><strong>泛型参数不再限量</strong>：泛型声明不再限制最多 4 个类型参数。</li>
+  <li><strong>显式上限</strong>：类型号段溢出改为断言而不是静默回绕；不支持所请求目标的后端会明确报错。</li>
+</ul>
+<p><strong>迁移说明</strong>：此前依赖上述漏洞才能通过编译的程序，现在会收到借用诊断。请传入不同的值，或在取共享借用之前结束可变使用。</p>
+
+<h2>MIR 验证与诊断</h2>
+<ul>
+  <li><strong>逐 pass 验证</strong>：<code>XU_VERIFY=1</code> 在每个优化 pass 之后运行完整 MIR 验证器，借此发现的验证器、降级与后端之间的不一致均已修复。</li>
+  <li><strong>MIR 导出</strong>：<code>XU_DUMP_MIR=&lt;函数名&gt;</code> 输出指定函数的 MIR。</li>
+  <li><strong>模式命中统计</strong>：<code>--timings</code> 输出命中的具名后端模式（<code>pattern-hits:</code>）以及每个函数选用的寄存器分配模式；<code>XU_PATTERNS_OFF</code> 可关闭具名模式，用于差分测试。</li>
+</ul>
+
+<h2>SSA 循环优化</h2>
+<ul>
+  <li><strong>去掉形状白名单</strong>：标量 SSA 提升不再依赖按形状划分的白名单，凡是通过逃逸、SSA 与验证器检查的函数都可参与提升。</li>
+  <li><strong>基于 SSA 的 ARM64 循环内核</strong>：scan、saxpy、CRC、二分查找、fill、stride 与带谓词 scan 内核改为在 SSA 形式上匹配，被取代的旧匹配器已删除。</li>
+  <li><strong>循环旋转</strong>：以 <code>[]int</code> 长度为界的 <code>while</code> 循环会被旋转以满足这些内核的匹配条件；字符串与字节循环保持字节模式匹配器所需的形状。</li>
+</ul>
+<p>在 macOS ARM64 上与 0.9.3 的本机 A/B 对比：<code>bloom_filter</code> 约快 12%，<code>chase_index</code> 快 9–11%，<code>f64_sum</code> 约快 8%，<code>algorithm_search</code>（<code>-O3</code>）约快 9%，无性能回退，自举编译也略快。<a href="/benchmarks">基准页面</a>将另行以完整六平台实测数据刷新。</p>
+
+<h2>安装与迁移</h2>
+<ul>
+  <li><strong>macOS / Linux 一行在线安装</strong>：<code>curl -fsSL https://xulang.org/install.sh | bash</code></li>
+  <li><strong>Windows PowerShell 一行在线安装</strong>：<code>irm https://xulang.org/install.ps1 | iex</code></li>
+  <li><strong>独立 Setup 安装器</strong>：运行 <code>./xu-setup-&lt;target&gt; -y</code>（Windows 可双击 <code>xu-setup-windows-x64.exe</code> 使用图形向导）。</li>
+</ul>
+<p>在项目清单 <code>xu.xun</code> 中声明：</p>
+<pre><code>module: myapp
+version: !ver 0.1.0
+xu: !ver 0.9.4</code></pre>
+<p>运行 <code>xu --version</code> 确认编译器版本为 <code>0.9.4</code>。</p>

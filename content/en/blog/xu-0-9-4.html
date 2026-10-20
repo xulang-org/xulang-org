@@ -1,0 +1,40 @@
+<!--title: Xu 0.9.4: Sound Borrow Checking, Per-Pass MIR Verification, and SSA Loop Optimization-->
+<h1>Xu 0.9.4</h1>
+<p class="meta">2026-10-20 · Compiler Consistency, MIR Verification, and Optimizer Improvements</p>
+<p>Xu 0.9.4 is a compiler consistency and optimizer release for the official self-hosted toolchain. Download <a href="https://github.com/xulang-org/xu/releases/tag/v0.9.4">SDKs, native single-file Setup installers, checksums, and release assets</a>.</p>
+
+<h2>Type Checking &amp; Borrow Checking</h2>
+<ul>
+  <li><strong>Complete Expression Coverage</strong>: The borrow checker now walks every expression kind, with a conservative fallback for unknown kinds. Aliasing such as <code>f(mut &amp;v, &amp;v)</code> is reported even when the call is nested inside a cast or arithmetic expression, for example <code>int(f64(f(mut &amp;v, &amp;v)) * 32.0)</code>.</li>
+  <li><strong>Loop-Carried Borrows</strong>: Borrows taken inside a loop body stay live across the loop back edge, so a conflict with a borrow from the previous iteration is diagnosed.</li>
+  <li><strong>Generics Without a Parameter Cap</strong>: Generic declarations are no longer limited to four type parameters.</li>
+  <li><strong>Explicit Limits</strong>: Type-id range overflow is asserted instead of silently wrapping, and backends that do not support a requested target fail with a clear error.</li>
+</ul>
+<p><strong>Migration note</strong>: programs that previously compiled only because of these gaps now receive a borrow diagnostic. Pass separate values, or finish the mutable use before taking the shared borrow.</p>
+
+<h2>MIR Verification &amp; Diagnostics</h2>
+<ul>
+  <li><strong>Per-Pass Verification</strong>: <code>XU_VERIFY=1</code> runs the full MIR verifier after every optimization pass. Mismatches between the verifier, lowering, and the backend found this way were fixed.</li>
+  <li><strong>MIR Dump</strong>: <code>XU_DUMP_MIR=&lt;fn&gt;</code> prints the MIR of a named function.</li>
+  <li><strong>Pattern Hits</strong>: <code>--timings</code> reports which named backend patterns fired (<code>pattern-hits:</code>) and the register-allocation mode chosen for each function. <code>XU_PATTERNS_OFF</code> disables named patterns for differential testing.</li>
+</ul>
+
+<h2>SSA Loop Optimization</h2>
+<ul>
+  <li><strong>No Shape Whitelist</strong>: Scalar SSA promotion no longer depends on a per-shape whitelist; every function that passes the escape, SSA, and verifier checks is eligible.</li>
+  <li><strong>SSA-Based ARM64 Loop Kernels</strong>: scan, saxpy, CRC, binary search, fill, stride, and predicated-scan kernels match on SSA form, and superseded slot-based matchers were removed.</li>
+  <li><strong>Loop Rotation</strong>: <code>while</code> loops bounded by the length of an <code>[]int</code> are rotated so they qualify for these kernels; string and byte loops keep the shape the byte-pattern matchers expect.</li>
+</ul>
+<p>Local A/B measurements on macOS ARM64 against 0.9.3 show <code>bloom_filter</code> about 12% faster, <code>chase_index</code> 9–11%, <code>f64_sum</code> about 8%, and <code>algorithm_search</code> about 9% at <code>-O3</code>, with no regressions; self-compilation is also slightly faster. The <a href="/benchmarks">benchmarks dashboard</a> is refreshed separately from complete six-platform runs.</p>
+
+<h2>Installation &amp; Migration</h2>
+<ul>
+  <li><strong>macOS / Linux One-Line Online Install</strong>: <code>curl -fsSL https://xulang.org/install.sh | bash</code></li>
+  <li><strong>Windows PowerShell One-Line Online Install</strong>: <code>irm https://xulang.org/install.ps1 | iex</code></li>
+  <li><strong>Standalone Setup Binary</strong>: Run <code>./xu-setup-&lt;target&gt; -y</code> (or double-click <code>xu-setup-windows-x64.exe</code> for GUI wizard on Windows).</li>
+</ul>
+<p>In your project manifest <code>xu.xun</code>, declare:</p>
+<pre><code>module: myapp
+version: !ver 0.1.0
+xu: !ver 0.9.4</code></pre>
+<p>Run <code>xu --version</code> to verify compiler version <code>0.9.4</code>.</p>
