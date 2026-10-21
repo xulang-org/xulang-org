@@ -1,0 +1,92 @@
+@main
+
+#ui
+#ui/webview
+
+// Remote HTTP document + xu:// IPC.
+// 1) python3 examples/16ui_webview/remote_http/serve.py
+// 2) xu build examples/16ui_webview/remote --target macos-arm64 --desktop -o /tmp/xu_remote
+// 3) /tmp/xu_remote
+// Optional: XU_UI_REMOTE_URL=http://127.0.0.1:8765/
+
+fn route(name string, payload string) string {
+    if name == "ping" {
+        << "pong:" + payload
+    }
+    if name == "greet" {
+        << "hello, " + payload
+    }
+    << "unknown:" + name
+}
+
+fn demo_www() string {
+    << "www"
+}
+
+fn remote_url() string {
+    u := env_get("XU_UI_REMOTE_URL")
+    if u.len > 0 {
+        << u + ""
+    }
+    << "http://127.0.0.1:8765/"
+}
+
+fn ipc_boot(emit_ch chan string, shell_ch chan ui.Event) {
+    // Still stage www + bridge so xu://app/__xu works; main document is remote.
+    webview.bind_ipc_www(demo_www(), route, emit_ch, shell_ch) or (err) {
+        eprintln(err.msg())
+        <<
+    }
+}
+
+fn tick_loop(emit_ch chan string) {
+    mut n := 0
+    while true {
+        sleep_ns(3000000000)
+        n = n + 1
+        webview.bus_emit(emit_ch, "tick", str(n))
+    }
+}
+
+fn watch_shell(shell_ch chan ui.Event) {
+    while true {
+        ev := <-shell_ch
+        if ev.kind == ui.ev_exit || ev.kind == ui.ev_closed {
+            println("shell event kind=" + str(ev.kind))
+        } else if ev.kind == ui.ev_loaded {
+            println("shell event loaded")
+        } else if ev.kind == ui.ev_load_failed {
+            println("shell event load_failed")
+        } else if ev.kind == ui.ev_ready {
+            println("shell event ready")
+        }
+    }
+}
+
+fn main() int {
+    emit_ch := chan string{cap: 32}
+    shell_ch := chan ui.Event{cap: 32}
+    mut app := ui.new_app_events(shell_ch)
+    app.set_icon(ui.icon_from_file("brand/xu_app_logo.png"))
+    url := remote_url()
+    xu watch_shell(shell_ch)
+    xu ipc_boot(emit_ch, shell_ch)
+    xu tick_loop(emit_ch)
+    sleep_ns(50000000)
+    mut win := app.new_window(ui.WindowOpts{title: "Xu Remote HTTP + xu:// IPC", width: 720, height: 520})
+    r := mut &win
+    mut wv := webview.attach(r)
+    wv.on("ping")
+    wv.on("greet")
+    url2 := url + ""
+    wv.load_remote(url2) or (err) {
+        println(err.msg())
+        << 1
+    }
+    println("remote document " + url + " — IPC via xu://app/__xu (start remote_http/serve.py first)")
+    app.run() or (err) {
+        println(err.msg())
+        << 1
+    }
+    << 0
+}

@@ -1,0 +1,127 @@
+@main
+
+rabbitmq #github.com/xulang-org/packages/rabbitmq
+#errors
+
+fn verify_rabbitmq_basic() {
+    println("--- 1. Testing RabbitMQ Client AMQP 0-9-1 Basic Operations ---")
+    mut client := rabbitmq.open("127.0.0.1", 5672, "guest", "guest", "/") or (err) {
+        println("   [FAIL] RabbitMQ connect failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] RabbitMQ AMQP Handshake & Channel Open succeeded.")
+
+    // 1. Declare Queue
+    queue_name := "xu_test_queue"
+    client.declare_queue(queue_name + "", true) or (err) {
+        println("   [FAIL] declare_queue failed: " + err.msg())
+        client.close()
+        <<
+    }
+    println("   [PASS] Queue '" + queue_name + "' declared.")
+
+    // 2. Publish Message
+    msg := "Antigravity RabbitMQ AMQP test message from Xu Language!"
+    println("   Publishing message to queue '" + queue_name + "'...")
+    client.publish("", queue_name + "", msg + "") or (err) {
+        println("   [FAIL] publish failed: " + err.msg())
+        client.close()
+        <<
+    }
+    println("   [PASS] Message published.")
+
+    // 3. Get / Consume Message
+    println("   Consuming message via Basic.Get...")
+    got := client.get(queue_name + "", true) or (err) {
+        println("   [FAIL] get failed: " + err.msg())
+        client.close()
+        <<
+    }
+    println("   Retrieved message: " + got)
+    if got == msg {
+        println("   [PASS] Retrieved message matches published content exactly!")
+    } else {
+        println("   [FAIL] Message mismatch: " + got)
+    }
+
+    client.close()
+    println("   [PASS] Client closed cleanly.")
+}
+
+fn verify_rabbitmq_pool() {
+    println("\n--- 2. Testing RabbitMQ Connection Pool ---")
+    mut p := rabbitmq.open_pool("127.0.0.1", 5672, "guest", "guest", "/", 5)
+
+    // 1. Connection Reuse Test
+    mut c1 := p.get() or (err) {
+        println("   [FAIL] Failed to get c1: " + err.msg())
+        <<
+    }
+    fd1 := c1.fd
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put(c1)
+
+    mut c2 := p.get() or (err) {
+        println("   [FAIL] Failed to get c2: " + err.msg())
+        <<
+    }
+    fd2 := c2.fd
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    mut c3 := p.get() or (err) {
+        println("   [FAIL] Failed to get c3: " + err.msg())
+        <<
+    }
+    fd3 := c3.fd
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put(c2)
+    p.put(c3)
+
+    // 3. Delegated operations via pool
+    println("   Testing delegated operations via pool...")
+    pool_queue := "xu_pool_queue"
+    p.declare_queue(pool_queue + "", true) or (err) {
+        println("   [FAIL] Pool declare_queue failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool declared queue: " + pool_queue)
+
+    pool_msg := "Pooled rabbitmq message payload from Xu"
+    p.publish("", pool_queue + "", pool_msg + "") or (err) {
+        println("   [FAIL] Pool publish failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool published message.")
+
+    got_pool := p.get_message(pool_queue + "", true) or (err) {
+        println("   [FAIL] Pool get_message failed: " + err.msg())
+        <<
+    }
+    println("   Retrieved via pool: " + got_pool)
+    if got_pool == pool_msg {
+        println("   [PASS] Pool message matches published content exactly!")
+    } else {
+        println("   [FAIL] Pool message mismatch!")
+    }
+
+    p.close()
+    println("   [PASS] RabbitMQ Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu RabbitMQ AMQP 0-9-1 Native Driver Verification ===\n")
+    verify_rabbitmq_basic()
+    verify_rabbitmq_pool()
+    println("\n[RABBITMQ VERIFICATION 100% COMPLETED]")
+}

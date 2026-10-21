@@ -8,13 +8,15 @@ Does not touch companion repositories. Excludes compiler internals and tests.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import html
+import json
 import os
 from pathlib import Path
 import re
 import sys
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Sequence
 
 FOREIGN_RE = re.compile(
     r"\b[Gg]olang\b|\b[Gg]o(?:'s)?\b|\bRust\b|\brustc\b|\bVlang\b|"
@@ -1939,23 +1941,28 @@ def esc(s: str) -> str:
 
 
 def highlight_xu(sig: str) -> str:
-    s = html.escape(sig, quote=False)
-    # 1. Comments
-    s = re.sub(r"(//.*$)", r'<span class="syn-cmt">\1</span>', s, flags=re.MULTILINE)
-    # 2. Strings
-    s = re.sub(r'("([^"\\]|\\.)*")', r'<span class="syn-str">\1</span>', s)
-    # 3. Imports: #name
-    s = re.sub(r'#([A-Za-z0-9_/]+)', r'<span class="syn-import"><span class="hash">#</span>\1</span>', s)
-    # 4. Keywords
-    s = re.sub(r'\b(pub|fn|struct|mut|const|affine|defer|xu|if|else|match|return|interface|type|chan|or)\b', r'<span class="syn-kw">\1</span>', s)
-    s = re.sub(r'struct@', r'<span class="syn-kw">struct@</span>', s)
-    # 5. Flow controls & operators
-    s = re.sub(r'(&gt;&gt;|&lt;&lt;|:=|&lt;-|-&gt;)', r'<span class="syn-flow">\1</span>', s)
-    # 6. Borrowing: &mut / mut &
-    s = re.sub(r'(mut\s*&amp;|&amp;\s*mut)', r'<span class="syn-borrow">\1</span>', s)
-    # 7. Native types
-    s = re.sub(r'\b(int|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|string|bool|char|void|any|error|byte|rune|Self)\b', r'<span class="syn-type">\1</span>', s)
-    return s
+    # Tokenize the original source once. Replacing inside generated markup
+    # corrupts comments, URLs, and strings when complete programs are shown.
+    tokens = re.compile(
+        r'(?P<cmt>//[^\n]*|/\*[\s\S]*?\*/)'
+        r'|(?P<str>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`[^`]*`)'
+        r'|(?P<import>#[A-Za-z0-9_/]+)'
+        r'|(?P<borrow>&\s*mut\b|mut\s*&)'
+        r'|(?P<flow>>>|<<|:=|<-|->)'
+        r'|(?P<kw>\b(?:pub|fn|struct|mut|const|affine|defer|xu|if|else|match|return|interface|type|chan|or|for|while|in)\b@?)'
+        r'|(?P<type>\b(?:int|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|string|bool|char|void|any|error|byte|rune|Self)\b)'
+    )
+    parts = []
+    end = 0
+    for token in tokens.finditer(sig):
+        parts.append(html.escape(sig[end:token.start()], quote=False))
+        value = html.escape(token[0], quote=False)
+        if token.lastgroup == 'import':
+            value = '<span class="hash">#</span>' + value[1:]
+        parts.append(f'<span class="syn-{token.lastgroup}">{value}</span>')
+        end = token.end()
+    parts.append(html.escape(sig[end:], quote=False))
+    return ''.join(parts)
 
 
 def code_block(sig: str) -> str:
@@ -1965,6 +1972,141 @@ def code_block(sig: str) -> str:
         f"<pre><code>{highlight_xu(sig)}</code></pre>"
         "</div>"
     )
+
+
+@dataclass
+class Example:
+    path: str
+    source: str
+    ref: str
+    uses: dict[str, set[str]]
+
+    @property
+    def anchor(self) -> str:
+        return 'example-' + hashlib.sha256(self.path.encode()).hexdigest()[:12]
+
+    @property
+    def asset_url(self) -> str:
+        return '/api-examples/sources/' + self.path
+
+    @property
+    def project_url(self) -> str:
+        return f'https://github.com/xulang-org/examples/tree/{self.ref}/{Path(self.path).parent.as_posix()}'
+
+
+def example_uses(source: str) -> dict[str, set[str]]:
+    """Resolve import aliases and qualified uses, excluding comments and strings."""
+    imports = {}
+    code = []
+    state = {'block': False, 'str': None}
+    for line in source.splitlines():
+        blanked = strip_strings_and_comments_for_braces(line, state)
+        code.append(blanked)
+        match = re.fullmatch(r'\s*(?:([A-Za-z_]\w*)\s+)?#([A-Za-z0-9_./-]+)\s*', blanked)
+        if match:
+            module = match[2]
+            imports[match[1] or module.rsplit('/', 1)[-1]] = module
+    uses = {}
+    for alias, module in imports.items():
+        symbols = set(re.findall(r'\b' + re.escape(alias) + r'\s*\.\s*([A-Za-z_]\w*)', '\n'.join(code)))
+        if symbols:
+            uses[module] = symbols
+    return uses
+
+
+def example_path(value: str) -> Path:
+    path = Path(value)
+    if path.is_absolute() or '..' in path.parts or path.suffix != '.xu' or not path.parts or path.parts[0] != 'examples':
+        raise ValueError(f'invalid example source path: {value}')
+    return path
+
+
+def refresh_examples(site: str, root: str, ref: str, xu_version: str) -> None:
+    """Import curated, verbatim sources once; subsequent builds use the snapshot."""
+    if not re.fullmatch(r'[0-9a-f]{40}', ref):
+        raise ValueError('--examples-ref must be a full Git commit SHA')
+    paths = json.loads(Path(site, 'templates/api-examples.json').read_text(encoding='utf-8'))
+    if len(paths) != len(set(paths)):
+        raise ValueError('duplicate example source paths')
+    # Read and validate all inputs before changing the checked-in snapshot.
+    sources = []
+    checkout = Path(root).resolve()
+    for value in paths:
+        relative = example_path(value)
+        original = (checkout / relative).resolve()
+        if not original.is_relative_to(checkout):
+            raise ValueError(f'example source escapes checkout: {value}')
+        data = original.read_bytes()
+        data.decode('utf-8')
+        sources.append((relative, data))
+    destination = Path(site, 'www/api-examples')
+    destination.mkdir(parents=True, exist_ok=True)
+    records = []
+    for relative, data in sources:
+        target = destination / 'sources' / relative
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(data)
+        records.append({'path': relative.as_posix(), 'sha256': hashlib.sha256(data).hexdigest()})
+    catalog = {'xu_version': xu_version, 'source_ref': ref, 'files': records}
+    (destination / 'index.json').write_text(json.dumps(catalog, indent=2) + '\n', encoding='utf-8')
+
+
+def load_examples(site: str, packages: list[Package], xu_version: str) -> dict[str, list[Example]]:
+    root = Path(site, 'www/api-examples')
+    index = root / 'index.json'
+    if not index.is_file():
+        return {}
+    catalog = json.loads(index.read_text(encoding='utf-8'))
+    if catalog['xu_version'] != xu_version:
+        raise ValueError('API examples must be checked and refreshed for Xu ' + xu_version)
+    ref = catalog['source_ref']
+    if not re.fullmatch(r'[0-9a-f]{40}', ref):
+        raise ValueError('API examples must reference an immutable Git commit')
+    by_import = {pkg.import_path.split('#', 1)[1]: pkg.path for pkg in packages}
+    examples: dict[str, list[Example]] = {}
+    for record in catalog['files']:
+        relative = example_path(record['path'])
+        data = (root / 'sources' / relative).read_bytes()
+        if hashlib.sha256(data).hexdigest() != record['sha256']:
+            raise ValueError('API example checksum mismatch: ' + record['path'])
+        source = data.decode('utf-8')
+        uses = example_uses(source)
+        example = Example(relative.as_posix(), source, ref, uses)
+        for module in uses.keys() & by_import.keys():
+            examples.setdefault(by_import[module], []).append(example)
+    # Prefer focused, short programs over large integration suites.
+    for group in examples.values():
+        group.sort(key=lambda ex: (len(ex.uses), len(ex.source.splitlines()), ex.path))
+    return examples
+
+
+def render_examples(examples: list[Example], lang: str) -> str:
+    zh = lang == 'zh'
+    parts = [
+        '<section class="api-examples" id="examples">',
+        '<h2>' + ('示例代码' if zh else 'Examples') + '</h2>',
+        '<p>' + ('以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。'
+                 if zh else 'These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.') + '</p>',
+    ]
+    for i, example in enumerate(examples[:3]):
+        label = example.path.removeprefix('examples/')
+        parts.extend([
+            f'<details class="api-example" id="{example.anchor}"' + (' open' if i == 0 else '') + '>',
+            f'<summary><code>{esc(label)}</code></summary>',
+            '<p class="meta">' + f'<a href="{esc(example.project_url)}">' + ('完整工程' if zh else 'Complete project') + '</a> · '
+            + f'<a href="{esc(example.asset_url)}" download>' + ('下载源码' if zh else 'Download source') + '</a></p>',
+            '<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>'
+            + ('本地 SDK 示例' if zh else 'Local SDK example') + '</span></div>'
+            + f'<pre tabindex="0" aria-label="{esc(label)}"><code class="language-xu">{highlight_xu(example.source.rstrip())}</code></pre></div>',
+            '</details>',
+        ])
+    if len(examples) > 3:
+        parts.append('<details class="api-example"><summary>' + ('更多相关示例' if zh else 'More related examples') + '</summary><ul>')
+        for example in examples[3:]:
+            parts.append(f'<li><a href="{esc(example.project_url)}"><code>{esc(example.path.removeprefix("examples/"))}</code></a></li>')
+        parts.append('</ul></details>')
+    parts.append('</section>')
+    return '\n'.join(parts)
 
 
 def item_id(item: Item, used: dict) -> str:
@@ -1988,7 +2130,7 @@ def item_id(item: Item, used: dict) -> str:
     return base if n == 0 else f"{base}-{n}"
 
 
-def render_item(pkg: Package, item: Item, lang: str, used_ids: dict) -> str:
+def render_item(pkg: Package, item: Item, lang: str, used_ids: dict, examples: Sequence[Example] = ()) -> str:
     L = LABELS[lang]
     iid = item_id(item, used_ids)
     purpose = purpose_for(pkg, item, lang)
@@ -2028,11 +2170,16 @@ def render_item(pkg: Package, item: Item, lang: str, used_ids: dict) -> str:
     if ret:
         parts.append(f"<h3>{L['returns']}</h3>")
         parts.append(f"<p>{esc(ret)}</p>")
+    if item.kind in ('fn', 'struct', 'enum', 'const', 'iface'):
+        module = pkg.import_path.split('#', 1)[1]
+        related = next((ex for ex in examples[:3] if item.name in ex.uses.get(module, set())), None)
+        if related:
+            parts.append(f'<p><a href="#{related.anchor}">' + ('查看用法示例' if lang == 'zh' else 'See usage example') + '</a></p>')
     parts.append("</article>")
     return "\n".join(parts)
 
 
-def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "") -> str:
+def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "", examples: Sequence[Example] = ()) -> str:
     L = LABELS[lang]
     blurb = package_blurb(pkg, lang)
     counts = (
@@ -2054,15 +2201,21 @@ def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "
         prefix = "" if lang == "en" else "/zh"
         body.append(f'<p class="note">{esc(pkg.module)} · {esc(pkg.version)} · '
                     f'<a href="{prefix}/docs/packages">{"安装与使用" if lang == "zh" else "Install and use"}</a></p>')
+    if examples:
+        body.append('<p><a href="#examples">' + ('示例代码' if lang == 'zh' else 'Examples') + '</a> · <a href="#api-declarations">'
+                    + ('API 声明' if lang == 'zh' else 'API declarations') + '</a></p>')
+        body.append(render_examples(examples, lang))
+        body.append('<h2 id="api-declarations">' + ('API 声明' if lang == 'zh' else 'API declarations') + '</h2>')
     # stable order: consts, ifaces, structs, fns, methods, iface methods
     # Keep source order — more honest than regrouping.
     for it in pkg.items:
-        body.append(render_item(pkg, it, lang, used))
+        body.append(render_item(pkg, it, lang, used, examples))
     body.append("")
     return "\n".join(body)
 
 
-def render_index(packages: list[Package], lang: str, xu_version: str) -> str:
+def render_index(packages: list[Package], lang: str, xu_version: str, examples: Optional[dict[str, list[Example]]] = None) -> str:
+    examples = examples or {}
     prefix = "" if lang == "en" else "/zh"
     standard = [p for p in packages if not p.module]
     external = [p for p in packages if p.module]
@@ -2086,12 +2239,14 @@ def render_index(packages: list[Package], lang: str, xu_version: str) -> str:
             count = len(pkg.items)
             label = pkg.import_path.split("#", 1)[1]
             body.append(f'<li><a href="{prefix}/api/{esc(pkg.path)}"><code>#{esc(label)}</code></a> — {count} '
-                        + ("项公开声明" if lang == "zh" else "public declarations") + "</li>")
+                        + ("项公开声明" if lang == "zh" else "public declarations")
+                        + (f' · <a href="{prefix}/api/{esc(pkg.path)}#examples">' + ('示例' if lang == 'zh' else 'Examples') + '</a>' if examples.get(pkg.path) else '') + "</li>")
         body.append("</ul>")
     return "\n".join(body) + "\n"
 
 
 def write_packages(site: str, packages: list[Package], xu_version: str = "") -> None:
+    examples = load_examples(site, packages, xu_version)
     for lang in ("zh", "en"):
         root = os.path.join(site, "content", lang, "api")
         os.makedirs(root, exist_ok=True)
@@ -2103,11 +2258,11 @@ def write_packages(site: str, packages: list[Package], xu_version: str = "") -> 
             # so release regeneration preserves examples and explanations.
             guide = Path(site, "templates", "api-guides", lang, rel)
             overview = guide.read_text(encoding="utf-8") if guide.is_file() else ""
-            html_text = render_page(pkg, lang, xu_version, overview)
+            html_text = render_page(pkg, lang, xu_version, overview, examples.get(pkg.path, []))
             with open(dest, "w", encoding="utf-8") as f:
                 f.write(html_text)
         with open(os.path.join(root, "index.html"), "w", encoding="utf-8") as f:
-            f.write(render_index(packages, lang, xu_version))
+            f.write(render_index(packages, lang, xu_version, examples))
 
 
 CSS_BLOCK = """
@@ -2150,6 +2305,7 @@ CSS_BLOCK = """
   font-size: 14px;
   line-height: 1.55;
   max-width: 72ch;
+  overflow-wrap: anywhere;
 }
 .api-item .code-block-wrapper {
   margin: 0.45rem 0 0.35rem;
@@ -2231,6 +2387,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--src", default=default_src, help="Xu src root (packages with mod.xu)")
     ap.add_argument("--site", default=os.environ.get("XU_SITE_ROOT") or default_site, help="website source root")
     ap.add_argument("--packages", default=os.environ.get("XU_PACKAGES_ROOT"), help="external packages checkout (default: sibling packages when present)")
+    ap.add_argument("--examples", help="refresh bundled example sources from an official examples checkout")
+    ap.add_argument("--examples-ref", default="", help="full examples commit SHA (required with --examples)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args(argv)
 
@@ -2286,6 +2444,8 @@ def main(argv: list[str] | None = None) -> int:
     if args.dry_run:
         return 0
 
+    if args.examples:
+        refresh_examples(site, args.examples, args.examples_ref, xu_version)
     write_packages(site, packages, xu_version)
     ensure_css(site)
     # The user requires the website release to match Xu main's final SDK.

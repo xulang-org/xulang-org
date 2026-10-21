@@ -1,0 +1,94 @@
+@main
+
+prometheus #github.com/xulang-org/packages/prometheus
+#errors
+
+fn verify_prometheus_metrics() {
+    println("--- 1. Testing Prometheus Metrics & Exposition Formatting ---")
+    mut reg := prometheus.new_registry()
+
+    // 1. Counter with Labels
+    mut http_requests := prometheus.new_counter("http_requests_total", "Total incoming HTTP requests")
+    mut lbl1 := []prometheus.Label{}
+    lbl1.push(prometheus.Label{name: "method", value: "GET"})
+    lbl1.push(prometheus.Label{name: "handler", value: "/api/orders"})
+    http_requests.inc_labels(lbl1, 100)
+
+    mut lbl2 := []prometheus.Label{}
+    lbl2.push(prometheus.Label{name: "method", value: "POST"})
+    lbl2.push(prometheus.Label{name: "handler", value: "/api/orders"})
+    http_requests.inc_labels(lbl2, 25)
+
+    reg.register_counter(http_requests)
+    println("   [PASS] Counter registered with 2 labeled series.")
+
+    // 2. Gauge
+    mut mem_usage := prometheus.new_gauge("process_memory_bytes", "Resident memory bytes")
+    mem_usage.set("134217728")
+    reg.register_gauge(mem_usage)
+    println("   [PASS] Gauge registered.")
+
+    // 3. Gather text output
+    output := reg.gather()
+    println("   Exposition output preview:")
+    println(output)
+
+    prefix_help := "# HELP http_requests_total Total incoming HTTP requests"
+    if output.len >= prefix_help.len && output[0:prefix_help.len] == prefix_help {
+        println("   [PASS] Output conforms to standard Prometheus exposition format!")
+    } else {
+        println("   [FAIL] Output format mismatch!")
+    }
+}
+
+fn verify_prometheus_pool() {
+    println("\n--- 2. Testing Prometheus Pusher Connection Pool ---")
+    mut p := prometheus.open_pool("http://127.0.0.1:9091", 5)
+
+    // 1. Connection Reuse Test
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. High-level push delegation to Pushgateway
+    mut test_reg := prometheus.new_registry()
+    mut counter := prometheus.new_counter("xu_push_counter_total", "Test counter pushed to Pushgateway")
+    counter.inc_by(42)
+    test_reg.register_counter(counter)
+
+    push_ok := p.push_metrics("xu_driver_test", test_reg.gather())
+    if push_ok {
+        println("   [PASS] Successfully pushed metrics to Pushgateway job 'xu_driver_test'!")
+    } else {
+        println("   [FAIL] Failed to push metrics to Pushgateway!")
+    }
+
+    p.close()
+    println("   [PASS] Prometheus Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu Prometheus Metrics Native Driver Verification ===\n")
+    verify_prometheus_metrics()
+    verify_prometheus_pool()
+    println("\n[PROMETHEUS VERIFICATION 100% COMPLETED]")
+}

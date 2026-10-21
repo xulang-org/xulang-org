@@ -7,6 +7,437 @@
 <p class="meta">counts: 18 fns, 91 methods, 5 types, 12 consts, 0 ifaces</p>
 <p class="lead">Redis standalone client package for Xu. Features Full RESP2 / RESP3 protocol support. High-performance socket line &amp; bulk byte buffering. Easy-to-use API for strings, hashes, lists, sets, sorted sets, and batch operations. Pipelining for high-throughput batch operations. Connection pooling support via channels. Full URL format parsing (redis://:password@host:port/db).</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-02de77e08633" open>
+<summary><code>21_standalone_redis/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/21_standalone_redis">Complete project</a> · <a href="/api-examples/sources/examples/21_standalone_redis/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="21_standalone_redis/main.xu"><code class="language-xu">@main
+
+redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/redis
+<span class="syn-import"><span class="hash">#</span>os</span>
+
+<span class="syn-kw">fn</span> demo_resp_encoding() {
+    cmd <span class="syn-flow">:=</span> redis.encode_cmd([<span class="syn-str">"SET"</span>, <span class="syn-str">"mykey"</span>, <span class="syn-str">"hello"</span>])
+    println(<span class="syn-str">"Encoded command:"</span>)
+    println(cmd)
+}
+
+<span class="syn-kw">fn</span> demo_value_types() {
+    v_str <span class="syn-flow">:=</span> redis.str_value(<span class="syn-str">"PONG"</span>)
+    s <span class="syn-flow">:=</span> v_str.as_string() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"as_string failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"Value string: "</span> + s)
+
+    v_int <span class="syn-flow">:=</span> redis.int_value(10086)
+    n <span class="syn-flow">:=</span> v_int.as_int() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"as_int failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"Value int: "</span> + str(n))
+
+    v_nil <span class="syn-flow">:=</span> redis.nil_value()
+    println(<span class="syn-str">"Value is_nil: "</span> + str(v_nil.is_nil()))
+}
+
+<span class="syn-kw">fn</span> demo_url_parsing() {
+    u <span class="syn-flow">:=</span> redis.parse_url(<span class="syn-str">"redis://:mypassword@db.example.com:6380/2"</span>)
+    println(<span class="syn-str">"URL parse: addr="</span> + u.addr + <span class="syn-str">", pass="</span> + u.password + <span class="syn-str">", db="</span> + str(u.db))
+}
+
+<span class="syn-kw">fn</span> redis_pool_worker(id <span class="syn-type">int</span>, addr <span class="syn-type">string</span>, idle <span class="syn-kw">chan</span> <span class="syn-type">int</span>, done <span class="syn-kw">chan</span> <span class="syn-type">int</span>) {
+    p <span class="syn-flow">:=</span> redis.Pool{addr: addr, auth: <span class="syn-str">""</span>, db: 0, idle: idle, max_idle: 5}
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"worker "</span> + str(id) + <span class="syn-str">" get failed: "</span> + err.msg())
+        done <span class="syn-flow">&lt;-</span> -id
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    key <span class="syn-flow">:=</span> <span class="syn-str">"xu_coro_key_"</span> + str(id)
+    val <span class="syn-flow">:=</span> <span class="syn-str">"val_"</span> + str(id)
+    c.set(key + <span class="syn-str">""</span>, val + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        done <span class="syn-flow">&lt;-</span> -id
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    got <span class="syn-flow">:=</span> c.get(key + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        done <span class="syn-flow">&lt;-</span> -id
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    c.del(key + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd <span class="syn-flow">:=</span> c.fd
+    p.put(c)
+    <span class="syn-kw">if</span> got == val {
+        println(<span class="syn-str">"    [PASS] xu worker "</span> + str(id) + <span class="syn-str">" acquired fd="</span> + str(fd) + <span class="syn-str">", SET/GET matched: "</span> + got)
+        done <span class="syn-flow">&lt;-</span> id
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"    [FAIL] xu worker "</span> + str(id) + <span class="syn-str">" value mismatch"</span>)
+        done <span class="syn-flow">&lt;-</span> -id
+    }
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    println(<span class="syn-str">"=== Redis Standalone Library Integration Test ==="</span>)
+    demo_resp_encoding()
+    demo_value_types()
+    demo_url_parsing()
+
+    url <span class="syn-flow">:=</span> <span class="syn-str">"redis://127.0.0.1:6379/0"</span>
+    println(<span class="syn-str">"Connecting to Redis via URL "</span> + url + <span class="syn-str">"..."</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> redis.open_url(url + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Connection via URL failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    res_ping <span class="syn-flow">:=</span> client.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"PING failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"1. PING response: "</span> + res_ping)
+
+    <span class="syn-cmt">// String &amp; Counter</span>
+    client.set(<span class="syn-str">"xu_greeting"</span>, <span class="syn-str">"Hello from Xu Language!"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"SET failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    greeting <span class="syn-flow">:=</span> client.get(<span class="syn-str">"xu_greeting"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"GET failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"2. GET xu_greeting: "</span> + greeting)
+
+    client.set(<span class="syn-str">"xu_counter"</span>, <span class="syn-str">"10"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"SET counter failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    new_c <span class="syn-flow">:=</span> client.incr(<span class="syn-str">"xu_counter"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"INCR failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"3. INCR xu_counter: "</span> + str(new_c))
+
+    <span class="syn-cmt">// Hash</span>
+    client.hset(<span class="syn-str">"xu_hash"</span>, <span class="syn-str">"author"</span>, <span class="syn-str">"DeepMind Pair"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"HSET failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    author <span class="syn-flow">:=</span> client.hget(<span class="syn-str">"xu_hash"</span>, <span class="syn-str">"author"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"HGET failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"4. HGET xu_hash.author: "</span> + author)
+
+    <span class="syn-cmt">// List</span>
+    client.del(<span class="syn-str">"xu_list"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    client.rpush(<span class="syn-str">"xu_list"</span>, <span class="syn-str">"alpha"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    client.rpush(<span class="syn-str">"xu_list"</span>, <span class="syn-str">"beta"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    client.rpush(<span class="syn-str">"xu_list"</span>, <span class="syn-str">"gamma"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    items <span class="syn-flow">:=</span> client.lrange(<span class="syn-str">"xu_list"</span>, 0, -1) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"LRANGE failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"5. LRANGE items count: "</span> + str(items.len))
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> i &lt; items.len {
+        println(<span class="syn-str">"   - item "</span> + str(i) + <span class="syn-str">": "</span> + items[i])
+        i = i + 1
+    }
+
+    <span class="syn-cmt">// Batch operations: MSET &amp; MGET</span>
+    mset_res <span class="syn-flow">:=</span> client.mset([<span class="syn-str">"xu_m1"</span>, <span class="syn-str">"val1"</span>, <span class="syn-str">"xu_m2"</span>, <span class="syn-str">"val2"</span>, <span class="syn-str">"xu_m3"</span>, <span class="syn-str">"val3"</span>]) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"MSET failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    mvals <span class="syn-flow">:=</span> client.mget([<span class="syn-str">"xu_m1"</span>, <span class="syn-str">"xu_m2"</span>, <span class="syn-str">"xu_m3"</span>]) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"MGET failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"6. MSET/MGET: len="</span> + str(mvals.len) + <span class="syn-str">", m1="</span> + mvals[0] + <span class="syn-str">", m2="</span> + mvals[1] + <span class="syn-str">", m3="</span> + mvals[2])
+
+    <span class="syn-cmt">// Sorted Set (ZSet)</span>
+    client.del(<span class="syn-str">"xu_leaderboard"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    client.zadd(<span class="syn-str">"xu_leaderboard"</span>, 100.5, <span class="syn-str">"Alice"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    client.zadd(<span class="syn-str">"xu_leaderboard"</span>, 95.0, <span class="syn-str">"Bob"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    client.zadd(<span class="syn-str">"xu_leaderboard"</span>, 120.0, <span class="syn-str">"Charlie"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    zcard <span class="syn-flow">:=</span> client.zcard(<span class="syn-str">"xu_leaderboard"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    zscore <span class="syn-flow">:=</span> client.zscore(<span class="syn-str">"xu_leaderboard"</span>, <span class="syn-str">"Alice"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    zleaders <span class="syn-flow">:=</span> client.zrange(<span class="syn-str">"xu_leaderboard"</span>, 0, -1) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"7. ZSET: card="</span> + str(zcard) + <span class="syn-str">", Alice score="</span> + zscore + <span class="syn-str">", members="</span> + zleaders[0] + <span class="syn-str">","</span> + zleaders[1] + <span class="syn-str">","</span> + zleaders[2])
+
+    <span class="syn-cmt">// Pipeline</span>
+    <span class="syn-kw">mut</span> pipe <span class="syn-flow">:=</span> client.pipeline()
+    pipe.set(<span class="syn-str">"xu_pipe_a"</span>, <span class="syn-str">"pipe_val_a"</span>)
+    pipe.set(<span class="syn-str">"xu_pipe_b"</span>, <span class="syn-str">"pipe_val_b"</span>)
+    pipe.get(<span class="syn-str">"xu_pipe_a"</span>)
+    pipe.incr(<span class="syn-str">"xu_pipe_c"</span>)
+    pipe_results <span class="syn-flow">:=</span> client.exec_pipeline(<span class="syn-borrow">mut &amp;</span>pipe) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pipeline exec failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"8. Pipeline executed "</span> + str(pipe_results.len) + <span class="syn-str">" commands:"</span>)
+    println(<span class="syn-str">"   - cmd 0 (SET): "</span> + pipe_results[0].str_val)
+    println(<span class="syn-str">"   - cmd 1 (SET): "</span> + pipe_results[1].str_val)
+    println(<span class="syn-str">"   - cmd 2 (GET): "</span> + pipe_results[2].str_val)
+    println(<span class="syn-str">"   - cmd 3 (INCR): "</span> + str(pipe_results[3].int_val))
+
+    <span class="syn-cmt">// Cleanup</span>
+    del_cnt <span class="syn-flow">:=</span> client.del(<span class="syn-str">"xu_greeting"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"9. Cleaned up xu_greeting (del count="</span> + str(del_cnt) + <span class="syn-str">")"</span>)
+
+    client.close()
+
+    <span class="syn-cmt">// Test Pool with URL, Reuse &amp; Concurrency</span>
+    pool <span class="syn-flow">:=</span> redis.new_pool_url(<span class="syn-str">"redis://127.0.0.1:6379/0"</span>, 5)
+    <span class="syn-kw">mut</span> p_conn <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool get failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_first <span class="syn-flow">:=</span> p_conn.fd
+    pool_ping <span class="syn-flow">:=</span> p_conn.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool ping failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"10. Pool URL connection PING: "</span> + pool_ping + <span class="syn-str">" (fd="</span> + str(fd_first) + <span class="syn-str">")"</span>)
+    pool.put(p_conn)
+    println(<span class="syn-str">"11. Pool connection returned successfully."</span>)
+
+    <span class="syn-cmt">// Verify Pool Connection REUSE: second get should give the exact same fd</span>
+    <span class="syn-kw">mut</span> p_conn2 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool second get failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_second <span class="syn-flow">:=</span> p_conn2.fd
+    <span class="syn-kw">if</span> fd_first == fd_second {
+        println(<span class="syn-str">"12. [PASS] Pool Connection REUSE verified! (fd_first == fd_second: "</span> + str(fd_first) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"12. [WARN] Pool connection not reused: fd_first="</span> + str(fd_first) + <span class="syn-str">", fd_second="</span> + str(fd_second))
+    }
+
+    <span class="syn-cmt">// Concurrent borrow another connection</span>
+    <span class="syn-kw">mut</span> p_conn3 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool third get failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_third <span class="syn-flow">:=</span> p_conn3.fd
+    <span class="syn-kw">if</span> fd_second != fd_third {
+        println(<span class="syn-str">"13. [PASS] Pool Multi-connection concurrency verified! (fd2="</span> + str(fd_second) + <span class="syn-str">" != fd3="</span> + str(fd_third) + <span class="syn-str">")"</span>)
+    }
+    p_conn3.set(<span class="syn-str">"pool_concurrent_test"</span>, <span class="syn-str">"ok"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    got_c <span class="syn-flow">:=</span> p_conn2.get(<span class="syn-str">"pool_concurrent_test"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"14. [PASS] Concurrent connection cross-query verified: got="</span> + got_c)
+
+    pool.put(p_conn2)
+    pool.put(p_conn3)
+
+    <span class="syn-cmt">// 15. Testing Pool with Real 'xu' Coroutines</span>
+    println(<span class="syn-str">"15. Testing Pool with Real 'xu' Coroutines..."</span>)
+    done_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">int</span>{cap: 10}
+    <span class="syn-kw">xu</span> redis_pool_worker(1, pool.addr + <span class="syn-str">""</span>, pool.idle, done_ch)
+    <span class="syn-kw">xu</span> redis_pool_worker(2, pool.addr + <span class="syn-str">""</span>, pool.idle, done_ch)
+    <span class="syn-kw">xu</span> redis_pool_worker(3, pool.addr + <span class="syn-str">""</span>, pool.idle, done_ch)
+    <span class="syn-kw">xu</span> redis_pool_worker(4, pool.addr + <span class="syn-str">""</span>, pool.idle, done_ch)
+    <span class="syn-kw">xu</span> redis_pool_worker(5, pool.addr + <span class="syn-str">""</span>, pool.idle, done_ch)
+
+    <span class="syn-kw">mut</span> success_count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">for</span> w <span class="syn-kw">in</span> 0:5 {
+        res_id <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span>done_ch
+        <span class="syn-kw">if</span> res_id &gt; 0 {
+            success_count = success_count + 1
+        }
+    }
+    println(<span class="syn-str">"    [PASS] All "</span> + str(success_count) + <span class="syn-str">" concurrent 'xu' coroutines completed successfully via Pool!"</span>)
+
+    pool.close()
+    println(<span class="syn-str">"16. [PASS] Pool closed cleanly."</span>)
+
+    println(<span class="syn-str">"=== Redis Standalone Tests Completed Successfully! ==="</span>)
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-b597eda1c41a">
+<summary><code>28_test_pools/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/28_test_pools">Complete project</a> · <a href="/api-examples/sources/examples/28_test_pools/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="28_test_pools/main.xu"><code class="language-xu">@main
+
+redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/redis
+memcached <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/memcached
+nats <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/nats
+mqtt <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mqtt
+elasticsearch <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/elasticsearch
+s3 <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/s3
+sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/sqlite
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+
+<span class="syn-kw">fn</span> verify_redis_pool() {
+    println(<span class="syn-str">"1. Testing Redis Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> redis.new_pool(<span class="syn-str">"127.0.0.1:6379"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    res <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Redis PING response: "</span> + res)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Redis Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_memcached_pool() {
+    println(<span class="syn-str">"2. Testing Memcached Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> memcached.new_pool(<span class="syn-str">"127.0.0.1:11211"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ver <span class="syn-flow">:=</span> c.version() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached version error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Memcached VERSION: "</span> + ver)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Memcached Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_nats_pool() {
+    println(<span class="syn-str">"3. Testing NATS Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> nats.open_pool(<span class="syn-str">"127.0.0.1:4222"</span>, 5)
+    p.publish(<span class="syn-str">"pool.events"</span>, <span class="syn-str">"hello from nats pool"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ok <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS borrowed client ping ok: "</span> + str(ok))
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] NATS Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_mqtt_pool() {
+    println(<span class="syn-str">"4. Testing MQTT Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> mqtt.open_pool(<span class="syn-str">"127.0.0.1:1883"</span>, <span class="syn-str">"xu_pool_test"</span>, 5)
+    p.publish(<span class="syn-str">"sensors/pool"</span>, <span class="syn-str">"temp=28C"</span>, 0) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT borrowed client ID: "</span> + c.client_id)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] MQTT Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_es_pool() {
+    println(<span class="syn-str">"5. Testing Elasticsearch Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> elasticsearch.open_pool(<span class="syn-str">"http://127.0.0.1:9200"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   ES borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Elasticsearch Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_s3_pool() {
+    println(<span class="syn-str">"6. Testing S3 Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> s3.open_pool(<span class="syn-str">"http://127.0.0.1:9000"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"us-east-1"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   S3 borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] S3 Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_sqlite_pool() {
+    println(<span class="syn-str">"7. Testing SQLite Connection Pool..."</span>)
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sqlite.open_pool(<span class="syn-str">":memory:"</span>, 1, 1)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] SQLite ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SQLite Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_postgres_pool() {
+    println(<span class="syn-str">"8. Testing PostgreSQL Connection Pool..."</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> postgres.open_pool(dsn, 5, 2)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] PostgreSQL ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] PostgreSQL Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu All Driver Connection Pools Comprehensive Verification ===\n"</span>)
+    verify_redis_pool()
+    verify_memcached_pool()
+    verify_nats_pool()
+    verify_mqtt_pool()
+    verify_es_pool()
+    verify_s3_pool()
+    verify_sqlite_pool()
+    verify_postgres_pool()
+    println(<span class="syn-str">"\n[ALL 8 DRIVER CONNECTION POOLS 100% VERIFIED!]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(addr <span class="syn-type">string</span>) Client</code></pre></div>
@@ -43,6 +474,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-02de77e08633">See usage example</a></p>
 </article>
 <article class="api-item" id="dial_url">
 <h2><code>dial_url</code></h2>
@@ -86,7 +518,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_line">
 <h2><code>(&amp;mut Client) read_line</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_line() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_line() <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read line. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -98,7 +530,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_bytes">
 <h2><code>(&amp;mut Client) read_bytes</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_bytes(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_bytes(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read through delim (inclusive). Throws on failure.</p>
 <h3>Parameters</h3>
@@ -111,7 +543,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_value">
 <h2><code>(&amp;mut Client) read_value</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_value() Value</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_value() Value</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read value. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -123,7 +555,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_raw">
 <h2><code>(&amp;mut Client) write_raw</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_raw(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_raw(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: write raw. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -136,7 +568,7 @@
 </article>
 <article class="api-item" id="-mut-Client-do">
 <h2><code>(&amp;mut Client) do</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) do(args []<span class="syn-type">string</span>) Value</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) do(args []<span class="syn-type">string</span>) Value</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `do` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -149,7 +581,7 @@
 </article>
 <article class="api-item" id="-mut-Client-auth">
 <h2><code>(&amp;mut Client) auth</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) auth(password <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) auth(password <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `auth` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -162,7 +594,7 @@
 </article>
 <article class="api-item" id="-mut-Client-select_db">
 <h2><code>(&amp;mut Client) select_db</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) select_db(index <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) select_db(index <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: select db. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -175,7 +607,7 @@
 </article>
 <article class="api-item" id="-mut-Client-close">
 <h2><code>(&amp;mut Client) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) close() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) close() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: close the resource.</p>
 <h3>Parameters</h3>
@@ -187,7 +619,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ping` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -199,7 +631,7 @@
 </article>
 <article class="api-item" id="-mut-Client-echo">
 <h2><code>(&amp;mut Client) echo</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) echo(msg <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) echo(msg <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `echo` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -212,7 +644,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get">
 <h2><code>(&amp;mut Client) get</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `get` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -225,7 +657,7 @@
 </article>
 <article class="api-item" id="-mut-Client-set">
 <h2><code>(&amp;mut Client) set</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) set(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) set(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `set` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -239,7 +671,7 @@
 </article>
 <article class="api-item" id="-mut-Client-set_ex">
 <h2><code>(&amp;mut Client) set_ex</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) set_ex(key <span class="syn-type">string</span>, seconds <span class="syn-type">int</span>, val <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) set_ex(key <span class="syn-type">string</span>, seconds <span class="syn-type">int</span>, val <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: set ex. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -254,7 +686,7 @@
 </article>
 <article class="api-item" id="-mut-Client-del">
 <h2><code>(&amp;mut Client) del</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) del(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) del(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `del` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -267,7 +699,7 @@
 </article>
 <article class="api-item" id="-mut-Client-del_many">
 <h2><code>(&amp;mut Client) del_many</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) del_many(keys []<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) del_many(keys []<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: del many. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -280,7 +712,7 @@
 </article>
 <article class="api-item" id="-mut-Client-exists">
 <h2><code>(&amp;mut Client) exists</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) exists(key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) exists(key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `exists` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -293,7 +725,7 @@
 </article>
 <article class="api-item" id="-mut-Client-incr">
 <h2><code>(&amp;mut Client) incr</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) incr(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) incr(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `incr` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -306,7 +738,7 @@
 </article>
 <article class="api-item" id="-mut-Client-decr">
 <h2><code>(&amp;mut Client) decr</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) decr(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) decr(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `decr` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -319,7 +751,7 @@
 </article>
 <article class="api-item" id="-mut-Client-incr_by">
 <h2><code>(&amp;mut Client) incr_by</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) incr_by(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) incr_by(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: incr by. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -333,7 +765,7 @@
 </article>
 <article class="api-item" id="-mut-Client-decr_by">
 <h2><code>(&amp;mut Client) decr_by</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) decr_by(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) decr_by(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: decr by. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -347,7 +779,7 @@
 </article>
 <article class="api-item" id="-mut-Client-expire">
 <h2><code>(&amp;mut Client) expire</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) expire(key <span class="syn-type">string</span>, seconds <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) expire(key <span class="syn-type">string</span>, seconds <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `expire` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -361,7 +793,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ttl">
 <h2><code>(&amp;mut Client) ttl</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ttl(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ttl(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ttl` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -374,7 +806,7 @@
 </article>
 <article class="api-item" id="-mut-Client-keys">
 <h2><code>(&amp;mut Client) keys</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) keys(pattern <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) keys(pattern <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `keys` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -387,7 +819,7 @@
 </article>
 <article class="api-item" id="-mut-Client-hget">
 <h2><code>(&amp;mut Client) hget</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) hget(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) hget(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Hash operations Throws on failure.</p>
 <h3>Parameters</h3>
@@ -401,7 +833,7 @@
 </article>
 <article class="api-item" id="-mut-Client-hset">
 <h2><code>(&amp;mut Client) hset</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) hset(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) hset(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hset` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -416,7 +848,7 @@
 </article>
 <article class="api-item" id="-mut-Client-hdel">
 <h2><code>(&amp;mut Client) hdel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) hdel(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) hdel(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hdel` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -430,7 +862,7 @@
 </article>
 <article class="api-item" id="-mut-Client-hexists">
 <h2><code>(&amp;mut Client) hexists</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) hexists(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) hexists(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hexists` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -444,7 +876,7 @@
 </article>
 <article class="api-item" id="-mut-Client-hgetall">
 <h2><code>(&amp;mut Client) hgetall</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) hgetall(key <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) hgetall(key <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hgetall` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -457,7 +889,7 @@
 </article>
 <article class="api-item" id="-mut-Client-hkeys">
 <h2><code>(&amp;mut Client) hkeys</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) hkeys(key <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) hkeys(key <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hkeys` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -470,7 +902,7 @@
 </article>
 <article class="api-item" id="-mut-Client-hlen">
 <h2><code>(&amp;mut Client) hlen</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) hlen(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) hlen(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hlen` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -483,7 +915,7 @@
 </article>
 <article class="api-item" id="-mut-Client-lpush">
 <h2><code>(&amp;mut Client) lpush</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) lpush(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) lpush(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>List operations Throws on failure.</p>
 <h3>Parameters</h3>
@@ -497,7 +929,7 @@
 </article>
 <article class="api-item" id="-mut-Client-rpush">
 <h2><code>(&amp;mut Client) rpush</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) rpush(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) rpush(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `rpush` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -511,7 +943,7 @@
 </article>
 <article class="api-item" id="-mut-Client-lpop">
 <h2><code>(&amp;mut Client) lpop</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) lpop(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) lpop(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `lpop` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -524,7 +956,7 @@
 </article>
 <article class="api-item" id="-mut-Client-rpop">
 <h2><code>(&amp;mut Client) rpop</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) rpop(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) rpop(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `rpop` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -537,7 +969,7 @@
 </article>
 <article class="api-item" id="-mut-Client-llen">
 <h2><code>(&amp;mut Client) llen</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) llen(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) llen(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `llen` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -550,7 +982,7 @@
 </article>
 <article class="api-item" id="-mut-Client-lrange">
 <h2><code>(&amp;mut Client) lrange</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) lrange(key <span class="syn-type">string</span>, start <span class="syn-type">int</span>, stop <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) lrange(key <span class="syn-type">string</span>, start <span class="syn-type">int</span>, stop <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `lrange` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -565,7 +997,7 @@
 </article>
 <article class="api-item" id="-mut-Client-sadd">
 <h2><code>(&amp;mut Client) sadd</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) sadd(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) sadd(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Set operations Throws on failure.</p>
 <h3>Parameters</h3>
@@ -579,7 +1011,7 @@
 </article>
 <article class="api-item" id="-mut-Client-srem">
 <h2><code>(&amp;mut Client) srem</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) srem(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) srem(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `srem` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -593,7 +1025,7 @@
 </article>
 <article class="api-item" id="-mut-Client-sismember">
 <h2><code>(&amp;mut Client) sismember</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) sismember(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) sismember(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `sismember` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -607,7 +1039,7 @@
 </article>
 <article class="api-item" id="-mut-Client-smembers">
 <h2><code>(&amp;mut Client) smembers</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) smembers(key <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) smembers(key <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `smembers` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -620,7 +1052,7 @@
 </article>
 <article class="api-item" id="-mut-Client-scard">
 <h2><code>(&amp;mut Client) scard</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) scard(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) scard(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `scard` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -633,7 +1065,7 @@
 </article>
 <article class="api-item" id="-mut-Client-mget">
 <h2><code>(&amp;mut Client) mget</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) mget(keys []<span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) mget(keys []<span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Batch operations Throws on failure.</p>
 <h3>Parameters</h3>
@@ -646,7 +1078,7 @@
 </article>
 <article class="api-item" id="-mut-Client-mset">
 <h2><code>(&amp;mut Client) mset</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) mset(pairs []<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) mset(pairs []<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `mset` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -659,7 +1091,7 @@
 </article>
 <article class="api-item" id="-mut-Client-zadd">
 <h2><code>(&amp;mut Client) zadd</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) zadd(key <span class="syn-type">string</span>, score <span class="syn-type">f64</span>, member <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) zadd(key <span class="syn-type">string</span>, score <span class="syn-type">f64</span>, member <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Sorted Set (ZSet) operations Throws on failure.</p>
 <h3>Parameters</h3>
@@ -674,7 +1106,7 @@
 </article>
 <article class="api-item" id="-mut-Client-zrange">
 <h2><code>(&amp;mut Client) zrange</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) zrange(key <span class="syn-type">string</span>, start <span class="syn-type">int</span>, stop <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) zrange(key <span class="syn-type">string</span>, start <span class="syn-type">int</span>, stop <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zrange` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -689,7 +1121,7 @@
 </article>
 <article class="api-item" id="-mut-Client-zrevrange">
 <h2><code>(&amp;mut Client) zrevrange</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) zrevrange(key <span class="syn-type">string</span>, start <span class="syn-type">int</span>, stop <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) zrevrange(key <span class="syn-type">string</span>, start <span class="syn-type">int</span>, stop <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zrevrange` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -704,7 +1136,7 @@
 </article>
 <article class="api-item" id="-mut-Client-zscore">
 <h2><code>(&amp;mut Client) zscore</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) zscore(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) zscore(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zscore` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -718,7 +1150,7 @@
 </article>
 <article class="api-item" id="-mut-Client-zrem">
 <h2><code>(&amp;mut Client) zrem</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) zrem(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) zrem(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zrem` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -732,7 +1164,7 @@
 </article>
 <article class="api-item" id="-mut-Client-zcard">
 <h2><code>(&amp;mut Client) zcard</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) zcard(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) zcard(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zcard` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -781,7 +1213,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-len">
 <h2><code>(&amp;mut Pipeline) len</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) len() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) len() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Pipeline`: return the length.</p>
 <h3>Parameters</h3>
@@ -793,7 +1225,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-command">
 <h2><code>(&amp;mut Pipeline) command</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) command(args []<span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) command(args []<span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `command` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -804,7 +1236,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-ping">
 <h2><code>(&amp;mut Pipeline) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) ping()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) ping()</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ping` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -814,7 +1246,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-get">
 <h2><code>(&amp;mut Pipeline) get</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) get(key <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) get(key <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `get` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -825,7 +1257,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-set">
 <h2><code>(&amp;mut Pipeline) set</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) set(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) set(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `set` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -837,7 +1269,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-set_ex">
 <h2><code>(&amp;mut Pipeline) set_ex</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) set_ex(key <span class="syn-type">string</span>, seconds <span class="syn-type">int</span>, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) set_ex(key <span class="syn-type">string</span>, seconds <span class="syn-type">int</span>, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Pipeline`: set ex.</p>
 <h3>Parameters</h3>
@@ -850,7 +1282,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-del">
 <h2><code>(&amp;mut Pipeline) del</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) del(key <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) del(key <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `del` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -861,7 +1293,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-incr">
 <h2><code>(&amp;mut Pipeline) incr</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) incr(key <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) incr(key <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `incr` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -872,7 +1304,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-decr">
 <h2><code>(&amp;mut Pipeline) decr</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) decr(key <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) decr(key <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `decr` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -883,7 +1315,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-incr_by">
 <h2><code>(&amp;mut Pipeline) incr_by</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) incr_by(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) incr_by(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Pipeline`: incr by.</p>
 <h3>Parameters</h3>
@@ -895,7 +1327,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-decr_by">
 <h2><code>(&amp;mut Pipeline) decr_by</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) decr_by(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) decr_by(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Pipeline`: decr by.</p>
 <h3>Parameters</h3>
@@ -907,7 +1339,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-expire">
 <h2><code>(&amp;mut Pipeline) expire</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) expire(key <span class="syn-type">string</span>, seconds <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) expire(key <span class="syn-type">string</span>, seconds <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `expire` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -919,7 +1351,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-ttl">
 <h2><code>(&amp;mut Pipeline) ttl</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) ttl(key <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) ttl(key <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ttl` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -930,7 +1362,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-hget">
 <h2><code>(&amp;mut Pipeline) hget</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) hget(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) hget(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hget` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -942,7 +1374,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-hset">
 <h2><code>(&amp;mut Pipeline) hset</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) hset(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) hset(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hset` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -955,7 +1387,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-hdel">
 <h2><code>(&amp;mut Pipeline) hdel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) hdel(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) hdel(key <span class="syn-type">string</span>, field <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hdel` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -967,7 +1399,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-lpush">
 <h2><code>(&amp;mut Pipeline) lpush</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) lpush(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) lpush(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `lpush` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -979,7 +1411,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-rpush">
 <h2><code>(&amp;mut Pipeline) rpush</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) rpush(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) rpush(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `rpush` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -991,7 +1423,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-lpop">
 <h2><code>(&amp;mut Pipeline) lpop</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) lpop(key <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) lpop(key <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `lpop` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1002,7 +1434,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-rpop">
 <h2><code>(&amp;mut Pipeline) rpop</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) rpop(key <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) rpop(key <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `rpop` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1013,7 +1445,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-sadd">
 <h2><code>(&amp;mut Pipeline) sadd</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) sadd(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) sadd(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `sadd` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1025,7 +1457,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-srem">
 <h2><code>(&amp;mut Pipeline) srem</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) srem(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) srem(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `srem` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1037,7 +1469,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-zadd">
 <h2><code>(&amp;mut Pipeline) zadd</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) zadd(key <span class="syn-type">string</span>, score <span class="syn-type">f64</span>, member <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) zadd(key <span class="syn-type">string</span>, score <span class="syn-type">f64</span>, member <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zadd` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1050,7 +1482,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-zrem">
 <h2><code>(&amp;mut Pipeline) zrem</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) zrem(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) zrem(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zrem` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1062,7 +1494,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-zscore">
 <h2><code>(&amp;mut Pipeline) zscore</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) zscore(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) zscore(key <span class="syn-type">string</span>, member <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zscore` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1074,7 +1506,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-zrange">
 <h2><code>(&amp;mut Pipeline) zrange</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) zrange(key <span class="syn-type">string</span>, start <span class="syn-type">int</span>, stop <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) zrange(key <span class="syn-type">string</span>, start <span class="syn-type">int</span>, stop <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `zrange` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1087,7 +1519,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-mget">
 <h2><code>(&amp;mut Pipeline) mget</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) mget(keys []<span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) mget(keys []<span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `mget` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1098,7 +1530,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-mset">
 <h2><code>(&amp;mut Pipeline) mset</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) mset(pairs []<span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) mset(pairs []<span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `mset` on `&amp;mut Pipeline`.</p>
 <h3>Parameters</h3>
@@ -1109,7 +1541,7 @@
 </article>
 <article class="api-item" id="-mut-Client-exec_pipeline">
 <h2><code>(&amp;mut Client) exec_pipeline</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) exec_pipeline(p &amp;<span class="syn-kw">mut</span> Pipeline) []Value</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) exec_pipeline(p <span class="syn-borrow">&amp;mut</span> Pipeline) []Value</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: exec pipeline. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -1122,7 +1554,7 @@
 </article>
 <article class="api-item" id="-mut-Pipeline-exec">
 <h2><code>(&amp;mut Pipeline) exec</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Pipeline) exec(c &amp;<span class="syn-kw">mut</span> Client) []Value</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Pipeline) exec(c <span class="syn-borrow">&amp;mut</span> Client) []Value</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `exec` on `&amp;mut Pipeline`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -1152,6 +1584,7 @@
 <dt><code>idle</code> <span class="type">chan int</span></dt><dd>field (channel; type chan int)</dd>
 <dt><code>max_idle</code> <span class="type">int</span></dt><dd>field (int)</dd>
 </dl>
+<p><a href="#example-02de77e08633">See usage example</a></p>
 </article>
 <article class="api-item" id="new_pool">
 <h2><code>new_pool</code></h2>
@@ -1165,6 +1598,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-b597eda1c41a">See usage example</a></p>
 </article>
 <article class="api-item" id="new_pool_auth">
 <h2><code>new_pool_auth</code></h2>
@@ -1192,6 +1626,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-02de77e08633">See usage example</a></p>
 </article>
 <article class="api-item" id="-Pool-get">
 <h2><code>(&amp;Pool) get</code></h2>
@@ -1237,6 +1672,7 @@
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-02de77e08633">See usage example</a></p>
 </article>
 <article class="api-item" id="find_crlf">
 <h2><code>find_crlf</code></h2>
@@ -1281,6 +1717,7 @@
 </dl>
 <h3>Returns</h3>
 <p>RedisURL — a value of this type</p>
+<p><a href="#example-02de77e08633">See usage example</a></p>
 </article>
 <article class="api-item" id="const-type_str">
 <h2><code>const type_str</code></h2>
@@ -1409,6 +1846,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>Value — a value of this type</p>
+<p><a href="#example-02de77e08633">See usage example</a></p>
 </article>
 <article class="api-item" id="str_value">
 <h2><code>str_value</code></h2>
@@ -1421,6 +1859,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Value — a value of this type</p>
+<p><a href="#example-02de77e08633">See usage example</a></p>
 </article>
 <article class="api-item" id="int_value">
 <h2><code>int_value</code></h2>
@@ -1433,6 +1872,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Value — a value of this type</p>
+<p><a href="#example-02de77e08633">See usage example</a></p>
 </article>
 <article class="api-item" id="arr_value">
 <h2><code>arr_value</code></h2>

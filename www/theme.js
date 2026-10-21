@@ -56,7 +56,7 @@
         }
       });
       window.addEventListener('resize', function () {
-        if (window.innerWidth > 860 && document.body.classList.contains('mobile-nav-open')) {
+        if (window.innerWidth > 1100 && document.body.classList.contains('mobile-nav-open')) {
           setMenu(false);
         }
       });
@@ -64,6 +64,16 @@
 
     // Initialize code block copy and run toolbars
     initCodeToolbars();
+
+    // A declaration link opens its example, including bookmarked fragments.
+    function revealAPIExample() {
+      var hash = window.location.hash || '';
+      if (!/^#example-[0-9a-f]{12}$/.test(hash)) return;
+      var target = document.getElementById(hash.slice(1));
+      if (target && target.classList.contains('api-example')) target.open = true;
+    }
+    window.addEventListener('hashchange', revealAPIExample);
+    revealAPIExample();
 
     // Initialize hero install tab switcher
     initHeroInstallTabs();
@@ -238,7 +248,7 @@
       function currentCode() { return editor ? editor.value : rawCode; }
 
       var kind = detectBlockKind(pre, rawCode);
-      var isRunnable = kind === 'xu' || kind === 'api';
+      var isRunnable = (kind === 'xu' || kind === 'api') && !pre.closest('.xu-local-only');
 
       var kindMeta = {
         xu: { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: '' },

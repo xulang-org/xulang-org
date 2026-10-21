@@ -7,6 +7,118 @@
 <p class="meta">counts: 3 fns, 8 methods, 2 types, 0 consts, 0 ifaces</p>
 <p class="lead">Neo4j Graph Database Native Client for Xu Communicates directly with Neo4j via HTTP Cypher Transactional API.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-3b8d2b1391e9" open>
+<summary><code>41_standalone_neo4j/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/41_standalone_neo4j">Complete project</a> · <a href="/api-examples/sources/examples/41_standalone_neo4j/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="41_standalone_neo4j/main.xu"><code class="language-xu">@main
+
+neo4j <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/neo4j
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> verify_neo4j_pool() {
+    println(<span class="syn-str">"--- 1. Testing Neo4j Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> neo4j.open_pool(<span class="syn-str">"http://127.0.0.1:7474"</span>, <span class="syn-str">"neo4j"</span>, <span class="syn-str">"secret123"</span>, <span class="syn-str">"neo4j"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Neo4j Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_neo4j_cypher_crud() {
+    println(<span class="syn-str">"\n--- 2. Testing Neo4j Cypher Graph CRUD ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> neo4j.open_pool(<span class="syn-str">"http://127.0.0.1:7474"</span>, <span class="syn-str">"neo4j"</span>, <span class="syn-str">"secret123"</span>, <span class="syn-str">"neo4j"</span>, 5)
+
+    <span class="syn-cmt">// 1. Clean existing test nodes</span>
+    p.execute(<span class="syn-str">"MATCH (n:Person) DETACH DELETE n"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [NOTE] Clean test nodes: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Cleaned pre-existing test data."</span>)
+
+    <span class="syn-cmt">// 2. Create Node</span>
+    c1 <span class="syn-flow">:=</span> <span class="syn-str">"CREATE (a:Person {name: 'Alice', role: 'Engineer', age: 30}) RETURN a.name, a.role"</span>
+    res1 <span class="syn-flow">:=</span> p.execute(c1) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create Alice node failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Created Node Alice: "</span> + res1)
+
+    <span class="syn-cmt">// 3. Create another Node</span>
+    c2 <span class="syn-flow">:=</span> <span class="syn-str">"CREATE (b:Person {name: 'Bob', role: 'Architect', age: 35}) RETURN b.name, b.role"</span>
+    res2 <span class="syn-flow">:=</span> p.execute(c2) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create Bob node failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Created Node Bob: "</span> + res2)
+
+    <span class="syn-cmt">// 4. Create Relationship (Graph Edge)</span>
+    c3 <span class="syn-flow">:=</span> <span class="syn-str">"MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) CREATE (a)-[r:COLLABORATES_WITH {project: 'Xu'}]-&gt;(b) RETURN type(r)"</span>
+    res3 <span class="syn-flow">:=</span> p.execute(c3) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create Relationship failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Created Relationship COLLABORATES_WITH: "</span> + res3)
+
+    <span class="syn-cmt">// 5. Query Graph Match</span>
+    c4 <span class="syn-flow">:=</span> <span class="syn-str">"MATCH (a:Person)-[r:COLLABORATES_WITH]-&gt;(b:Person) RETURN a.name, type(r), b.name"</span>
+    res4 <span class="syn-flow">:=</span> p.execute(c4) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Query Graph failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Query Graph Traversal Result: "</span> + res4)
+
+    <span class="syn-cmt">// 6. Detach Delete &amp; Cleanup</span>
+    del_res2 <span class="syn-flow">:=</span> p.execute(<span class="syn-str">"MATCH (n:Person) DETACH DELETE n"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Cleanup failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Cleaned up graph test data."</span>)
+
+    p.close()
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu Neo4j Graph Database Native Driver Verification ===\n"</span>)
+    verify_neo4j_pool()
+    verify_neo4j_cypher_crud()
+    println(<span class="syn-str">"\n[NEO4J VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="struct-Neo4jClient">
 <h2><code>struct Neo4jClient</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Neo4jClient {
@@ -165,6 +277,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-3b8d2b1391e9">See usage example</a></p>
 </article>
 <article class="api-item" id="-Pool-execute">
 <h2><code>(&amp;Pool) execute</code></h2>

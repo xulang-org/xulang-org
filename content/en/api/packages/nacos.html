@@ -7,6 +7,136 @@
 <p class="meta">counts: 3 fns, 18 methods, 3 types, 0 consts, 0 ifaces</p>
 <p class="lead">Alibaba Nacos Service Registration and Dynamic Configuration Client for Xu Supports OpenAPI v1/v2 service registration, discovery, heartbeat, and config publishing.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-2255e7fbed3c" open>
+<summary><code>43_standalone_nacos/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/43_standalone_nacos">Complete project</a> · <a href="/api-examples/sources/examples/43_standalone_nacos/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="43_standalone_nacos/main.xu"><code class="language-xu">@main
+
+nacos <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/nacos
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> verify_nacos_pool() {
+    println(<span class="syn-str">"--- 1. Testing Nacos Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> nacos.open_pool(<span class="syn-str">"http://127.0.0.1:8848"</span>, <span class="syn-str">"public"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Nacos Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_nacos_naming() {
+    println(<span class="syn-str">"\n--- 2. Testing Nacos Naming Service (Registration &amp; Discovery) ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> nacos.open_pool(<span class="syn-str">"http://127.0.0.1:8848"</span>, <span class="syn-str">"public"</span>, 5)
+
+    srv <span class="syn-flow">:=</span> <span class="syn-str">"xu-payment-service"</span>
+    ip <span class="syn-flow">:=</span> <span class="syn-str">"10.0.0.88"</span>
+    port <span class="syn-flow">:=</span> 8080
+
+    <span class="syn-cmt">// 1. Register Instance</span>
+    reg_ok <span class="syn-flow">:=</span> p.register_instance(srv + <span class="syn-str">""</span>, ip + <span class="syn-str">""</span>, port, <span class="syn-str">"DEFAULT_GROUP"</span>)
+    <span class="syn-kw">if</span> reg_ok {
+        println(<span class="syn-str">"   [PASS] Microservice instance registered ("</span> + srv + <span class="syn-str">" -&gt; "</span> + ip + <span class="syn-str">":"</span> + str(port) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to register instance"</span>)
+    }
+
+    <span class="syn-cmt">// 2. Discover Instances</span>
+    instances <span class="syn-flow">:=</span> p.get_instances(srv + <span class="syn-str">""</span>, <span class="syn-str">"DEFAULT_GROUP"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] get_instances failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Service discovery instances json length: "</span> + str(instances.len) + <span class="syn-str">" bytes"</span>)
+
+    <span class="syn-cmt">// 3. Deregister Instance</span>
+    dereg_ok <span class="syn-flow">:=</span> p.deregister_instance(srv + <span class="syn-str">""</span>, ip + <span class="syn-str">""</span>, port, <span class="syn-str">"DEFAULT_GROUP"</span>)
+    <span class="syn-kw">if</span> dereg_ok {
+        println(<span class="syn-str">"   [PASS] Microservice instance deregistered."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to deregister instance"</span>)
+    }
+
+    p.close()
+}
+
+<span class="syn-kw">fn</span> verify_nacos_config() {
+    println(<span class="syn-str">"\n--- 3. Testing Nacos Config Service (Publish &amp; Read) ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> nacos.open_pool(<span class="syn-str">"http://127.0.0.1:8848"</span>, <span class="syn-str">"public"</span>, 5)
+
+    data_id <span class="syn-flow">:=</span> <span class="syn-str">"xu-dynamic-config.yaml"</span>
+    group <span class="syn-flow">:=</span> <span class="syn-str">"DEFAULT_GROUP"</span>
+    content <span class="syn-flow">:=</span> <span class="syn-str">"server.port=9090\nenv=production"</span>
+
+    <span class="syn-cmt">// 1. Publish Config</span>
+    pub_ok <span class="syn-flow">:=</span> p.publish_config(data_id + <span class="syn-str">""</span>, group + <span class="syn-str">""</span>, content + <span class="syn-str">""</span>)
+    <span class="syn-kw">if</span> pub_ok {
+        println(<span class="syn-str">"   [PASS] Dynamic config published ("</span> + data_id + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to publish config"</span>)
+    }
+
+    <span class="syn-cmt">// 2. Get Config</span>
+    got_cfg <span class="syn-flow">:=</span> p.get_config(data_id + <span class="syn-str">""</span>, group + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] get_config failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved config: "</span> + got_cfg)
+    <span class="syn-kw">if</span> got_cfg == content {
+        println(<span class="syn-str">"   [PASS] Retrieved config matched exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Config content mismatch!"</span>)
+    }
+
+    <span class="syn-cmt">// 3. Remove Config</span>
+    rm_ok <span class="syn-flow">:=</span> p.remove_config(data_id + <span class="syn-str">""</span>, group + <span class="syn-str">""</span>)
+    <span class="syn-kw">if</span> rm_ok {
+        println(<span class="syn-str">"   [PASS] Config removed cleanly."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to remove config"</span>)
+    }
+
+    p.close()
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu Nacos Microservice Driver Verification ===\n"</span>)
+    verify_nacos_pool()
+    verify_nacos_naming()
+    verify_nacos_config()
+    println(<span class="syn-str">"\n[NACOS VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="struct-Response">
 <h2><code>struct Response</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Response {
@@ -199,6 +329,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-2255e7fbed3c">See usage example</a></p>
 </article>
 <article class="api-item" id="-Pool-dup">
 <h2><code>(&amp;Pool) dup</code></h2>

@@ -1,0 +1,271 @@
+@main
+
+redis #github.com/xulang-org/packages/redis
+#os
+
+fn demo_resp_encoding() {
+    cmd := redis.encode_cmd(["SET", "mykey", "hello"])
+    println("Encoded command:")
+    println(cmd)
+}
+
+fn demo_value_types() {
+    v_str := redis.str_value("PONG")
+    s := v_str.as_string() or (err) {
+        println("as_string failed: " + err.msg())
+        <<
+    }
+    println("Value string: " + s)
+
+    v_int := redis.int_value(10086)
+    n := v_int.as_int() or (err) {
+        println("as_int failed: " + err.msg())
+        <<
+    }
+    println("Value int: " + str(n))
+
+    v_nil := redis.nil_value()
+    println("Value is_nil: " + str(v_nil.is_nil()))
+}
+
+fn demo_url_parsing() {
+    u := redis.parse_url("redis://:mypassword@db.example.com:6380/2")
+    println("URL parse: addr=" + u.addr + ", pass=" + u.password + ", db=" + str(u.db))
+}
+
+fn redis_pool_worker(id int, addr string, idle chan int, done chan int) {
+    p := redis.Pool{addr: addr, auth: "", db: 0, idle: idle, max_idle: 5}
+    mut c := p.get() or (err) {
+        println("worker " + str(id) + " get failed: " + err.msg())
+        done <- -id
+        <<
+    }
+    key := "xu_coro_key_" + str(id)
+    val := "val_" + str(id)
+    c.set(key + "", val + "") or (err) {
+        done <- -id
+        <<
+    }
+    got := c.get(key + "") or (err) {
+        done <- -id
+        <<
+    }
+    c.del(key + "") or (err) {
+        <<
+    }
+    fd := c.fd
+    p.put(c)
+    if got == val {
+        println("    [PASS] xu worker " + str(id) + " acquired fd=" + str(fd) + ", SET/GET matched: " + got)
+        done <- id
+    } else {
+        println("    [FAIL] xu worker " + str(id) + " value mismatch")
+        done <- -id
+    }
+}
+
+fn main() int {
+    println("=== Redis Standalone Library Integration Test ===")
+    demo_resp_encoding()
+    demo_value_types()
+    demo_url_parsing()
+
+    url := "redis://127.0.0.1:6379/0"
+    println("Connecting to Redis via URL " + url + "...")
+    mut client := redis.open_url(url + "") or (err) {
+        println("Connection via URL failed: " + err.msg())
+        << 1
+    }
+
+    res_ping := client.ping() or (err) {
+        println("PING failed: " + err.msg())
+        << 1
+    }
+    println("1. PING response: " + res_ping)
+
+    // String & Counter
+    client.set("xu_greeting", "Hello from Xu Language!") or (err) {
+        println("SET failed: " + err.msg())
+        << 1
+    }
+    greeting := client.get("xu_greeting") or (err) {
+        println("GET failed: " + err.msg())
+        << 1
+    }
+    println("2. GET xu_greeting: " + greeting)
+
+    client.set("xu_counter", "10") or (err) {
+        println("SET counter failed: " + err.msg())
+        << 1
+    }
+    new_c := client.incr("xu_counter") or (err) {
+        println("INCR failed: " + err.msg())
+        << 1
+    }
+    println("3. INCR xu_counter: " + str(new_c))
+
+    // Hash
+    client.hset("xu_hash", "author", "DeepMind Pair") or (err) {
+        println("HSET failed: " + err.msg())
+        << 1
+    }
+    author := client.hget("xu_hash", "author") or (err) {
+        println("HGET failed: " + err.msg())
+        << 1
+    }
+    println("4. HGET xu_hash.author: " + author)
+
+    // List
+    client.del("xu_list") or (err) {
+        << 1
+    }
+    client.rpush("xu_list", "alpha") or (err) {
+        << 1
+    }
+    client.rpush("xu_list", "beta") or (err) {
+        << 1
+    }
+    client.rpush("xu_list", "gamma") or (err) {
+        << 1
+    }
+    items := client.lrange("xu_list", 0, -1) or (err) {
+        println("LRANGE failed: " + err.msg())
+        << 1
+    }
+    println("5. LRANGE items count: " + str(items.len))
+    mut i := 0
+    while i < items.len {
+        println("   - item " + str(i) + ": " + items[i])
+        i = i + 1
+    }
+
+    // Batch operations: MSET & MGET
+    mset_res := client.mset(["xu_m1", "val1", "xu_m2", "val2", "xu_m3", "val3"]) or (err) {
+        println("MSET failed: " + err.msg())
+        << 1
+    }
+    mvals := client.mget(["xu_m1", "xu_m2", "xu_m3"]) or (err) {
+        println("MGET failed: " + err.msg())
+        << 1
+    }
+    println("6. MSET/MGET: len=" + str(mvals.len) + ", m1=" + mvals[0] + ", m2=" + mvals[1] + ", m3=" + mvals[2])
+
+    // Sorted Set (ZSet)
+    client.del("xu_leaderboard") or (err) {
+        << 1
+    }
+    client.zadd("xu_leaderboard", 100.5, "Alice") or (err) {
+        << 1
+    }
+    client.zadd("xu_leaderboard", 95.0, "Bob") or (err) {
+        << 1
+    }
+    client.zadd("xu_leaderboard", 120.0, "Charlie") or (err) {
+        << 1
+    }
+    zcard := client.zcard("xu_leaderboard") or (err) {
+        << 1
+    }
+    zscore := client.zscore("xu_leaderboard", "Alice") or (err) {
+        << 1
+    }
+    zleaders := client.zrange("xu_leaderboard", 0, -1) or (err) {
+        << 1
+    }
+    println("7. ZSET: card=" + str(zcard) + ", Alice score=" + zscore + ", members=" + zleaders[0] + "," + zleaders[1] + "," + zleaders[2])
+
+    // Pipeline
+    mut pipe := client.pipeline()
+    pipe.set("xu_pipe_a", "pipe_val_a")
+    pipe.set("xu_pipe_b", "pipe_val_b")
+    pipe.get("xu_pipe_a")
+    pipe.incr("xu_pipe_c")
+    pipe_results := client.exec_pipeline(mut &pipe) or (err) {
+        println("Pipeline exec failed: " + err.msg())
+        << 1
+    }
+    println("8. Pipeline executed " + str(pipe_results.len) + " commands:")
+    println("   - cmd 0 (SET): " + pipe_results[0].str_val)
+    println("   - cmd 1 (SET): " + pipe_results[1].str_val)
+    println("   - cmd 2 (GET): " + pipe_results[2].str_val)
+    println("   - cmd 3 (INCR): " + str(pipe_results[3].int_val))
+
+    // Cleanup
+    del_cnt := client.del("xu_greeting") or (err) {
+        << 1
+    }
+    println("9. Cleaned up xu_greeting (del count=" + str(del_cnt) + ")")
+
+    client.close()
+
+    // Test Pool with URL, Reuse & Concurrency
+    pool := redis.new_pool_url("redis://127.0.0.1:6379/0", 5)
+    mut p_conn := pool.get() or (err) {
+        println("Pool get failed: " + err.msg())
+        << 1
+    }
+    fd_first := p_conn.fd
+    pool_ping := p_conn.ping() or (err) {
+        println("Pool ping failed: " + err.msg())
+        << 1
+    }
+    println("10. Pool URL connection PING: " + pool_ping + " (fd=" + str(fd_first) + ")")
+    pool.put(p_conn)
+    println("11. Pool connection returned successfully.")
+
+    // Verify Pool Connection REUSE: second get should give the exact same fd
+    mut p_conn2 := pool.get() or (err) {
+        println("Pool second get failed: " + err.msg())
+        << 1
+    }
+    fd_second := p_conn2.fd
+    if fd_first == fd_second {
+        println("12. [PASS] Pool Connection REUSE verified! (fd_first == fd_second: " + str(fd_first) + ")")
+    } else {
+        println("12. [WARN] Pool connection not reused: fd_first=" + str(fd_first) + ", fd_second=" + str(fd_second))
+    }
+
+    // Concurrent borrow another connection
+    mut p_conn3 := pool.get() or (err) {
+        println("Pool third get failed: " + err.msg())
+        << 1
+    }
+    fd_third := p_conn3.fd
+    if fd_second != fd_third {
+        println("13. [PASS] Pool Multi-connection concurrency verified! (fd2=" + str(fd_second) + " != fd3=" + str(fd_third) + ")")
+    }
+    p_conn3.set("pool_concurrent_test", "ok") or (err) {
+        << 1
+    }
+    got_c := p_conn2.get("pool_concurrent_test") or (err) {
+        << 1
+    }
+    println("14. [PASS] Concurrent connection cross-query verified: got=" + got_c)
+
+    pool.put(p_conn2)
+    pool.put(p_conn3)
+
+    // 15. Testing Pool with Real 'xu' Coroutines
+    println("15. Testing Pool with Real 'xu' Coroutines...")
+    done_ch := chan int{cap: 10}
+    xu redis_pool_worker(1, pool.addr + "", pool.idle, done_ch)
+    xu redis_pool_worker(2, pool.addr + "", pool.idle, done_ch)
+    xu redis_pool_worker(3, pool.addr + "", pool.idle, done_ch)
+    xu redis_pool_worker(4, pool.addr + "", pool.idle, done_ch)
+    xu redis_pool_worker(5, pool.addr + "", pool.idle, done_ch)
+
+    mut success_count := 0
+    for w in 0:5 {
+        res_id := <-done_ch
+        if res_id > 0 {
+            success_count = success_count + 1
+        }
+    }
+    println("    [PASS] All " + str(success_count) + " concurrent 'xu' coroutines completed successfully via Pool!")
+
+    pool.close()
+    println("16. [PASS] Pool closed cleanly.")
+
+    println("=== Redis Standalone Tests Completed Successfully! ===")
+    << 0
+}

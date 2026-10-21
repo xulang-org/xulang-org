@@ -1,0 +1,127 @@
+@main
+
+#net
+#net/http
+
+// 自己 listen / accept / 按路径处理（Go HandleFunc 那种）。
+//   GET  /        HTML
+//   GET  /hello   text
+//   GET  /health  ok
+//   POST /echo    回显 body
+// 静态目录见 12file_server；Handler 上下文见 13http_context。
+
+fn path_only(p string) string {
+    mut i := 0
+    while i < p.len {
+        if (p[i] & 255) == 63 {
+            << p[0:i]
+        }
+        i = i + 1
+    }
+    << p + ""
+}
+
+fn write_http(fd int, status int, ctype string, body string) int {
+    mut reason := "OK"
+    if status == 404 {
+        reason = "Not Found"
+    }
+    if status == 400 {
+        reason = "Bad Request"
+    }
+    if status == 405 {
+        reason = "Method Not Allowed"
+    }
+    mut out := "HTTP/1.1 " + str(status) + " " + reason + "\r\n"
+    out = out + "Content-Type: " + ctype + "\r\n"
+    out = out + "Content-Length: " + str(body.len) + "\r\n"
+    out = out + "Connection: close\r\n"
+    out = out + "\r\n"
+    out = out + body
+    << net.conn_write(fd, &out) or (err) { >> err }
+}
+
+fn index_page() string {
+    << "<!doctype html><html><head><meta charset=\"utf-8\"><title>Xu HTTP</title>" +
+        "<style>body{font-family:ui-sans-serif,system-ui,sans-serif;max-width:40rem;" +
+        "margin:3rem auto;padding:0 1.5rem;background:#0f1419;color:#e7ecf1}" +
+        "h1{font-weight:650;letter-spacing:-.03em}a{color:#7dd3fc}" +
+        "code{background:#1b2430;padding:.15rem .4rem;border-radius:4px}" +
+        "ul{line-height:1.8}</style></head><body>" +
+        "<h1>Xu HTTP</h1>" +
+        "<p>自己 <code>listen</code> / <code>accept</code> / 按 path 分支。</p>" +
+        "<ul>" +
+        "<li><a href=\"/hello\">/hello</a></li>" +
+        "<li><a href=\"/health\">/health</a></li>" +
+        "<li>POST <code>/echo</code></li>" +
+        "</ul></body></html>"
+}
+
+fn handle(fd int) {
+    mut req := http.new_request()
+    req.read(fd) or (err) {
+        msg := err.msg()
+        write_http(fd, 400, "text/plain; charset=utf-8", msg) or (e2) { << }
+        net.conn_close(fd) or (e3) { << }
+        <<
+    }
+    method := req.method()
+    raw_path := req.path()
+    path := path_only(raw_path)
+    if path == "/" || path == "/index.html" {
+        page := index_page()
+        write_http(fd, 200, "text/html; charset=utf-8", page) or (err) { << }
+        net.conn_close(fd) or (err) { << }
+        <<
+    }
+    if path == "/hello" {
+        body := "hello, xu\n"
+        write_http(fd, 200, "text/plain; charset=utf-8", body) or (err) { << }
+        net.conn_close(fd) or (err) { << }
+        <<
+    }
+    if path == "/health" {
+        body := "ok\n"
+        write_http(fd, 200, "text/plain; charset=utf-8", body) or (err) { << }
+        net.conn_close(fd) or (err) { << }
+        <<
+    }
+    if path == "/echo" {
+        if method != "POST" && method != "PUT" {
+            body := "method not allowed\n"
+            write_http(fd, 405, "text/plain; charset=utf-8", body) or (err) { << }
+            net.conn_close(fd) or (err) { << }
+            <<
+        }
+        echo := req.body()
+        write_http(fd, 200, "text/plain; charset=utf-8", echo) or (err) { << }
+        net.conn_close(fd) or (err) { << }
+        <<
+    }
+    miss := "not found: " + path + "\n"
+    write_http(fd, 404, "text/plain; charset=utf-8", miss) or (err) { << }
+    net.conn_close(fd) or (err) { << }
+}
+
+fn main() int {
+    mut s := http.new_server()
+    s.listen("127.0.0.1:18080") or (err) {
+        println(err.msg())
+        << 1
+    }
+    println("http://127.0.0.1:18080")
+    mut running := true
+    while running {
+        fd := s.accept() or (err) {
+            ->
+        }
+        // The deployable example uses the portable, deterministic path on all
+        // hosts. The stackful `xu` scheduler has dedicated stress fixtures,
+        // but it is not yet a production request-execution primitive; keeping
+        // request handling sequential also gives local and server builds the
+        // same lifecycle contract. Put TLS, limits and concurrency in the
+        // reverse proxy until that runtime gate is closed.
+        handle(fd)
+    }
+    << 0
+}

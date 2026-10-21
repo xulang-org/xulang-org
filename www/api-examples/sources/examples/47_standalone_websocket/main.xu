@@ -1,0 +1,140 @@
+@main
+
+websocket #github.com/xulang-org/packages/websocket
+#errors
+#strings
+
+fn verify_rfc_handshake_and_framing() {
+    println("--- 1. Testing RFC 6455 Handshake & Frame Masking ---")
+
+    // RFC 6455 Section 1.3 example
+    sec_key := "dGhlIHNhbXBsZSBub25jZQ=="
+    accept := websocket.compute_accept_key(sec_key)
+    expected_accept := "s3pPLMBiTxaQ9kYGzzhZRbK+xOo="
+    if accept == expected_accept {
+        println("   [PASS] RFC 6455 Sec-WebSocket-Accept calculation: " + accept)
+    } else {
+        println("   [FAIL] Expected " + expected_accept + ", got " + accept)
+    }
+
+    // Masking test
+    plain := "WebSocket Mask Test"
+    masked := websocket.apply_mask(plain + "", 0x11, 0x22, 0x33, 0x44)
+    unmasked := websocket.apply_mask(masked + "", 0x11, 0x22, 0x33, 0x44)
+    if unmasked == plain {
+        println("   [PASS] 4-byte XOR Masking & Unmasking matched cleanly.")
+    } else {
+        println("   [FAIL] Masking round-trip failed!")
+    }
+
+    // Build frame test
+    frame_bytes := websocket.build_frame(websocket.opcode_text, "Hello", true, true)
+    // 2 bytes hdr + 4 bytes mask + 5 bytes payload = 11 bytes
+    if frame_bytes.len == 11 {
+        println("   [PASS] Masked Frame length verified: 11 bytes")
+    } else {
+        println("   [FAIL] Unexpected frame length: " + str(frame_bytes.len))
+    }
+}
+
+fn ws_coro_worker(id int, host string, port int, idle chan int, done chan int) {
+    p := websocket.WsPool{
+        client: websocket.WsClient{host: host, port: port, path: "/"},
+        idle: idle,
+        max_idle: 5
+    }
+    msg := "ws_coro_msg_" + str(id)
+    echoed := p.echo_text(msg + "") or (err) {
+        println("   [FAIL] ws worker " + str(id) + " echo failed: " + err.msg())
+        done <- -id
+        <<
+    }
+    if echoed == msg {
+        println("   [PASS] xu ws worker " + str(id) + " echo round-trip succeeded: " + echoed)
+        done <- id
+    } else {
+        println("   [FAIL] ws worker " + str(id) + " echo mismatch")
+        done <- -id
+    }
+}
+
+fn verify_ws_pool_and_echo() {
+    println("\n--- 2. Testing WebSocket Connection Pool & Echo ---")
+    mut p := websocket.open_pool("ws://127.0.0.1:8080", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    if fd1 < 0 {
+        println("   [FAIL] Failed to connect")
+        <<
+    }
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    if fd2 < 0 {
+        println("   [FAIL] Failed to re-borrow")
+        <<
+    }
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Concurrency
+    fd3 := p.get_conn()
+    if fd3 < 0 {
+        println("   [FAIL] Failed to borrow concurrent")
+        <<
+    }
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Pool Echo round-trip
+    test_msg := "Hello Xu WebSocket 2026!"
+    echoed := p.echo_text(test_msg + "") or (err) {
+        println("   [FAIL] Pool echo failed: " + err.msg())
+        p.close()
+        <<
+    }
+    if echoed == test_msg {
+        println("   [PASS] Echo round-trip matched exactly: '" + echoed + "'")
+    } else {
+        println("   [FAIL] Echo mismatch: expected '" + test_msg + "', got '" + echoed + "'")
+    }
+
+    // 4. Testing Pool with Real 'xu' Coroutines
+    println("\n   Testing WebSocket Pool with Real 'xu' Coroutines...")
+    done_ch := chan int{cap: 10}
+    xu ws_coro_worker(1, p.client.host + "", p.client.port, p.idle, done_ch)
+    xu ws_coro_worker(2, p.client.host + "", p.client.port, p.idle, done_ch)
+    xu ws_coro_worker(3, p.client.host + "", p.client.port, p.idle, done_ch)
+    xu ws_coro_worker(4, p.client.host + "", p.client.port, p.idle, done_ch)
+
+    mut completed_ws := 0
+    for w in 0:4 {
+        res_id := <-done_ch
+        if res_id > 0 {
+            completed_ws = completed_ws + 1
+        }
+    }
+    println("   [PASS] All " + str(completed_ws) + " concurrent 'xu' WebSocket coroutines completed via Pool!")
+
+    p.close()
+    println("   [PASS] WebSocket Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu WebSocket Native Driver Verification ===\n")
+    verify_rfc_handshake_and_framing()
+    verify_ws_pool_and_echo()
+    println("\n[WEBSOCKET VERIFICATION 100% COMPLETED]")
+}

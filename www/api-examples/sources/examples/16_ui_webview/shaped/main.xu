@@ -1,0 +1,46 @@
+@main
+
+#ui
+
+// Shaped window: frameless + transparent + PNG alpha mask (macOS / Linux / Windows).
+// Chrome flags are written BEFORE App.run() so the first frame has no titlebar.
+//   xu build examples/16ui_webview/shaped --target macos-arm64 --desktop -o /tmp/xu_shaped
+//   /tmp/xu_shaped
+
+fn main() int {
+    mut app := ui.new_app()
+    // Pack diagnostics: shim sets XU_PACK_TRACE beside the exe.
+    t := env_get("XU_PACK_TRACE")
+    if t.len > 0 {
+        _ := write_file(t, "shaped main begin\n") or (err) {
+            << 0
+        }
+    }
+    mut win := app.new_window(ui.WindowOpts{title: "Xu Shaped", width: 320, height: 320})
+    a0 := ui.native_set_frameless(1)
+    a1 := ui.native_set_transparent(1)
+    a2 := ui.native_set_window_mask("brand/xu_app_logo.png") or (err) {
+        if t.len > 0 {
+            _ := write_file(t, "mask fail: " + err.msg() + "\n") or (err2) {
+                << 0
+            }
+        }
+        println(err.msg())
+        << 1
+    }
+    a3 := ui.native_set_shadow(1)
+    if a0 + a1 + a2 + a3 < 0 {
+        << 1
+    }
+    if t.len > 0 {
+        _ := write_file(t, "shaped before app.run\n") or (err) {
+            << 0
+        }
+    }
+    println("shaped window — no titlebar; Esc or right-click Close; mask brand/xu_app_logo.png")
+    app.run() or (err) {
+        println(err.msg())
+        << 1
+    }
+    << 0
+}

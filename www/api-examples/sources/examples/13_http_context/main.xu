@@ -1,0 +1,54 @@
+@main
+
+#net/http
+
+// 写法 C — 请求上下文（Go Handler / HandlerFunc）。
+//
+// Go:
+//   func hello(w http.ResponseWriter, r *http.Request) {
+//       fmt.Fprint(w, "hello")
+//   }
+//   http.ListenAndServe(":8080", http.HandlerFunc(hello))
+//
+// Xu: w 和 r 收成一个 Context。
+
+fn app(c http.Context) {
+    p := c.path()
+    if p == "/" || p == "/index.html" {
+        page := "<!doctype html><html><head><meta charset=\"utf-8\"><title>Xu</title></head>" +
+            "<body><h1>Context</h1>" +
+            "<p><a href=\"/hello\">/hello</a> · <a href=\"/health\">/health</a></p>" +
+            "<p>POST /echo</p></body></html>"
+        c.html(200, page) or (err) { << }
+        <<
+    }
+    if p == "/hello" {
+        c.text(200, "hello, xu\n") or (err) { << }
+        <<
+    }
+    if p == "/health" {
+        c.text(200, "ok\n") or (err) { << }
+        <<
+    }
+    if p == "/echo" {
+        m := c.method()
+        if m != "POST" && m != "PUT" {
+            c.text(405, "method not allowed\n") or (err) { << }
+            <<
+        }
+        b := c.body()
+        c.text(200, b) or (err) { << }
+        <<
+    }
+    miss := "not found: " + p + "\n"
+    c.text(404, miss) or (err) { << }
+}
+
+fn main() int {
+    println("http://127.0.0.1:18081")
+    http.listen_and_serve_handler("127.0.0.1:18081", app) or (err) {
+        println(err.msg())
+        << 1
+    }
+    << 0
+}

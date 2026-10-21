@@ -40,12 +40,17 @@ Xu (pronounced /ʃuː/, file extension `.xu`) is a modern statically-typed, Ahea
    - Module imports via `#pkg` or `#local_pkg`.
 
 4. **Batteries-Included Toolchain & Native Manifest**
-   - Single unified CLI `xu` for compilation, execution, testing, benchmarking, and formatting:
+   - Unified CLI `xu` for builds, testing, dependencies, editor services, and native modules:
+     - `xu init` : create a project and its `xu.xun` manifest
+     - `xu get <module>@<version>` : add/update a pinned dependency, install sources, and update `xu.lock`
+     - `xu install` : install dependencies already declared in `xu.xun`
      - `xu build` : compile to native binary
      - `xu run <file>` : compile and run in one step
      - `xu test` : execute unit and integration test suites
-     - `xu bench` : run benchmark tasks
+     - `xu test -bench` : run `fn bench_*` benchmark functions
      - `xu fmt` : canonical source code formatter
+     - `xu lsp` : start the SDK's language server over stdin/stdout
+     - `xu native` : compile/archive C modules, pack `.xulib` target slices, inspect/extract slices
    - Native manifest: `xu.xun` for module identity, versioning, dependencies, and build profiles.
 
 5. **Multi-Platform Native AOT & WebAssembly**
@@ -189,17 +194,20 @@ Catalog covers: `mysql`, `postgres`, `sqlite`, `clickhouse`, `mongodb`, `cassand
 - **Vs. Go**: Xu compiles to **true zero-GC native machine code** without runtime STW latency, baseline memory bloat, or background GC threads, while retaining Go's ergonomic concurrency and sub-second compilation experience.
 
 ### How fast are Xu's compilation speed and runtime throughput?
-- **Measurements**: The dashboard reports 47 workloads on six Linux, macOS and Windows platforms across ARM64 and x86-64, measured with stable Xu 0.9.3 on 2026-10-20.
-- **Comparison**: Runtime, CPU time, peak RSS and binary size are reported per platform. C and Rust use the lowest measured O1–O3 median for each workload; missing references remain unranked. Runtime uses seven samples and reports the median. Compilation timings are available in the [source CI reports](https://github.com/xulang-org/bench/actions/runs/39362068857).
+- **Measurements**: The dashboard reports 47 workloads on six Linux, macOS and Windows platforms across ARM64 and x86-64, measured with stable Xu 0.9.4 on 2026-10-20.
+- **Comparison**: Runtime, CPU time, peak RSS and binary size are reported per platform. C and Rust use the lowest measured O1–O3 median for each workload; missing references remain unranked. Runtime uses seven samples and reports the median. Compilation timings are available in the [source CI reports](https://github.com/xulang-org/bench/actions/runs/39537154539).
 
-### How are third-party packages installed and referenced?
-**Zero manual configuration**. The official monorepo `packages` provides 29 production-grade drivers. Declare the version in `xu.xun` (e.g. `require: "github.com/xulang-org/packages": v0.1.1`) and run `xu install` to pull sources into `vendor/` and generate `xu.lock`. Supports `--offline` and `--frozen` for air-gapped and reproducible enterprise CI/CD.
+### Which editors support Xu, and how do I enable LSP?
+The official [vscode-xu extension](https://xulang.org/docs/vscode/) supports VS Code and Cursor. It launches the SDK's language server with `xu lsp` for diagnostics, completion, go-to-definition, hover documentation, symbols, references, rename, and formatting. Other LSP-compatible editors can use the same command over stdin/stdout using JSON-RPC 2.0. Run `xu lsp --help` for help.
+
+### What is the difference between xu get and xu install?
+In a project containing `xu.xun`, run `xu get github.com/xulang-org/packages@v0.1.1` to add or update a pinned dependency, edit `require:`, install sources into `vendor/`, and update `xu.lock`. An explicit exact version is required; `@latest` is not accepted. `xu install` installs already-declared dependencies. Both support `--offline`; use `xu build . --frozen` for strict lockfile builds. The official `packages` repository provides 29 extension packages. See [Modules & Dependencies](https://xulang.org/docs/modules/).
 
 ### Does Xu support WebAssembly (WASM)?
 **Yes, native first-class tier-1 support**. The compiler emits `wasm32` directly via `xu build --target wasm32`. The interactive Playground on xulang.org compiles the Xu compiler itself directly into a single `xu-play.wasm` module running entirely client-side inside the user's browser with zero network latency.
 
-### How does C interoperability (FFI) work?
-Xu conforms to standard platform C Application Binary Interfaces (System V AMD64, ARM AAPCS, RISC-V psABI). Interface with C libraries via lightweight bridge shims or export C-compatible dynamic libraries with `xu build --shared`.
+### How do I use xu native to integrate C code?
+`xu native compile` compiles C sources with interface metadata into `.a`; `xu native archive` wraps existing object files with metadata; `xu native pack` bundles target slices into `.xulib`; `xu native inspect` and `xu native extract` inspect and extract slices. Use `.a` for a single target and `.xulib` to distribute interface contracts with multiple target slices. Build with `xu build main.xu native/mylib.xulib -o app`. Compiling C requires the corresponding C toolchain. See [Native Modules & .xulib](https://xulang.org/docs/native/), or run `xu native compile --help`.
 
 ### What platforms and CPU architectures are supported?
 - **OS**: macOS (Darwin), Linux, Windows (PE AOT), WebAssembly.
@@ -211,6 +219,8 @@ Xu conforms to standard platform C Application Binary Interfaces (System V AMD64
 - Frequently Asked Questions (FAQ): https://xulang.org/docs/faq/
 - Packages Guide: https://xulang.org/docs/packages/
 - Modules & Dependencies: https://xulang.org/docs/modules/
+- Editor Support / LSP: https://xulang.org/docs/vscode/
+- Native Modules & .xulib: https://xulang.org/docs/native/
 - Interactive WebAssembly Playground: https://xulang.org/playground/
 - Comprehensive Tutorial (Chapters 01–16): https://xulang.org/docs/tutorial/01/
 - Language Specifications:

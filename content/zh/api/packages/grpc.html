@@ -7,6 +7,138 @@
 <p class="meta">counts: 19 函数, 8 方法, 5 类型, 20 常量, 0 方法集</p>
 <p class="lead">扩展包 `grpc #github.com/xulang-org/packages/grpc`，由模块 github.com/xulang-org/packages 提供。</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/zh/docs/packages">安装与使用</a></p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-0dc1be095954" open>
+<summary><code>46_standalone_grpc/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/46_standalone_grpc">完整工程</a> · <a href="/api-examples/sources/examples/46_standalone_grpc/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="46_standalone_grpc/main.xu"><code class="language-xu">@main
+
+grpc <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/grpc
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> verify_protobuf_encoding() {
+    println(<span class="syn-str">"--- 1. Testing Protocol Buffers &amp; gRPC Message Framing ---"</span>)
+
+    <span class="syn-cmt">// 1. Varint test</span>
+    v1 <span class="syn-flow">:=</span> grpc.encode_varint(300)
+    decoded_v1 <span class="syn-flow">:=</span> grpc.decode_varint(&amp;v1, 0)
+    <span class="syn-kw">if</span> decoded_v1 == 300 {
+        println(<span class="syn-str">"   [PASS] Varint encode/decode matched: 300"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Varint mismatch: "</span> + str(decoded_v1))
+    }
+
+    <span class="syn-cmt">// 2. Protobuf String &amp; Int fields</span>
+    f_str <span class="syn-flow">:=</span> grpc.encode_string_field(1, <span class="syn-str">"hello grpc"</span>)
+    f_int <span class="syn-flow">:=</span> grpc.encode_int_field(2, 42)
+    proto_msg <span class="syn-flow">:=</span> f_str + f_int
+    println(<span class="syn-str">"   [PASS] Protobuf serialized message length: "</span> + str(proto_msg.len) + <span class="syn-str">" bytes"</span>)
+
+    <span class="syn-cmt">// 3. gRPC 5-byte Framing</span>
+    grpc_frame <span class="syn-flow">:=</span> grpc.build_grpc_message(proto_msg + <span class="syn-str">""</span>)
+    <span class="syn-kw">if</span> grpc_frame.len == proto_msg.len + 5 {
+        println(<span class="syn-str">"   [PASS] gRPC 5-byte header prefixed successfully (total: "</span> + str(grpc_frame.len) + <span class="syn-str">" bytes)"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] gRPC frame length mismatch"</span>)
+    }
+
+    parsed_payload <span class="syn-flow">:=</span> grpc.parse_grpc_message(grpc_frame + <span class="syn-str">""</span>)
+    <span class="syn-kw">if</span> parsed_payload == proto_msg {
+        println(<span class="syn-str">"   [PASS] gRPC payload parsed &amp; unpacked cleanly."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Unpacked payload mismatch!"</span>)
+    }
+
+    <span class="syn-cmt">// 4. Protobuf Field Extraction</span>
+    extracted_str <span class="syn-flow">:=</span> grpc.get_string_field(parsed_payload + <span class="syn-str">""</span>, 1)
+    extracted_int <span class="syn-flow">:=</span> grpc.get_int_field(parsed_payload + <span class="syn-str">""</span>, 2)
+    <span class="syn-kw">if</span> extracted_str == <span class="syn-str">"hello grpc"</span> &amp;&amp; extracted_int == 42 {
+        println(<span class="syn-str">"   [PASS] Protobuf field extraction: str='"</span> + extracted_str + <span class="syn-str">"', int="</span> + str(extracted_int))
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Protobuf field extraction mismatch"</span>)
+    }
+}
+
+<span class="syn-kw">fn</span> verify_grpc_pool() {
+    println(<span class="syn-str">"\n--- 2. Testing gRPC Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> grpc.open_pool(<span class="syn-str">"127.0.0.1:9000"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] gRPC Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_grpc_unary_call() {
+    println(<span class="syn-str">"\n--- 3. Testing gRPC Unary RPC Call ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> grpc.open_pool(<span class="syn-str">"127.0.0.1:9000"</span>, 5)
+
+    <span class="syn-cmt">// DummyUnary accepts an empty or arbitrary message and echoes dummy response</span>
+    req_body <span class="syn-flow">:=</span> grpc.encode_string_field(1, <span class="syn-str">"Xu Language gRPC test"</span>)
+    resp <span class="syn-flow">:=</span> p.call_unary(<span class="syn-str">"/grpcbin.GRPCBin/DummyUnary"</span>, req_body) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] gRPC call failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+
+    println(<span class="syn-str">"   [PASS] gRPC Unary RPC Call (DummyUnary) succeeded!"</span>)
+    println(<span class="syn-str">"   Response payload length: "</span> + str(resp.payload.len) + <span class="syn-str">" bytes"</span>)
+    println(<span class="syn-str">"   Status: "</span> + str(resp.status))
+
+    <span class="syn-cmt">// Call SayHello on hello.HelloService</span>
+    hello_req <span class="syn-flow">:=</span> grpc.encode_string_field(1, <span class="syn-str">"Antigravity"</span>)
+    hello_resp <span class="syn-flow">:=</span> p.call_unary(<span class="syn-str">"/hello.HelloService/SayHello"</span>, hello_req) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] SayHello failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    reply_msg <span class="syn-flow">:=</span> grpc.get_string_field(hello_resp.payload + <span class="syn-str">""</span>, 1)
+    <span class="syn-kw">if</span> reply_msg == <span class="syn-str">"hello Antigravity"</span> {
+        println(<span class="syn-str">"   [PASS] gRPC Unary RPC Call (SayHello) succeeded!"</span>)
+        println(<span class="syn-str">"   [PASS] Echoed reply matched exactly: '"</span> + reply_msg + <span class="syn-str">"'"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Echoed reply unexpected: '"</span> + reply_msg + <span class="syn-str">"'"</span>)
+    }
+
+    p.close()
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu gRPC &amp; HTTP/2 Native Driver Verification ===\n"</span>)
+    verify_protobuf_encoding()
+    verify_grpc_pool()
+    verify_grpc_unary_call()
+    println(<span class="syn-str">"\n[GRPC VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="struct-Response">
 <h2><code>struct Response</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Response {
@@ -360,6 +492,7 @@
 </dl>
 <h3>返回</h3>
 <p>Pool — 该类型的值</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-Pool-get_conn">
 <h2><code>(&amp;Pool) get_conn</code></h2>
@@ -451,6 +584,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-VarintResult">
 <h2><code>struct VarintResult</code></h2>
@@ -491,6 +625,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>
 <article class="api-item" id="encode_tag">
 <h2><code>encode_tag</code></h2>
@@ -517,6 +652,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>
 <article class="api-item" id="encode_int_field">
 <h2><code>encode_int_field</code></h2>
@@ -530,6 +666,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>
 <article class="api-item" id="build_grpc_message">
 <h2><code>build_grpc_message</code></h2>
@@ -542,6 +679,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>
 <article class="api-item" id="parse_grpc_message">
 <h2><code>parse_grpc_message</code></h2>
@@ -554,6 +692,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>
 <article class="api-item" id="decode_grpc_message">
 <h2><code>decode_grpc_message</code></h2>
@@ -579,6 +718,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>
 <article class="api-item" id="get_int_field">
 <h2><code>get_int_field</code></h2>
@@ -592,4 +732,5 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0dc1be095954">查看用法示例</a></p>
 </article>

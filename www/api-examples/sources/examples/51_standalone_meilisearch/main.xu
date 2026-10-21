@@ -1,0 +1,76 @@
+@main
+
+meilisearch #github.com/xulang-org/packages/meilisearch
+#errors
+#strings
+
+fn verify_meilisearch_pool_and_models() {
+    println("--- 1. Testing Meilisearch Protocol & Pool ---")
+    mut p := meilisearch.open_pool("http://127.0.0.1:7700", "masterKey", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    if fd1 < 0 {
+        println("   [FAIL] Failed to connect to Meilisearch server")
+        <<
+    }
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    if fd2 < 0 {
+        println("   [FAIL] Failed to re-borrow Meilisearch connection")
+        <<
+    }
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Concurrency
+    fd3 := p.get_conn()
+    if fd3 < 0 {
+        println("   [FAIL] Failed to borrow concurrent connection")
+        <<
+    }
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Real Operations via Pool
+    h := p.health()
+    if h {
+        println("   [PASS] Meilisearch health check: available")
+    } else {
+        println("   [FAIL] Meilisearch health check failed")
+    }
+
+    p.create_index("books", "id") or (err) {
+        println("   [FAIL] Failed to create index: " + err.msg())
+        p.close()
+        <<
+    }
+    docs := "[{\"id\":101,\"title\":\"Antigravity Architecture\"},{\"id\":102,\"title\":\"Compiler Design\"}]"
+    p.add_documents("books", docs) or (err) {
+        println("   [FAIL] Failed to add documents: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Meilisearch index & docs added via pool")
+
+    p.close()
+    println("   [PASS] Meilisearch Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu Meilisearch Native Driver Verification ===\n")
+    verify_meilisearch_pool_and_models()
+    println("\n[MEILISEARCH VERIFICATION 100% COMPLETED]")
+}

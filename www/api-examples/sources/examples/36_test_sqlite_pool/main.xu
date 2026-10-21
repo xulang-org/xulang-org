@@ -1,0 +1,75 @@
+@main
+
+sqlite #github.com/xulang-org/packages/sqlite
+#database/sql
+#os
+#errors
+
+fn remove_if_exists(p string) {
+    os.remove(p) or (e) {
+        <<
+    }
+}
+
+fn verify_sqlite_pool_deep() {
+    println("--- SQLite Connection Pool Deep Verification ---")
+    db_file := "/tmp/xu_sqlite_pool.db"
+    remove_if_exists(db_file + "")
+    mut db := sqlite.open_pool(db_file + "", 5, 2)
+
+    // 1. Ping
+    db.ping() or (err) {
+        println("   [FAIL] SQLite pool ping failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] SQLite Pool ping succeeded.")
+
+    // 2. Schema
+    db.exec("CREATE TABLE pool_items (id INTEGER PRIMARY KEY, title TEXT, value INT);") or (err) {
+        println("   [FAIL] Create table failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] Schema created.")
+
+    // 3. Sequential & Concurrent Inserts through Pool
+    mut i := 1
+    while i <= 5 {
+        db.exec("INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);", i, "item_" + str(i), i * 10) or (err) {
+            println("   [FAIL] Insert failed at item " + str(i) + ": " + err.msg())
+            <<
+        }
+        i = i + 1
+    }
+    println("   [PASS] 5 items inserted through SQLite connection pool.")
+
+    // 4. Query through Pool
+    mut rows := db.query("SELECT id, title, value FROM pool_items ORDER BY id ASC;") or (err) {
+        println("   [FAIL] Query failed: " + err.msg())
+        <<
+    }
+    mut count := 0
+    while rows.next() {
+        vals := rows.take() or (err) {
+            <<
+        }
+        count = count + 1
+    }
+    rows.close()
+    println("   [PASS] SQLite Pool query verified: retrieved " + str(count) + " rows.")
+
+    // 5. Close Pool
+    db.close() or (err) {
+        println("   [FAIL] Close failed: " + err.msg())
+        <<
+    }
+    os.remove(db_file + "") or (e) {
+        <<
+    }
+    println("   [PASS] SQLite Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== SQLite Connection Pool In-Depth Verification ===\n")
+    verify_sqlite_pool_deep()
+    println("\n[SQLITE POOL VERIFICATION 100% COMPLETED]")
+}

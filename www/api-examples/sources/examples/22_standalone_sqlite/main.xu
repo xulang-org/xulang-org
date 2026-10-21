@@ -1,0 +1,137 @@
+@main
+
+#database/sql/driver
+sqlite #github.com/xulang-org/packages/sqlite
+#os
+#strings
+
+fn remove_if_exists(p string) {
+    os.remove(p) or (err) {
+        <<
+    }
+}
+
+fn main() int {
+    println("=== SQLite Standalone Library Integration Test ===")
+
+    db_file := "/tmp/xu_sqlite_test.db"
+    remove_if_exists(strings.clone(&db_file))
+
+    // 1. 打开数据库连接
+    conn := sqlite.open(strings.clone(&db_file))
+
+    // 2. 建表
+    schema := "CREATE TABLE IF NOT EXISTS developers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INT, salary REAL, active INT);"
+    res1 := conn.exec(schema, []driver.NamedValue{})
+    if res1.err.len > 0 {
+        println("CREATE TABLE error: " + res1.err)
+        << 1
+    }
+    println("1. Schema created successfully.")
+
+    // 3. 参数化插入记录
+    mut args1 := []driver.NamedValue{}
+    args1.push(driver.NamedValue{name: "name", ordinal: 1, value: "Ada Lovelace"})
+    args1.push(driver.NamedValue{name: "age", ordinal: 2, value: 36})
+    args1.push(driver.NamedValue{name: "salary", ordinal: 3, value: 125000.5})
+    args1.push(driver.NamedValue{name: "active", ordinal: 4, value: true})
+
+    res_ins1 := conn.exec("INSERT INTO developers (name, age, salary, active) VALUES (?, ?, ?, ?);", args1)
+    if res_ins1.err.len > 0 {
+        println("INSERT 1 error: " + res_ins1.err)
+        << 1
+    }
+    println("2. Inserted developer 1, id=" + str(res_ins1.last_insert_id) + ", rows_affected=" + str(res_ins1.rows_affected))
+
+    // 4. 第二条记录插入
+    mut args2 := []driver.NamedValue{}
+    args2.push(driver.NamedValue{name: "name", ordinal: 1, value: "Alan Turing"})
+    args2.push(driver.NamedValue{name: "age", ordinal: 2, value: 41})
+    args2.push(driver.NamedValue{name: "salary", ordinal: 3, value: 140000.0})
+    args2.push(driver.NamedValue{name: "active", ordinal: 4, value: true})
+
+    res_ins2 := conn.exec("INSERT INTO developers (name, age, salary, active) VALUES (?, ?, ?, ?);", args2)
+    if res_ins2.err.len > 0 {
+        println("INSERT 2 error: " + res_ins2.err)
+        << 1
+    }
+    println("3. Inserted developer 2, id=" + str(res_ins2.last_insert_id) + ", rows_affected=" + str(res_ins2.rows_affected))
+
+    // 5. 查询所有记录
+    rows := conn.query("SELECT id, name, age, salary, active FROM developers ORDER BY id ASC;", []driver.NamedValue{})
+    if rows.err.len > 0 {
+        println("QUERY error: " + rows.err)
+        << 1
+    }
+    println("4. Query returned columns count: " + str(rows.ncols))
+    mut col_str := "   Columns: "
+    for ci in 0:rows.columns.len {
+        if ci > 0 {
+            col_str = col_str + ", "
+        }
+        col_str = col_str + rows.columns[ci]
+    }
+    println(col_str)
+
+    nrows := rows.cells.len / rows.ncols
+    println("   Total rows: " + str(nrows))
+    mut r := 0
+    while r < nrows {
+        base := r * rows.ncols
+        id_str := rows.cells[base]
+        name_str := rows.cells[base + 1]
+        age_str := rows.cells[base + 2]
+        sal_str := rows.cells[base + 3]
+        act_str := rows.cells[base + 4]
+        println("   Row " + str(r + 1) + ": id=" + id_str + ", name=" + name_str + ", age=" + age_str + ", salary=" + sal_str + ", active=" + act_str)
+        r = r + 1
+    }
+
+    // 6. 带参数的查询
+    mut qargs := []driver.NamedValue{}
+    qargs.push(driver.NamedValue{name: "name", ordinal: 1, value: "Alan Turing"})
+    rows_filtered := conn.query("SELECT id, name, age FROM developers WHERE name = ?;", qargs)
+    if rows_filtered.err.len > 0 {
+        println("FILTERED QUERY error: " + rows_filtered.err)
+        << 1
+    }
+    if rows_filtered.cells.len >= 3 {
+        println("5. Parameterized query successful: found " + rows_filtered.cells[1] + ", age=" + rows_filtered.cells[2])
+    }
+
+    // 7. 更新操作
+    mut uargs := []driver.NamedValue{}
+    uargs.push(driver.NamedValue{name: "age", ordinal: 1, value: 37})
+    uargs.push(driver.NamedValue{name: "id", ordinal: 2, value: 1})
+    res_up := conn.exec("UPDATE developers SET age = ? WHERE id = ?;", uargs)
+    if res_up.err.len > 0 {
+        println("UPDATE error: " + res_up.err)
+        << 1
+    }
+    println("6. Updated developer 1: rows_affected=" + str(res_up.rows_affected))
+
+    // 8. 事务支持
+    tx := conn.begin()
+    mut tx_args := []driver.NamedValue{}
+    tx_args.push(driver.NamedValue{name: "name", ordinal: 1, value: "Grace Hopper"})
+    tx_args.push(driver.NamedValue{name: "age", ordinal: 2, value: 85})
+    tx_args.push(driver.NamedValue{name: "salary", ordinal: 3, value: 160000.0})
+    tx_args.push(driver.NamedValue{name: "active", ordinal: 4, value: true})
+    res_tx := conn.exec("INSERT INTO developers (name, age, salary, active) VALUES (?, ?, ?, ?);", tx_args)
+    if res_tx.err.len > 0 {
+        println("TX INSERT error: " + res_tx.err)
+        << 1
+    }
+    commit_err := tx.commit()
+    if commit_err.len > 0 {
+        println("TX COMMIT error: " + commit_err)
+        << 1
+    }
+    println("7. Transaction committed successfully.")
+
+    // 9. 关闭与清理
+    conn.close()
+    remove_if_exists(db_file)
+    println("=== SQLite Standalone Tests Completed Successfully! ===")
+    << 0
+}

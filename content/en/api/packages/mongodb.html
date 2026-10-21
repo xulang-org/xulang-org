@@ -7,6 +7,162 @@
 <p class="meta">counts: 21 fns, 16 methods, 2 types, 0 consts, 0 ifaces</p>
 <p class="lead">MongoDB Document Database Native Driver for Xu Features Pure native MongoDB Wire Protocol (OP_MSG opcode 2012) implementation. Lightweight BSON encoding and decoding without external dependencies. Full session handshake (hello). Document CRUD: insert_one, find, drop_collection, run_command. Connection pooling via reusable TCP socket channels.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-5e78d9a12f37" open>
+<summary><code>31_standalone_mongodb/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/31_standalone_mongodb">Complete project</a> · <a href="/api-examples/sources/examples/31_standalone_mongodb/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="31_standalone_mongodb/main.xu"><code class="language-xu">@main
+
+mongodb <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mongodb
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_mongodb_hello() {
+    println(<span class="syn-str">"--- 1. Testing MongoDB Hello Handshake ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> mongodb.open(<span class="syn-str">"127.0.0.1:27017"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Connect error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    is_ok <span class="syn-flow">:=</span> client.hello()
+    <span class="syn-kw">if</span> is_ok {
+        println(<span class="syn-str">"   [PASS] MongoDB hello handshake succeeded."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] MongoDB hello handshake failed."</span>)
+    }
+    client.close()
+}
+
+<span class="syn-kw">fn</span> verify_mongodb_crud() {
+    println(<span class="syn-str">"\n--- 2. Testing MongoDB Document CRUD ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> mongodb.open(<span class="syn-str">"127.0.0.1:27017"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Connect error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+
+    db_name <span class="syn-flow">:=</span> <span class="syn-str">"xu_test_db"</span>
+    col_name <span class="syn-flow">:=</span> <span class="syn-str">"users"</span>
+
+    <span class="syn-cmt">// 1. Drop collection if exists</span>
+    println(<span class="syn-str">"   Cleaning up existing collection..."</span>)
+    client.drop_collection(db_name + <span class="syn-str">""</span>, col_name + <span class="syn-str">""</span>)
+
+    <span class="syn-cmt">// 2. Insert document</span>
+    println(<span class="syn-str">"   Inserting document: name='Antigravity', role='AI Assistant'..."</span>)
+    <span class="syn-kw">mut</span> doc <span class="syn-flow">:=</span> mongodb.bson_string(<span class="syn-str">"name"</span>, <span class="syn-str">"Antigravity"</span>)
+    doc = doc + mongodb.bson_string(<span class="syn-str">"role"</span>, <span class="syn-str">"AI Assistant"</span>)
+    doc = doc + mongodb.bson_int32(<span class="syn-str">"stars"</span>, 100)
+
+    client.insert_one(db_name + <span class="syn-str">""</span>, col_name + <span class="syn-str">""</span>, doc) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Insert failed: "</span> + err.msg())
+        client.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Document inserted."</span>)
+
+    <span class="syn-cmt">// 3. Find first document string field</span>
+    println(<span class="syn-str">"   Querying document field 'role'..."</span>)
+    role <span class="syn-flow">:=</span> client.find_first_string(db_name + <span class="syn-str">""</span>, col_name + <span class="syn-str">""</span>, <span class="syn-str">"role"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Query failed: "</span> + err.msg())
+        client.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved role: "</span> + role)
+    <span class="syn-kw">if</span> role == <span class="syn-str">"AI Assistant"</span> {
+        println(<span class="syn-str">"   [PASS] Field value matches exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Field mismatch: expected 'AI Assistant', got: "</span> + role)
+    }
+
+    <span class="syn-cmt">// 4. Clean up</span>
+    println(<span class="syn-str">"   Dropping collection..."</span>)
+    client.drop_collection(db_name + <span class="syn-str">""</span>, col_name + <span class="syn-str">""</span>)
+    println(<span class="syn-str">"   [PASS] Collection cleaned up."</span>)
+
+    client.close()
+}
+
+<span class="syn-kw">fn</span> verify_mongodb_pool() {
+    println(<span class="syn-str">"\n--- 3. Testing MongoDB Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> mongodb.open_pool(<span class="syn-str">"127.0.0.1:27017"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    <span class="syn-kw">mut</span> c1 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c1: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd1 <span class="syn-flow">:=</span> c1.fd
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put(c1)
+
+    <span class="syn-kw">mut</span> c2 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c2: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd2 <span class="syn-flow">:=</span> c2.fd
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    <span class="syn-kw">mut</span> c3 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c3: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd3 <span class="syn-flow">:=</span> c3.fd
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put(c2)
+    p.put(c3)
+
+    <span class="syn-cmt">// 3. Delegated CRUD Operations via Pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    p.drop_collection(<span class="syn-str">"xu_test_db"</span>, <span class="syn-str">"pool_users"</span>)
+
+    <span class="syn-kw">mut</span> doc <span class="syn-flow">:=</span> mongodb.bson_string(<span class="syn-str">"name"</span>, <span class="syn-str">"PoolWorker"</span>)
+    doc = doc + mongodb.bson_string(<span class="syn-str">"dept"</span>, <span class="syn-str">"CoreEngine"</span>)
+    p.insert_one(<span class="syn-str">"xu_test_db"</span>, <span class="syn-str">"pool_users"</span>, doc) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool insert_one error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool delegated insert_one succeeded."</span>)
+
+    dept <span class="syn-flow">:=</span> p.find_first_string(<span class="syn-str">"xu_test_db"</span>, <span class="syn-str">"pool_users"</span>, <span class="syn-str">"dept"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool find_first_string error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved dept via pool: "</span> + dept)
+    <span class="syn-kw">if</span> dept == <span class="syn-str">"CoreEngine"</span> {
+        println(<span class="syn-str">"   [PASS] Pool delegated query matched exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Pool delegated query mismatch!"</span>)
+    }
+
+    p.drop_collection(<span class="syn-str">"xu_test_db"</span>, <span class="syn-str">"pool_users"</span>)
+    println(<span class="syn-str">"   [PASS] Pool delegated collection cleanup succeeded."</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] MongoDB Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu MongoDB Document Database Native Driver Verification ===\n"</span>)
+    verify_mongodb_hello()
+    verify_mongodb_crud()
+    verify_mongodb_pool()
+    println(<span class="syn-str">"\n[MONGODB VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(addr <span class="syn-type">string</span>) Client</code></pre></div>
@@ -18,6 +174,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-5e78d9a12f37">See usage example</a></p>
 </article>
 <article class="api-item" id="open_pool">
 <h2><code>open_pool</code></h2>
@@ -31,6 +188,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-5e78d9a12f37">See usage example</a></p>
 </article>
 <article class="api-item" id="encode_i32">
 <h2><code>encode_i32</code></h2>
@@ -93,6 +251,7 @@
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-5e78d9a12f37">See usage example</a></p>
 </article>
 <article class="api-item" id="bson_int32">
 <h2><code>bson_int32</code></h2>
@@ -106,6 +265,7 @@
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-5e78d9a12f37">See usage example</a></p>
 </article>
 <article class="api-item" id="bson_int64">
 <h2><code>bson_int64</code></h2>
@@ -240,7 +400,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_exact">
 <h2><code>(&amp;mut Client) write_exact</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_exact(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_exact(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: write exact. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -253,7 +413,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_exact">
 <h2><code>(&amp;mut Client) read_exact</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_exact(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_exact(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read exact. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -266,7 +426,7 @@
 </article>
 <article class="api-item" id="-mut-Client-run_command">
 <h2><code>(&amp;mut Client) run_command</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) run_command(db_name <span class="syn-type">string</span>, cmd_elements <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) run_command(db_name <span class="syn-type">string</span>, cmd_elements <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: run command. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -292,7 +452,7 @@
 </article>
 <article class="api-item" id="-mut-Client-hello">
 <h2><code>(&amp;mut Client) hello</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) hello() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) hello() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `hello` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>
@@ -304,7 +464,7 @@
 </article>
 <article class="api-item" id="-mut-Client-insert_one">
 <h2><code>(&amp;mut Client) insert_one</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) insert_one(db_name <span class="syn-type">string</span>, col_name <span class="syn-type">string</span>, doc_bytes <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) insert_one(db_name <span class="syn-type">string</span>, col_name <span class="syn-type">string</span>, doc_bytes <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: insert one. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -319,7 +479,7 @@
 </article>
 <article class="api-item" id="-mut-Client-find_first_string">
 <h2><code>(&amp;mut Client) find_first_string</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) find_first_string(db_name <span class="syn-type">string</span>, col_name <span class="syn-type">string</span>, target_field <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) find_first_string(db_name <span class="syn-type">string</span>, col_name <span class="syn-type">string</span>, target_field <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: find first string. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -334,7 +494,7 @@
 </article>
 <article class="api-item" id="-mut-Client-drop_collection">
 <h2><code>(&amp;mut Client) drop_collection</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) drop_collection(db_name <span class="syn-type">string</span>, col_name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) drop_collection(db_name <span class="syn-type">string</span>, col_name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: drop collection.</p>
 <h3>Parameters</h3>
@@ -348,7 +508,7 @@
 </article>
 <article class="api-item" id="-mut-Client-close">
 <h2><code>(&amp;mut Client) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) close()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) close()</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: close the resource.</p>
 <h3>Parameters</h3>

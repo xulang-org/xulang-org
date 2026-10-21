@@ -7,6 +7,473 @@
 <p class="meta">counts: 8 函数, 0 方法, 3 类型, 0 常量, 0 方法集</p>
 <p class="lead">扩展包 `postgres #github.com/xulang-org/packages/postgres`，由模块 github.com/xulang-org/packages 提供。</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/zh/docs/packages">安装与使用</a></p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-d797e719eb9c" open>
+<summary><code>17_database_postgres/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/17_database_postgres">完整工程</a> · <a href="/api-examples/sources/examples/17_database_postgres/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="17_database_postgres/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>os</span>
+
+<span class="syn-cmt">// PostgreSQL：XU_POSTGRES_DSN 可覆盖本地开发默认值。</span>
+<span class="syn-cmt">// 驱动是普通 XU 包，通过 database/sql 接口使用，不依赖编译器内建。</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> dsn <span class="syn-flow">:=</span> os.getenv(<span class="syn-str">"XU_POSTGRES_DSN"</span>)
+    <span class="syn-kw">if</span> dsn.len == 0 {
+        dsn = <span class="syn-str">"postgres://postgres:postgres@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
+    }
+
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sql.open(postgres.driver(), dsn)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"PostgreSQL ping failed"</span>)
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    db.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_people"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    db.exec(<span class="syn-str">"CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    first <span class="syn-flow">:=</span> db.exec(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES ($$1, $$2, $$3)"</span>,
+        1,
+        <span class="syn-str">"Ada"</span>,
+        true
+    ) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"inserted="</span> + str(first.rows_affected()))
+
+    <span class="syn-kw">mut</span> insert_person <span class="syn-flow">:=</span> db.prepare(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES ($$1, $$2, $$3)"</span>
+    )
+    insert_person.exec(2, <span class="syn-str">"Lin"</span>, true) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    insert_person.close()
+
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    tx.exec(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES ($$1, $$2, $$3)"</span>,
+        3,
+        <span class="syn-str">"Grace"</span>,
+        true
+    ) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    tx.commit() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">while</span> rows.next() {
+        values <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+            println(err.msg())
+            <span class="syn-flow">&lt;&lt;</span> 1
+        }
+        id <span class="syn-flow">:=</span> values[0] as <span class="syn-type">int</span>
+        name <span class="syn-flow">:=</span> values[1] as <span class="syn-type">string</span>
+        println(str(id) + <span class="syn-str">": "</span> + name)
+    }
+    <span class="syn-kw">if</span> rows.err().len &gt; 0 {
+        println(rows.err())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    rows.close()
+
+    <span class="syn-kw">mut</span> qrows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT name FROM xu_people WHERE id = $$1"</span>, 2) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">if</span> qrows.next() {
+        vals <span class="syn-flow">:=</span> qrows.take() <span class="syn-kw">or</span> (err) {
+            println(err.msg())
+            <span class="syn-flow">&lt;&lt;</span> 1
+        }
+        println(<span class="syn-str">"selected="</span> + (vals[0] as <span class="syn-type">string</span>))
+    }
+    qrows.close()
+
+    db.close() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-869911852ff2">
+<summary><code>34_standalone_postgres/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/34_standalone_postgres">完整工程</a> · <a href="/api-examples/sources/examples/34_standalone_postgres/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="34_standalone_postgres/main.xu"><code class="language-xu">@main
+
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>database/sql/driver</span>
+<span class="syn-import"><span class="hash">#</span>context</span>
+
+<span class="syn-kw">fn</span> verify_postgres_live() {
+    println(<span class="syn-str">"--- Testing Native Postgres Driver Wire Protocol ---"</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> conn <span class="syn-flow">:=</span> postgres.open(dsn)
+
+    <span class="syn-cmt">// 1. Ping</span>
+    err <span class="syn-flow">:=</span> conn.ping()
+    <span class="syn-kw">if</span> err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Ping failed: "</span> + err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Postgres Ping succeeded."</span>)
+
+    <span class="syn-cmt">// 2. Exec DDL</span>
+    r1 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_heroes;"</span>, []driver.NamedValue{})
+    <span class="syn-kw">if</span> r1.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + r1.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    r2 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"CREATE TABLE xu_heroes (id INTEGER PRIMARY KEY, name VARCHAR(50), power INTEGER);"</span>, []driver.NamedValue{})
+    <span class="syn-kw">if</span> r2.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Create table error: "</span> + r2.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Table 'xu_heroes' created."</span>)
+
+    <span class="syn-cmt">// 3. Exec DML Insert</span>
+    <span class="syn-kw">mut</span> args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    args1.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
+    args1.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Ironman"</span>})
+    args1.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 100})
+    r3 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO xu_heroes (id, name, power) VALUES ($$1, $$2, $$3);"</span>, args1)
+    <span class="syn-kw">if</span> r3.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Insert error: "</span> + r3.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Hero inserted (rows="</span> + str(r3.rows_affected) + <span class="syn-str">")."</span>)
+
+    <span class="syn-cmt">// 4. Query</span>
+    <span class="syn-kw">mut</span> q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
+    q_args.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
+    rows <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, power FROM xu_heroes WHERE id = $$1;"</span>, q_args)
+    <span class="syn-kw">if</span> rows.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Query error: "</span> + rows.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Query executed, columns count: "</span> + str(rows.columns.len))
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> i &lt; rows.columns.len {
+        println(<span class="syn-str">"      Col["</span> + str(i) + <span class="syn-str">"]: "</span> + rows.columns[i])
+        i = i + 1
+    }
+    println(<span class="syn-str">"   Total cells retrieved: "</span> + str(rows.cells.len))
+    <span class="syn-kw">mut</span> j <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> j &lt; rows.cells.len {
+        println(<span class="syn-str">"      Cell["</span> + str(j) + <span class="syn-str">"]: "</span> + rows.cells[j])
+        j = j + 1
+    }
+
+    <span class="syn-cmt">// 5. Transaction</span>
+    println(<span class="syn-str">"   Testing Transaction Commit..."</span>)
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> conn.begin()
+    <span class="syn-kw">mut</span> args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    args2.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 2})
+    args2.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Thor"</span>})
+    args2.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 200})
+    tx_res <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO xu_heroes (id, name, power) VALUES ($$1, $$2, $$3);"</span>, args2)
+    <span class="syn-kw">if</span> tx_res.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Tx insert error: "</span> + tx_res.err)
+    }
+    tx_err <span class="syn-flow">:=</span> tx.commit()
+    <span class="syn-kw">if</span> tx_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Tx commit error: "</span> + tx_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Transaction committed."</span>)
+    }
+
+    <span class="syn-cmt">// 6. Reset session</span>
+    ctx <span class="syn-flow">:=</span> context.background()
+    reset_err <span class="syn-flow">:=</span> conn.reset_session(&amp;ctx)
+    <span class="syn-kw">if</span> reset_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Reset session error: "</span> + reset_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Reset session completed."</span>)
+    }
+
+    <span class="syn-cmt">// 7. Close</span>
+    close_err <span class="syn-flow">:=</span> conn.close()
+    <span class="syn-kw">if</span> close_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Close error: "</span> + close_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Connection closed cleanly."</span>)
+    }
+}
+
+<span class="syn-kw">fn</span> verify_postgres_pool() {
+    println(<span class="syn-str">"\n--- Testing Native Postgres Connection Pool ---"</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> pool <span class="syn-flow">:=</span> postgres.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
+
+    pool.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Postgres Pool ping succeeded."</span>)
+
+    <span class="syn-cmt">// 1. DDL</span>
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_users;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    pool.exec(<span class="syn-str">"CREATE TABLE xu_pool_users (id INTEGER PRIMARY KEY, name VARCHAR(50), balance INTEGER);"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool created table xu_pool_users."</span>)
+
+    <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">while</span> i &lt;= 5 {
+        pool.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, i, <span class="syn-str">"User_"</span> + str(i), i * 100) <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        i = i + 1
+    }
+    println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
+
+    <span class="syn-cmt">// 3. Query</span>
+    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, name, balance FROM xu_pool_users ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> rows.next() {
+        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        uid <span class="syn-flow">:=</span> vals[0] as <span class="syn-type">int</span>
+        uname <span class="syn-flow">:=</span> vals[1] as <span class="syn-type">string</span>
+        ubal <span class="syn-flow">:=</span> vals[2] as <span class="syn-type">int</span>
+        println(<span class="syn-str">"      Row["</span> + str(count) + <span class="syn-str">"]: id="</span> + str(uid) + <span class="syn-str">", name="</span> + uname + <span class="syn-str">", bal="</span> + str(ubal))
+        count = count + 1
+    }
+    rows.close()
+    <span class="syn-kw">if</span> count == 5 {
+        println(<span class="syn-str">"   [PASS] Pool query verified 5 rows."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Row count mismatch: "</span> + str(count))
+    }
+
+    <span class="syn-cmt">// 4. Transaction via Pool</span>
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    tx.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, 6, <span class="syn-str">"User_6"</span>, 600) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Tx insert error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    tx.commit() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Tx commit error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Transaction committed via pool."</span>)
+
+    <span class="syn-cmt">// 5. Cleanup &amp; Close</span>
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_users;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Cleanup table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    pool.close() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool close error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Postgres Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu PostgreSQL Native Driver Verification ===\n"</span>)
+    verify_postgres_live()
+    verify_postgres_pool()
+    println(<span class="syn-str">"\n[POSTGRES VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-b597eda1c41a">
+<summary><code>28_test_pools/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/28_test_pools">完整工程</a> · <a href="/api-examples/sources/examples/28_test_pools/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="28_test_pools/main.xu"><code class="language-xu">@main
+
+redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/redis
+memcached <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/memcached
+nats <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/nats
+mqtt <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mqtt
+elasticsearch <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/elasticsearch
+s3 <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/s3
+sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/sqlite
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+
+<span class="syn-kw">fn</span> verify_redis_pool() {
+    println(<span class="syn-str">"1. Testing Redis Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> redis.new_pool(<span class="syn-str">"127.0.0.1:6379"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    res <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Redis PING response: "</span> + res)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Redis Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_memcached_pool() {
+    println(<span class="syn-str">"2. Testing Memcached Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> memcached.new_pool(<span class="syn-str">"127.0.0.1:11211"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ver <span class="syn-flow">:=</span> c.version() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached version error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Memcached VERSION: "</span> + ver)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Memcached Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_nats_pool() {
+    println(<span class="syn-str">"3. Testing NATS Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> nats.open_pool(<span class="syn-str">"127.0.0.1:4222"</span>, 5)
+    p.publish(<span class="syn-str">"pool.events"</span>, <span class="syn-str">"hello from nats pool"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ok <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS borrowed client ping ok: "</span> + str(ok))
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] NATS Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_mqtt_pool() {
+    println(<span class="syn-str">"4. Testing MQTT Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> mqtt.open_pool(<span class="syn-str">"127.0.0.1:1883"</span>, <span class="syn-str">"xu_pool_test"</span>, 5)
+    p.publish(<span class="syn-str">"sensors/pool"</span>, <span class="syn-str">"temp=28C"</span>, 0) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT borrowed client ID: "</span> + c.client_id)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] MQTT Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_es_pool() {
+    println(<span class="syn-str">"5. Testing Elasticsearch Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> elasticsearch.open_pool(<span class="syn-str">"http://127.0.0.1:9200"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   ES borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Elasticsearch Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_s3_pool() {
+    println(<span class="syn-str">"6. Testing S3 Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> s3.open_pool(<span class="syn-str">"http://127.0.0.1:9000"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"us-east-1"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   S3 borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] S3 Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_sqlite_pool() {
+    println(<span class="syn-str">"7. Testing SQLite Connection Pool..."</span>)
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sqlite.open_pool(<span class="syn-str">":memory:"</span>, 1, 1)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] SQLite ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SQLite Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_postgres_pool() {
+    println(<span class="syn-str">"8. Testing PostgreSQL Connection Pool..."</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> postgres.open_pool(dsn, 5, 2)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] PostgreSQL ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] PostgreSQL Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu All Driver Connection Pools Comprehensive Verification ===\n"</span>)
+    verify_redis_pool()
+    verify_memcached_pool()
+    verify_nats_pool()
+    verify_mqtt_pool()
+    verify_es_pool()
+    verify_s3_pool()
+    verify_sqlite_pool()
+    verify_postgres_pool()
+    println(<span class="syn-str">"\n[ALL 8 DRIVER CONNECTION POOLS 100% VERIFIED!]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="driver">
 <h2><code>driver</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> driver() driver.Driver</code></pre></div>
@@ -16,6 +483,7 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>driver.Driver — 该类型的值</p>
+<p><a href="#example-d797e719eb9c">查看用法示例</a></p>
 </article>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
@@ -28,6 +496,7 @@
 </dl>
 <h3>返回</h3>
 <p>driver.Conn — 该类型的值</p>
+<p><a href="#example-869911852ff2">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Config">
 <h2><code>struct Config</code></h2>
@@ -112,6 +581,7 @@
 </dl>
 <h3>返回</h3>
 <p>sql.DB — 该类型的值</p>
+<p><a href="#example-869911852ff2">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-WireResult">
 <h2><code>struct WireResult</code></h2>

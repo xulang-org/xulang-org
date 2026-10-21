@@ -6,6 +6,96 @@
 <p class="meta">import: <code>#ui/draw</code></p>
 <p class="meta">counts: 46 函数, 0 方法, 3 类型, 4 常量, 0 方法集</p>
 <p class="lead">立即模式 2D 画布。</p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-0d167b78a79e" open>
+<summary><code>16_ui_webview/draw/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/draw">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/draw/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/draw/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/draw</span>
+
+<span class="syn-cmt">// Smoke for #ui/draw as an immediate-mode canvas (Love2D / Raylib-style).</span>
+<span class="syn-cmt">//   xu build examples/16_ui_webview/draw --target macos-arm64 --desktop -o /tmp/XuDraw</span>
+
+<span class="syn-kw">fn</span> paint(hit <span class="syn-type">int</span>) {
+    draw.begin()
+    draw.set_bg(<span class="syn-str">"#0b1020"</span>)
+
+    draw.set_color(<span class="syn-str">"#38bdf8"</span>)
+    draw.circle(80, 88, 36)
+    draw.set_stroke(<span class="syn-str">"#e2e8f0"</span>)
+    draw.set_width(2)
+    draw.circle_line(80, 88, 50)
+
+    draw.set_color(<span class="syn-str">"#fbbf24"</span>)
+    draw.rect(150, 60, 96, 52)
+    draw.rect_line(150, 60, 96, 52)
+
+    draw.fill_ellipse(280, 56, 110, 60, <span class="syn-str">"#22c55e"</span>)
+    draw.stroke_ellipse(280, 56, 110, 60, <span class="syn-str">"#86efac"</span>, 2)
+
+    draw.push()
+    draw.translate(500, 110)
+    draw.rotate(18)
+    draw.fill_triangle(0 - 36, 28, 36, 28, 0, 0 - 32, <span class="syn-str">"#f87171"</span>)
+    draw.pop()
+
+    <span class="syn-kw">mut</span> pts <span class="syn-flow">:=</span> []draw.Point{}
+    pts.push(draw.Point{x: 40, y: 200})
+    pts.push(draw.Point{x: 100, y: 170})
+    pts.push(draw.Point{x: 160, y: 200})
+    pts.push(draw.Point{x: 130, y: 260})
+    pts.push(draw.Point{x: 70, y: 260})
+    draw.poly(&amp;pts, <span class="syn-str">"#1e3a5f"</span>, <span class="syn-str">"#38bdf8"</span>, 2)
+
+    draw.arc(280, 250, 48, 20, 200, <span class="syn-str">"#4ade80"</span>, 3)
+    draw.point(80, 88, <span class="syn-str">"#ffffff"</span>, 4)
+    draw.round_rect(400, 200, 160, 44, 10, <span class="syn-str">"#1e293b"</span>, <span class="syn-str">"#64748b"</span>, 2)
+    draw.text(416, 212, 13, <span class="syn-str">"#e2e8f0"</span>, <span class="syn-str">"round rect"</span>)
+    <span class="syn-kw">if</span> hit == 1 {
+        draw.text(24, 320, 13, <span class="syn-str">"#38bdf8"</span>, <span class="syn-str">"hit the circle"</span>)
+    } <span class="syn-kw">else</span> {
+        draw.text(24, 320, 13, <span class="syn-str">"#94a3b8"</span>, <span class="syn-str">"click the blue circle"</span>)
+    }
+    draw.present()
+}
+
+<span class="syn-kw">fn</span> watch_clicks(ech <span class="syn-kw">chan</span> ui.Event) {
+    <span class="syn-kw">mut</span> hit <span class="syn-flow">:=</span> 0
+    paint(hit)
+    <span class="syn-kw">while</span> true {
+        sleep_ns(40000000)
+        c <span class="syn-flow">:=</span> draw.poll_click(ech)
+        <span class="syn-kw">if</span> c.ok == 1 {
+            <span class="syn-kw">if</span> draw.in_circle(c, 80, 88, 50) {
+                hit = 1
+            } <span class="syn-kw">else</span> {
+                hit = 0
+            }
+            paint(hit)
+        }
+    }
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app()
+    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Draw"</span>, width: 640, height: 380})
+    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
+    _ <span class="syn-flow">:=</span> draw.attach(r)
+    <span class="syn-kw">xu</span> watch_clicks(app.event_ch)
+    app.run() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="struct-Point">
 <h2><code>struct Point</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Point {
@@ -19,6 +109,7 @@
 <dt><code>x</code> <span class="type">int</span></dt><dd>值</dd>
 <dt><code>y</code> <span class="type">int</span></dt><dd>值</dd>
 </dl>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Click">
 <h2><code>struct Click</code></h2>
@@ -90,7 +181,7 @@
 </article>
 <article class="api-item" id="attach">
 <h2><code>attach</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach(w &amp;<span class="syn-kw">mut</span> ui.Window) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach(w <span class="syn-borrow">&amp;mut</span> ui.Window) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>attach，返回 int。</p>
 <h3>参数</h3>
@@ -99,6 +190,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="set_pan_enabled">
 <h2><code>set_pan_enabled</code></h2>
@@ -121,6 +213,7 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="present">
 <h2><code>present</code></h2>
@@ -131,6 +224,7 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="clear">
 <h2><code>clear</code></h2>
@@ -153,6 +247,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="set_color">
 <h2><code>set_color</code></h2>
@@ -165,6 +260,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="set_fill">
 <h2><code>set_fill</code></h2>
@@ -189,6 +285,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="set_width">
 <h2><code>set_width</code></h2>
@@ -201,6 +298,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="push">
 <h2><code>push</code></h2>
@@ -211,6 +309,7 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="pop">
 <h2><code>pop</code></h2>
@@ -221,6 +320,7 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="origin">
 <h2><code>origin</code></h2>
@@ -244,6 +344,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="rotate">
 <h2><code>rotate</code></h2>
@@ -256,6 +357,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="scale">
 <h2><code>scale</code></h2>
@@ -321,6 +423,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="diamond">
 <h2><code>diamond</code></h2>
@@ -372,6 +475,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="arrow">
 <h2><code>arrow</code></h2>
@@ -404,6 +508,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="rect_line">
 <h2><code>rect_line</code></h2>
@@ -419,6 +524,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="circle">
 <h2><code>circle</code></h2>
@@ -433,6 +539,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="circle_line">
 <h2><code>circle_line</code></h2>
@@ -447,6 +554,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="fill_circle">
 <h2><code>fill_circle</code></h2>
@@ -524,6 +632,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="stroke_ellipse">
 <h2><code>stroke_ellipse</code></h2>
@@ -541,6 +650,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="triangle">
 <h2><code>triangle</code></h2>
@@ -593,6 +703,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="stroke_triangle">
 <h2><code>stroke_triangle</code></h2>
@@ -627,6 +738,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="arc">
 <h2><code>arc</code></h2>
@@ -645,6 +757,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="point">
 <h2><code>point</code></h2>
@@ -660,6 +773,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="click_of">
 <h2><code>click_of</code></h2>
@@ -684,6 +798,7 @@
 </dl>
 <h3>返回</h3>
 <p>Click — 该类型的值</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="poll">
 <h2><code>poll</code></h2>
@@ -741,4 +856,5 @@
 </dl>
 <h3>返回</h3>
 <p>bool — 是否成立</p>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>

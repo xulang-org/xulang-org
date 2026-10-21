@@ -1,0 +1,168 @@
+@main
+
+s3 #github.com/xulang-org/packages/s3
+#errors
+
+fn verify_sigv4_calc() {
+    println("--- Testing AWS SigV4 Canonical Calculation ---")
+    method := "GET"
+    path := "/test-bucket/test-file.txt"
+    host := "127.0.0.1:9000"
+    ak := "minioadmin"
+    sk := "minioadmin"
+    region := "us-east-1"
+    amz_date := "20260923T120000Z"
+    date_stamp := "20260923"
+    payload_hash := s3.sha256_hex("")
+
+    auth := s3.compute_auth_header(
+        method,
+        path,
+        host,
+        ak,
+        sk,
+        region,
+        amz_date,
+        date_stamp,
+        payload_hash
+    )
+    println("Calculated Auth Header: " + auth)
+    prefix := "AWS4-HMAC-SHA256 Credential=minioadmin/20260923/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature="
+    if auth.len > prefix.len && auth[0:prefix.len] == prefix {
+        println("[PASS] SigV4 format matches AWS specification!")
+    } else {
+        println("[FAIL] SigV4 format mismatch!")
+    }
+}
+
+fn verify_s3_live() {
+    println("\n--- Testing S3 / MinIO Live API ---")
+    mut client := s3.open("http://127.0.0.1:9000", "minioadmin", "minioadmin", "us-east-1")
+
+    bucket := "xu-s3-test"
+    println("1. Checking if bucket exists...")
+    exists := client.bucket_exists(bucket + "")
+    println("   Bucket exists initially: " + str(exists))
+
+    if !exists {
+        println("2. Creating bucket '" + bucket + "'...")
+        client.make_bucket(bucket + "") or (err) {
+            println("   [SKIP/FAIL] make_bucket error: " + err.msg())
+            <<
+        }
+        println("   [PASS] Bucket created.")
+    }
+
+    println("3. Putting object 'greeting.txt'...")
+    content := "Hello from Xu Language S3 Native Driver! 🚀"
+    client.put_object(bucket + "", "greeting.txt", content + "", "text/plain") or (err) {
+        println("   [FAIL] put_object error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Object put successfully.")
+
+    println("4. Getting object 'greeting.txt'...")
+    got := client.get_object(bucket + "", "greeting.txt") or (err) {
+        println("   [FAIL] get_object error: " + err.msg())
+        <<
+    }
+    println("   Retrieved content: " + got)
+    if got == content {
+        println("   [PASS] Object content matches exactly!")
+    } else {
+        println("   [FAIL] Content mismatch!")
+    }
+
+    println("5. Removing object 'greeting.txt'...")
+    client.remove_object(bucket + "", "greeting.txt") or (err) {
+        println("   [FAIL] remove_object error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Object removed.")
+
+    println("6. Removing bucket '" + bucket + "'...")
+    client.remove_bucket(bucket + "") or (err) {
+        println("   [FAIL] remove_bucket error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Bucket removed.")
+}
+
+fn verify_s3_pool() {
+    println("\n--- 3. Testing S3 Connection Pool ---")
+    mut p := s3.open_pool("http://127.0.0.1:9000", "minioadmin", "minioadmin", "us-east-1", 5)
+
+    // 1. Connection Reuse Test
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Delegated operations via pool
+    println("   Testing delegated operations via pool...")
+    pool_bucket := "xu-pool-bucket"
+    if !p.bucket_exists(pool_bucket + "") {
+        p.make_bucket(pool_bucket + "") or (err) {
+            println("   [FAIL] Pool make_bucket error: " + err.msg())
+            <<
+        }
+    }
+    println("   [PASS] Pool bucket created.")
+
+    pool_content := "Pooled S3 payload data 999"
+    p.put_object(pool_bucket + "", "pool_obj.txt", pool_content + "", "text/plain") or (err) {
+        println("   [FAIL] Pool put_object error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool object put.")
+
+    got := p.get_object(pool_bucket + "", "pool_obj.txt") or (err) {
+        println("   [FAIL] Pool get_object error: " + err.msg())
+        <<
+    }
+    println("   Retrieved via pool: " + got)
+    if got == pool_content {
+        println("   [PASS] Pool object content matches exactly!")
+    } else {
+        println("   [FAIL] Content mismatch!")
+    }
+
+    p.remove_object(pool_bucket + "", "pool_obj.txt") or (err) {
+        println("   [FAIL] Pool remove_object error: " + err.msg())
+        <<
+    }
+    p.remove_bucket(pool_bucket + "") or (err) {
+        println("   [FAIL] Pool remove_bucket error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool cleanup completed.")
+
+    p.close()
+    println("   [PASS] S3 Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu S3 / MinIO Driver Verification ===")
+    verify_sigv4_calc()
+    verify_s3_live()
+    verify_s3_pool()
+    println("\n[ALL S3 VERIFICATION COMPLETED]")
+}

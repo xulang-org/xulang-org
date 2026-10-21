@@ -1,0 +1,83 @@
+@main
+
+#ui
+#ui/webview
+
+// Frameless + PNG mask + WKWebView (macOS).
+//   xu build examples/16ui_webview/shaped_webview --target macos-arm64 --desktop -o /tmp/xu_shaped_wv
+//   /tmp/xu_shaped_wv
+// Drag from the top ~28px strip; Close calls shell.quit.
+
+fn route(name string, payload string) string {
+    if name == "ping" {
+        << "pong:" + payload
+    }
+    if name == "greet" {
+        << "hello, " + payload
+    }
+    if name == "win" {
+        if payload == "quit" {
+            q := ui.native_quit() or (err) { << "err" }
+            << "quit"
+        }
+        if payload == "minimize" {
+            m := ui.native_minimize() or (err) { << "err" }
+            << "minimized"
+        }
+        << "win?"
+    }
+    << "miss"
+}
+
+fn demo_www() string {
+    << "www"
+}
+
+fn ipc_boot(emit_ch chan string, shell_ch chan ui.Event) {
+    webview.bind_ipc_www(demo_www(), route, emit_ch, shell_ch) or (err) {
+        eprintln(err.msg())
+        <<
+    }
+}
+
+fn main() int {
+    emit_ch := chan string{cap: 32}
+    shell_ch := chan ui.Event{cap: 32}
+    mut app := ui.new_app_events(shell_ch)
+    app.set_icon(ui.icon_from_file("brand/xu_app_logo.png"))
+    webview.stage_www_root(demo_www()) or (err) {
+        println(err.msg())
+        << 1
+    }
+    xu ipc_boot(emit_ch, shell_ch)
+    sleep_ns(50000000)
+
+    mut win := app.new_window(ui.WindowOpts{title: "Xu Shaped WebView", width: 360, height: 360})
+    r := mut &win
+    mut wv := webview.attach(r)
+    wv.on("ping")
+    wv.on("greet")
+    wv.on("win")
+
+    a0 := ui.native_set_frameless(1)
+    a1 := ui.native_set_transparent(1)
+    a2 := ui.native_set_window_mask("brand/xu_app_logo.png") or (err) {
+        println(err.msg())
+        << 1
+    }
+    a3 := ui.native_set_shadow(1)
+    if a0 + a1 + a2 + a3 < 0 {
+        << 1
+    }
+
+    wv.load_url("xu://app/shaped.html") or (err) {
+        println(err.msg())
+        << 1
+    }
+    println("shaped webview — xu://app/shaped.html XUN IPC (drag top; Close quits)")
+    app.run() or (err) {
+        println(err.msg())
+        << 1
+    }
+    << 0
+}

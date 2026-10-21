@@ -7,6 +7,86 @@
 <p class="meta">counts: 5 fns, 7 methods, 4 types, 0 consts, 0 ifaces</p>
 <p class="lead">External package `smtp #github.com/xulang-org/packages/smtp`, provided by github.com/xulang-org/packages.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-7aa5994aa140" open>
+<summary><code>48_standalone_smtp/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/48_standalone_smtp">Complete project</a> · <a href="/api-examples/sources/examples/48_standalone_smtp/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="48_standalone_smtp/main.xu"><code class="language-xu">@main
+
+smtp <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/smtp
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> verify_smtp_pool_and_mail() {
+    println(<span class="syn-str">"--- 1. Testing SMTP Connection Pool &amp; Transaction ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> smtp.open_pool(<span class="syn-str">"smtp://127.0.0.1:1025"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd1 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to connect to SMTP server"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd2 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to re-borrow SMTP connection"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Concurrency</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd3 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to borrow concurrent connection"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Mail Sending Transaction</span>
+    msg <span class="syn-flow">:=</span> smtp.Message{
+        from: <span class="syn-str">"service-alert@xu.lang"</span>,
+        to: <span class="syn-str">"admin@enterprise.internal"</span>,
+        subject: <span class="syn-str">"Antigravity SMTP Driver Verification 2026"</span>,
+        body: <span class="syn-str">"Hello! This is a real test email sent through Xu Language native RFC 5321 SMTP driver."</span>
+    }
+
+    p.send_mail(msg) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to send email: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SMTP Mail transaction (MAIL FROM -&gt; RCPT TO -&gt; DATA) succeeded!"</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] SMTP Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu SMTP Native Driver Verification ===\n"</span>)
+    verify_smtp_pool_and_mail()
+    println(<span class="syn-str">"\n[SMTP VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="client">
 <h2><code>client</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> client(endpoint <span class="syn-type">string</span>) SmtpClient</code></pre></div>
@@ -49,6 +129,7 @@
 <dt><code>subject</code> <span class="type">string</span></dt><dd>field (string)</dd>
 <dt><code>body</code> <span class="type">string</span></dt><dd>body</dd>
 </dl>
+<p><a href="#example-7aa5994aa140">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-SmtpClient">
 <h2><code>struct SmtpClient</code></h2>
@@ -171,6 +252,7 @@
 </dl>
 <h3>Returns</h3>
 <p>SmtpPool — a value of this type</p>
+<p><a href="#example-7aa5994aa140">See usage example</a></p>
 </article>
 <article class="api-item" id="-SmtpPool-get_conn">
 <h2><code>(&amp;SmtpPool) get_conn</code></h2>

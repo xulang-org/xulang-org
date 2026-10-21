@@ -3,10 +3,12 @@
 import contextlib
 import importlib.util
 import io
+import json
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+from html.parser import HTMLParser
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('gen_api', ROOT / 'scripts/gen-api.py')
@@ -16,6 +18,96 @@ spec.loader.exec_module(api)
 
 
 class APIGenerationTests(unittest.TestCase):
+    def test_example_import_aliases_ignore_comments_and_strings(self):
+        uses = api.example_uses('''@main
+#io
+db #github.com/xulang-org/packages/mysql
+// #net
+/*
+#os
+os.remove("ignored")
+*/
+fn main() {
+    text := "io.fake() db.fake()"
+    io.read(text)
+    db.driver()
+}
+''')
+        self.assertEqual(uses, {'io': {'read'}, 'github.com/xulang-org/packages/mysql': {'driver'}})
+
+    def test_bundled_examples_preserve_code_and_survive_without_checkout(self):
+        class Code(HTMLParser):
+            def __init__(self, source):
+                super().__init__()
+                self.examples = []
+                self.current = None
+                self.feed(source)
+
+            def handle_starttag(self, tag, attrs):
+                if tag == 'code' and dict(attrs).get('class') == 'language-xu':
+                    self.current = ''
+
+            def handle_data(self, data):
+                if self.current is not None:
+                    self.current += data
+
+            def handle_endtag(self, tag):
+                if tag == 'code' and self.current is not None:
+                    self.examples.append(self.current)
+                    self.current = None
+
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            checkout = root / 'examples'
+            relative = 'examples/01_io/main.xu'
+            source = '@main\n#io\ndb #github.com/xulang-org/packages/mysql\n// "fn" and <html> remain comments\nfn main() {\n    io.read("http://localhost/<script> & string")\n    db.driver()\n}\n'
+            original = checkout / relative
+            original.parent.mkdir(parents=True)
+            original.write_text(source)
+            site = root / 'site'
+            (site / 'templates').mkdir(parents=True)
+            (site / 'templates/api-examples.json').write_text(json.dumps([relative]))
+            guide = site / 'templates/api-guides/en/io.html'
+            guide.parent.mkdir(parents=True)
+            guide.write_text('<p>Curated guide stays.</p>')
+            packages = [api.Package('io', '#io', items=[api.Item('fn', 'read', 'pub fn read(s string)')]),
+                        api.Package('packages/mysql', 'db #github.com/xulang-org/packages/mysql', module='github.com/xulang-org/packages')]
+            api.refresh_examples(str(site), str(checkout), 'a' * 40, '0.9.4')
+            original.unlink()
+            for _ in range(2):
+                api.write_packages(str(site), packages, '0.9.4')
+                for lang in ('en', 'zh'):
+                    page = (site / f'content/{lang}/api/io.html').read_text()
+                    self.assertEqual(Code(page).examples, [source.rstrip()])
+                    self.assertNotIn('<script>', page)
+                    self.assertIn('class="code-block-wrapper xu-local-only"', page)
+                    self.assertIn('href="/api-examples/sources/' + relative + '" download', page)
+                    self.assertIn('https://github.com/xulang-org/examples/tree/' + 'a' * 40, page)
+                    self.assertIn('href="#example-', page)
+                    if lang == 'en':
+                        self.assertIn('Curated guide stays.', page)
+                    external = (site / f'content/{lang}/api/packages/mysql.html').read_text()
+                    self.assertEqual(Code(external).examples, [source.rstrip()])
+                    index = (site / f'content/{lang}/api/index.html').read_text()
+                    self.assertIn('/api/io#examples', index)
+            asset = site / 'www/api-examples/sources' / relative
+            asset.write_text('tampered')
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                api.write_packages(str(site), packages, '0.9.4')
+
+    def test_example_snapshot_rejects_invalid_sources_and_stale_sdk(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            site = Path(temporary)
+            (site / 'templates').mkdir()
+            (site / 'templates/api-examples.json').write_text('["examples/../../private.xu"]')
+            with self.assertRaisesRegex(ValueError, 'invalid example source path'):
+                api.refresh_examples(str(site), str(site), 'a' * 40, '0.9.4')
+            self.assertFalse((site / 'www/api-examples').exists())
+            (site / 'www/api-examples').mkdir(parents=True)
+            (site / 'www/api-examples/index.json').write_text('{"xu_version": "0.9.3"}')
+            with self.assertRaisesRegex(ValueError, 'checked and refreshed'):
+                api.load_examples(str(site), [], '0.9.4')
+
     def test_current_contracts_and_external_module_identity(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

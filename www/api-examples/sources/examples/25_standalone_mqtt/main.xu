@@ -1,0 +1,97 @@
+@main
+
+mqtt #github.com/xulang-org/packages/mqtt
+#os
+
+fn main() int {
+    println("=== MQTT 3.1.1 IoT & Messaging Standalone Integration Test ===")
+    addr := "127.0.0.1:1883"
+    client_id := "xu_test_node_42"
+    println("Connecting to MQTT Broker at " + addr + " (client_id=" + client_id + ")...")
+
+    mut client := mqtt.open(addr + "", client_id + "") or (err) {
+        println("MQTT connect failed: " + err.msg())
+        << 1
+    }
+    println("1. MQTT Session established successfully (CONNACK code=0).")
+
+    // 2. Ping heartbeat
+    is_alive := client.ping()
+    println("2. PINGREQ/PINGRESP heartbeat: " + str(is_alive))
+
+    // 3. Subscribe
+    topic := "devices/status"
+    client.subscribe(topic + "", 0) or (err) {
+        println("Subscribe failed: " + err.msg())
+        << 1
+    }
+    println("3. Subscribed to topic: " + topic + " (QoS 0)")
+
+    // 4. Publish QoS 0
+    payload_0 := "{\"status\": \"online\", \"battery\": 98}"
+    client.publish(topic + "", payload_0 + "", 0) or (err) {
+        println("Publish QoS 0 failed: " + err.msg())
+        << 1
+    }
+    println("4. Published QoS 0 message: " + payload_0)
+
+    // 5. Publish QoS 1 (waits for PUBACK)
+    payload_1 := "{\"critical_alert\": \"temperature threshold exceeded\"}"
+    client.publish(topic + "", payload_1 + "", 1) or (err) {
+        println("Publish QoS 1 failed: " + err.msg())
+        << 1
+    }
+    println("5. Published QoS 1 message (received PUBACK confirmation).")
+
+    // 6. Disconnect
+    client.disconnect()
+    println("6. Gracefully disconnected from Broker.")
+
+    // 7. MQTT Connection Pool Deep Verification
+    println("7. Testing MQTT Connection Pool with Reuse & Concurrency...")
+    pool := mqtt.open_pool(addr + "", "xu_mqtt_pool", 5)
+    mut c1 := pool.get() or (err) {
+        println("Pool get c1 failed: " + err.msg())
+        << 1
+    }
+    fd_first := c1.fd
+    c1_ok := c1.ping()
+    println("   Pool c1 ping: " + str(c1_ok) + " (fd=" + str(fd_first) + ")")
+    pool.put(c1)
+
+    // Verify Pool Connection REUSE
+    mut c2 := pool.get() or (err) {
+        println("Pool get c2 failed: " + err.msg())
+        << 1
+    }
+    fd_second := c2.fd
+    if fd_first == fd_second {
+        println("   [PASS] MQTT Pool Connection REUSE verified! (fd1 == fd2: " + str(fd_first) + ")")
+    } else {
+        println("   [WARN] fd1 != fd2 (fd1=" + str(fd_first) + ", fd2=" + str(fd_second) + ")")
+    }
+
+    // Concurrent borrow another connection
+    mut c3 := pool.get() or (err) {
+        println("Pool get c3 failed: " + err.msg())
+        << 1
+    }
+    fd_third := c3.fd
+    if fd_second != fd_third {
+        println("   [PASS] MQTT Pool Multi-connection concurrency verified! (fd2=" + str(fd_second) + " != fd3=" + str(fd_third) + ")")
+    }
+
+    // Pool Direct Publish
+    pool.publish("sensors/pool_alert", "temperature=29C", 0) or (err) {
+        << 1
+    }
+    println("   [PASS] MQTT Pool direct publish succeeded.")
+
+    pool.put(c2)
+    pool.put(c3)
+    pool.close()
+    println("   [PASS] MQTT Pool closed cleanly.")
+
+    println("=== MQTT Tests Completed Successfully! ===")
+    << 0
+}

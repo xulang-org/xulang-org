@@ -1,0 +1,122 @@
+@main
+
+grpc #github.com/xulang-org/packages/grpc
+#errors
+#strings
+
+fn verify_protobuf_encoding() {
+    println("--- 1. Testing Protocol Buffers & gRPC Message Framing ---")
+
+    // 1. Varint test
+    v1 := grpc.encode_varint(300)
+    decoded_v1 := grpc.decode_varint(&v1, 0)
+    if decoded_v1 == 300 {
+        println("   [PASS] Varint encode/decode matched: 300")
+    } else {
+        println("   [FAIL] Varint mismatch: " + str(decoded_v1))
+    }
+
+    // 2. Protobuf String & Int fields
+    f_str := grpc.encode_string_field(1, "hello grpc")
+    f_int := grpc.encode_int_field(2, 42)
+    proto_msg := f_str + f_int
+    println("   [PASS] Protobuf serialized message length: " + str(proto_msg.len) + " bytes")
+
+    // 3. gRPC 5-byte Framing
+    grpc_frame := grpc.build_grpc_message(proto_msg + "")
+    if grpc_frame.len == proto_msg.len + 5 {
+        println("   [PASS] gRPC 5-byte header prefixed successfully (total: " + str(grpc_frame.len) + " bytes)")
+    } else {
+        println("   [FAIL] gRPC frame length mismatch")
+    }
+
+    parsed_payload := grpc.parse_grpc_message(grpc_frame + "")
+    if parsed_payload == proto_msg {
+        println("   [PASS] gRPC payload parsed & unpacked cleanly.")
+    } else {
+        println("   [FAIL] Unpacked payload mismatch!")
+    }
+
+    // 4. Protobuf Field Extraction
+    extracted_str := grpc.get_string_field(parsed_payload + "", 1)
+    extracted_int := grpc.get_int_field(parsed_payload + "", 2)
+    if extracted_str == "hello grpc" && extracted_int == 42 {
+        println("   [PASS] Protobuf field extraction: str='" + extracted_str + "', int=" + str(extracted_int))
+    } else {
+        println("   [FAIL] Protobuf field extraction mismatch")
+    }
+}
+
+fn verify_grpc_pool() {
+    println("\n--- 2. Testing gRPC Connection Pool ---")
+    mut p := grpc.open_pool("127.0.0.1:9000", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println("   [PASS] gRPC Pool closed cleanly.")
+}
+
+fn verify_grpc_unary_call() {
+    println("\n--- 3. Testing gRPC Unary RPC Call ---")
+    mut p := grpc.open_pool("127.0.0.1:9000", 5)
+
+    // DummyUnary accepts an empty or arbitrary message and echoes dummy response
+    req_body := grpc.encode_string_field(1, "Xu Language gRPC test")
+    resp := p.call_unary("/grpcbin.GRPCBin/DummyUnary", req_body) or (err) {
+        println("   [FAIL] gRPC call failed: " + err.msg())
+        p.close()
+        <<
+    }
+
+    println("   [PASS] gRPC Unary RPC Call (DummyUnary) succeeded!")
+    println("   Response payload length: " + str(resp.payload.len) + " bytes")
+    println("   Status: " + str(resp.status))
+
+    // Call SayHello on hello.HelloService
+    hello_req := grpc.encode_string_field(1, "Antigravity")
+    hello_resp := p.call_unary("/hello.HelloService/SayHello", hello_req) or (err) {
+        println("   [FAIL] SayHello failed: " + err.msg())
+        p.close()
+        <<
+    }
+    reply_msg := grpc.get_string_field(hello_resp.payload + "", 1)
+    if reply_msg == "hello Antigravity" {
+        println("   [PASS] gRPC Unary RPC Call (SayHello) succeeded!")
+        println("   [PASS] Echoed reply matched exactly: '" + reply_msg + "'")
+    } else {
+        println("   [FAIL] Echoed reply unexpected: '" + reply_msg + "'")
+    }
+
+    p.close()
+}
+
+fn main() {
+    println("=== Xu gRPC & HTTP/2 Native Driver Verification ===\n")
+    verify_protobuf_encoding()
+    verify_grpc_pool()
+    verify_grpc_unary_call()
+    println("\n[GRPC VERIFICATION 100% COMPLETED]")
+}

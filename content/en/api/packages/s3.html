@@ -7,6 +7,334 @@
 <p class="meta">counts: 7 fns, 21 methods, 3 types, 0 consts, 0 ifaces</p>
 <p class="lead">S3 &amp; MinIO Compatible Object Storage Driver for Xu Features Standard AWS Signature Version 4 (SigV4) calculation with pure Xu crypto primitives. Works with AWS S3, MinIO, Ceph, Cloudflare R2, and other S3-compatible object storages. Full bucket lifecycle: make_bucket, bucket_exists, remove_bucket. Full object lifecycle: put_object, get_object, remove_object, object_exists.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-54b5495e2402" open>
+<summary><code>27_standalone_s3/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/27_standalone_s3">Complete project</a> · <a href="/api-examples/sources/examples/27_standalone_s3/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="27_standalone_s3/main.xu"><code class="language-xu">@main
+
+s3 <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/s3
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_sigv4_calc() {
+    println(<span class="syn-str">"--- Testing AWS SigV4 Canonical Calculation ---"</span>)
+    method <span class="syn-flow">:=</span> <span class="syn-str">"GET"</span>
+    path <span class="syn-flow">:=</span> <span class="syn-str">"/test-bucket/test-file.txt"</span>
+    host <span class="syn-flow">:=</span> <span class="syn-str">"127.0.0.1:9000"</span>
+    ak <span class="syn-flow">:=</span> <span class="syn-str">"minioadmin"</span>
+    sk <span class="syn-flow">:=</span> <span class="syn-str">"minioadmin"</span>
+    region <span class="syn-flow">:=</span> <span class="syn-str">"us-east-1"</span>
+    amz_date <span class="syn-flow">:=</span> <span class="syn-str">"20260923T120000Z"</span>
+    date_stamp <span class="syn-flow">:=</span> <span class="syn-str">"20260923"</span>
+    payload_hash <span class="syn-flow">:=</span> s3.sha256_hex(<span class="syn-str">""</span>)
+
+    auth <span class="syn-flow">:=</span> s3.compute_auth_header(
+        method,
+        path,
+        host,
+        ak,
+        sk,
+        region,
+        amz_date,
+        date_stamp,
+        payload_hash
+    )
+    println(<span class="syn-str">"Calculated Auth Header: "</span> + auth)
+    prefix <span class="syn-flow">:=</span> <span class="syn-str">"AWS4-HMAC-SHA256 Credential=minioadmin/20260923/us-east-1/s3/aws4_request, SignedHeaders=host;x-amz-content-sha256;x-amz-date, Signature="</span>
+    <span class="syn-kw">if</span> auth.len &gt; prefix.len &amp;&amp; auth[0:prefix.len] == prefix {
+        println(<span class="syn-str">"[PASS] SigV4 format matches AWS specification!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"[FAIL] SigV4 format mismatch!"</span>)
+    }
+}
+
+<span class="syn-kw">fn</span> verify_s3_live() {
+    println(<span class="syn-str">"\n--- Testing S3 / MinIO Live API ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> s3.open(<span class="syn-str">"http://127.0.0.1:9000"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"us-east-1"</span>)
+
+    bucket <span class="syn-flow">:=</span> <span class="syn-str">"xu-s3-test"</span>
+    println(<span class="syn-str">"1. Checking if bucket exists..."</span>)
+    exists <span class="syn-flow">:=</span> client.bucket_exists(bucket + <span class="syn-str">""</span>)
+    println(<span class="syn-str">"   Bucket exists initially: "</span> + str(exists))
+
+    <span class="syn-kw">if</span> !exists {
+        println(<span class="syn-str">"2. Creating bucket '"</span> + bucket + <span class="syn-str">"'..."</span>)
+        client.make_bucket(bucket + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [SKIP/FAIL] make_bucket error: "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        println(<span class="syn-str">"   [PASS] Bucket created."</span>)
+    }
+
+    println(<span class="syn-str">"3. Putting object 'greeting.txt'..."</span>)
+    content <span class="syn-flow">:=</span> <span class="syn-str">"Hello from Xu Language S3 Native Driver! 🚀"</span>
+    client.put_object(bucket + <span class="syn-str">""</span>, <span class="syn-str">"greeting.txt"</span>, content + <span class="syn-str">""</span>, <span class="syn-str">"text/plain"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] put_object error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Object put successfully."</span>)
+
+    println(<span class="syn-str">"4. Getting object 'greeting.txt'..."</span>)
+    got <span class="syn-flow">:=</span> client.get_object(bucket + <span class="syn-str">""</span>, <span class="syn-str">"greeting.txt"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] get_object error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved content: "</span> + got)
+    <span class="syn-kw">if</span> got == content {
+        println(<span class="syn-str">"   [PASS] Object content matches exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Content mismatch!"</span>)
+    }
+
+    println(<span class="syn-str">"5. Removing object 'greeting.txt'..."</span>)
+    client.remove_object(bucket + <span class="syn-str">""</span>, <span class="syn-str">"greeting.txt"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] remove_object error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Object removed."</span>)
+
+    println(<span class="syn-str">"6. Removing bucket '"</span> + bucket + <span class="syn-str">"'..."</span>)
+    client.remove_bucket(bucket + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] remove_bucket error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Bucket removed."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_s3_pool() {
+    println(<span class="syn-str">"\n--- 3. Testing S3 Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> s3.open_pool(<span class="syn-str">"http://127.0.0.1:9000"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"us-east-1"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Delegated operations via pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    pool_bucket <span class="syn-flow">:=</span> <span class="syn-str">"xu-pool-bucket"</span>
+    <span class="syn-kw">if</span> !p.bucket_exists(pool_bucket + <span class="syn-str">""</span>) {
+        p.make_bucket(pool_bucket + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [FAIL] Pool make_bucket error: "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+    }
+    println(<span class="syn-str">"   [PASS] Pool bucket created."</span>)
+
+    pool_content <span class="syn-flow">:=</span> <span class="syn-str">"Pooled S3 payload data 999"</span>
+    p.put_object(pool_bucket + <span class="syn-str">""</span>, <span class="syn-str">"pool_obj.txt"</span>, pool_content + <span class="syn-str">""</span>, <span class="syn-str">"text/plain"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool put_object error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool object put."</span>)
+
+    got <span class="syn-flow">:=</span> p.get_object(pool_bucket + <span class="syn-str">""</span>, <span class="syn-str">"pool_obj.txt"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool get_object error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved via pool: "</span> + got)
+    <span class="syn-kw">if</span> got == pool_content {
+        println(<span class="syn-str">"   [PASS] Pool object content matches exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Content mismatch!"</span>)
+    }
+
+    p.remove_object(pool_bucket + <span class="syn-str">""</span>, <span class="syn-str">"pool_obj.txt"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool remove_object error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    p.remove_bucket(pool_bucket + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool remove_bucket error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool cleanup completed."</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] S3 Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu S3 / MinIO Driver Verification ==="</span>)
+    verify_sigv4_calc()
+    verify_s3_live()
+    verify_s3_pool()
+    println(<span class="syn-str">"\n[ALL S3 VERIFICATION COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-b597eda1c41a">
+<summary><code>28_test_pools/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/28_test_pools">Complete project</a> · <a href="/api-examples/sources/examples/28_test_pools/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="28_test_pools/main.xu"><code class="language-xu">@main
+
+redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/redis
+memcached <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/memcached
+nats <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/nats
+mqtt <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mqtt
+elasticsearch <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/elasticsearch
+s3 <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/s3
+sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/sqlite
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+
+<span class="syn-kw">fn</span> verify_redis_pool() {
+    println(<span class="syn-str">"1. Testing Redis Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> redis.new_pool(<span class="syn-str">"127.0.0.1:6379"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    res <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Redis PING response: "</span> + res)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Redis Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_memcached_pool() {
+    println(<span class="syn-str">"2. Testing Memcached Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> memcached.new_pool(<span class="syn-str">"127.0.0.1:11211"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ver <span class="syn-flow">:=</span> c.version() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached version error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Memcached VERSION: "</span> + ver)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Memcached Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_nats_pool() {
+    println(<span class="syn-str">"3. Testing NATS Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> nats.open_pool(<span class="syn-str">"127.0.0.1:4222"</span>, 5)
+    p.publish(<span class="syn-str">"pool.events"</span>, <span class="syn-str">"hello from nats pool"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ok <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS borrowed client ping ok: "</span> + str(ok))
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] NATS Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_mqtt_pool() {
+    println(<span class="syn-str">"4. Testing MQTT Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> mqtt.open_pool(<span class="syn-str">"127.0.0.1:1883"</span>, <span class="syn-str">"xu_pool_test"</span>, 5)
+    p.publish(<span class="syn-str">"sensors/pool"</span>, <span class="syn-str">"temp=28C"</span>, 0) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT borrowed client ID: "</span> + c.client_id)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] MQTT Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_es_pool() {
+    println(<span class="syn-str">"5. Testing Elasticsearch Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> elasticsearch.open_pool(<span class="syn-str">"http://127.0.0.1:9200"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   ES borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Elasticsearch Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_s3_pool() {
+    println(<span class="syn-str">"6. Testing S3 Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> s3.open_pool(<span class="syn-str">"http://127.0.0.1:9000"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"us-east-1"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   S3 borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] S3 Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_sqlite_pool() {
+    println(<span class="syn-str">"7. Testing SQLite Connection Pool..."</span>)
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sqlite.open_pool(<span class="syn-str">":memory:"</span>, 1, 1)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] SQLite ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SQLite Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_postgres_pool() {
+    println(<span class="syn-str">"8. Testing PostgreSQL Connection Pool..."</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> postgres.open_pool(dsn, 5, 2)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] PostgreSQL ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] PostgreSQL Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu All Driver Connection Pools Comprehensive Verification ===\n"</span>)
+    verify_redis_pool()
+    verify_memcached_pool()
+    verify_nats_pool()
+    verify_mqtt_pool()
+    verify_es_pool()
+    verify_s3_pool()
+    verify_sqlite_pool()
+    verify_postgres_pool()
+    println(<span class="syn-str">"\n[ALL 8 DRIVER CONNECTION POOLS 100% VERIFIED!]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(endpoint <span class="syn-type">string</span>, access_key <span class="syn-type">string</span>, secret_key <span class="syn-type">string</span>, region <span class="syn-type">string</span>) Client</code></pre></div>
@@ -21,6 +349,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-54b5495e2402">See usage example</a></p>
 </article>
 <article class="api-item" id="open_pool">
 <h2><code>open_pool</code></h2>
@@ -37,10 +366,11 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-54b5495e2402">See usage example</a></p>
 </article>
 <article class="api-item" id="-mut-Client-make_bucket">
 <h2><code>(&amp;mut Client) make_bucket</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) make_bucket(bucket <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) make_bucket(bucket <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: make bucket. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -53,7 +383,7 @@
 </article>
 <article class="api-item" id="-mut-Client-bucket_exists">
 <h2><code>(&amp;mut Client) bucket_exists</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) bucket_exists(bucket <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) bucket_exists(bucket <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: bucket exists.</p>
 <h3>Parameters</h3>
@@ -66,7 +396,7 @@
 </article>
 <article class="api-item" id="-mut-Client-remove_bucket">
 <h2><code>(&amp;mut Client) remove_bucket</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) remove_bucket(bucket <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) remove_bucket(bucket <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: remove bucket. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -128,7 +458,7 @@
 </article>
 <article class="api-item" id="-mut-Client-request">
 <h2><code>(&amp;mut Client) request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>, content_type <span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>, content_type <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `request` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -144,7 +474,7 @@
 </article>
 <article class="api-item" id="-mut-Client-put_object">
 <h2><code>(&amp;mut Client) put_object</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) put_object(bucket <span class="syn-type">string</span>, key <span class="syn-type">string</span>, data <span class="syn-type">string</span>, content_type <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) put_object(bucket <span class="syn-type">string</span>, key <span class="syn-type">string</span>, data <span class="syn-type">string</span>, content_type <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: put object. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -160,7 +490,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get_object">
 <h2><code>(&amp;mut Client) get_object</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get_object(bucket <span class="syn-type">string</span>, key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get_object(bucket <span class="syn-type">string</span>, key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read object. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -174,7 +504,7 @@
 </article>
 <article class="api-item" id="-mut-Client-remove_object">
 <h2><code>(&amp;mut Client) remove_object</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) remove_object(bucket <span class="syn-type">string</span>, key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) remove_object(bucket <span class="syn-type">string</span>, key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: remove object. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -188,7 +518,7 @@
 </article>
 <article class="api-item" id="-mut-Client-object_exists">
 <h2><code>(&amp;mut Client) object_exists</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) object_exists(bucket <span class="syn-type">string</span>, key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) object_exists(bucket <span class="syn-type">string</span>, key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: object exists.</p>
 <h3>Parameters</h3>
@@ -418,6 +748,7 @@
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-54b5495e2402">See usage example</a></p>
 </article>
 <article class="api-item" id="hmac_hex">
 <h2><code>hmac_hex</code></h2>
@@ -451,4 +782,5 @@
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-54b5495e2402">See usage example</a></p>
 </article>

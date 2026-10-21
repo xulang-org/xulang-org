@@ -1,7 +1,7 @@
 <!--title: Frequently Asked Questions (FAQ)-->
 <p class="crumb"><a href="/docs/start">Docs</a></p>
 <h1>Frequently Asked Questions (FAQ)</h1>
-<p class="banner">Core answers on Xu language design, memory model, compilation architecture, and ecosystem interoperability</p>
+<p class="banner">Core answers on Xu language design, memory model, compilation architecture, LSP editor support, dependency management, and native interoperability</p>
 
 <section class="faq-list">
   <details class="faq-item">
@@ -47,16 +47,25 @@
   </details>
 
   <details class="faq-item">
-    <summary><h3>How are third-party packages installed and referenced?</h3></summary>
+    <summary><h3>Which editors support Xu, and how do I enable LSP?</h3></summary>
     <div class="faq-answer">
-      <p><strong>Zero manual configuration</strong>. The official ecosystem monorepo <a href="/docs/packages">packages</a> provides 29 production-grade drivers (Redis, MySQL, Postgres, Kafka, S3, gRPC 等). Simply declare the version in <code>xu.xun</code> (e.g. <code>require: "github.com/xulang-org/packages": v0.1.1</code>) and run <code>xu install</code> to fetch dependencies into <code>vendor/</code> and generate <code>xu.lock</code>.</p>
+      <p>The official <a href="/docs/vscode">vscode-xu extension</a> supports VS Code and Cursor. It runs <code>xu lsp</code> to launch the SDK's <code>xu-lsp</code> language server for diagnostics, completion, go-to-definition, hover documentation, document symbols, references, rename, and formatting.</p>
+      <p>Other LSP-compatible editors can configure <code>xu lsp</code> as their server command, communicating over stdin/stdout using JSON-RPC 2.0. The editor normally starts the server automatically; run <code>xu lsp --help</code> for help.</p>
+    </div>
+  </details>
+  <details class="faq-item">
+    <summary><h3>What is the difference between xu get and xu install?</h3></summary>
+    <div class="faq-answer">
+      <p>In a project directory containing <code>xu.xun</code>, run <code>xu get github.com/xulang-org/packages@v0.1.1</code> to add or update a pinned dependency. It edits <code>require:</code>, installs sources into <code>vendor/</code>, and updates <code>xu.lock</code>. An explicit exact version is required; <code>@latest</code> is not accepted.</p>
+      <p><code>xu install</code> installs dependencies already declared in the manifest. Both commands support <code>--offline</code>; use <code>xu build . --frozen</code> to build strictly against the existing lockfile. See <a href="/docs/modules">Modules &amp; Dependencies</a>; the official <a href="/docs/packages">packages repository</a> provides 29 extension packages.</p>
     </div>
   </details>
 
   <details class="faq-item">
-    <summary><h3>How does C interoperability (FFI) work in Xu?</h3></summary>
+    <summary><h3>How do I use xu native to integrate C code?</h3></summary>
     <div class="faq-answer">
-      <p>Xu conforms to standard System V and AAPCS native C calling conventions (ABI). You can interface with native C libraries through lightweight bridge shims or export C-compatible dynamic libraries (<code>--shared</code>) to interoperate with OS system APIs or embedded C drivers (such as SQLite in packages). For details on <code>.a</code> vs <code>.xulib</code>, see <a href="/docs/native">Native Modules &amp; .xulib Specification</a>.</p>
+      <p><code>xu native</code> covers the native module workflow: <code>xu native compile</code> compiles C sources with interface metadata into a <code>.a</code> archive; <code>xu native archive</code> wraps existing object files with metadata; <code>xu native pack</code> bundles target slices into <code>.xulib</code>; <code>xu native inspect</code> and <code>xu native extract</code> inspect and extract slices.</p>
+      <p>Use <code>.a</code> for a single target, or <code>.xulib</code> to distribute interface contracts with multiple target slices. Pass the library directly to the build, for example <code>xu build main.xu native/mylib.xulib -o app</code>. Compiling C sources requires the corresponding C toolchain. See <a href="/docs/native">Native Modules &amp; .xulib</a> for full examples, or run <code>xu native compile --help</code>.</p>
     </div>
   </details>
 
@@ -68,4 +77,4 @@
   </details>
 </section>
 
-<p><a href="/docs/start">Get Started</a> · <a href="/docs/modules">Modules &amp; Dependencies</a> · <a href="/docs/native">Native Modules &amp; .xulib</a> · <a href="/docs/cli">CLI Reference</a></p>
+<p><a href="/docs/start">Get Started</a> · <a href="/docs/modules">Modules &amp; Dependencies</a> · <a href="/docs/native">Native Modules &amp; .xulib</a> · <a href="/docs/vscode">Editor Support</a> · <a href="/docs/cli">CLI Reference</a></p>

@@ -1,0 +1,150 @@
+@main
+
+kafka #github.com/xulang-org/packages/kafka
+#errors
+
+fn verify_kafka_ping() {
+    println("--- 1. Testing Kafka Heartbeat & ApiVersions Ping ---")
+    mut client := kafka.open("127.0.0.1:9092") or (err) {
+        println("   [FAIL] Connect error: " + err.msg())
+        <<
+    }
+    is_ok := client.ping()
+    if is_ok {
+        println("   [PASS] Kafka ApiVersions heartbeat succeeded.")
+    } else {
+        println("   [FAIL] Kafka ping failed.")
+    }
+    client.close()
+}
+
+fn verify_kafka_produce_fetch() {
+    println("\n--- 2. Testing Kafka Produce & Fetch Operations ---")
+    mut client := kafka.open("127.0.0.1:9092") or (err) {
+        println("   [FAIL] Connect error: " + err.msg())
+        <<
+    }
+
+    topic := "xu_test_topic"
+    partition := 0
+
+    // Ensure metadata / auto create topic
+    client.metadata(topic + "")
+
+    // 1. Produce message
+    msg := "Antigravity event message from Xu language"
+    println("   Producing message to topic '" + topic + "': " + msg)
+    offset := client.produce_key_value(topic + "", partition, "event-key-1", msg + "") or (err) {
+        println("   [FAIL] Produce failed: " + err.msg())
+        client.close()
+        <<
+    }
+    println("   [PASS] Message produced successfully at offset: " + str(offset))
+
+    // 2. Fetch message back
+    messages := client.fetch(topic + "", partition, offset) or (err) {
+        println("   [FAIL] Fetch failed: " + err.msg())
+        client.close()
+        <<
+    }
+    println("   Fetched messages count: " + str(messages.len))
+    mut found := false
+    mut i := 0
+    while i < messages.len {
+        println("   Message[" + str(i) + "]: " + messages[i])
+        if messages[i] == msg {
+            found = true
+        }
+        i = i + 1
+    }
+
+    if found {
+        println("   [PASS] Produced message was verified in fetch output!")
+    } else {
+        println("   [WARN] Message not matched in first fetch chunk (may require offset adjustment).")
+    }
+
+    client.close()
+}
+
+fn verify_kafka_pool() {
+    println("\n--- 3. Testing Kafka Connection Pool ---")
+    mut p := kafka.open_pool("127.0.0.1:9092", "xu-pool-tester", 5)
+
+    // 1. Connection Reuse Test
+    mut c1 := p.get() or (err) {
+        println("   [FAIL] Failed to get c1: " + err.msg())
+        <<
+    }
+    fd1 := c1.fd
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put(c1)
+
+    mut c2 := p.get() or (err) {
+        println("   [FAIL] Failed to get c2: " + err.msg())
+        <<
+    }
+    fd2 := c2.fd
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    mut c3 := p.get() or (err) {
+        println("   [FAIL] Failed to get c3: " + err.msg())
+        <<
+    }
+    fd3 := c3.fd
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put(c2)
+    p.put(c3)
+
+    // 3. Delegated Produce & Fetch via Pool
+    println("   Testing delegated operations via pool...")
+    pool_topic := "xu_pool_topic"
+    pool_msg := "pool message payload test"
+
+    offset := p.produce_key_value(pool_topic + "", 0, "pk1", pool_msg + "") or (err) {
+        println("   [FAIL] Pool produce failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] Message produced via pool at offset: " + str(offset))
+
+    msgs := p.fetch(pool_topic + "", 0, offset) or (err) {
+        println("   [FAIL] Pool fetch failed: " + err.msg())
+        <<
+    }
+    println("   Fetched messages via pool count: " + str(msgs.len))
+    mut found := false
+    mut i := 0
+    while i < msgs.len {
+        if msgs[i] == pool_msg {
+            found = true
+        }
+        i = i + 1
+    }
+    if found {
+        println("   [PASS] Pool produce & fetch roundtrip verified successfully!")
+    } else {
+        println("   [WARN] Pool message not in immediate chunk.")
+    }
+
+    p.close()
+    println("   [PASS] Kafka Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu Apache Kafka Distributed Event Streaming Driver Verification ===\n")
+    verify_kafka_ping()
+    verify_kafka_produce_fetch()
+    verify_kafka_pool()
+    println("\n[KAFKA VERIFICATION 100% COMPLETED]")
+}

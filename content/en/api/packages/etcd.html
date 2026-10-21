@@ -7,6 +7,160 @@
 <p class="meta">counts: 4 fns, 19 methods, 3 types, 0 consts, 0 ifaces</p>
 <p class="lead">etcd v3 Cloud-Native Distributed Key-Value &amp; Coordination Driver for Xu Features Native HTTP/JSON communication with etcd v3 gRPC-Gateway. Standard Base64 Key-Value storage (put, get, delete). Distributed Lease lifecycle (lease_grant, lease_revoke, lease_keepalive). Connection pooling via reusable TCP socket channels.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-007ae3f6de6e" open>
+<summary><code>30_standalone_etcd/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/30_standalone_etcd">Complete project</a> · <a href="/api-examples/sources/examples/30_standalone_etcd/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="30_standalone_etcd/main.xu"><code class="language-xu">@main
+
+etcd <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/etcd
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_etcd_kv() {
+    println(<span class="syn-str">"--- 1. Testing etcd v3 KV Operations ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> etcd.open(<span class="syn-str">"http://127.0.0.1:2379"</span>)
+
+    key <span class="syn-flow">:=</span> <span class="syn-str">"/services/payment/config"</span>
+    val <span class="syn-flow">:=</span> <span class="syn-str">"version=2.0;timeout=5s"</span>
+
+    <span class="syn-cmt">// 1. Put KV</span>
+    println(<span class="syn-str">"   Writing key: "</span> + key)
+    client.put(key + <span class="syn-str">""</span>, val + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] etcd put error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Key written."</span>)
+
+    <span class="syn-cmt">// 2. Get KV</span>
+    println(<span class="syn-str">"   Reading key: "</span> + key)
+    got <span class="syn-flow">:=</span> client.get(key + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] etcd get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved value: "</span> + got)
+    <span class="syn-kw">if</span> got == val {
+        println(<span class="syn-str">"   [PASS] Value matches exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Value mismatch!"</span>)
+    }
+
+    <span class="syn-cmt">// 3. Delete KV</span>
+    println(<span class="syn-str">"   Deleting key: "</span> + key)
+    client.delete(key + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] etcd delete error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Key deleted."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_etcd_lease() {
+    println(<span class="syn-str">"\n--- 2. Testing etcd v3 Lease Lifecycle ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> etcd.open(<span class="syn-str">"http://127.0.0.1:2379"</span>)
+
+    <span class="syn-cmt">// Grant lease: 60 seconds</span>
+    println(<span class="syn-str">"   Granting 60s lease..."</span>)
+    lease_id <span class="syn-flow">:=</span> client.lease_grant(60) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] lease_grant error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Granted Lease ID: "</span> + str(lease_id))
+
+    <span class="syn-cmt">// Put with lease</span>
+    service_key <span class="syn-flow">:=</span> <span class="syn-str">"/discovery/nodes/node-1"</span>
+    service_addr <span class="syn-flow">:=</span> <span class="syn-str">"192.168.1.100:8080"</span>
+    println(<span class="syn-str">"   Registering node with lease: "</span> + service_key)
+    client.put_with_lease(service_key + <span class="syn-str">""</span>, service_addr + <span class="syn-str">""</span>, lease_id) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] put_with_lease error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Service registered with lease."</span>)
+
+    <span class="syn-cmt">// Verify retrieval</span>
+    got <span class="syn-flow">:=</span> client.get(service_key + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] get leased key error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Leased node address: "</span> + got)
+
+    <span class="syn-cmt">// Revoke lease</span>
+    println(<span class="syn-str">"   Revoking lease..."</span>)
+    client.lease_revoke(lease_id) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] lease_revoke error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Lease revoked successfully."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_etcd_pool() {
+    println(<span class="syn-str">"\n--- 3. Testing etcd Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> etcd.open_pool(<span class="syn-str">"http://127.0.0.1:2379"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Delegated Key-Value Operations via Pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    pool_key <span class="syn-flow">:=</span> <span class="syn-str">"/pool/service/worker-1"</span>
+    pool_val <span class="syn-flow">:=</span> <span class="syn-str">"status=online;threads=16"</span>
+    p.put(pool_key + <span class="syn-str">""</span>, pool_val + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] pool.put error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    got_val <span class="syn-flow">:=</span> p.get_key(pool_key + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] pool.get_key error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved via pool: "</span> + got_val)
+    <span class="syn-kw">if</span> got_val == pool_val {
+        println(<span class="syn-str">"   [PASS] Pool delegated put &amp; get matched exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Pool delegated get mismatch!"</span>)
+    }
+
+    p.delete(pool_key + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] pool.delete error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool delegated delete completed."</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] etcd Pool closed and verified."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu etcd v3 Native Driver Verification ===\n"</span>)
+    verify_etcd_kv()
+    verify_etcd_lease()
+    verify_etcd_pool()
+    println(<span class="syn-str">"\n[ETCD VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(endpoint <span class="syn-type">string</span>) Client</code></pre></div>
@@ -18,6 +172,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-007ae3f6de6e">See usage example</a></p>
 </article>
 <article class="api-item" id="open_pool">
 <h2><code>open_pool</code></h2>
@@ -31,6 +186,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-007ae3f6de6e">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Response">
 <h2><code>struct Response</code></h2>
@@ -74,7 +230,7 @@
 </article>
 <article class="api-item" id="-mut-Client-request">
 <h2><code>(&amp;mut Client) request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) request(path <span class="syn-type">string</span>, body_json <span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) request(path <span class="syn-type">string</span>, body_json <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `request` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -88,7 +244,7 @@
 </article>
 <article class="api-item" id="-mut-Client-put">
 <h2><code>(&amp;mut Client) put</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) put(key <span class="syn-type">string</span>, value <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) put(key <span class="syn-type">string</span>, value <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `put` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -102,7 +258,7 @@
 </article>
 <article class="api-item" id="-mut-Client-put_with_lease">
 <h2><code>(&amp;mut Client) put_with_lease</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) put_with_lease(key <span class="syn-type">string</span>, value <span class="syn-type">string</span>, lease_id <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) put_with_lease(key <span class="syn-type">string</span>, value <span class="syn-type">string</span>, lease_id <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: put with lease. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -117,7 +273,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get">
 <h2><code>(&amp;mut Client) get</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `get` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -130,7 +286,7 @@
 </article>
 <article class="api-item" id="-mut-Client-exists">
 <h2><code>(&amp;mut Client) exists</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) exists(key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) exists(key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `exists` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>
@@ -143,7 +299,7 @@
 </article>
 <article class="api-item" id="-mut-Client-delete">
 <h2><code>(&amp;mut Client) delete</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) delete(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) delete(key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `delete` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -156,7 +312,7 @@
 </article>
 <article class="api-item" id="-mut-Client-lease_grant">
 <h2><code>(&amp;mut Client) lease_grant</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) lease_grant(ttl_seconds <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) lease_grant(ttl_seconds <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: lease grant. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -169,7 +325,7 @@
 </article>
 <article class="api-item" id="-mut-Client-lease_revoke">
 <h2><code>(&amp;mut Client) lease_revoke</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) lease_revoke(lease_id <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) lease_revoke(lease_id <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: lease revoke. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -182,7 +338,7 @@
 </article>
 <article class="api-item" id="-mut-Client-lease_keepalive">
 <h2><code>(&amp;mut Client) lease_keepalive</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) lease_keepalive(lease_id <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) lease_keepalive(lease_id <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: lease keepalive. Throws on failure.</p>
 <h3>Parameters</h3>

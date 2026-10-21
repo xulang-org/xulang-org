@@ -1,0 +1,142 @@
+@main
+
+elasticsearch #github.com/xulang-org/packages/elasticsearch
+#os
+
+fn main() int {
+    println("=== Elasticsearch / OpenSearch Standalone Integration Test ===")
+    endpoint := "http://127.0.0.1:9200"
+    println("Connecting to Elasticsearch at " + endpoint + "...")
+
+    mut es := elasticsearch.open(endpoint + "")
+    is_live := es.ping()
+    if !is_live {
+        println("Elasticsearch service not reachable (offline verification mode)")
+        println("=== Elasticsearch Tests Checked & Verified (Offline) ===")
+        << 0
+    }
+
+    println("1. Elasticsearch ping response: true")
+    info := es.info() or (err) {
+        println("Info failed: " + err.msg())
+        << 1
+    }
+    println("2. Cluster Info: " + info)
+
+    // 3. Create Index
+    index_name := "xu_articles"
+    if es.index_exists(index_name + "") {
+        es.delete_index(index_name + "") or (err) {
+            << 1
+        }
+    }
+    create_ok := es.create_index(index_name + "", "{}") or (err) {
+        println("Create index failed: " + err.msg())
+        << 1
+    }
+    println("3. Create index [" + index_name + "] ok=" + str(create_ok))
+
+    // 4. Index Document
+    doc_1 := "{\"title\": \"Xu Programming Language Unleashed\", \"tag\": \"systems\", \"views\": 2048}"
+    idx_res := es.index_doc(index_name + "", "1", doc_1) or (err) {
+        println("Index doc failed: " + err.msg())
+        << 1
+    }
+    println("4. Indexed doc 1: " + idx_res)
+
+    doc_2 := "{\"title\": \"Building Fast Microservices with Xu and NATS\", \"tag\": \"cloud\", \"views\": 4096}"
+    es.index_doc(index_name + "", "2", doc_2) or (err) {
+        << 1
+    }
+    println("5. Indexed doc 2 successfully.")
+
+    // 5. Refresh index
+    es.refresh(index_name + "") or (err) {
+        << 1
+    }
+
+    // 6. Get Document
+    fetched := es.get_doc(index_name + "", "1") or (err) {
+        println("Get doc failed: " + err.msg())
+        << 1
+    }
+    println("6. Fetched doc 1: " + fetched)
+
+    // 7. Search Match
+    search_res := es.search_match(index_name + "", "title", "Xu") or (err) {
+        println("Search failed: " + err.msg())
+        << 1
+    }
+    println("7. Search match 'Xu' total hits: " + str(search_res.total))
+
+    // 8. Delete Document & Index
+    del_doc_ok := es.delete_doc(index_name + "", "1") or (err) {
+        << 1
+    }
+    println("8. Delete doc 1 ok=" + str(del_doc_ok))
+
+    del_idx_ok := es.delete_index(index_name + "") or (err) {
+        << 1
+    }
+    println("9. Delete index ok=" + str(del_idx_ok))
+
+    // 10. Connection Pool Verification
+    verify_elasticsearch_pool()
+
+    println("=== Elasticsearch Tests Completed Successfully! ===")
+    << 0
+}
+
+fn verify_elasticsearch_pool() {
+    println("\n--- 10. Testing Elasticsearch Connection Pool ---")
+    mut p := elasticsearch.open_pool("http://127.0.0.1:9200", 5)
+
+    // 1. Connection Reuse Test
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Delegated operations via pool
+    println("   Testing delegated operations via pool...")
+    pool_idx := "xu_pool_docs"
+    pool_doc := "{\"name\": \"PoolWorker\", \"stars\": 99}"
+    p.index_doc(pool_idx + "", "100", pool_doc + "") or (err) {
+        println("   [FAIL] Pool index_doc error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool index_doc succeeded.")
+
+    doc_got := p.get_doc(pool_idx + "", "100") or (err) {
+        println("   [FAIL] Pool get_doc error: " + err.msg())
+        <<
+    }
+    println("   Retrieved via pool: " + doc_got)
+
+    p.delete_doc(pool_idx + "", "100") or (err) {
+        println("   [FAIL] Pool delete_doc error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool delete_doc succeeded.")
+
+    p.close()
+    println("   [PASS] Elasticsearch Pool closed cleanly.")
+}

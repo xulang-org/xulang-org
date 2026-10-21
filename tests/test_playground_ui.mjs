@@ -60,7 +60,7 @@ async function mount({blocks, en = false, available = true, supported = true} = 
   const pres = [];
   if (blocks) {
     const main = new Element('main');
-    for (const {source, api} of blocks) {
+    for (const {source, api, local} of blocks) {
       const pre = new Element('pre');
       const code = new Element('code');
       code.textContent = source;
@@ -69,7 +69,7 @@ async function mount({blocks, en = false, available = true, supported = true} = 
       // API pages already have wrappers; docs can contain plain pre elements.
       if (api) {
         const wrapper = new Element('div');
-        wrapper.className = 'code-block-wrapper';
+        wrapper.className = 'code-block-wrapper' + (local ? ' xu-local-only' : '');
         const header = new Element('div');
         header.className = 'code-block-header';
         wrapper.appendChild(header);
@@ -151,6 +151,18 @@ test('Timeout terminates execution and late results cannot overwrite the next ru
   workers[1].respond({type: 'result', exit: 0, stdout: 'fresh result\n', stderr: ''});
   workers[0].respond({type: 'result', exit: 0, stdout: 'stale result\n', stderr: ''});
   assert.equal(elements['xu-play-out'].textContent, 'fresh result\n');
+});
+
+test('Local SDK examples can be copied without offering browser execution', async () => {
+  const source = '@main\n#net/http\nfn main() { http.listen_and_serve("127.0.0.1:8080", ".") }';
+  const {pres, copied, workers} = await mount({blocks: [{source, api: true, local: true}]});
+  const wrapper = pres[0].parentNode;
+  assert.equal(wrapper.querySelector('.code-run-btn'), null);
+  assert.equal(wrapper.querySelector('.code-edit-btn'), null);
+  wrapper.querySelector('.code-copy-btn').click();
+  await new Promise(setImmediate);
+  assert.deepEqual(copied, [source]);
+  assert.deepEqual(workers, []);
 });
 
 for (const en of [false, true]) {

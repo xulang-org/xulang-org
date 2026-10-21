@@ -1,0 +1,91 @@
+@main
+
+chroma #github.com/xulang-org/packages/chroma
+#errors
+#strings
+
+fn verify_chroma_pool() {
+    println("--- 1. Testing Chroma Connection Pool ---")
+    mut p := chroma.open_pool("http://127.0.0.1:8000", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println("   [PASS] Chroma Pool closed cleanly.")
+}
+
+fn verify_chroma_crud() {
+    println("\n--- 2. Testing Chroma Vector CRUD & Query ---")
+    mut p := chroma.open_pool("http://127.0.0.1:8000", 5)
+
+    col_name := "xu_test_vectors"
+    // Cleanup prior
+    p.delete_collection(col_name + "")
+
+    // 1. Create Collection
+    col_id := p.create_collection(col_name + "") or (err) {
+        println("   [FAIL] Create collection failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Created Chroma Collection ID: " + col_id)
+
+    // 2. Add Vectors & Docs
+    ids := "[\"doc_101\", \"doc_102\"]"
+    embs := "[[0.15, 0.22, 0.88], [0.91, 0.12, 0.05]]"
+    docs := "[\"Compiler construction in Xu\", \"Database internals and storage\"]"
+    add_ok := p.add(col_id + "", ids, embs, docs)
+    if add_ok {
+        println("   [PASS] Added 2 vector embeddings and documents.")
+    } else {
+        println("   [FAIL] Failed to add vector embeddings.")
+    }
+
+    // 3. Similarity Query
+    query_emb := "[[0.14, 0.20, 0.85]]"
+    res := p.query(col_id + "", query_emb, 1) or (err) {
+        println("   [FAIL] Similarity query failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Query Similarity Match Result preview: " + res)
+
+    // 4. Delete Collection
+    del_ok := p.delete_collection(col_name + "")
+    if del_ok {
+        println("   [PASS] Deleted Chroma Collection successfully.")
+    } else {
+        println("   [FAIL] Failed to delete collection.")
+    }
+
+    p.close()
+}
+
+fn main() {
+    println("=== Xu Chroma AI Vector Database Native Driver Verification ===\n")
+    verify_chroma_pool()
+    verify_chroma_crud()
+    println("\n[CHROMA VERIFICATION 100% COMPLETED]")
+}

@@ -7,6 +7,110 @@
 <p class="meta">counts: 7 函数, 17 方法, 7 类型, 0 常量, 0 方法集</p>
 <p class="lead">扩展包 `prometheus #github.com/xulang-org/packages/prometheus`，由模块 github.com/xulang-org/packages 提供。</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/zh/docs/packages">安装与使用</a></p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-9cef47133024" open>
+<summary><code>40_standalone_prometheus/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/40_standalone_prometheus">完整工程</a> · <a href="/api-examples/sources/examples/40_standalone_prometheus/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="40_standalone_prometheus/main.xu"><code class="language-xu">@main
+
+prometheus <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/prometheus
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_prometheus_metrics() {
+    println(<span class="syn-str">"--- 1. Testing Prometheus Metrics &amp; Exposition Formatting ---"</span>)
+    <span class="syn-kw">mut</span> reg <span class="syn-flow">:=</span> prometheus.new_registry()
+
+    <span class="syn-cmt">// 1. Counter with Labels</span>
+    <span class="syn-kw">mut</span> http_requests <span class="syn-flow">:=</span> prometheus.new_counter(<span class="syn-str">"http_requests_total"</span>, <span class="syn-str">"Total incoming HTTP requests"</span>)
+    <span class="syn-kw">mut</span> lbl1 <span class="syn-flow">:=</span> []prometheus.Label{}
+    lbl1.push(prometheus.Label{name: <span class="syn-str">"method"</span>, value: <span class="syn-str">"GET"</span>})
+    lbl1.push(prometheus.Label{name: <span class="syn-str">"handler"</span>, value: <span class="syn-str">"/api/orders"</span>})
+    http_requests.inc_labels(lbl1, 100)
+
+    <span class="syn-kw">mut</span> lbl2 <span class="syn-flow">:=</span> []prometheus.Label{}
+    lbl2.push(prometheus.Label{name: <span class="syn-str">"method"</span>, value: <span class="syn-str">"POST"</span>})
+    lbl2.push(prometheus.Label{name: <span class="syn-str">"handler"</span>, value: <span class="syn-str">"/api/orders"</span>})
+    http_requests.inc_labels(lbl2, 25)
+
+    reg.register_counter(http_requests)
+    println(<span class="syn-str">"   [PASS] Counter registered with 2 labeled series."</span>)
+
+    <span class="syn-cmt">// 2. Gauge</span>
+    <span class="syn-kw">mut</span> mem_usage <span class="syn-flow">:=</span> prometheus.new_gauge(<span class="syn-str">"process_memory_bytes"</span>, <span class="syn-str">"Resident memory bytes"</span>)
+    mem_usage.set(<span class="syn-str">"134217728"</span>)
+    reg.register_gauge(mem_usage)
+    println(<span class="syn-str">"   [PASS] Gauge registered."</span>)
+
+    <span class="syn-cmt">// 3. Gather text output</span>
+    output <span class="syn-flow">:=</span> reg.gather()
+    println(<span class="syn-str">"   Exposition output preview:"</span>)
+    println(output)
+
+    prefix_help <span class="syn-flow">:=</span> <span class="syn-str">"# HELP http_requests_total Total incoming HTTP requests"</span>
+    <span class="syn-kw">if</span> output.len &gt;= prefix_help.len &amp;&amp; output[0:prefix_help.len] == prefix_help {
+        println(<span class="syn-str">"   [PASS] Output conforms to standard Prometheus exposition format!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Output format mismatch!"</span>)
+    }
+}
+
+<span class="syn-kw">fn</span> verify_prometheus_pool() {
+    println(<span class="syn-str">"\n--- 2. Testing Prometheus Pusher Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> prometheus.open_pool(<span class="syn-str">"http://127.0.0.1:9091"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. High-level push delegation to Pushgateway</span>
+    <span class="syn-kw">mut</span> test_reg <span class="syn-flow">:=</span> prometheus.new_registry()
+    <span class="syn-kw">mut</span> counter <span class="syn-flow">:=</span> prometheus.new_counter(<span class="syn-str">"xu_push_counter_total"</span>, <span class="syn-str">"Test counter pushed to Pushgateway"</span>)
+    counter.inc_by(42)
+    test_reg.register_counter(counter)
+
+    push_ok <span class="syn-flow">:=</span> p.push_metrics(<span class="syn-str">"xu_driver_test"</span>, test_reg.gather())
+    <span class="syn-kw">if</span> push_ok {
+        println(<span class="syn-str">"   [PASS] Successfully pushed metrics to Pushgateway job 'xu_driver_test'!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to push metrics to Pushgateway!"</span>)
+    }
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Prometheus Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu Prometheus Metrics Native Driver Verification ===\n"</span>)
+    verify_prometheus_metrics()
+    verify_prometheus_pool()
+    println(<span class="syn-str">"\n[PROMETHEUS VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="open_pusher">
 <h2><code>open_pusher</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open_pusher(endpoint <span class="syn-type">string</span>, job <span class="syn-type">string</span>) Pusher</code></pre></div>
@@ -33,6 +137,7 @@
 <dt><code>name</code> <span class="type">string</span></dt><dd>名字</dd>
 <dt><code>value</code> <span class="type">string</span></dt><dd>字段（string）</dd>
 </dl>
+<p><a href="#example-9cef47133024">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-MetricSample">
 <h2><code>struct MetricSample</code></h2>
@@ -92,6 +197,7 @@
 </dl>
 <h3>返回</h3>
 <p>Counter — 该类型的值</p>
+<p><a href="#example-9cef47133024">查看用法示例</a></p>
 </article>
 <article class="api-item" id="new_gauge">
 <h2><code>new_gauge</code></h2>
@@ -105,10 +211,11 @@
 </dl>
 <h3>返回</h3>
 <p>Gauge — 该类型的值</p>
+<p><a href="#example-9cef47133024">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-mut-Counter-inc">
 <h2><code>(&amp;mut Counter) inc</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Counter) inc()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Counter) inc()</code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Counter` 上调用 `inc`。</p>
 <h3>参数</h3>
@@ -118,7 +225,7 @@
 </article>
 <article class="api-item" id="-mut-Counter-inc_by">
 <h2><code>(&amp;mut Counter) inc_by</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Counter) inc_by(delta <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Counter) inc_by(delta <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Counter` 上的方法：inc按。</p>
 <h3>参数</h3>
@@ -129,7 +236,7 @@
 </article>
 <article class="api-item" id="-mut-Counter-inc_labels">
 <h2><code>(&amp;mut Counter) inc_labels</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Counter) inc_labels(labels []Label, delta <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Counter) inc_labels(labels []Label, delta <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Counter` 上的方法：inclabels。</p>
 <h3>参数</h3>
@@ -141,7 +248,7 @@
 </article>
 <article class="api-item" id="-mut-Gauge-set">
 <h2><code>(&amp;mut Gauge) set</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (g &amp;<span class="syn-kw">mut</span> Gauge) set(val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (g <span class="syn-borrow">&amp;mut</span> Gauge) set(val <span class="syn-type">string</span>)</code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Gauge` 上调用 `set`。</p>
 <h3>参数</h3>
@@ -152,7 +259,7 @@
 </article>
 <article class="api-item" id="-mut-Gauge-set_labels">
 <h2><code>(&amp;mut Gauge) set_labels</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (g &amp;<span class="syn-kw">mut</span> Gauge) set_labels(labels []Label, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (g <span class="syn-borrow">&amp;mut</span> Gauge) set_labels(labels []Label, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Gauge` 上的方法：设置 labels。</p>
 <h3>参数</h3>
@@ -229,6 +336,7 @@
 </dl>
 <h3>返回</h3>
 <p>Pool — 该类型的值</p>
+<p><a href="#example-9cef47133024">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-Pool-dup">
 <h2><code>(&amp;Pool) dup</code></h2>
@@ -365,10 +473,11 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>Registry — 该类型的值</p>
+<p><a href="#example-9cef47133024">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-mut-Registry-register_counter">
 <h2><code>(&amp;mut Registry) register_counter</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Registry) register_counter(c Counter)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Registry) register_counter(c Counter)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Registry` 上的方法：registercounter。</p>
 <h3>参数</h3>
@@ -379,7 +488,7 @@
 </article>
 <article class="api-item" id="-mut-Registry-register_gauge">
 <h2><code>(&amp;mut Registry) register_gauge</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Registry) register_gauge(g Gauge)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Registry) register_gauge(g Gauge)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Registry` 上的方法：registergauge。</p>
 <h3>参数</h3>

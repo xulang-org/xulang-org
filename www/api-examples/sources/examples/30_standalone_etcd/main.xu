@@ -1,0 +1,144 @@
+@main
+
+etcd #github.com/xulang-org/packages/etcd
+#errors
+
+fn verify_etcd_kv() {
+    println("--- 1. Testing etcd v3 KV Operations ---")
+    mut client := etcd.open("http://127.0.0.1:2379")
+
+    key := "/services/payment/config"
+    val := "version=2.0;timeout=5s"
+
+    // 1. Put KV
+    println("   Writing key: " + key)
+    client.put(key + "", val + "") or (err) {
+        println("   [FAIL] etcd put error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Key written.")
+
+    // 2. Get KV
+    println("   Reading key: " + key)
+    got := client.get(key + "") or (err) {
+        println("   [FAIL] etcd get error: " + err.msg())
+        <<
+    }
+    println("   Retrieved value: " + got)
+    if got == val {
+        println("   [PASS] Value matches exactly!")
+    } else {
+        println("   [FAIL] Value mismatch!")
+    }
+
+    // 3. Delete KV
+    println("   Deleting key: " + key)
+    client.delete(key + "") or (err) {
+        println("   [FAIL] etcd delete error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Key deleted.")
+}
+
+fn verify_etcd_lease() {
+    println("\n--- 2. Testing etcd v3 Lease Lifecycle ---")
+    mut client := etcd.open("http://127.0.0.1:2379")
+
+    // Grant lease: 60 seconds
+    println("   Granting 60s lease...")
+    lease_id := client.lease_grant(60) or (err) {
+        println("   [FAIL] lease_grant error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Granted Lease ID: " + str(lease_id))
+
+    // Put with lease
+    service_key := "/discovery/nodes/node-1"
+    service_addr := "192.168.1.100:8080"
+    println("   Registering node with lease: " + service_key)
+    client.put_with_lease(service_key + "", service_addr + "", lease_id) or (err) {
+        println("   [FAIL] put_with_lease error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Service registered with lease.")
+
+    // Verify retrieval
+    got := client.get(service_key + "") or (err) {
+        println("   [FAIL] get leased key error: " + err.msg())
+        <<
+    }
+    println("   Leased node address: " + got)
+
+    // Revoke lease
+    println("   Revoking lease...")
+    client.lease_revoke(lease_id) or (err) {
+        println("   [FAIL] lease_revoke error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Lease revoked successfully.")
+}
+
+fn verify_etcd_pool() {
+    println("\n--- 3. Testing etcd Connection Pool ---")
+    mut p := etcd.open_pool("http://127.0.0.1:2379", 5)
+
+    // 1. Connection Reuse Test
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Delegated Key-Value Operations via Pool
+    println("   Testing delegated operations via pool...")
+    pool_key := "/pool/service/worker-1"
+    pool_val := "status=online;threads=16"
+    p.put(pool_key + "", pool_val + "") or (err) {
+        println("   [FAIL] pool.put error: " + err.msg())
+        <<
+    }
+    got_val := p.get_key(pool_key + "") or (err) {
+        println("   [FAIL] pool.get_key error: " + err.msg())
+        <<
+    }
+    println("   Retrieved via pool: " + got_val)
+    if got_val == pool_val {
+        println("   [PASS] Pool delegated put & get matched exactly!")
+    } else {
+        println("   [FAIL] Pool delegated get mismatch!")
+    }
+
+    p.delete(pool_key + "") or (err) {
+        println("   [FAIL] pool.delete error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool delegated delete completed.")
+
+    p.close()
+    println("   [PASS] etcd Pool closed and verified.")
+}
+
+fn main() {
+    println("=== Xu etcd v3 Native Driver Verification ===\n")
+    verify_etcd_kv()
+    verify_etcd_lease()
+    verify_etcd_pool()
+    println("\n[ETCD VERIFICATION 100% COMPLETED]")
+}

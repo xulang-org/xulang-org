@@ -1,0 +1,96 @@
+@main
+
+cassandra #github.com/xulang-org/packages/cassandra
+#errors
+#strings
+
+fn verify_cassandra_pool() {
+    println("--- 1. Testing Cassandra / ScyllaDB Connection Pool ---")
+    mut p := cassandra.open_pool("127.0.0.1:9042", "", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println("   [PASS] Cassandra Pool closed cleanly.")
+}
+
+fn verify_cassandra_cql_crud() {
+    println("\n--- 2. Testing Cassandra / ScyllaDB CQL DDL & DML ---")
+    mut p := cassandra.open_pool("127.0.0.1:9042", "", 5)
+
+    // 1. Create Keyspace
+    cql_ks := "CREATE KEYSPACE IF NOT EXISTS xu_test WITH replication = {'class': 'NetworkTopologyStrategy', 'replication_factor': 1} AND tablets = {'enabled': false};"
+    r1 := p.execute(cql_ks) or (err) {
+        println("   [FAIL] Create keyspace failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Created keyspace xu_test (result: " + r1 + ")")
+
+    // 2. Create Table
+    cql_tbl := "CREATE TABLE IF NOT EXISTS xu_test.devices (id int PRIMARY KEY, model text, status text);"
+    r2 := p.execute(cql_tbl) or (err) {
+        println("   [FAIL] Create table failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Created table xu_test.devices (result: " + r2 + ")")
+
+    // 3. Insert Data
+    cql_ins := "INSERT INTO xu_test.devices (id, model, status) VALUES (101, 'Sensor-X', 'ONLINE');"
+    r3 := p.execute(cql_ins) or (err) {
+        println("   [FAIL] Insert data failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Inserted record id=101 (result: " + r3 + ")")
+
+    // 4. Select Data
+    cql_sel := "SELECT * FROM xu_test.devices WHERE id = 101;"
+    r4 := p.execute(cql_sel) or (err) {
+        println("   [FAIL] Select query failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Selected record id=101 (result: " + r4 + ")")
+
+    // 5. Cleanup
+    cql_drop := "DROP KEYSPACE IF EXISTS xu_test;"
+    r5 := p.execute(cql_drop) or (err) {
+        println("   [FAIL] Drop keyspace failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Cleaned up keyspace xu_test (result: " + r5 + ")")
+
+    p.close()
+}
+
+fn main() {
+    println("=== Xu Cassandra & ScyllaDB Native Driver Verification ===\n")
+    verify_cassandra_pool()
+    verify_cassandra_cql_crud()
+    println("\n[CASSANDRA VERIFICATION 100% COMPLETED]")
+}

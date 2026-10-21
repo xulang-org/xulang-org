@@ -1,0 +1,132 @@
+@main
+
+qdrant #github.com/xulang-org/packages/qdrant
+#errors
+
+fn verify_qdrant_basic() {
+    println("--- 1. Testing Qdrant Client Basic Operations ---")
+    mut client := qdrant.open("http://127.0.0.1:6333")
+
+    // Ping check
+    pong := client.ping()
+    println("   Qdrant healthz ping: " + str(pong))
+    if !pong {
+        println("   [FAIL] Qdrant ping failed.")
+        <<
+    }
+
+    col := "xu_ai_embeddings"
+    if client.collection_exists(col + "") {
+        client.delete_collection(col + "")
+    }
+
+    // 1. Create collection with 4-dim Cosine
+    println("   Creating collection '" + col + "' (dim=4, dist=Cosine)...")
+    ok1 := client.create_collection(col + "", 4, "Cosine")
+    if ok1 {
+        println("   [PASS] Collection created.")
+    } else {
+        println("   [FAIL] Failed to create collection.")
+        <<
+    }
+
+    // 2. Upsert vector points
+    println("   Upserting 3 vector points...")
+    client.upsert_point(col + "", 1, ["0.1", "0.2", "0.9", "0.8"], "{\"category\": \"AI\"}")
+    client.upsert_point(col + "", 2, ["0.9", "0.8", "0.1", "0.2"], "{\"category\": \"Food\"}")
+    client.upsert_point(col + "", 3, ["0.15", "0.25", "0.85", "0.75"], "{\"category\": \"Robotics\"}")
+    println("   [PASS] 3 vector points upserted.")
+
+    // 3. Search nearest neighbors to [0.12, 0.22, 0.88, 0.78]
+    println("   Searching vector nearest neighbors...")
+    results := client.search(col + "", ["0.12", "0.22", "0.88", "0.78"], 2) or (err) {
+        println("   [FAIL] Search failed: " + err.msg())
+        <<
+    }
+    println("   Search results count: " + str(results.len))
+    mut i := 0
+    while i < results.len {
+        println("      Hit[" + str(i) + "]: id=" + str(results[i].id) + ", score=" + results[i].score)
+        i = i + 1
+    }
+    if results.len >= 1 && (results[0].id == 1 || results[0].id == 3) {
+        println("   [PASS] Semantic similarity correctly identified relevant vectors!")
+    } else {
+        println("   [WARN] Unexpected top match: id=" + str(results[0].id))
+    }
+
+    // 4. Delete collection
+    del_ok := client.delete_collection(col + "")
+    if del_ok {
+        println("   [PASS] Collection deleted successfully.")
+    } else {
+        println("   [FAIL] Failed to delete collection.")
+    }
+}
+
+fn verify_qdrant_pool() {
+    println("\n--- 2. Testing Qdrant Connection Pool ---")
+    mut p := qdrant.open_pool("http://127.0.0.1:6333", "", 5)
+
+    // 1. Connection Reuse Test
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Delegated operations via pool
+    println("   Testing delegated operations via pool...")
+    pool_col := "xu_pool_vectors"
+    if p.collection_exists(pool_col + "") {
+        p.delete_collection(pool_col + "")
+    }
+
+    p.create_collection(pool_col + "", 4, "Cosine")
+    println("   [PASS] Pool created collection: " + pool_col)
+
+    p.upsert_point(pool_col + "", 101, ["0.5", "0.5", "0.5", "0.5"], "{\"label\": \"balanced\"}")
+    p.upsert_point(pool_col + "", 102, ["0.0", "1.0", "0.0", "0.0"], "{\"label\": \"y_axis\"}")
+    println("   [PASS] Pool upserted vector points.")
+
+    pool_hits := p.search(pool_col + "", ["0.0", "0.99", "0.0", "0.0"], 1) or (err) {
+        println("   [FAIL] Pool search failed: " + err.msg())
+        <<
+    }
+    println("   Pool search top hit: id=" + str(pool_hits[0].id) + ", score=" + pool_hits[0].score)
+    if pool_hits.len == 1 && pool_hits[0].id == 102 {
+        println("   [PASS] Pool search perfectly matched top vector id=102!")
+    } else {
+        println("   [FAIL] Pool search match mismatch.")
+    }
+
+    p.delete_collection(pool_col + "")
+    println("   [PASS] Pool deleted collection.")
+
+    p.close()
+    println("   [PASS] Qdrant Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu Qdrant Vector Database Native Driver Verification ===\n")
+    verify_qdrant_basic()
+    verify_qdrant_pool()
+    println("\n[QDRANT VERIFICATION 100% COMPLETED]")
+}

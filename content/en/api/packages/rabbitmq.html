@@ -7,6 +7,143 @@
 <p class="meta">counts: 18 fns, 20 methods, 4 types, 10 consts, 0 ifaces</p>
 <p class="lead">Public API convenience helpers for RabbitMQ driver</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-c957cf25c2f1" open>
+<summary><code>37_standalone_rabbitmq/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/37_standalone_rabbitmq">Complete project</a> · <a href="/api-examples/sources/examples/37_standalone_rabbitmq/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="37_standalone_rabbitmq/main.xu"><code class="language-xu">@main
+
+rabbitmq <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/rabbitmq
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_rabbitmq_basic() {
+    println(<span class="syn-str">"--- 1. Testing RabbitMQ Client AMQP 0-9-1 Basic Operations ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> rabbitmq.open(<span class="syn-str">"127.0.0.1"</span>, 5672, <span class="syn-str">"guest"</span>, <span class="syn-str">"guest"</span>, <span class="syn-str">"/"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] RabbitMQ connect failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] RabbitMQ AMQP Handshake &amp; Channel Open succeeded."</span>)
+
+    <span class="syn-cmt">// 1. Declare Queue</span>
+    queue_name <span class="syn-flow">:=</span> <span class="syn-str">"xu_test_queue"</span>
+    client.declare_queue(queue_name + <span class="syn-str">""</span>, true) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] declare_queue failed: "</span> + err.msg())
+        client.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Queue '"</span> + queue_name + <span class="syn-str">"' declared."</span>)
+
+    <span class="syn-cmt">// 2. Publish Message</span>
+    msg <span class="syn-flow">:=</span> <span class="syn-str">"Antigravity RabbitMQ AMQP test message from Xu Language!"</span>
+    println(<span class="syn-str">"   Publishing message to queue '"</span> + queue_name + <span class="syn-str">"'..."</span>)
+    client.publish(<span class="syn-str">""</span>, queue_name + <span class="syn-str">""</span>, msg + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] publish failed: "</span> + err.msg())
+        client.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Message published."</span>)
+
+    <span class="syn-cmt">// 3. Get / Consume Message</span>
+    println(<span class="syn-str">"   Consuming message via Basic.Get..."</span>)
+    got <span class="syn-flow">:=</span> client.get(queue_name + <span class="syn-str">""</span>, true) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] get failed: "</span> + err.msg())
+        client.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved message: "</span> + got)
+    <span class="syn-kw">if</span> got == msg {
+        println(<span class="syn-str">"   [PASS] Retrieved message matches published content exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Message mismatch: "</span> + got)
+    }
+
+    client.close()
+    println(<span class="syn-str">"   [PASS] Client closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_rabbitmq_pool() {
+    println(<span class="syn-str">"\n--- 2. Testing RabbitMQ Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> rabbitmq.open_pool(<span class="syn-str">"127.0.0.1"</span>, 5672, <span class="syn-str">"guest"</span>, <span class="syn-str">"guest"</span>, <span class="syn-str">"/"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    <span class="syn-kw">mut</span> c1 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c1: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd1 <span class="syn-flow">:=</span> c1.fd
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put(c1)
+
+    <span class="syn-kw">mut</span> c2 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c2: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd2 <span class="syn-flow">:=</span> c2.fd
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    <span class="syn-kw">mut</span> c3 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c3: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd3 <span class="syn-flow">:=</span> c3.fd
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put(c2)
+    p.put(c3)
+
+    <span class="syn-cmt">// 3. Delegated operations via pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    pool_queue <span class="syn-flow">:=</span> <span class="syn-str">"xu_pool_queue"</span>
+    p.declare_queue(pool_queue + <span class="syn-str">""</span>, true) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool declare_queue failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool declared queue: "</span> + pool_queue)
+
+    pool_msg <span class="syn-flow">:=</span> <span class="syn-str">"Pooled rabbitmq message payload from Xu"</span>
+    p.publish(<span class="syn-str">""</span>, pool_queue + <span class="syn-str">""</span>, pool_msg + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool publish failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool published message."</span>)
+
+    got_pool <span class="syn-flow">:=</span> p.get_message(pool_queue + <span class="syn-str">""</span>, true) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool get_message failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved via pool: "</span> + got_pool)
+    <span class="syn-kw">if</span> got_pool == pool_msg {
+        println(<span class="syn-str">"   [PASS] Pool message matches published content exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Pool message mismatch!"</span>)
+    }
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] RabbitMQ Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu RabbitMQ AMQP 0-9-1 Native Driver Verification ===\n"</span>)
+    verify_rabbitmq_basic()
+    verify_rabbitmq_pool()
+    println(<span class="syn-str">"\n[RABBITMQ VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(host <span class="syn-type">string</span>, port <span class="syn-type">int</span>, user <span class="syn-type">string</span>, password <span class="syn-type">string</span>, vhost <span class="syn-type">string</span>) Client</code></pre></div>
@@ -22,6 +159,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-c957cf25c2f1">See usage example</a></p>
 </article>
 <article class="api-item" id="open_default">
 <h2><code>open_default</code></h2>
@@ -77,7 +215,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_exact">
 <h2><code>(&amp;mut Client) write_exact</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_exact(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_exact(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: write exact. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -90,7 +228,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_exact">
 <h2><code>(&amp;mut Client) read_exact</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_exact(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_exact(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read exact. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -103,7 +241,7 @@
 </article>
 <article class="api-item" id="-mut-Client-send_frame">
 <h2><code>(&amp;mut Client) send_frame</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) send_frame(frame_type <span class="syn-type">int</span>, channel <span class="syn-type">int</span>, payload <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) send_frame(frame_type <span class="syn-type">int</span>, channel <span class="syn-type">int</span>, payload <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: send frame.</p>
 <h3>Parameters</h3>
@@ -118,7 +256,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_frame">
 <h2><code>(&amp;mut Client) read_frame</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_frame() Frame</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_frame() Frame</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read frame. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -146,7 +284,7 @@
 </article>
 <article class="api-item" id="-mut-Client-declare_queue">
 <h2><code>(&amp;mut Client) declare_queue</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) declare_queue(queue_name <span class="syn-type">string</span>, durable <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) declare_queue(queue_name <span class="syn-type">string</span>, durable <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: declare queue. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -160,7 +298,7 @@
 </article>
 <article class="api-item" id="-mut-Client-declare_exchange">
 <h2><code>(&amp;mut Client) declare_exchange</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) declare_exchange(exchange_name <span class="syn-type">string</span>, exchange_type <span class="syn-type">string</span>, durable <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) declare_exchange(exchange_name <span class="syn-type">string</span>, exchange_type <span class="syn-type">string</span>, durable <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: declare exchange. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -175,7 +313,7 @@
 </article>
 <article class="api-item" id="-mut-Client-bind_queue">
 <h2><code>(&amp;mut Client) bind_queue</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) bind_queue(queue_name <span class="syn-type">string</span>, exchange_name <span class="syn-type">string</span>, routing_key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) bind_queue(queue_name <span class="syn-type">string</span>, exchange_name <span class="syn-type">string</span>, routing_key <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: bind queue. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -190,7 +328,7 @@
 </article>
 <article class="api-item" id="-mut-Client-publish">
 <h2><code>(&amp;mut Client) publish</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) publish(exchange_name <span class="syn-type">string</span>, routing_key <span class="syn-type">string</span>, message_body <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) publish(exchange_name <span class="syn-type">string</span>, routing_key <span class="syn-type">string</span>, message_body <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `publish` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -205,7 +343,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get">
 <h2><code>(&amp;mut Client) get</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get(queue_name <span class="syn-type">string</span>, auto_ack <span class="syn-type">bool</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get(queue_name <span class="syn-type">string</span>, auto_ack <span class="syn-type">bool</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `get` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -219,7 +357,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ping` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>
@@ -231,7 +369,7 @@
 </article>
 <article class="api-item" id="-mut-Client-close">
 <h2><code>(&amp;mut Client) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) close()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) close()</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: close the resource.</p>
 <h3>Parameters</h3>
@@ -296,6 +434,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-c957cf25c2f1">See usage example</a></p>
 </article>
 <article class="api-item" id="-Pool-get">
 <h2><code>(&amp;Pool) get</code></h2>

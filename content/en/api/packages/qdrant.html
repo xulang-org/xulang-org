@@ -7,6 +7,148 @@
 <p class="meta">counts: 5 fns, 19 methods, 5 types, 0 consts, 0 ifaces</p>
 <p class="lead">Public API convenience helpers for Qdrant Vector Database</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-661d36e50994" open>
+<summary><code>38_standalone_qdrant/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/38_standalone_qdrant">Complete project</a> · <a href="/api-examples/sources/examples/38_standalone_qdrant/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="38_standalone_qdrant/main.xu"><code class="language-xu">@main
+
+qdrant <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/qdrant
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_qdrant_basic() {
+    println(<span class="syn-str">"--- 1. Testing Qdrant Client Basic Operations ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> qdrant.open(<span class="syn-str">"http://127.0.0.1:6333"</span>)
+
+    <span class="syn-cmt">// Ping check</span>
+    pong <span class="syn-flow">:=</span> client.ping()
+    println(<span class="syn-str">"   Qdrant healthz ping: "</span> + str(pong))
+    <span class="syn-kw">if</span> !pong {
+        println(<span class="syn-str">"   [FAIL] Qdrant ping failed."</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+
+    col <span class="syn-flow">:=</span> <span class="syn-str">"xu_ai_embeddings"</span>
+    <span class="syn-kw">if</span> client.collection_exists(col + <span class="syn-str">""</span>) {
+        client.delete_collection(col + <span class="syn-str">""</span>)
+    }
+
+    <span class="syn-cmt">// 1. Create collection with 4-dim Cosine</span>
+    println(<span class="syn-str">"   Creating collection '"</span> + col + <span class="syn-str">"' (dim=4, dist=Cosine)..."</span>)
+    ok1 <span class="syn-flow">:=</span> client.create_collection(col + <span class="syn-str">""</span>, 4, <span class="syn-str">"Cosine"</span>)
+    <span class="syn-kw">if</span> ok1 {
+        println(<span class="syn-str">"   [PASS] Collection created."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to create collection."</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+
+    <span class="syn-cmt">// 2. Upsert vector points</span>
+    println(<span class="syn-str">"   Upserting 3 vector points..."</span>)
+    client.upsert_point(col + <span class="syn-str">""</span>, 1, [<span class="syn-str">"0.1"</span>, <span class="syn-str">"0.2"</span>, <span class="syn-str">"0.9"</span>, <span class="syn-str">"0.8"</span>], <span class="syn-str">"{\"category\": \"AI\"}"</span>)
+    client.upsert_point(col + <span class="syn-str">""</span>, 2, [<span class="syn-str">"0.9"</span>, <span class="syn-str">"0.8"</span>, <span class="syn-str">"0.1"</span>, <span class="syn-str">"0.2"</span>], <span class="syn-str">"{\"category\": \"Food\"}"</span>)
+    client.upsert_point(col + <span class="syn-str">""</span>, 3, [<span class="syn-str">"0.15"</span>, <span class="syn-str">"0.25"</span>, <span class="syn-str">"0.85"</span>, <span class="syn-str">"0.75"</span>], <span class="syn-str">"{\"category\": \"Robotics\"}"</span>)
+    println(<span class="syn-str">"   [PASS] 3 vector points upserted."</span>)
+
+    <span class="syn-cmt">// 3. Search nearest neighbors to [0.12, 0.22, 0.88, 0.78]</span>
+    println(<span class="syn-str">"   Searching vector nearest neighbors..."</span>)
+    results <span class="syn-flow">:=</span> client.search(col + <span class="syn-str">""</span>, [<span class="syn-str">"0.12"</span>, <span class="syn-str">"0.22"</span>, <span class="syn-str">"0.88"</span>, <span class="syn-str">"0.78"</span>], 2) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Search failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Search results count: "</span> + str(results.len))
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> i &lt; results.len {
+        println(<span class="syn-str">"      Hit["</span> + str(i) + <span class="syn-str">"]: id="</span> + str(results[i].id) + <span class="syn-str">", score="</span> + results[i].score)
+        i = i + 1
+    }
+    <span class="syn-kw">if</span> results.len &gt;= 1 &amp;&amp; (results[0].id == 1 || results[0].id == 3) {
+        println(<span class="syn-str">"   [PASS] Semantic similarity correctly identified relevant vectors!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Unexpected top match: id="</span> + str(results[0].id))
+    }
+
+    <span class="syn-cmt">// 4. Delete collection</span>
+    del_ok <span class="syn-flow">:=</span> client.delete_collection(col + <span class="syn-str">""</span>)
+    <span class="syn-kw">if</span> del_ok {
+        println(<span class="syn-str">"   [PASS] Collection deleted successfully."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to delete collection."</span>)
+    }
+}
+
+<span class="syn-kw">fn</span> verify_qdrant_pool() {
+    println(<span class="syn-str">"\n--- 2. Testing Qdrant Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> qdrant.open_pool(<span class="syn-str">"http://127.0.0.1:6333"</span>, <span class="syn-str">""</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Delegated operations via pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    pool_col <span class="syn-flow">:=</span> <span class="syn-str">"xu_pool_vectors"</span>
+    <span class="syn-kw">if</span> p.collection_exists(pool_col + <span class="syn-str">""</span>) {
+        p.delete_collection(pool_col + <span class="syn-str">""</span>)
+    }
+
+    p.create_collection(pool_col + <span class="syn-str">""</span>, 4, <span class="syn-str">"Cosine"</span>)
+    println(<span class="syn-str">"   [PASS] Pool created collection: "</span> + pool_col)
+
+    p.upsert_point(pool_col + <span class="syn-str">""</span>, 101, [<span class="syn-str">"0.5"</span>, <span class="syn-str">"0.5"</span>, <span class="syn-str">"0.5"</span>, <span class="syn-str">"0.5"</span>], <span class="syn-str">"{\"label\": \"balanced\"}"</span>)
+    p.upsert_point(pool_col + <span class="syn-str">""</span>, 102, [<span class="syn-str">"0.0"</span>, <span class="syn-str">"1.0"</span>, <span class="syn-str">"0.0"</span>, <span class="syn-str">"0.0"</span>], <span class="syn-str">"{\"label\": \"y_axis\"}"</span>)
+    println(<span class="syn-str">"   [PASS] Pool upserted vector points."</span>)
+
+    pool_hits <span class="syn-flow">:=</span> p.search(pool_col + <span class="syn-str">""</span>, [<span class="syn-str">"0.0"</span>, <span class="syn-str">"0.99"</span>, <span class="syn-str">"0.0"</span>, <span class="syn-str">"0.0"</span>], 1) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool search failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Pool search top hit: id="</span> + str(pool_hits[0].id) + <span class="syn-str">", score="</span> + pool_hits[0].score)
+    <span class="syn-kw">if</span> pool_hits.len == 1 &amp;&amp; pool_hits[0].id == 102 {
+        println(<span class="syn-str">"   [PASS] Pool search perfectly matched top vector id=102!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Pool search match mismatch."</span>)
+    }
+
+    p.delete_collection(pool_col + <span class="syn-str">""</span>)
+    println(<span class="syn-str">"   [PASS] Pool deleted collection."</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Qdrant Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu Qdrant Vector Database Native Driver Verification ===\n"</span>)
+    verify_qdrant_basic()
+    verify_qdrant_pool()
+    println(<span class="syn-str">"\n[QDRANT VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(endpoint <span class="syn-type">string</span>) Client</code></pre></div>
@@ -18,6 +160,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-661d36e50994">See usage example</a></p>
 </article>
 <article class="api-item" id="open_auth">
 <h2><code>open_auth</code></h2>
@@ -77,7 +220,7 @@
 </article>
 <article class="api-item" id="-mut-Client-request">
 <h2><code>(&amp;mut Client) request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `request` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -92,7 +235,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ping` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>
@@ -104,7 +247,7 @@
 </article>
 <article class="api-item" id="-mut-Client-create_collection">
 <h2><code>(&amp;mut Client) create_collection</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) create_collection(name <span class="syn-type">string</span>, vector_size <span class="syn-type">int</span>, distance <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) create_collection(name <span class="syn-type">string</span>, vector_size <span class="syn-type">int</span>, distance <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: create collection.</p>
 <h3>Parameters</h3>
@@ -119,7 +262,7 @@
 </article>
 <article class="api-item" id="-mut-Client-collection_exists">
 <h2><code>(&amp;mut Client) collection_exists</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) collection_exists(name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) collection_exists(name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: collection exists.</p>
 <h3>Parameters</h3>
@@ -132,7 +275,7 @@
 </article>
 <article class="api-item" id="-mut-Client-delete_collection">
 <h2><code>(&amp;mut Client) delete_collection</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) delete_collection(name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) delete_collection(name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: delete collection.</p>
 <h3>Parameters</h3>
@@ -177,7 +320,7 @@
 </article>
 <article class="api-item" id="-mut-Client-upsert_point">
 <h2><code>(&amp;mut Client) upsert_point</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) upsert_point(collection <span class="syn-type">string</span>, id <span class="syn-type">int</span>, vector []<span class="syn-type">string</span>, payload_json <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) upsert_point(collection <span class="syn-type">string</span>, id <span class="syn-type">int</span>, vector []<span class="syn-type">string</span>, payload_json <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: upsert point.</p>
 <h3>Parameters</h3>
@@ -193,7 +336,7 @@
 </article>
 <article class="api-item" id="-mut-Client-search">
 <h2><code>(&amp;mut Client) search</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) search(collection <span class="syn-type">string</span>, vector []<span class="syn-type">string</span>, limit <span class="syn-type">int</span>) []ScoredPoint</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) search(collection <span class="syn-type">string</span>, vector []<span class="syn-type">string</span>, limit <span class="syn-type">int</span>) []ScoredPoint</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: binary search. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -253,6 +396,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-661d36e50994">See usage example</a></p>
 </article>
 <article class="api-item" id="-Pool-get">
 <h2><code>(&amp;Pool) get</code></h2>

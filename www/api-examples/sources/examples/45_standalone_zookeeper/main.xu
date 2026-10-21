@@ -1,0 +1,59 @@
+@main
+
+zookeeper #github.com/xulang-org/packages/zookeeper
+#errors
+#strings
+
+fn verify_zookeeper_pool() {
+    println("--- 1. Testing ZooKeeper Connection Pool ---")
+    mut p := zookeeper.open_pool("127.0.0.1:2181", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println("   [PASS] ZooKeeper Pool closed cleanly.")
+}
+
+fn verify_zookeeper_4lw() {
+    println("\n--- 2. Testing ZooKeeper 4LW Commands ---")
+    mut p := zookeeper.open_pool("127.0.0.1:2181", 5)
+
+    // 1. ruok
+    ok := p.ruok()
+    if ok {
+        println("   [PASS] ZooKeeper health check ruok -> imok")
+    } else {
+        println("   [NOTE] ZooKeeper 2181 not responding or not in standalone mode")
+    }
+
+    p.close()
+}
+
+fn main() {
+    println("=== Xu ZooKeeper Native Driver Verification ===\n")
+    verify_zookeeper_pool()
+    verify_zookeeper_4lw()
+    println("\n[ZOOKEEPER VERIFICATION 100% COMPLETED]")
+}

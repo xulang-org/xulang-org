@@ -1,0 +1,151 @@
+@main
+
+influxdb #github.com/xulang-org/packages/influxdb
+#errors
+
+fn verify_influxdb_health() {
+    println("--- 1. Testing InfluxDB Health & Ping ---")
+    mut client := influxdb.open(
+        "http://127.0.0.1:8086",
+        "my-super-secret-token",
+        "xu-org",
+        "xu-bucket"
+    )
+
+    is_ping := client.ping() or (err) {
+        println("   [FAIL] Ping failed: " + err.msg())
+        <<
+    }
+    if is_ping {
+        println("   [PASS] Ping succeeded.")
+    }
+
+    is_health := client.health() or (err) {
+        println("   [FAIL] Health check failed: " + err.msg())
+        <<
+    }
+    if is_health {
+        println("   [PASS] Health check passed.")
+    }
+}
+
+fn verify_influxdb_write_query() {
+    println("\n--- 2. Testing InfluxDB Line Protocol & Flux Query ---")
+    mut client := influxdb.open(
+        "http://127.0.0.1:8086",
+        "my-super-secret-token",
+        "xu-org",
+        "xu-bucket"
+    )
+
+    // 1. Write single point using Point builder
+    println("   Constructing point 'cpu_load' with tags & fields...")
+    mut pt := influxdb.new_point("cpu_load")
+    pt.add_tag("host", "worker-01")
+    pt.add_tag("env", "prod")
+    pt.add_field_float("usage", "45.8")
+    pt.add_field_int("cores", 16)
+    pt.add_field_bool("alert", false)
+
+    client.write_point(pt) or (err) {
+        println("   [FAIL] write_point failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] Point written successfully.")
+
+    // 2. Write raw batch lines
+    println("   Writing batch metrics via raw line protocol...")
+    mut raw_lines := "mem_metrics,host=worker-01 total=32768i,used=16384i\n"
+    raw_lines = raw_lines + "mem_metrics,host=worker-02 total=65536i,used=20480i\n"
+    client.write_raw(raw_lines) or (err) {
+        println("   [FAIL] write_raw failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] Batch lines written successfully.")
+
+    // 3. Query using Flux
+    println("   Executing Flux query...")
+    flux := "from(bucket: \"xu-bucket\") |> range(start: -1h) |> filter(fn: (r) => r._measurement == \"cpu_load\") |> limit(n: 5)"
+    csv := client.query_flux(flux) or (err) {
+        println("   [FAIL] Flux query failed: " + err.msg())
+        <<
+    }
+    println("   Flux result preview:")
+    println(csv)
+    println("   [PASS] Flux query executed successfully.")
+}
+
+fn verify_influxdb_pool() {
+    println("\n--- 3. Testing InfluxDB Connection Pool ---")
+    mut p := influxdb.open_pool(
+        "http://127.0.0.1:8086",
+        "my-super-secret-token",
+        "xu-org",
+        "xu-bucket",
+        5
+    )
+
+    // 1. Connection Reuse Test
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Delegated operations via pool
+    println("   Testing delegated operations via pool...")
+    mut pt := influxdb.new_point("pool_sensor")
+    pt.add_tag("room", "lab-01")
+    pt.add_field_float("humidity", "55.2")
+    p.write_point(pt) or (err) {
+        println("   [FAIL] Pool write_point error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool write_point succeeded.")
+
+    p.write_raw("pool_sensor,room=lab-02 humidity=60.1\n") or (err) {
+        println("   [FAIL] Pool write_raw error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool write_raw succeeded.")
+
+    flux := "from(bucket: \"xu-bucket\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"pool_sensor\") |> limit(n: 5)"
+    csv := p.query_flux(flux) or (err) {
+        println("   [FAIL] Pool query_flux error: " + err.msg())
+        <<
+    }
+    println("   Retrieved flux data preview length: " + str(csv.len) + " bytes")
+    if csv.len > 0 {
+        println("   [PASS] Pool delegated query_flux succeeded.")
+    } else {
+        println("   [FAIL] Pool query returned empty.")
+    }
+
+    p.close()
+    println("   [PASS] InfluxDB Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu InfluxDB v2 Time-Series Database Driver Verification ===\n")
+    verify_influxdb_health()
+    verify_influxdb_write_query()
+    verify_influxdb_pool()
+    println("\n[INFLUXDB VERIFICATION 100% COMPLETED]")
+}

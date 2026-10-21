@@ -14,7 +14,7 @@ It combines:
 - Deterministic memory safety with zero garbage collection (zero GC / RAII)
 - High-throughput language-level concurrency with coroutines (`xu f()`) and typed channels (`chan T`)
 - Clean, ergonomic, semicolon-free syntax ("Thin Syntax")
-- Unified single-binary toolchain (`xu build`, `xu run`, `xu test`, `xu bench`, `xu fmt`)
+- Unified `xu` toolchain for builds, tests (`xu test -bench` for benchmarks), dependencies (`xu get` / `xu install`), editor services (`xu lsp`), native C modules (`xu native`), and formatting (`xu fmt`)
 - Rich standard library covering async networking, TLS/GMTLS (SM2, SM3, SM4), SQL, and native WebView desktop UI.
 
 ### Architectural Comparison
@@ -157,11 +157,16 @@ Xu adopts Communicating Sequential Processes (CSP):
 ## 5. Toolchain & Project Configuration
 
 The compiler is invoked via the `xu` CLI:
+- `xu init`: Create a project with a `xu.xun` manifest.
+- `xu get <module>@<version>`: Add/update a pinned dependency, install sources, and update `xu.lock`.
+- `xu install`: Install dependencies already declared in `xu.xun`.
 - `xu build [flags]`: Compile project into native machine binary.
 - `xu run <entry.xu>`: Instantly compile and run.
-- `xu test [flags]`: Run unit tests (`@test` annotations).
-- `xu bench [flags]`: Run performance benchmarks.
+- `xu test [flags]`: Run `fn test_*` test functions.
+- `xu test -bench`: Run `fn bench_*` benchmark functions.
 - `xu fmt`: Auto-format all `.xu` source files according to official style rules.
+- `xu lsp`: Launch the SDK's language server over stdin/stdout using JSON-RPC 2.0.
+- `xu native`: Compile/archive C modules, pack `.xulib` target slices, and inspect/extract slices.
 
 Project Manifest: `xu.xun`
 ```xun
@@ -172,11 +177,12 @@ xu: !ver 0.9.4
 require:
   "github.com/xulang-org/packages": v0.1.1
 ```
-Installation and lockfile:
+Add a pinned dependency to an existing project, or install already-declared dependencies:
 ```bash
+xu get github.com/xulang-org/packages@v0.1.1
 xu install
 ```
-Dependencies are downloaded to `vendor/` and locked with cryptographic hashes in `xu.lock`. Build with `--offline` or `--frozen` for air-gapped reproducibility.
+`xu get` also updates `require:` in `xu.xun` and requires an explicit exact version (`@latest` is not accepted). Dependencies are downloaded to `vendor/` and locked with cryptographic hashes in `xu.lock`. Both installation commands support `--offline`; use `xu build . --frozen` to build strictly against the existing lockfile.
 
 ---
 
@@ -194,10 +200,10 @@ Dependencies are downloaded to `vendor/` and locked with cryptographic hashes in
 
 ## 7. Performance Benchmarks Summary
 
-Stable Xu 0.9.3 was measured on 2026-10-20 across 47 workloads on six Linux, macOS and Windows platforms covering ARM64 and x86-64:
+Stable Xu 0.9.4 was measured on 2026-10-20 across 47 workloads on six Linux, macOS and Windows platforms covering ARM64 and x86-64:
 - **Runtime**: Seven whole-program samples with verified stdout; the dashboard reports the median. C and Rust use the lowest measured O1–O3 median for each workload on the same platform.
 - **Resources**: CPU time, peak RSS and binary size are reported per platform. Missing reference implementations remain unranked; performance varies by workload and platform.
-- **Compilation**: Compilation timings and compiler identities are available in the [source CI reports](https://github.com/xulang-org/bench/actions/runs/39362068857).
+- **Compilation**: Compilation timings and compiler identities are available in the [source CI reports](https://github.com/xulang-org/bench/actions/runs/39537154539).
 
 For detailed numbers, charts, and reproduction suites, visit: https://xulang.org/benchmarks/
 
@@ -220,6 +226,12 @@ The compiler (`src/cmd/compile/`) implements an entirely self-hosted, lightweigh
 - **Vs. Rust**: Zero runtime overhead and memory safety **without manual lifetime annotations (`<'a>`)**, with first-class language coroutines and channels without external async frameworks.
 - **Vs. Go**: Zero-GC native machine code without runtime STW latency, baseline memory footprint bloat, or background GC threads.
 
-### How are packages installed?
-The official `packages` monorepo supplies 29 production drivers. Specify `require: "github.com/xulang-org/packages": v0.1.1` in `xu.xun` and execute `xu install`. Dependencies are fetched into `vendor/` and secured with `xu.lock`.
+### Which editors support Xu, and how do I enable LSP?
+The official [vscode-xu extension](https://xulang.org/docs/vscode/) supports VS Code and Cursor. It runs `xu lsp` to launch the SDK's `xu-lsp` server for diagnostics, completion, go-to-definition, hover documentation, symbols, references, rename, and formatting. Other LSP-compatible editors can configure the same command over stdin/stdout using JSON-RPC 2.0. The editor normally starts the server automatically; run `xu lsp --help` for help.
+
+### What is the difference between xu get and xu install?
+In a project containing `xu.xun`, run `xu get github.com/xulang-org/packages@v0.1.1` to add or update a pinned dependency. It edits `require:`, installs sources into `vendor/`, and updates `xu.lock`. An explicit exact version is required; `@latest` is not accepted. `xu install` installs dependencies already declared in the manifest. Both commands support `--offline`; use `xu build . --frozen` for strict lockfile builds. The official `packages` repository provides 29 extension packages. See [Modules & Dependencies](https://xulang.org/docs/modules/).
+
+### How do I use xu native to integrate C code?
+`xu native compile` compiles C sources with interface metadata into `.a`; `xu native archive` wraps existing object files with metadata; `xu native pack` bundles target slices into `.xulib`; `xu native inspect` and `xu native extract` inspect and extract slices. Use `.a` for a single target and `.xulib` to distribute interface contracts with multiple target slices. Pass the library to the build, for example `xu build main.xu native/mylib.xulib -o app`. Compiling C sources requires the corresponding C toolchain. See [Native Modules & .xulib](https://xulang.org/docs/native/) for full examples, or run `xu native compile --help`.
 

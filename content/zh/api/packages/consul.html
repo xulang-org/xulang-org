@@ -7,6 +7,139 @@
 <p class="meta">counts: 5 函数, 22 方法, 3 类型, 0 常量, 0 方法集</p>
 <p class="lead">扩展包 `consul #github.com/xulang-org/packages/consul`，由模块 github.com/xulang-org/packages 提供。</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/zh/docs/packages">安装与使用</a></p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-27afd41b1a88" open>
+<summary><code>39_standalone_consul/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/39_standalone_consul">完整工程</a> · <a href="/api-examples/sources/examples/39_standalone_consul/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="39_standalone_consul/main.xu"><code class="language-xu">@main
+
+consul <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/consul
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_consul_basic() {
+    println(<span class="syn-str">"--- 1. Testing Consul Client Basic Operations ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> consul.open(<span class="syn-str">"http://127.0.0.1:8500"</span>)
+
+    <span class="syn-cmt">// 1. Ping</span>
+    pong <span class="syn-flow">:=</span> client.ping()
+    println(<span class="syn-str">"   Consul leader ping: "</span> + str(pong))
+    <span class="syn-kw">if</span> !pong {
+        println(<span class="syn-str">"   [FAIL] Consul ping failed."</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    leader_addr <span class="syn-flow">:=</span> client.leader() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] get leader failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Current Raft Leader: "</span> + leader_addr)
+
+    <span class="syn-cmt">// 2. KV Operations</span>
+    k <span class="syn-flow">:=</span> <span class="syn-str">"services/payment/rate_limit"</span>
+    v <span class="syn-flow">:=</span> <span class="syn-str">"1000req/s"</span>
+    println(<span class="syn-str">"   Writing KV: "</span> + k + <span class="syn-str">" = "</span> + v)
+    client.put_kv(k + <span class="syn-str">""</span>, v + <span class="syn-str">""</span>)
+    got_v <span class="syn-flow">:=</span> client.get_kv(k + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] get_kv failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved KV: "</span> + got_v)
+    <span class="syn-kw">if</span> got_v == v {
+        println(<span class="syn-str">"   [PASS] KV value matched exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] KV mismatch!"</span>)
+    }
+
+    <span class="syn-cmt">// 3. Service Registration</span>
+    srv_id <span class="syn-flow">:=</span> <span class="syn-str">"payment-worker-1"</span>
+    srv_name <span class="syn-flow">:=</span> <span class="syn-str">"payment-service"</span>
+    println(<span class="syn-str">"   Registering microservice: "</span> + srv_id)
+    ok_reg <span class="syn-flow">:=</span> client.register_service(srv_id + <span class="syn-str">""</span>, srv_name + <span class="syn-str">""</span>, <span class="syn-str">"10.0.0.1"</span>, 8080)
+    <span class="syn-kw">if</span> ok_reg {
+        println(<span class="syn-str">"   [PASS] Microservice registered."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to register service."</span>)
+    }
+
+    srv_info <span class="syn-flow">:=</span> client.get_service(srv_name + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] get_service failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Catalog service preview length: "</span> + str(srv_info.len) + <span class="syn-str">" bytes"</span>)
+
+    client.deregister_service(srv_id + <span class="syn-str">""</span>)
+    println(<span class="syn-str">"   [PASS] Microservice deregistered."</span>)
+
+    client.delete_kv(k + <span class="syn-str">""</span>)
+    println(<span class="syn-str">"   [PASS] KV deleted."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_consul_pool() {
+    println(<span class="syn-str">"\n--- 2. Testing Consul Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> consul.open_pool(<span class="syn-str">"http://127.0.0.1:8500"</span>, <span class="syn-str">""</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Delegated operations via pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    pk <span class="syn-flow">:=</span> <span class="syn-str">"pool/config/app_mode"</span>
+    pv <span class="syn-flow">:=</span> <span class="syn-str">"distributed_production"</span>
+    p.put_kv(pk + <span class="syn-str">""</span>, pv + <span class="syn-str">""</span>)
+    val <span class="syn-flow">:=</span> p.get_kv(pk + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool get_kv failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved via pool: "</span> + val)
+    <span class="syn-kw">if</span> val == pv {
+        println(<span class="syn-str">"   [PASS] Pool KV matched exactly!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Pool KV mismatch!"</span>)
+    }
+
+    p.register_service(<span class="syn-str">"pool-node-1"</span>, <span class="syn-str">"pool-service"</span>, <span class="syn-str">"127.0.0.1"</span>, 9090)
+    println(<span class="syn-str">"   [PASS] Pool registered microservice."</span>)
+
+    p.deregister_service(<span class="syn-str">"pool-node-1"</span>)
+    p.delete_kv(pk + <span class="syn-str">""</span>)
+    println(<span class="syn-str">"   [PASS] Pool cleanup completed."</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Consul Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu HashiCorp Consul Service Discovery Native Driver Verification ===\n"</span>)
+    verify_consul_basic()
+    verify_consul_pool()
+    println(<span class="syn-str">"\n[CONSUL VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(endpoint <span class="syn-type">string</span>) Client</code></pre></div>
@@ -18,6 +151,7 @@
 </dl>
 <h3>返回</h3>
 <p>Client — 该类型的值</p>
+<p><a href="#example-27afd41b1a88">查看用法示例</a></p>
 </article>
 <article class="api-item" id="open_auth">
 <h2><code>open_auth</code></h2>
@@ -34,7 +168,7 @@
 </article>
 <article class="api-item" id="-mut-Client-register_service">
 <h2><code>(&amp;mut Client) register_service</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) register_service(id <span class="syn-type">string</span>, name <span class="syn-type">string</span>, address <span class="syn-type">string</span>, port <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) register_service(id <span class="syn-type">string</span>, name <span class="syn-type">string</span>, address <span class="syn-type">string</span>, port <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：registerservice。</p>
 <h3>参数</h3>
@@ -50,7 +184,7 @@
 </article>
 <article class="api-item" id="-mut-Client-deregister_service">
 <h2><code>(&amp;mut Client) deregister_service</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) deregister_service(id <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) deregister_service(id <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：deregisterservice。</p>
 <h3>参数</h3>
@@ -63,7 +197,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get_service">
 <h2><code>(&amp;mut Client) get_service</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get_service(name <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get_service(name <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：读取 service。失败时 throw。</p>
 <h3>参数</h3>
@@ -119,7 +253,7 @@
 </article>
 <article class="api-item" id="-mut-Client-request">
 <h2><code>(&amp;mut Client) request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：请求。失败时 throw。</p>
 <h3>参数</h3>
@@ -134,7 +268,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `ping`。</p>
 <h3>参数</h3>
@@ -146,7 +280,7 @@
 </article>
 <article class="api-item" id="-mut-Client-leader">
 <h2><code>(&amp;mut Client) leader</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) leader() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) leader() <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `leader`。失败时 throw。</p>
 <h3>参数</h3>
@@ -158,7 +292,7 @@
 </article>
 <article class="api-item" id="-mut-Client-put_kv">
 <h2><code>(&amp;mut Client) put_kv</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) put_kv(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) put_kv(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：putkv。</p>
 <h3>参数</h3>
@@ -172,7 +306,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get_kv">
 <h2><code>(&amp;mut Client) get_kv</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get_kv(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get_kv(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：读取 kv。失败时 throw。</p>
 <h3>参数</h3>
@@ -185,7 +319,7 @@
 </article>
 <article class="api-item" id="-mut-Client-delete_kv">
 <h2><code>(&amp;mut Client) delete_kv</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) delete_kv(key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) delete_kv(key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：删除kv。</p>
 <h3>参数</h3>
@@ -243,6 +377,7 @@
 </dl>
 <h3>返回</h3>
 <p>Pool — 该类型的值</p>
+<p><a href="#example-27afd41b1a88">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-Pool-get">
 <h2><code>(&amp;Pool) get</code></h2>

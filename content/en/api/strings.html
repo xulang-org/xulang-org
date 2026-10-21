@@ -6,6 +6,153 @@
 <p class="meta">import: <code>#strings</code></p>
 <p class="meta">counts: 52 fns, 33 methods, 7 types, 0 consts, 0 ifaces</p>
 <p class="lead">String helpers. Read-only functions take &amp;string so the caller keeps the source. Search uses Horspool. Includes Builder / Reader / Replacer.</p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-f555f001e097" open>
+<summary><code>22_standalone_sqlite/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/22_standalone_sqlite">Complete project</a> · <a href="/api-examples/sources/examples/22_standalone_sqlite/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="22_standalone_sqlite/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>database/sql/driver</span>
+sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/sqlite
+<span class="syn-import"><span class="hash">#</span>os</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> remove_if_exists(p <span class="syn-type">string</span>) {
+    os.remove(p) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    println(<span class="syn-str">"=== SQLite Standalone Library Integration Test ==="</span>)
+
+    db_file <span class="syn-flow">:=</span> <span class="syn-str">"/tmp/xu_sqlite_test.db"</span>
+    remove_if_exists(strings.clone(&amp;db_file))
+
+    <span class="syn-cmt">// 1. 打开数据库连接</span>
+    conn <span class="syn-flow">:=</span> sqlite.open(strings.clone(&amp;db_file))
+
+    <span class="syn-cmt">// 2. 建表</span>
+    schema <span class="syn-flow">:=</span> <span class="syn-str">"CREATE TABLE IF NOT EXISTS developers (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT, age INT, salary REAL, active INT);"</span>
+    res1 <span class="syn-flow">:=</span> conn.exec(schema, []driver.NamedValue{})
+    <span class="syn-kw">if</span> res1.err.len &gt; 0 {
+        println(<span class="syn-str">"CREATE TABLE error: "</span> + res1.err)
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"1. Schema created successfully."</span>)
+
+    <span class="syn-cmt">// 3. 参数化插入记录</span>
+    <span class="syn-kw">mut</span> args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    args1.push(driver.NamedValue{name: <span class="syn-str">"name"</span>, ordinal: 1, value: <span class="syn-str">"Ada Lovelace"</span>})
+    args1.push(driver.NamedValue{name: <span class="syn-str">"age"</span>, ordinal: 2, value: 36})
+    args1.push(driver.NamedValue{name: <span class="syn-str">"salary"</span>, ordinal: 3, value: 125000.5})
+    args1.push(driver.NamedValue{name: <span class="syn-str">"active"</span>, ordinal: 4, value: true})
+
+    res_ins1 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO developers (name, age, salary, active) VALUES (?, ?, ?, ?);"</span>, args1)
+    <span class="syn-kw">if</span> res_ins1.err.len &gt; 0 {
+        println(<span class="syn-str">"INSERT 1 error: "</span> + res_ins1.err)
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"2. Inserted developer 1, id="</span> + str(res_ins1.last_insert_id) + <span class="syn-str">", rows_affected="</span> + str(res_ins1.rows_affected))
+
+    <span class="syn-cmt">// 4. 第二条记录插入</span>
+    <span class="syn-kw">mut</span> args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    args2.push(driver.NamedValue{name: <span class="syn-str">"name"</span>, ordinal: 1, value: <span class="syn-str">"Alan Turing"</span>})
+    args2.push(driver.NamedValue{name: <span class="syn-str">"age"</span>, ordinal: 2, value: 41})
+    args2.push(driver.NamedValue{name: <span class="syn-str">"salary"</span>, ordinal: 3, value: 140000.0})
+    args2.push(driver.NamedValue{name: <span class="syn-str">"active"</span>, ordinal: 4, value: true})
+
+    res_ins2 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO developers (name, age, salary, active) VALUES (?, ?, ?, ?);"</span>, args2)
+    <span class="syn-kw">if</span> res_ins2.err.len &gt; 0 {
+        println(<span class="syn-str">"INSERT 2 error: "</span> + res_ins2.err)
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"3. Inserted developer 2, id="</span> + str(res_ins2.last_insert_id) + <span class="syn-str">", rows_affected="</span> + str(res_ins2.rows_affected))
+
+    <span class="syn-cmt">// 5. 查询所有记录</span>
+    rows <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, age, salary, active FROM developers ORDER BY id ASC;"</span>, []driver.NamedValue{})
+    <span class="syn-kw">if</span> rows.err.len &gt; 0 {
+        println(<span class="syn-str">"QUERY error: "</span> + rows.err)
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"4. Query returned columns count: "</span> + str(rows.ncols))
+    <span class="syn-kw">mut</span> col_str <span class="syn-flow">:=</span> <span class="syn-str">"   Columns: "</span>
+    <span class="syn-kw">for</span> ci <span class="syn-kw">in</span> 0:rows.columns.len {
+        <span class="syn-kw">if</span> ci &gt; 0 {
+            col_str = col_str + <span class="syn-str">", "</span>
+        }
+        col_str = col_str + rows.columns[ci]
+    }
+    println(col_str)
+
+    nrows <span class="syn-flow">:=</span> rows.cells.len / rows.ncols
+    println(<span class="syn-str">"   Total rows: "</span> + str(nrows))
+    <span class="syn-kw">mut</span> r <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> r &lt; nrows {
+        base <span class="syn-flow">:=</span> r * rows.ncols
+        id_str <span class="syn-flow">:=</span> rows.cells[base]
+        name_str <span class="syn-flow">:=</span> rows.cells[base + 1]
+        age_str <span class="syn-flow">:=</span> rows.cells[base + 2]
+        sal_str <span class="syn-flow">:=</span> rows.cells[base + 3]
+        act_str <span class="syn-flow">:=</span> rows.cells[base + 4]
+        println(<span class="syn-str">"   Row "</span> + str(r + 1) + <span class="syn-str">": id="</span> + id_str + <span class="syn-str">", name="</span> + name_str + <span class="syn-str">", age="</span> + age_str + <span class="syn-str">", salary="</span> + sal_str + <span class="syn-str">", active="</span> + act_str)
+        r = r + 1
+    }
+
+    <span class="syn-cmt">// 6. 带参数的查询</span>
+    <span class="syn-kw">mut</span> qargs <span class="syn-flow">:=</span> []driver.NamedValue{}
+    qargs.push(driver.NamedValue{name: <span class="syn-str">"name"</span>, ordinal: 1, value: <span class="syn-str">"Alan Turing"</span>})
+    rows_filtered <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, age FROM developers WHERE name = ?;"</span>, qargs)
+    <span class="syn-kw">if</span> rows_filtered.err.len &gt; 0 {
+        println(<span class="syn-str">"FILTERED QUERY error: "</span> + rows_filtered.err)
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">if</span> rows_filtered.cells.len &gt;= 3 {
+        println(<span class="syn-str">"5. Parameterized query successful: found "</span> + rows_filtered.cells[1] + <span class="syn-str">", age="</span> + rows_filtered.cells[2])
+    }
+
+    <span class="syn-cmt">// 7. 更新操作</span>
+    <span class="syn-kw">mut</span> uargs <span class="syn-flow">:=</span> []driver.NamedValue{}
+    uargs.push(driver.NamedValue{name: <span class="syn-str">"age"</span>, ordinal: 1, value: 37})
+    uargs.push(driver.NamedValue{name: <span class="syn-str">"id"</span>, ordinal: 2, value: 1})
+    res_up <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"UPDATE developers SET age = ? WHERE id = ?;"</span>, uargs)
+    <span class="syn-kw">if</span> res_up.err.len &gt; 0 {
+        println(<span class="syn-str">"UPDATE error: "</span> + res_up.err)
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"6. Updated developer 1: rows_affected="</span> + str(res_up.rows_affected))
+
+    <span class="syn-cmt">// 8. 事务支持</span>
+    tx <span class="syn-flow">:=</span> conn.begin()
+    <span class="syn-kw">mut</span> tx_args <span class="syn-flow">:=</span> []driver.NamedValue{}
+    tx_args.push(driver.NamedValue{name: <span class="syn-str">"name"</span>, ordinal: 1, value: <span class="syn-str">"Grace Hopper"</span>})
+    tx_args.push(driver.NamedValue{name: <span class="syn-str">"age"</span>, ordinal: 2, value: 85})
+    tx_args.push(driver.NamedValue{name: <span class="syn-str">"salary"</span>, ordinal: 3, value: 160000.0})
+    tx_args.push(driver.NamedValue{name: <span class="syn-str">"active"</span>, ordinal: 4, value: true})
+    res_tx <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO developers (name, age, salary, active) VALUES (?, ?, ?, ?);"</span>, tx_args)
+    <span class="syn-kw">if</span> res_tx.err.len &gt; 0 {
+        println(<span class="syn-str">"TX INSERT error: "</span> + res_tx.err)
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    commit_err <span class="syn-flow">:=</span> tx.commit()
+    <span class="syn-kw">if</span> commit_err.len &gt; 0 {
+        println(<span class="syn-str">"TX COMMIT error: "</span> + commit_err)
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"7. Transaction committed successfully."</span>)
+
+    <span class="syn-cmt">// 9. 关闭与清理</span>
+    conn.close()
+    remove_if_exists(db_file)
+    println(<span class="syn-str">"=== SQLite Standalone Tests Completed Successfully! ==="</span>)
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="index_of">
 <h2><code>index_of</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> index_of(s &amp;<span class="syn-type">string</span>, sub <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
@@ -436,7 +583,7 @@
 </article>
 <article class="api-item" id="-mut-Builder-write_string">
 <h2><code>(&amp;mut Builder) write_string</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;<span class="syn-kw">mut</span> Builder) write_string(s &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">&amp;mut</span> Builder) write_string(s &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Builder`: write a string and return the byte count.</p>
 <h3>Parameters</h3>
@@ -449,7 +596,7 @@
 </article>
 <article class="api-item" id="-mut-Builder-grow">
 <h2><code>(&amp;mut Builder) grow</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;<span class="syn-kw">mut</span> Builder) grow(n <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">&amp;mut</span> Builder) grow(n <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Builder`: ensure room for at least n more bytes.</p>
 <h3>Parameters</h3>
@@ -460,7 +607,7 @@
 </article>
 <article class="api-item" id="-mut-Builder-write_view">
 <h2><code>(&amp;mut Builder) write_view</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;<span class="syn-kw">mut</span> Builder) write_view(s &amp;<span class="syn-type">string</span>, v ByteView) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">&amp;mut</span> Builder) write_view(s &amp;<span class="syn-type">string</span>, v ByteView) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Builder`: write view.</p>
 <h3>Parameters</h3>
@@ -474,7 +621,7 @@
 </article>
 <article class="api-item" id="-mut-Builder-write_int">
 <h2><code>(&amp;mut Builder) write_int</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;<span class="syn-kw">mut</span> Builder) write_int(n <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">&amp;mut</span> Builder) write_int(n <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Builder`: write int.</p>
 <h3>Parameters</h3>
@@ -511,7 +658,7 @@
 </article>
 <article class="api-item" id="-mut-Builder-reset">
 <h2><code>(&amp;mut Builder) reset</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;<span class="syn-kw">mut</span> Builder) reset()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">&amp;mut</span> Builder) reset()</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Builder`: clear internal state so the value can be reused.</p>
 <h3>Parameters</h3>
@@ -586,7 +733,7 @@
 </article>
 <article class="api-item" id="-mut-ByteBuilder-reserve">
 <h2><code>(&amp;mut ByteBuilder) reserve</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb &amp;<span class="syn-kw">mut</span> ByteBuilder) reserve(extra <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb <span class="syn-borrow">&amp;mut</span> ByteBuilder) reserve(extra <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `reserve` on `&amp;mut ByteBuilder`.</p>
 <h3>Parameters</h3>
@@ -597,7 +744,7 @@
 </article>
 <article class="api-item" id="-mut-ByteBuilder-write_byte">
 <h2><code>(&amp;mut ByteBuilder) write_byte</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb &amp;<span class="syn-kw">mut</span> ByteBuilder) write_byte(c <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb <span class="syn-borrow">&amp;mut</span> ByteBuilder) write_byte(c <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut ByteBuilder`: write one byte.</p>
 <h3>Parameters</h3>
@@ -608,7 +755,7 @@
 </article>
 <article class="api-item" id="-mut-ByteBuilder-write_str">
 <h2><code>(&amp;mut ByteBuilder) write_str</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb &amp;<span class="syn-kw">mut</span> ByteBuilder) write_str(s <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb <span class="syn-borrow">&amp;mut</span> ByteBuilder) write_str(s <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut ByteBuilder`: write a string.</p>
 <h3>Parameters</h3>
@@ -640,6 +787,7 @@
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-f555f001e097">See usage example</a></p>
 </article>
 <article class="api-item" id="contains_func">
 <h2><code>contains_func</code></h2>
@@ -800,7 +948,7 @@
 </article>
 <article class="api-item" id="-mut-Builder-write_byte">
 <h2><code>(&amp;mut Builder) write_byte</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;<span class="syn-kw">mut</span> Builder) write_byte(c <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">&amp;mut</span> Builder) write_byte(c <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Builder`: write one byte.</p>
 <h3>Parameters</h3>
@@ -813,7 +961,7 @@
 </article>
 <article class="api-item" id="-mut-Builder-write_rune">
 <h2><code>(&amp;mut Builder) write_rune</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;<span class="syn-kw">mut</span> Builder) write_rune(r <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">&amp;mut</span> Builder) write_rune(r <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Builder`: write a rune as UTF-8.</p>
 <h3>Parameters</h3>
@@ -933,7 +1081,7 @@
 </article>
 <article class="api-item" id="-mut-Reader-reset">
 <h2><code>(&amp;mut Reader) reset</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Reader) reset(s <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Reader) reset(s <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Reader`: clear internal state so the value can be reused.</p>
 <h3>Parameters</h3>
@@ -944,7 +1092,7 @@
 </article>
 <article class="api-item" id="-mut-Reader-read_n">
 <h2><code>(&amp;mut Reader) read_n</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Reader) read_n(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Reader) read_n(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Reader`: read at most n bytes; may return shorter or empty at end.</p>
 <h3>Parameters</h3>
@@ -957,7 +1105,7 @@
 </article>
 <article class="api-item" id="-mut-Reader-read_byte">
 <h2><code>(&amp;mut Reader) read_byte</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Reader) read_byte() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Reader) read_byte() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Reader`: read one byte; throws on failure. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -969,7 +1117,7 @@
 </article>
 <article class="api-item" id="-mut-Reader-unread_byte">
 <h2><code>(&amp;mut Reader) unread_byte</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Reader) unread_byte() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Reader) unread_byte() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Reader`: unread the last byte. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -981,7 +1129,7 @@
 </article>
 <article class="api-item" id="-mut-Reader-read_rune">
 <h2><code>(&amp;mut Reader) read_rune</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Reader) read_rune() RuneRead</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Reader) read_rune() RuneRead</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Reader`: read one UTF-8 rune. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -993,7 +1141,7 @@
 </article>
 <article class="api-item" id="-mut-Reader-unread_rune">
 <h2><code>(&amp;mut Reader) unread_rune</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Reader) unread_rune() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Reader) unread_rune() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Reader`: unread the last rune. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -1005,7 +1153,7 @@
 </article>
 <article class="api-item" id="-mut-Reader-seek">
 <h2><code>(&amp;mut Reader) seek</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Reader) seek(offset <span class="syn-type">int</span>, whence <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Reader) seek(offset <span class="syn-type">int</span>, whence <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Reader`: move the read position. whence 0/1/2 = absolute / relative / from end. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -1019,7 +1167,7 @@
 </article>
 <article class="api-item" id="-mut-Reader-read_at">
 <h2><code>(&amp;mut Reader) read_at</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Reader) read_at(n <span class="syn-type">int</span>, off <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Reader) read_at(n <span class="syn-type">int</span>, off <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Reader`: read at most n bytes starting at offset off. Throws on failure.</p>
 <h3>Parameters</h3>

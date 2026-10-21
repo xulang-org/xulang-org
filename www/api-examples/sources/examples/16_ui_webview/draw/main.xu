@@ -1,0 +1,80 @@
+@main
+
+#ui
+#ui/draw
+
+// Smoke for #ui/draw as an immediate-mode canvas (Love2D / Raylib-style).
+//   xu build examples/16_ui_webview/draw --target macos-arm64 --desktop -o /tmp/XuDraw
+
+fn paint(hit int) {
+    draw.begin()
+    draw.set_bg("#0b1020")
+
+    draw.set_color("#38bdf8")
+    draw.circle(80, 88, 36)
+    draw.set_stroke("#e2e8f0")
+    draw.set_width(2)
+    draw.circle_line(80, 88, 50)
+
+    draw.set_color("#fbbf24")
+    draw.rect(150, 60, 96, 52)
+    draw.rect_line(150, 60, 96, 52)
+
+    draw.fill_ellipse(280, 56, 110, 60, "#22c55e")
+    draw.stroke_ellipse(280, 56, 110, 60, "#86efac", 2)
+
+    draw.push()
+    draw.translate(500, 110)
+    draw.rotate(18)
+    draw.fill_triangle(0 - 36, 28, 36, 28, 0, 0 - 32, "#f87171")
+    draw.pop()
+
+    mut pts := []draw.Point{}
+    pts.push(draw.Point{x: 40, y: 200})
+    pts.push(draw.Point{x: 100, y: 170})
+    pts.push(draw.Point{x: 160, y: 200})
+    pts.push(draw.Point{x: 130, y: 260})
+    pts.push(draw.Point{x: 70, y: 260})
+    draw.poly(&pts, "#1e3a5f", "#38bdf8", 2)
+
+    draw.arc(280, 250, 48, 20, 200, "#4ade80", 3)
+    draw.point(80, 88, "#ffffff", 4)
+    draw.round_rect(400, 200, 160, 44, 10, "#1e293b", "#64748b", 2)
+    draw.text(416, 212, 13, "#e2e8f0", "round rect")
+    if hit == 1 {
+        draw.text(24, 320, 13, "#38bdf8", "hit the circle")
+    } else {
+        draw.text(24, 320, 13, "#94a3b8", "click the blue circle")
+    }
+    draw.present()
+}
+
+fn watch_clicks(ech chan ui.Event) {
+    mut hit := 0
+    paint(hit)
+    while true {
+        sleep_ns(40000000)
+        c := draw.poll_click(ech)
+        if c.ok == 1 {
+            if draw.in_circle(c, 80, 88, 50) {
+                hit = 1
+            } else {
+                hit = 0
+            }
+            paint(hit)
+        }
+    }
+}
+
+fn main() int {
+    mut app := ui.new_app()
+    mut win := app.new_window(ui.WindowOpts{title: "Xu Draw", width: 640, height: 380})
+    r := mut &win
+    _ := draw.attach(r)
+    xu watch_clicks(app.event_ch)
+    app.run() or (err) {
+        println(err.msg())
+        << 1
+    }
+    << 0
+}

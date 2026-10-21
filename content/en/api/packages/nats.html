@@ -7,6 +7,286 @@
 <p class="meta">counts: 8 fns, 17 methods, 4 types, 0 consts, 0 ifaces</p>
 <p class="lead">NATS high-performance cloud-native messaging driver for Xu. Features Standard NATS text protocol implementation in 100% pure Xu. High-throughput publish/subscribe (PUB/SUB). Queue Groups (distributed load-balanced worker queues). Request-Reply RPC pattern with dynamic inbox routing. Automatic PING/PONG heartbeat management.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-e31a43e56675" open>
+<summary><code>24_standalone_nats/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/24_standalone_nats">Complete project</a> · <a href="/api-examples/sources/examples/24_standalone_nats/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="24_standalone_nats/main.xu"><code class="language-xu">@main
+
+nats <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/nats
+<span class="syn-import"><span class="hash">#</span>os</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    println(<span class="syn-str">"=== NATS Cloud-Native Messaging Standalone Integration Test ==="</span>)
+    addr <span class="syn-flow">:=</span> <span class="syn-str">"127.0.0.1:4222"</span>
+    println(<span class="syn-str">"Connecting to NATS at "</span> + addr + <span class="syn-str">"..."</span>)
+
+    <span class="syn-kw">mut</span> nc <span class="syn-flow">:=</span> nats.connect(addr + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Connection to NATS failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    ping_ok <span class="syn-flow">:=</span> nc.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Ping failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"1. NATS Ping response: "</span> + str(ping_ok))
+
+    <span class="syn-cmt">// 2. Subscribe to subject</span>
+    topic <span class="syn-flow">:=</span> <span class="syn-str">"xu.events"</span>
+    sub <span class="syn-flow">:=</span> nc.subscribe(topic + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Subscribe failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"2. Subscribed to subject: "</span> + sub.subject + <span class="syn-str">" (sid="</span> + sub.sid + <span class="syn-str">")"</span>)
+
+    <span class="syn-cmt">// 3. Publish a message</span>
+    payload <span class="syn-flow">:=</span> <span class="syn-str">"Hello NATS from Xu Programming Language!"</span>
+    nc.publish(topic + <span class="syn-str">""</span>, payload + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Publish failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"3. Published payload: "</span> + payload)
+
+    <span class="syn-cmt">// 4. Receive the message</span>
+    msg <span class="syn-flow">:=</span> nc.next_msg() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Receive failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"4. Successfully received message:"</span>)
+    println(<span class="syn-str">"   - Subject: "</span> + msg.subject)
+    println(<span class="syn-str">"   - Sid: "</span> + msg.sid)
+    println(<span class="syn-str">"   - Data: "</span> + msg.data)
+
+    <span class="syn-cmt">// 5. Test Queue Group (load-balanced worker queue)</span>
+    q_sub <span class="syn-flow">:=</span> nc.queue_subscribe(<span class="syn-str">"xu.tasks"</span>, <span class="syn-str">"workers"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Queue subscribe failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"5. Queue Group subscribed: xu.tasks -&gt; workers (sid="</span> + q_sub.sid + <span class="syn-str">")"</span>)
+
+    nc.publish(<span class="syn-str">"xu.tasks"</span>, <span class="syn-str">"task_payload_123"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    q_msg <span class="syn-flow">:=</span> nc.next_msg() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"6. Queue Group received task: "</span> + q_msg.data)
+
+    nc.unsubscribe(sub) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    nc.unsubscribe(q_sub) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    nc.close()
+
+    <span class="syn-cmt">// 7. NATS Connection Pool Deep Verification</span>
+    println(<span class="syn-str">"7. Testing NATS Connection Pool with Reuse &amp; Concurrency..."</span>)
+    pool <span class="syn-flow">:=</span> nats.open_pool(<span class="syn-str">"127.0.0.1:4222"</span>, 5)
+    <span class="syn-kw">mut</span> c1 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool get c1 failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_first <span class="syn-flow">:=</span> c1.fd
+    c1_ok <span class="syn-flow">:=</span> c1.ping() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"   Pool c1 ping: "</span> + str(c1_ok) + <span class="syn-str">" (fd="</span> + str(fd_first) + <span class="syn-str">")"</span>)
+    pool.put(c1)
+
+    <span class="syn-cmt">// Verify Pool Connection REUSE</span>
+    <span class="syn-kw">mut</span> c2 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool get c2 failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_second <span class="syn-flow">:=</span> c2.fd
+    <span class="syn-kw">if</span> fd_first == fd_second {
+        println(<span class="syn-str">"   [PASS] NATS Pool Connection REUSE verified! (fd1 == fd2: "</span> + str(fd_first) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] fd1 != fd2 (fd1="</span> + str(fd_first) + <span class="syn-str">", fd2="</span> + str(fd_second) + <span class="syn-str">")"</span>)
+    }
+
+    <span class="syn-cmt">// Concurrent borrow another connection</span>
+    <span class="syn-kw">mut</span> c3 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool get c3 failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_third <span class="syn-flow">:=</span> c3.fd
+    <span class="syn-kw">if</span> fd_second != fd_third {
+        println(<span class="syn-str">"   [PASS] NATS Pool Multi-connection concurrency verified! (fd2="</span> + str(fd_second) + <span class="syn-str">" != fd3="</span> + str(fd_third) + <span class="syn-str">")"</span>)
+    }
+
+    <span class="syn-cmt">// Pool Direct Publish</span>
+    pool.publish(<span class="syn-str">"pool.notify"</span>, <span class="syn-str">"notification from nats pool"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"   [PASS] NATS Pool direct publish succeeded."</span>)
+
+    pool.put(c2)
+    pool.put(c3)
+    pool.close()
+    println(<span class="syn-str">"   [PASS] NATS Pool closed cleanly."</span>)
+
+    println(<span class="syn-str">"=== NATS Tests Completed Successfully! ==="</span>)
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-b597eda1c41a">
+<summary><code>28_test_pools/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/28_test_pools">Complete project</a> · <a href="/api-examples/sources/examples/28_test_pools/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="28_test_pools/main.xu"><code class="language-xu">@main
+
+redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/redis
+memcached <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/memcached
+nats <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/nats
+mqtt <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mqtt
+elasticsearch <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/elasticsearch
+s3 <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/s3
+sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/sqlite
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+
+<span class="syn-kw">fn</span> verify_redis_pool() {
+    println(<span class="syn-str">"1. Testing Redis Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> redis.new_pool(<span class="syn-str">"127.0.0.1:6379"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    res <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Redis PING response: "</span> + res)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Redis Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_memcached_pool() {
+    println(<span class="syn-str">"2. Testing Memcached Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> memcached.new_pool(<span class="syn-str">"127.0.0.1:11211"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ver <span class="syn-flow">:=</span> c.version() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached version error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Memcached VERSION: "</span> + ver)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Memcached Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_nats_pool() {
+    println(<span class="syn-str">"3. Testing NATS Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> nats.open_pool(<span class="syn-str">"127.0.0.1:4222"</span>, 5)
+    p.publish(<span class="syn-str">"pool.events"</span>, <span class="syn-str">"hello from nats pool"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ok <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS borrowed client ping ok: "</span> + str(ok))
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] NATS Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_mqtt_pool() {
+    println(<span class="syn-str">"4. Testing MQTT Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> mqtt.open_pool(<span class="syn-str">"127.0.0.1:1883"</span>, <span class="syn-str">"xu_pool_test"</span>, 5)
+    p.publish(<span class="syn-str">"sensors/pool"</span>, <span class="syn-str">"temp=28C"</span>, 0) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT borrowed client ID: "</span> + c.client_id)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] MQTT Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_es_pool() {
+    println(<span class="syn-str">"5. Testing Elasticsearch Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> elasticsearch.open_pool(<span class="syn-str">"http://127.0.0.1:9200"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   ES borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Elasticsearch Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_s3_pool() {
+    println(<span class="syn-str">"6. Testing S3 Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> s3.open_pool(<span class="syn-str">"http://127.0.0.1:9000"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"us-east-1"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   S3 borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] S3 Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_sqlite_pool() {
+    println(<span class="syn-str">"7. Testing SQLite Connection Pool..."</span>)
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sqlite.open_pool(<span class="syn-str">":memory:"</span>, 1, 1)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] SQLite ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SQLite Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_postgres_pool() {
+    println(<span class="syn-str">"8. Testing PostgreSQL Connection Pool..."</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> postgres.open_pool(dsn, 5, 2)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] PostgreSQL ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] PostgreSQL Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu All Driver Connection Pools Comprehensive Verification ===\n"</span>)
+    verify_redis_pool()
+    verify_memcached_pool()
+    verify_nats_pool()
+    verify_mqtt_pool()
+    verify_es_pool()
+    verify_s3_pool()
+    verify_sqlite_pool()
+    verify_postgres_pool()
+    println(<span class="syn-str">"\n[ALL 8 DRIVER CONNECTION POOLS 100% VERIFIED!]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(addr <span class="syn-type">string</span>) Client</code></pre></div>
@@ -31,6 +311,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-e31a43e56675">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Client">
 <h2><code>struct Client</code></h2>
@@ -54,7 +335,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_line">
 <h2><code>(&amp;mut Client) read_line</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_line() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_line() <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read line. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -66,7 +347,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_bytes">
 <h2><code>(&amp;mut Client) read_bytes</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_bytes(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_bytes(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read through delim (inclusive). Throws on failure.</p>
 <h3>Parameters</h3>
@@ -79,7 +360,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_raw">
 <h2><code>(&amp;mut Client) write_raw</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_raw(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_raw(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: write raw. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -101,6 +382,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-e31a43e56675">See usage example</a></p>
 </article>
 <article class="api-item" id="connect_auth">
 <h2><code>connect_auth</code></h2>
@@ -118,7 +400,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ping` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -130,7 +412,7 @@
 </article>
 <article class="api-item" id="-mut-Client-publish">
 <h2><code>(&amp;mut Client) publish</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) publish(subject <span class="syn-type">string</span>, data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) publish(subject <span class="syn-type">string</span>, data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `publish` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -144,7 +426,7 @@
 </article>
 <article class="api-item" id="-mut-Client-publish_request">
 <h2><code>(&amp;mut Client) publish_request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) publish_request(subject <span class="syn-type">string</span>, reply_to <span class="syn-type">string</span>, data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) publish_request(subject <span class="syn-type">string</span>, reply_to <span class="syn-type">string</span>, data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: publish request. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -159,7 +441,7 @@
 </article>
 <article class="api-item" id="-mut-Client-subscribe">
 <h2><code>(&amp;mut Client) subscribe</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) subscribe(subject <span class="syn-type">string</span>) Subscription</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) subscribe(subject <span class="syn-type">string</span>) Subscription</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `subscribe` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -172,7 +454,7 @@
 </article>
 <article class="api-item" id="-mut-Client-queue_subscribe">
 <h2><code>(&amp;mut Client) queue_subscribe</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) queue_subscribe(subject <span class="syn-type">string</span>, queue_group <span class="syn-type">string</span>) Subscription</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) queue_subscribe(subject <span class="syn-type">string</span>, queue_group <span class="syn-type">string</span>) Subscription</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: queue subscribe. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -186,7 +468,7 @@
 </article>
 <article class="api-item" id="-mut-Client-unsubscribe">
 <h2><code>(&amp;mut Client) unsubscribe</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) unsubscribe(sub Subscription) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) unsubscribe(sub Subscription) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `unsubscribe` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -199,7 +481,7 @@
 </article>
 <article class="api-item" id="-mut-Client-next_msg">
 <h2><code>(&amp;mut Client) next_msg</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) next_msg() Message</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) next_msg() Message</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: next msg. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -211,7 +493,7 @@
 </article>
 <article class="api-item" id="-mut-Client-request">
 <h2><code>(&amp;mut Client) request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) request(subject <span class="syn-type">string</span>, data <span class="syn-type">string</span>) Message</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) request(subject <span class="syn-type">string</span>, data <span class="syn-type">string</span>) Message</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `request` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -225,7 +507,7 @@
 </article>
 <article class="api-item" id="-mut-Client-close">
 <h2><code>(&amp;mut Client) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) close() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) close() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: close the resource.</p>
 <h3>Parameters</h3>

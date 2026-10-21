@@ -1,0 +1,124 @@
+@main
+
+memcached #github.com/xulang-org/packages/memcached
+#os
+
+fn main() int {
+    println("=== Memcached Standalone Library Integration Test ===")
+    addr := "127.0.0.1:11211"
+    println("Connecting to Memcached at " + addr + "...")
+
+    mut mc := memcached.open(addr + "") or (err) {
+        println("Connection to Memcached failed (skipping live tests): " + err.msg())
+        << 0
+    }
+
+    ver := mc.version() or (err) {
+        println("Version failed: " + err.msg())
+        << 1
+    }
+    println("1. Memcached version: " + ver)
+
+    // Set & Get
+    set_ok := mc.set("xu_test_key", "Hello Memcached from Xu!", 0, 300) or (err) {
+        println("Set failed: " + err.msg())
+        << 1
+    }
+    println("2. SET xu_test_key ok=" + str(set_ok))
+
+    val := mc.get("xu_test_key") or (err) {
+        println("Get failed: " + err.msg())
+        << 1
+    }
+    println("3. GET xu_test_key: " + val)
+
+    // Incr & Decr
+    mc.set("xu_counter", "100", 0, 300) or (err) {
+        << 1
+    }
+    new_n := mc.incr("xu_counter", 5) or (err) {
+        println("Incr failed: " + err.msg())
+        << 1
+    }
+    println("4. INCR xu_counter by 5 = " + str(new_n))
+
+    decr_n := mc.decr("xu_counter", 2) or (err) {
+        println("Decr failed: " + err.msg())
+        << 1
+    }
+    println("5. DECR xu_counter by 2 = " + str(decr_n))
+
+    // Append & Prepend
+    mc.set("xu_str", "World", 0, 300) or (err) {
+        << 1
+    }
+    mc.prepend("xu_str", "Hello ") or (err) {
+        << 1
+    }
+    mc.append("xu_str", "!") or (err) {
+        << 1
+    }
+    prep_val := mc.get("xu_str") or (err) {
+        << 1
+    }
+    println("6. Prepend & Append result: " + prep_val)
+
+    // Delete
+    del_ok := mc.delete("xu_test_key") or (err) {
+        << 1
+    }
+    println("7. DELETE xu_test_key ok=" + str(del_ok))
+
+    mc.close()
+
+    // Test Pool with Reuse & Concurrency
+    pool := memcached.new_pool(addr + "", 5)
+    mut p_conn := pool.get() or (err) {
+        println("Pool get failed: " + err.msg())
+        << 1
+    }
+    fd_first := p_conn.fd
+    p_ver := p_conn.version() or (err) {
+        << 1
+    }
+    println("8. Pool connection version: " + p_ver + " (fd=" + str(fd_first) + ")")
+    pool.put(p_conn)
+    println("9. Pool connection returned successfully.")
+
+    // Verify Pool Connection REUSE: second get gives same fd
+    mut p_conn2 := pool.get() or (err) {
+        println("Pool second get failed: " + err.msg())
+        << 1
+    }
+    fd_second := p_conn2.fd
+    if fd_first == fd_second {
+        println("10. [PASS] Pool Connection REUSE verified! (fd_first == fd_second: " + str(fd_first) + ")")
+    } else {
+        println("10. [WARN] Pool connection not reused: fd1=" + str(fd_first) + ", fd2=" + str(fd_second))
+    }
+
+    // Concurrent borrow another connection
+    mut p_conn3 := pool.get() or (err) {
+        println("Pool third get failed: " + err.msg())
+        << 1
+    }
+    fd_third := p_conn3.fd
+    if fd_second != fd_third {
+        println("11. [PASS] Pool Multi-connection concurrency verified! (fd2=" + str(fd_second) + " != fd3=" + str(fd_third) + ")")
+    }
+    p_conn3.set("pool_mc_key", "mc_val", 0, 300) or (err) {
+        << 1
+    }
+    got_mc := p_conn2.get("pool_mc_key") or (err) {
+        << 1
+    }
+    println("12. [PASS] Concurrent connection cross-get verified: got=" + got_mc)
+
+    pool.put(p_conn2)
+    pool.put(p_conn3)
+    pool.close()
+    println("13. [PASS] Memcached Pool closed cleanly.")
+
+    println("=== Memcached Tests Completed Successfully! ===")
+    << 0
+}

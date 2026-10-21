@@ -6,6 +6,174 @@
 <p class="meta">import: <code>#net/http</code></p>
 <p class="meta">counts: 19 fns, 46 methods, 8 types, 0 consts, 0 ifaces</p>
 <p class="lead">HTTP/1.1 Client and Server, Header, Cookie. No TLS in this package.</p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-3e6ad6439e0e" open>
+<summary><code>12_file_server/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/12_file_server">Complete project</a> · <a href="/api-examples/sources/examples/12_file_server/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="12_file_server/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>net/http</span>
+
+<span class="syn-cmt">// Go:</span>
+<span class="syn-cmt">//   http.ListenAndServe(":8080", http.FileServer(http.Dir(".")))</span>
+<span class="syn-cmt">// Xu:</span>
+<span class="syn-cmt">//   http.listen_and_serve("127.0.0.1:8080", ".")</span>
+<span class="syn-cmt">//</span>
+<span class="syn-cmt">// 参数：要对外的目录。默认本示例的 www/（从仓库根运行）。</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> root <span class="syn-flow">:=</span> <span class="syn-str">"examples/12_file_server/www"</span>
+    av <span class="syn-flow">:=</span> args()
+    <span class="syn-kw">if</span> av.len &gt;= 2 {
+        root = av[1] + <span class="syn-str">""</span>
+    }
+    println(<span class="syn-str">"FileServer "</span> + root)
+    println(<span class="syn-str">"http://127.0.0.1:8080"</span>)
+    http.listen_and_serve(<span class="syn-str">"127.0.0.1:8080"</span>, root) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-7e55b1b3a803">
+<summary><code>13_http_context/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/13_http_context">Complete project</a> · <a href="/api-examples/sources/examples/13_http_context/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="13_http_context/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>net/http</span>
+
+<span class="syn-cmt">// 写法 C — 请求上下文（Go Handler / HandlerFunc）。</span>
+<span class="syn-cmt">//</span>
+<span class="syn-cmt">// Go:</span>
+<span class="syn-cmt">//   func hello(w http.ResponseWriter, r *http.Request) {</span>
+<span class="syn-cmt">//       fmt.Fprint(w, "hello")</span>
+<span class="syn-cmt">//   }</span>
+<span class="syn-cmt">//   http.ListenAndServe(":8080", http.HandlerFunc(hello))</span>
+<span class="syn-cmt">//</span>
+<span class="syn-cmt">// Xu: w 和 r 收成一个 Context。</span>
+
+<span class="syn-kw">fn</span> app(c http.Context) {
+    p <span class="syn-flow">:=</span> c.path()
+    <span class="syn-kw">if</span> p == <span class="syn-str">"/"</span> || p == <span class="syn-str">"/index.html"</span> {
+        page <span class="syn-flow">:=</span> <span class="syn-str">"&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset=\"utf-8\"&gt;&lt;title&gt;Xu&lt;/title&gt;&lt;/head&gt;"</span> +
+            <span class="syn-str">"&lt;body&gt;&lt;h1&gt;Context&lt;/h1&gt;"</span> +
+            <span class="syn-str">"&lt;p&gt;&lt;a href=\"/hello\"&gt;/hello&lt;/a&gt; · &lt;a href=\"/health\"&gt;/health&lt;/a&gt;&lt;/p&gt;"</span> +
+            <span class="syn-str">"&lt;p&gt;POST /echo&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;"</span>
+        c.html(200, page) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">if</span> p == <span class="syn-str">"/hello"</span> {
+        c.text(200, <span class="syn-str">"hello, xu\n"</span>) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">if</span> p == <span class="syn-str">"/health"</span> {
+        c.text(200, <span class="syn-str">"ok\n"</span>) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">if</span> p == <span class="syn-str">"/echo"</span> {
+        m <span class="syn-flow">:=</span> c.method()
+        <span class="syn-kw">if</span> m != <span class="syn-str">"POST"</span> &amp;&amp; m != <span class="syn-str">"PUT"</span> {
+            c.text(405, <span class="syn-str">"method not allowed\n"</span>) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        b <span class="syn-flow">:=</span> c.body()
+        c.text(200, b) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    miss <span class="syn-flow">:=</span> <span class="syn-str">"not found: "</span> + p + <span class="syn-str">"\n"</span>
+    c.text(404, miss) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    println(<span class="syn-str">"http://127.0.0.1:18081"</span>)
+    http.listen_and_serve_handler(<span class="syn-str">"127.0.0.1:18081"</span>, app) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-22e053efeddb">
+<summary><code>16_ui_webview/xu_design_system/server.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/xu_design_system">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/xu_design_system/server.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/xu_design_system/server.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>net/http</span>
+
+<span class="syn-cmt">// Xu Design System &amp; VI Specification 官方本地 HTTP 服务</span>
+<span class="syn-cmt">// 运行指令：</span>
+<span class="syn-cmt">//   ./xu_design_server.xin [--addr 127.0.0.1:8088] [--root &lt;www-dir&gt;]</span>
+<span class="syn-cmt">//   位置参数仍兼容旧形式：&lt;port&gt; &lt;www-dir&gt;。</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> addr <span class="syn-flow">:=</span> <span class="syn-str">"127.0.0.1:8088"</span>
+    <span class="syn-kw">mut</span> root <span class="syn-flow">:=</span> <span class="syn-str">"examples/16_ui_webview/xu_design_system/www"</span>
+
+    av <span class="syn-flow">:=</span> args()
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">while</span> i &lt; av.len {
+        arg <span class="syn-flow">:=</span> av[i] + <span class="syn-str">""</span>
+        <span class="syn-kw">if</span> arg == <span class="syn-str">"--help"</span> || arg == <span class="syn-str">"-h"</span> {
+            println(<span class="syn-str">"Xu Design System HTTP server"</span>)
+            println(<span class="syn-str">"usage: xu_design_server [--addr HOST:PORT] [--root DIR]"</span>)
+            println(<span class="syn-str">"legacy: xu_design_server PORT DIR"</span>)
+            <span class="syn-flow">&lt;&lt;</span> 0
+        }
+        <span class="syn-kw">if</span> arg == <span class="syn-str">"--addr"</span> {
+            <span class="syn-kw">if</span> i + 1 &gt;= av.len {
+                println(<span class="syn-str">"missing value for --addr"</span>)
+                <span class="syn-flow">&lt;&lt;</span> 2
+            }
+            addr = av[i + 1] + <span class="syn-str">""</span>
+            i = i + 2
+            <span class="syn-flow">-&gt;</span>
+        }
+        <span class="syn-kw">if</span> arg == <span class="syn-str">"--root"</span> {
+            <span class="syn-kw">if</span> i + 1 &gt;= av.len {
+                println(<span class="syn-str">"missing value for --root"</span>)
+                <span class="syn-flow">&lt;&lt;</span> 2
+            }
+            root = av[i + 1] + <span class="syn-str">""</span>
+            i = i + 2
+            <span class="syn-flow">-&gt;</span>
+        }
+        <span class="syn-cmt">// Preserve the original positional interface: port, then root.</span>
+        <span class="syn-kw">if</span> i == 1 {
+            addr = <span class="syn-str">"127.0.0.1:"</span> + arg
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> i == 2 {
+            root = arg
+        } <span class="syn-kw">else</span> {
+            println(<span class="syn-str">"unknown argument: "</span> + arg)
+            <span class="syn-flow">&lt;&lt;</span> 2
+        }
+        i = i + 1
+    }
+
+    println(<span class="syn-str">"=================================================================="</span>)
+    println(<span class="syn-str">"    __  __  _   _  "</span>)
+    println(<span class="syn-str">"    \\ \\/ / | | | |   ⚡ Xu Official HTTP Server (Design System)"</span>)
+    println(<span class="syn-str">"     \\  /  | | | |   🔥 Rock-Solid Ownership · Supersonic AOT"</span>)
+    println(<span class="syn-str">"     /  \\  | |_| |   🌐 Serving: "</span> + root)
+    println(<span class="syn-str">"    /_/\\_\\  \\___/    🔗 Local URL: http://"</span> + addr + <span class="syn-str">"/"</span>)
+    println(<span class="syn-str">"=================================================================="</span>)
+    println(<span class="syn-str">"Press Ctrl+C to stop server.\n"</span>)
+
+    http.listen_and_serve(addr, root) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Server error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example"><summary>More related examples</summary><ul>
+<li><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/11_http_server"><code>11_http_server/main.xu</code></a></li>
+</ul></details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="struct-Response">
 <h2><code>struct Response</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Response {
@@ -212,7 +380,7 @@
 </article>
 <article class="api-item" id="-mut-Server-listen">
 <h2><code>(&amp;mut Server) listen</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;<span class="syn-kw">mut</span> Server) listen(addr <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Server) listen(addr <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Server`: listen for connections. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -237,7 +405,7 @@
 </article>
 <article class="api-item" id="-mut-Server-close">
 <h2><code>(&amp;mut Server) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;<span class="syn-kw">mut</span> Server) close() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Server) close() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Server`: close the resource.</p>
 <h3>Parameters</h3>
@@ -261,7 +429,7 @@
 </article>
 <article class="api-item" id="-mut-Response-get">
 <h2><code>(&amp;mut Response) get</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Response) get(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Response) get(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `get` on `&amp;mut Response`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -274,7 +442,7 @@
 </article>
 <article class="api-item" id="-mut-Response-post">
 <h2><code>(&amp;mut Response) post</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;<span class="syn-kw">mut</span> Response) post(url <span class="syn-type">string</span>, body &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Response) post(url <span class="syn-type">string</span>, body &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `post` on `&amp;mut Response`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -328,7 +496,7 @@
 </article>
 <article class="api-item" id="-mut-Client-set_jar">
 <h2><code>(&amp;mut Client) set_jar</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) set_jar(j cookiejar.Jar)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) set_jar(j cookiejar.Jar)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: set jar.</p>
 <h3>Parameters</h3>
@@ -339,7 +507,7 @@
 </article>
 <article class="api-item" id="-mut-Client-set_timeout">
 <h2><code>(&amp;mut Client) set_timeout</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) set_timeout(ns <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) set_timeout(ns <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: set timeout.</p>
 <h3>Parameters</h3>
@@ -350,7 +518,7 @@
 </article>
 <article class="api-item" id="-mut-Client-do">
 <h2><code>(&amp;mut Client) do</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) do(method <span class="syn-type">string</span>, raw_url <span class="syn-type">string</span>, body &amp;<span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) do(method <span class="syn-type">string</span>, raw_url <span class="syn-type">string</span>, body &amp;<span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `do` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -365,7 +533,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get">
 <h2><code>(&amp;mut Client) get</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get(raw_url <span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get(raw_url <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `get` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -378,7 +546,7 @@
 </article>
 <article class="api-item" id="-mut-Client-post">
 <h2><code>(&amp;mut Client) post</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) post(raw_url <span class="syn-type">string</span>, body &amp;<span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) post(raw_url <span class="syn-type">string</span>, body &amp;<span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `post` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -392,7 +560,7 @@
 </article>
 <article class="api-item" id="-mut-Request-read">
 <h2><code>(&amp;mut Request) read</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (req &amp;<span class="syn-kw">mut</span> Request) read(fd <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (req <span class="syn-borrow">&amp;mut</span> Request) read(fd <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Request`: read up to max bytes. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -457,6 +625,7 @@
 <dt><code>fd</code> <span class="type">int</span></dt><dd>file descriptor</dd>
 <dt><code>req</code> <span class="type">Request</span></dt><dd>field (Request)</dd>
 </dl>
+<p><a href="#example-7e55b1b3a803">See usage example</a></p>
 </article>
 <article class="api-item" id="Context-method">
 <h2><code>(Context) method</code></h2>
@@ -614,6 +783,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-7e55b1b3a803">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Cookie">
 <h2><code>struct Cookie</code></h2>
@@ -739,6 +909,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-3e6ad6439e0e">See usage example</a></p>
 </article>
 <article class="api-item" id="FileServer-serve">
 <h2><code>(FileServer) serve</code></h2>
@@ -802,7 +973,7 @@
 </article>
 <article class="api-item" id="-mut-Header-add">
 <h2><code>(&amp;mut Header) add</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (h &amp;<span class="syn-kw">mut</span> Header) add(key &amp;<span class="syn-type">string</span>, value &amp;<span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (h <span class="syn-borrow">&amp;mut</span> Header) add(key &amp;<span class="syn-type">string</span>, value &amp;<span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Header`: add.</p>
 <h3>Parameters</h3>
@@ -814,7 +985,7 @@
 </article>
 <article class="api-item" id="-mut-Header-del">
 <h2><code>(&amp;mut Header) del</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (h &amp;<span class="syn-kw">mut</span> Header) del(key &amp;<span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (h <span class="syn-borrow">&amp;mut</span> Header) del(key &amp;<span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `del` on `&amp;mut Header`.</p>
 <h3>Parameters</h3>
@@ -825,7 +996,7 @@
 </article>
 <article class="api-item" id="-mut-Header-set">
 <h2><code>(&amp;mut Header) set</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (h &amp;<span class="syn-kw">mut</span> Header) set(key &amp;<span class="syn-type">string</span>, value &amp;<span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (h <span class="syn-borrow">&amp;mut</span> Header) set(key &amp;<span class="syn-type">string</span>, value &amp;<span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `set` on `&amp;mut Header`.</p>
 <h3>Parameters</h3>

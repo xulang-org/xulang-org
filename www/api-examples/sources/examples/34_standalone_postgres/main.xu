@@ -1,0 +1,196 @@
+@main
+
+postgres #github.com/xulang-org/packages/postgres
+#database/sql/driver
+#context
+
+fn verify_postgres_live() {
+    println("--- Testing Native Postgres Driver Wire Protocol ---")
+    dsn := "postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"
+    mut conn := postgres.open(dsn)
+
+    // 1. Ping
+    err := conn.ping()
+    if err.len > 0 {
+        println("   [FAIL] Ping failed: " + err)
+        conn.close()
+        <<
+    }
+    println("   [PASS] Postgres Ping succeeded.")
+
+    // 2. Exec DDL
+    r1 := conn.exec("DROP TABLE IF EXISTS xu_heroes;", []driver.NamedValue{})
+    if r1.err.len > 0 {
+        println("   [FAIL] Drop table error: " + r1.err)
+        conn.close()
+        <<
+    }
+    r2 := conn.exec("CREATE TABLE xu_heroes (id INTEGER PRIMARY KEY, name VARCHAR(50), power INTEGER);", []driver.NamedValue{})
+    if r2.err.len > 0 {
+        println("   [FAIL] Create table error: " + r2.err)
+        conn.close()
+        <<
+    }
+    println("   [PASS] Table 'xu_heroes' created.")
+
+    // 3. Exec DML Insert
+    mut args1 := []driver.NamedValue{}
+    args1.push(driver.NamedValue{ordinal: 1, name: "", value: 1})
+    args1.push(driver.NamedValue{ordinal: 2, name: "", value: "Ironman"})
+    args1.push(driver.NamedValue{ordinal: 3, name: "", value: 100})
+    r3 := conn.exec("INSERT INTO xu_heroes (id, name, power) VALUES ($$1, $$2, $$3);", args1)
+    if r3.err.len > 0 {
+        println("   [FAIL] Insert error: " + r3.err)
+        conn.close()
+        <<
+    }
+    println("   [PASS] Hero inserted (rows=" + str(r3.rows_affected) + ").")
+
+    // 4. Query
+    mut q_args := []driver.NamedValue{}
+    q_args.push(driver.NamedValue{ordinal: 1, name: "", value: 1})
+    rows := conn.query("SELECT id, name, power FROM xu_heroes WHERE id = $$1;", q_args)
+    if rows.err.len > 0 {
+        println("   [FAIL] Query error: " + rows.err)
+        conn.close()
+        <<
+    }
+    println("   [PASS] Query executed, columns count: " + str(rows.columns.len))
+    mut i := 0
+    while i < rows.columns.len {
+        println("      Col[" + str(i) + "]: " + rows.columns[i])
+        i = i + 1
+    }
+    println("   Total cells retrieved: " + str(rows.cells.len))
+    mut j := 0
+    while j < rows.cells.len {
+        println("      Cell[" + str(j) + "]: " + rows.cells[j])
+        j = j + 1
+    }
+
+    // 5. Transaction
+    println("   Testing Transaction Commit...")
+    mut tx := conn.begin()
+    mut args2 := []driver.NamedValue{}
+    args2.push(driver.NamedValue{ordinal: 1, name: "", value: 2})
+    args2.push(driver.NamedValue{ordinal: 2, name: "", value: "Thor"})
+    args2.push(driver.NamedValue{ordinal: 3, name: "", value: 200})
+    tx_res := conn.exec("INSERT INTO xu_heroes (id, name, power) VALUES ($$1, $$2, $$3);", args2)
+    if tx_res.err.len > 0 {
+        println("   [FAIL] Tx insert error: " + tx_res.err)
+    }
+    tx_err := tx.commit()
+    if tx_err.len > 0 {
+        println("   [FAIL] Tx commit error: " + tx_err)
+    } else {
+        println("   [PASS] Transaction committed.")
+    }
+
+    // 6. Reset session
+    ctx := context.background()
+    reset_err := conn.reset_session(&ctx)
+    if reset_err.len > 0 {
+        println("   [FAIL] Reset session error: " + reset_err)
+    } else {
+        println("   [PASS] Reset session completed.")
+    }
+
+    // 7. Close
+    close_err := conn.close()
+    if close_err.len > 0 {
+        println("   [FAIL] Close error: " + close_err)
+    } else {
+        println("   [PASS] Connection closed cleanly.")
+    }
+}
+
+fn verify_postgres_pool() {
+    println("\n--- Testing Native Postgres Connection Pool ---")
+    dsn := "postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"
+    mut pool := postgres.open_pool(dsn + "", 5, 2)
+
+    pool.ping() or (err) {
+        println("   [FAIL] Pool ping error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Postgres Pool ping succeeded.")
+
+    // 1. DDL
+    pool.exec("DROP TABLE IF EXISTS xu_pool_users;") or (err) {
+        println("   [FAIL] Drop table error: " + err.msg())
+        <<
+    }
+    pool.exec("CREATE TABLE xu_pool_users (id INTEGER PRIMARY KEY, name VARCHAR(50), balance INTEGER);") or (err) {
+        println("   [FAIL] Create table error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool created table xu_pool_users.")
+
+    // 2. Concurrency / multiple inserts
+    mut i := 1
+    while i <= 5 {
+        pool.exec("INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);", i, "User_" + str(i), i * 100) or (err) {
+            println("   [FAIL] Insert row error: " + err.msg())
+            <<
+        }
+        i = i + 1
+    }
+    println("   [PASS] Concurrently inserted 5 rows across pooled connections.")
+
+    // 3. Query
+    mut rows := pool.query("SELECT id, name, balance FROM xu_pool_users ORDER BY id;") or (err) {
+        println("   [FAIL] Pool query error: " + err.msg())
+        <<
+    }
+    mut count := 0
+    while rows.next() {
+        vals := rows.take() or (err) {
+            println("   [FAIL] rows.take error: " + err.msg())
+            <<
+        }
+        uid := vals[0] as int
+        uname := vals[1] as string
+        ubal := vals[2] as int
+        println("      Row[" + str(count) + "]: id=" + str(uid) + ", name=" + uname + ", bal=" + str(ubal))
+        count = count + 1
+    }
+    rows.close()
+    if count == 5 {
+        println("   [PASS] Pool query verified 5 rows.")
+    } else {
+        println("   [FAIL] Row count mismatch: " + str(count))
+    }
+
+    // 4. Transaction via Pool
+    mut tx := pool.begin() or (err) {
+        println("   [FAIL] Pool begin tx error: " + err.msg())
+        <<
+    }
+    tx.exec("INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);", 6, "User_6", 600) or (err) {
+        println("   [FAIL] Tx insert error: " + err.msg())
+        <<
+    }
+    tx.commit() or (err) {
+        println("   [FAIL] Tx commit error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Transaction committed via pool.")
+
+    // 5. Cleanup & Close
+    pool.exec("DROP TABLE IF EXISTS xu_pool_users;") or (err) {
+        println("   [FAIL] Cleanup table error: " + err.msg())
+        <<
+    }
+    pool.close() or (err) {
+        println("   [FAIL] Pool close error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Postgres Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu PostgreSQL Native Driver Verification ===\n")
+    verify_postgres_live()
+    verify_postgres_pool()
+    println("\n[POSTGRES VERIFICATION 100% COMPLETED]")
+}

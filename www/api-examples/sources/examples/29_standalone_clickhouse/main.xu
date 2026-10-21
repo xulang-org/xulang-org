@@ -1,0 +1,112 @@
+@main
+
+clickhouse #github.com/xulang-org/packages/clickhouse
+#errors
+
+fn verify_clickhouse_basic() {
+    println("--- 1. Testing ClickHouse Client & Basic SQL ---")
+    mut ch := clickhouse.open("http://127.0.0.1:8123", "default", "secret", "default")
+
+    // Ping check
+    pong := ch.ping()
+    println("   ClickHouse ping: " + str(pong))
+
+    // DDL: Create table
+    println("   Creating table 'xu_metrics'...")
+    ch.exec("CREATE TABLE IF NOT EXISTS xu_metrics (id UInt64, service String, latency Float64) ENGINE = Memory") or (err) {
+        println("   [FAIL] Create table error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Table created.")
+
+    // DML: Insert records
+    println("   Inserting records...")
+    ch.insert("xu_metrics", "(1, 'order_service', 24.5), (2, 'user_service', 12.0), (3, 'order_service', 35.5)") or (err) {
+        println("   [FAIL] Insert error: " + err.msg())
+        <<
+    }
+    println("   [PASS] 3 rows inserted.")
+
+    // Query: Aggregation
+    println("   Running aggregation query...")
+    res := ch.query("SELECT service, count(), avg(latency) FROM xu_metrics GROUP BY service ORDER BY service") or (err) {
+        println("   [FAIL] Query error: " + err.msg())
+        <<
+    }
+    println("   Query Results (TSV):\n" + res)
+
+    // Cleanup: Drop table
+    ch.exec("DROP TABLE IF EXISTS xu_metrics") or (err) {
+        println("   [FAIL] Drop table error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Table dropped successfully.")
+}
+
+fn verify_clickhouse_pool() {
+    println("\n--- 2. Testing ClickHouse Connection Pool ---")
+    mut p := clickhouse.open_pool("http://127.0.0.1:8123", "default", "secret", "default", 5)
+
+    // 1. Connection Reuse Test
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Delegated Queries & Execution via Pool
+    println("   Testing delegated operations via pool...")
+    p.exec("CREATE TABLE IF NOT EXISTS xu_pool_events (id UInt64, name String) ENGINE = Memory") or (err) {
+        println("   [FAIL] Pool create table error: " + err.msg())
+        <<
+    }
+    p.exec("INSERT INTO xu_pool_events VALUES (101, 'login'), (102, 'checkout')") or (err) {
+        println("   [FAIL] Pool insert error: " + err.msg())
+        <<
+    }
+    rows := p.query_tsv("SELECT id, name FROM xu_pool_events ORDER BY id") or (err) {
+        println("   [FAIL] Pool query_tsv error: " + err.msg())
+        <<
+    }
+    println("   Retrieved rows count via pool: " + str(rows.len))
+    if rows.len == 2 {
+        println("   [PASS] Query TSV row count verified: 2 rows")
+        println("   Row 0: id=" + rows[0][0] + ", name=" + rows[0][1])
+        println("   Row 1: id=" + rows[1][0] + ", name=" + rows[1][1])
+    } else {
+        println("   [FAIL] Row count mismatch!")
+    }
+
+    p.exec("DROP TABLE IF EXISTS xu_pool_events") or (err) {
+        println("   [FAIL] Pool drop table error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool drop table completed.")
+
+    p.close()
+    println("   [PASS] ClickHouse Pool closed and verified.")
+}
+
+fn main() {
+    println("=== Xu ClickHouse Native Driver Verification ===\n")
+    verify_clickhouse_basic()
+    verify_clickhouse_pool()
+    println("\n[CLICKHOUSE VERIFICATION 100% COMPLETED]")
+}

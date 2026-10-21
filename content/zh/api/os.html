@@ -6,6 +6,313 @@
 <p class="meta">import: <code>#os</code></p>
 <p class="meta">counts: 73 函数, 16 方法, 5 类型, 9 常量, 0 方法集</p>
 <p class="lead">进程、文件、环境。hosted 下 File：open/create/read/write/close。getwd 失败返空串。</p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-d5b0637483e1" open>
+<summary><code>36_test_sqlite_pool/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/36_test_sqlite_pool">完整工程</a> · <a href="/api-examples/sources/examples/36_test_sqlite_pool/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="36_test_sqlite_pool/main.xu"><code class="language-xu">@main
+
+sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/sqlite
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+<span class="syn-import"><span class="hash">#</span>os</span>
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> remove_if_exists(p <span class="syn-type">string</span>) {
+    os.remove(p) <span class="syn-kw">or</span> (e) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+
+<span class="syn-kw">fn</span> verify_sqlite_pool_deep() {
+    println(<span class="syn-str">"--- SQLite Connection Pool Deep Verification ---"</span>)
+    db_file <span class="syn-flow">:=</span> <span class="syn-str">"/tmp/xu_sqlite_pool.db"</span>
+    remove_if_exists(db_file + <span class="syn-str">""</span>)
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sqlite.open_pool(db_file + <span class="syn-str">""</span>, 5, 2)
+
+    <span class="syn-cmt">// 1. Ping</span>
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] SQLite pool ping failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SQLite Pool ping succeeded."</span>)
+
+    <span class="syn-cmt">// 2. Schema</span>
+    db.exec(<span class="syn-str">"CREATE TABLE pool_items (id INTEGER PRIMARY KEY, title TEXT, value INT);"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create table failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Schema created."</span>)
+
+    <span class="syn-cmt">// 3. Sequential &amp; Concurrent Inserts through Pool</span>
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">while</span> i &lt;= 5 {
+        db.exec(<span class="syn-str">"INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"item_"</span> + str(i), i * 10) <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [FAIL] Insert failed at item "</span> + str(i) + <span class="syn-str">": "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        i = i + 1
+    }
+    println(<span class="syn-str">"   [PASS] 5 items inserted through SQLite connection pool."</span>)
+
+    <span class="syn-cmt">// 4. Query through Pool</span>
+    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, title, value FROM pool_items ORDER BY id ASC;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Query failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> rows.next() {
+        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        count = count + 1
+    }
+    rows.close()
+    println(<span class="syn-str">"   [PASS] SQLite Pool query verified: retrieved "</span> + str(count) + <span class="syn-str">" rows."</span>)
+
+    <span class="syn-cmt">// 5. Close Pool</span>
+    db.close() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Close failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    os.remove(db_file + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (e) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SQLite Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== SQLite Connection Pool In-Depth Verification ===\n"</span>)
+    verify_sqlite_pool_deep()
+    println(<span class="syn-str">"\n[SQLITE POOL VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-7c834415b2af">
+<summary><code>18_database_mysql/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/18_database_mysql">完整工程</a> · <a href="/api-examples/sources/examples/18_database_mysql/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="18_database_mysql/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mysql
+<span class="syn-import"><span class="hash">#</span>os</span>
+
+<span class="syn-cmt">// MySQL/MariaDB：XU_MYSQL_DSN 可覆盖本地开发默认值。</span>
+<span class="syn-cmt">// 驱动是普通 XU 包，通过 database/sql 接口使用，不依赖编译器内建。</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> dsn <span class="syn-flow">:=</span> os.getenv(<span class="syn-str">"XU_MYSQL_DSN"</span>)
+    <span class="syn-kw">if</span> dsn.len == 0 {
+        dsn = <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
+    }
+
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sql.open(mysql.driver(), dsn)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"MySQL ping failed"</span>)
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    db.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_people"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    db.exec(<span class="syn-str">"CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    first <span class="syn-flow">:=</span> db.exec(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES (?, ?, ?)"</span>,
+        1,
+        <span class="syn-str">"Ada"</span>,
+        true
+    ) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"inserted="</span> + str(first.rows_affected()))
+
+    <span class="syn-kw">mut</span> insert_person <span class="syn-flow">:=</span> db.prepare(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES (?, ?, ?)"</span>
+    ) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    insert_person.exec(2, <span class="syn-str">"Lin"</span>, true) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    insert_person.close()
+
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    tx.exec(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES (?, ?, ?)"</span>,
+        3,
+        <span class="syn-str">"Grace"</span>,
+        true
+    ) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    tx.commit() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">while</span> rows.next() {
+        values <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+            println(err.msg())
+            <span class="syn-flow">&lt;&lt;</span> 1
+        }
+        id <span class="syn-flow">:=</span> values[0] as <span class="syn-type">int</span>
+        name <span class="syn-flow">:=</span> values[1] as <span class="syn-type">string</span>
+        println(str(id) + <span class="syn-str">": "</span> + name)
+    }
+    <span class="syn-kw">if</span> rows.err().len &gt; 0 {
+        println(rows.err())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    rows.close()
+
+    row <span class="syn-flow">:=</span> db.query_row(<span class="syn-str">"SELECT name FROM xu_people WHERE id = ?"</span>, 2)
+    values <span class="syn-flow">:=</span> row.take() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"selected="</span> + (values[0] as <span class="syn-type">string</span>))
+
+    db.close() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-d797e719eb9c">
+<summary><code>17_database_postgres/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/17_database_postgres">完整工程</a> · <a href="/api-examples/sources/examples/17_database_postgres/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="17_database_postgres/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>os</span>
+
+<span class="syn-cmt">// PostgreSQL：XU_POSTGRES_DSN 可覆盖本地开发默认值。</span>
+<span class="syn-cmt">// 驱动是普通 XU 包，通过 database/sql 接口使用，不依赖编译器内建。</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> dsn <span class="syn-flow">:=</span> os.getenv(<span class="syn-str">"XU_POSTGRES_DSN"</span>)
+    <span class="syn-kw">if</span> dsn.len == 0 {
+        dsn = <span class="syn-str">"postgres://postgres:postgres@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
+    }
+
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sql.open(postgres.driver(), dsn)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"PostgreSQL ping failed"</span>)
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    db.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_people"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    db.exec(<span class="syn-str">"CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    first <span class="syn-flow">:=</span> db.exec(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES ($$1, $$2, $$3)"</span>,
+        1,
+        <span class="syn-str">"Ada"</span>,
+        true
+    ) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"inserted="</span> + str(first.rows_affected()))
+
+    <span class="syn-kw">mut</span> insert_person <span class="syn-flow">:=</span> db.prepare(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES ($$1, $$2, $$3)"</span>
+    )
+    insert_person.exec(2, <span class="syn-str">"Lin"</span>, true) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    insert_person.close()
+
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    tx.exec(
+        <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES ($$1, $$2, $$3)"</span>,
+        3,
+        <span class="syn-str">"Grace"</span>,
+        true
+    ) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    tx.commit() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">while</span> rows.next() {
+        values <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+            println(err.msg())
+            <span class="syn-flow">&lt;&lt;</span> 1
+        }
+        id <span class="syn-flow">:=</span> values[0] as <span class="syn-type">int</span>
+        name <span class="syn-flow">:=</span> values[1] as <span class="syn-type">string</span>
+        println(str(id) + <span class="syn-str">": "</span> + name)
+    }
+    <span class="syn-kw">if</span> rows.err().len &gt; 0 {
+        println(rows.err())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    rows.close()
+
+    <span class="syn-kw">mut</span> qrows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT name FROM xu_people WHERE id = $$1"</span>, 2) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">if</span> qrows.next() {
+        vals <span class="syn-flow">:=</span> qrows.take() <span class="syn-kw">or</span> (err) {
+            println(err.msg())
+            <span class="syn-flow">&lt;&lt;</span> 1
+        }
+        println(<span class="syn-str">"selected="</span> + (vals[0] as <span class="syn-type">string</span>))
+    }
+    qrows.close()
+
+    db.close() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example"><summary>更多相关示例</summary><ul>
+<li><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/22_standalone_sqlite"><code>22_standalone_sqlite/main.xu</code></a></li>
+</ul></details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="args">
 <h2><code>args</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> args() []<span class="syn-type">string</span></code></pre></div>
@@ -198,7 +505,7 @@
 </article>
 <article class="api-item" id="-mut-File-close">
 <h2><code>(&amp;mut File) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f &amp;<span class="syn-kw">mut</span> File) close() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> File) close() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut File` 上的方法：关闭资源。失败时 throw。</p>
 <h3>参数</h3>
@@ -395,6 +702,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-7c834415b2af">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-EnvVal">
 <h2><code>struct EnvVal</code></h2>
@@ -572,6 +880,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-d5b0637483e1">查看用法示例</a></p>
 </article>
 <article class="api-item" id="chmod">
 <h2><code>chmod</code></h2>
@@ -783,7 +1092,7 @@
 </article>
 <article class="api-item" id="-mut-File-take">
 <h2><code>(&amp;mut File) take</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f &amp;<span class="syn-kw">mut</span> File) take() File</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> File) take() File</code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut File` 上调用 `take`。失败时 throw。</p>
 <h3>参数</h3>
@@ -795,7 +1104,7 @@
 </article>
 <article class="api-item" id="-mut-File-release_descriptor">
 <h2><code>(&amp;mut File) release_descriptor</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f &amp;<span class="syn-kw">mut</span> File) release_descriptor() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> File) release_descriptor() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut File` 上的方法：releasedescriptor。失败时 throw。</p>
 <h3>参数</h3>

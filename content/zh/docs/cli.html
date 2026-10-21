@@ -66,7 +66,7 @@
 <tr><td><code>--no-opt</code></td><td>关闭全部 MIR 优化与默认寄存器分配（禁用函数内联与激进折减），极速构建。</td></tr>
 <tr><td><code>--debug-build</code></td><td>无优化构建，同时生成标准 DWARF 行号表与调试信息。</td></tr>
 <tr><td><code>--debug</code></td><td>在保留高优化（O2 级别）的前提下生成 DWARF 行号表。</td></tr>
-<tr><td><code>--timings</code></td><td>在标准错误 stderr 输出解析、MIR 优化、寄存器分配与代码生成的精确阶段耗时统计。</td></tr>
+<tr><td><code>--timings</code></td><td>在标准错误 stderr 输出解析、MIR 优化、寄存器分配与代码生成的阶段耗时，以及 <code>pattern-hits:</code> 模式命中统计和每个函数的寄存器分配模式。</td></tr>
 <tr><td><code>--offline</code></td><td>离线构建模式：仅从本地 <code>vendor/</code> 或缓存目录读取依赖，绝不触发网络请求。</td></tr>
 <tr><td><code>--frozen</code></td><td>冻结构建模式：离线且严格匹配现有的 <code>xu.lock</code>；若依赖缺失或摘要不符则强制失败。</td></tr>
 <tr><td><code>--desktop</code></td><td>图形桌面程序打包模式：调用 <code>xu-desktop</code> 打包（生成 macOS <code>.app</code>、Windows <code>.exe</code>、Linux ELF）。</td></tr>
@@ -88,6 +88,25 @@ xu build . --frozen -o release/server
 
 # 4. 打印编译管线详细性能与耗时统计
 xu build main.xu --timings -o server</code></pre>
+
+<h3>0.9.4 编译器诊断</h3>
+<p>定位编译或优化问题时，可通过以下环境变量控制诊断。它们不改变项目清单中的版本要求。</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>环境变量</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td><code>XU_VERIFY=1</code></td><td>在每个优化 pass 后运行完整 MIR 验证器，检查中间表示的一致性。</td></tr>
+<tr><td><code>XU_DUMP_MIR=&lt;函数名&gt;</code></td><td>导出指定函数的 MIR，便于检查降级与优化结果。</td></tr>
+<tr><td><code>XU_PATTERNS_OFF=all</code></td><td>关闭全部具名后端模式；也可传入逗号分隔的模式名。用于与默认构建对拍，未知名称会报错。</td></tr>
+</tbody></table></div>
+<pre><code># macOS / Linux：验证每个 pass 并查看模式命中
+XU_VERIFY=1 xu build main.xu --timings -o myapp
+
+# 导出 main 的 MIR
+XU_DUMP_MIR=main xu build main.xu -o myapp
+
+# 生成关闭后端模式的对照产物
+XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
+<p>PowerShell 中先设置变量，例如 <code>$env:XU_VERIFY = '1'</code>，再运行相同的 <code>xu build</code> 命令；诊断完成后用 <code>Remove-Item Env:XU_VERIFY</code> 清除。</p>
 
 <h2>2. 自动化测试 (test)</h2>
 <p><code>xu test</code> 自动识别并编译测试用例。任何包含 <code>fn test_*</code> 的源文件（或 <code>test.*.xu</code>）均可被直接执行：</p>

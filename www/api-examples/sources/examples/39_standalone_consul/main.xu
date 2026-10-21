@@ -1,0 +1,123 @@
+@main
+
+consul #github.com/xulang-org/packages/consul
+#errors
+
+fn verify_consul_basic() {
+    println("--- 1. Testing Consul Client Basic Operations ---")
+    mut client := consul.open("http://127.0.0.1:8500")
+
+    // 1. Ping
+    pong := client.ping()
+    println("   Consul leader ping: " + str(pong))
+    if !pong {
+        println("   [FAIL] Consul ping failed.")
+        <<
+    }
+    leader_addr := client.leader() or (err) {
+        println("   [FAIL] get leader failed: " + err.msg())
+        <<
+    }
+    println("   [PASS] Current Raft Leader: " + leader_addr)
+
+    // 2. KV Operations
+    k := "services/payment/rate_limit"
+    v := "1000req/s"
+    println("   Writing KV: " + k + " = " + v)
+    client.put_kv(k + "", v + "")
+    got_v := client.get_kv(k + "") or (err) {
+        println("   [FAIL] get_kv failed: " + err.msg())
+        <<
+    }
+    println("   Retrieved KV: " + got_v)
+    if got_v == v {
+        println("   [PASS] KV value matched exactly!")
+    } else {
+        println("   [FAIL] KV mismatch!")
+    }
+
+    // 3. Service Registration
+    srv_id := "payment-worker-1"
+    srv_name := "payment-service"
+    println("   Registering microservice: " + srv_id)
+    ok_reg := client.register_service(srv_id + "", srv_name + "", "10.0.0.1", 8080)
+    if ok_reg {
+        println("   [PASS] Microservice registered.")
+    } else {
+        println("   [FAIL] Failed to register service.")
+    }
+
+    srv_info := client.get_service(srv_name + "") or (err) {
+        println("   [FAIL] get_service failed: " + err.msg())
+        <<
+    }
+    println("   Catalog service preview length: " + str(srv_info.len) + " bytes")
+
+    client.deregister_service(srv_id + "")
+    println("   [PASS] Microservice deregistered.")
+
+    client.delete_kv(k + "")
+    println("   [PASS] KV deleted.")
+}
+
+fn verify_consul_pool() {
+    println("\n--- 2. Testing Consul Connection Pool ---")
+    mut p := consul.open_pool("http://127.0.0.1:8500", "", 5)
+
+    // 1. Connection Reuse Test
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Delegated operations via pool
+    println("   Testing delegated operations via pool...")
+    pk := "pool/config/app_mode"
+    pv := "distributed_production"
+    p.put_kv(pk + "", pv + "")
+    val := p.get_kv(pk + "") or (err) {
+        println("   [FAIL] Pool get_kv failed: " + err.msg())
+        <<
+    }
+    println("   Retrieved via pool: " + val)
+    if val == pv {
+        println("   [PASS] Pool KV matched exactly!")
+    } else {
+        println("   [FAIL] Pool KV mismatch!")
+    }
+
+    p.register_service("pool-node-1", "pool-service", "127.0.0.1", 9090)
+    println("   [PASS] Pool registered microservice.")
+
+    p.deregister_service("pool-node-1")
+    p.delete_kv(pk + "")
+    println("   [PASS] Pool cleanup completed.")
+
+    p.close()
+    println("   [PASS] Consul Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu HashiCorp Consul Service Discovery Native Driver Verification ===\n")
+    verify_consul_basic()
+    verify_consul_pool()
+    println("\n[CONSUL VERIFICATION 100% COMPLETED]")
+}

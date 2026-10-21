@@ -2,7 +2,7 @@
 <div class="hero">
   <img src="/xu_classic.svg" alt="XU" width="120" height="120">
   <div>
-    <p class="banner"><i class="xi xi-bolt xi-brand"></i> XU v{{xu_version}} · MIT 开源 · 编译器命令行工具为 <code>xu</code></p>
+    <p class="banner"><i class="xi xi-bolt xi-brand"></i> <span>XU v{{xu_version}} · MIT 开源 · 编译器命令行工具为 <code>xu</code></span></p>
     <h1>XU</h1>
     <p class="lead">坚如磐石的零运行时开销内存安全，闪电般的编译速度，极致清晰的心智体验。</p>
     <div class="ctas">
@@ -56,7 +56,7 @@
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-xupkg xi-gold"></i></span> 开箱即用的模块与生态</h2>
-    <p>统一全能的 <code>xu</code> 命令行工具链；原生工程清单 <code>xu.xun</code>。标准库涵盖工业级高性能网络、HTTP、密码与国密套件、SQL 以及跨平台轻量 WebView 桌面 UI。</p>
+    <p>统一的 <code>xu</code> 工具链，涵盖构建、测试、依赖管理（<code>get</code>）、编辑器服务（<code>lsp</code>）与 C 模块集成（<code>native</code>）；原生工程清单 <code>xu.xun</code>。标准库涵盖工业级高性能网络、HTTP、密码与国密套件、SQL 以及跨平台轻量 WebView 桌面 UI。</p>
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-shield-check xi-cyan"></i></span> 确定性安全与零 UB</h2>
@@ -157,15 +157,24 @@ fn main() int {
     </div>
   </details>
   <details class="faq-item">
-    <summary><h3>如何管理与安装第三方 packages 扩展包？</h3></summary>
+    <summary><h3>Xu 支持哪些编辑器？如何启用 LSP？</h3></summary>
     <div class="faq-answer">
-      <p><strong>零手动配置</strong>。官方维护了涵盖 29 个常用生产级外部服务驱动的 <a href="/docs/packages">packages 仓库</a>（Redis、MySQL、Postgres、Kafka、S3、gRPC 等）。开发者只需在 <code>xu.xun</code> 声明版本（如 <code>require: "github.com/xulang-org/packages": v0.1.1</code>），执行 <code>xu install</code> 即可一键自动下载并生成校验锁 <code>xu.lock</code>，支持 <code>--offline</code> 离线与 <code>--frozen</code> 生产构建。</p>
+      <p>官方 <a href="/docs/vscode">vscode-xu 扩展</a>支持 VS Code 与 Cursor，通过 <code>xu lsp</code> 启动 SDK 中的 <code>xu-lsp</code> 语言服务器，提供实时诊断、代码补全、跳转定义、悬停文档、符号大纲、查找引用、重命名与格式化。</p>
+      <p>其他支持 LSP 的编辑器也可配置 <code>xu lsp</code> 作为服务器命令，通过标准输入输出（stdin/stdout）交换 JSON-RPC 2.0 消息。通常由编辑器自动启动；可用 <code>xu lsp --help</code> 查看帮助。</p>
     </div>
   </details>
   <details class="faq-item">
-    <summary><h3>如何与现有 C 语言代码库进行互操作 (C FFI)？</h3></summary>
+    <summary><h3>xu get 与 xu install 有什么区别？</h3></summary>
     <div class="faq-answer">
-      <p>Xu 遵循标准 System V / AAPCS 原生 C 调用约定（ABI）。可以通过轻量 C 桥接或直接导出 C ABI 兼容的函数签名与动态库（<code>--shared</code>），无缝集成操作系统原生底层库或嵌入式 C 代码（如 packages 中的 SQLite 驱动）。</p>
+      <p>在已有 <code>xu.xun</code> 的项目根目录执行 <code>xu get github.com/xulang-org/packages@v0.1.1</code>，即可添加或更新指定依赖：自动修改清单中的 <code>require:</code>、安装源码到 <code>vendor/</code> 并更新 <code>xu.lock</code>。必须显式指定精确版本，不接受 <code>@latest</code>。</p>
+      <p><code>xu install</code> 则安装清单中已经声明的依赖。两者均支持 <code>--offline</code>；需要严格按现有锁文件构建时，使用 <code>xu build . --frozen</code>。详见<a href="/docs/modules">模块与依赖</a>；官方 <a href="/docs/packages">packages 仓库</a>提供 29 个扩展包。</p>
+    </div>
+  </details>
+  <details class="faq-item">
+    <summary><h3>如何用 xu native 集成 C 代码？</h3></summary>
+    <div class="faq-answer">
+      <p><code>xu native</code> 提供完整的原生模块流程：<code>xu native compile</code> 将 C 源码与接口元数据编译为 <code>.a</code>；<code>xu native archive</code> 为已有目标文件封装元数据；<code>xu native pack</code> 将不同目标的切片打包为 <code>.xulib</code>；<code>xu native inspect</code> 与 <code>xu native extract</code> 用于检查和提取切片。</p>
+      <p><code>.a</code> 用于单目标静态库，<code>.xulib</code> 用于携带接口契约与多个目标切片的分发。构建时可直接传入库，例如 <code>xu build main.xu native/mylib.xulib -o app</code>。编译 C 源码需安装相应的 C 编译工具链。参数与完整示例见<a href="/docs/native">原生模块与 .xulib 规范</a>，或运行 <code>xu native compile --help</code>。</p>
     </div>
   </details>
   <details class="faq-item">

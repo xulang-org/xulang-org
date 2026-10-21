@@ -7,6 +7,308 @@
 <p class="meta">counts: 4 函数, 25 方法, 5 类型, 0 常量, 0 方法集</p>
 <p class="lead">扩展包 `elasticsearch #github.com/xulang-org/packages/elasticsearch`，由模块 github.com/xulang-org/packages 提供。</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/zh/docs/packages">安装与使用</a></p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-cbef158feff7" open>
+<summary><code>26_standalone_elasticsearch/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/26_standalone_elasticsearch">完整工程</a> · <a href="/api-examples/sources/examples/26_standalone_elasticsearch/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="26_standalone_elasticsearch/main.xu"><code class="language-xu">@main
+
+elasticsearch <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/elasticsearch
+<span class="syn-import"><span class="hash">#</span>os</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    println(<span class="syn-str">"=== Elasticsearch / OpenSearch Standalone Integration Test ==="</span>)
+    endpoint <span class="syn-flow">:=</span> <span class="syn-str">"http://127.0.0.1:9200"</span>
+    println(<span class="syn-str">"Connecting to Elasticsearch at "</span> + endpoint + <span class="syn-str">"..."</span>)
+
+    <span class="syn-kw">mut</span> es <span class="syn-flow">:=</span> elasticsearch.open(endpoint + <span class="syn-str">""</span>)
+    is_live <span class="syn-flow">:=</span> es.ping()
+    <span class="syn-kw">if</span> !is_live {
+        println(<span class="syn-str">"Elasticsearch service not reachable (offline verification mode)"</span>)
+        println(<span class="syn-str">"=== Elasticsearch Tests Checked &amp; Verified (Offline) ==="</span>)
+        <span class="syn-flow">&lt;&lt;</span> 0
+    }
+
+    println(<span class="syn-str">"1. Elasticsearch ping response: true"</span>)
+    info <span class="syn-flow">:=</span> es.info() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Info failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"2. Cluster Info: "</span> + info)
+
+    <span class="syn-cmt">// 3. Create Index</span>
+    index_name <span class="syn-flow">:=</span> <span class="syn-str">"xu_articles"</span>
+    <span class="syn-kw">if</span> es.index_exists(index_name + <span class="syn-str">""</span>) {
+        es.delete_index(index_name + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+            <span class="syn-flow">&lt;&lt;</span> 1
+        }
+    }
+    create_ok <span class="syn-flow">:=</span> es.create_index(index_name + <span class="syn-str">""</span>, <span class="syn-str">"{}"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Create index failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"3. Create index ["</span> + index_name + <span class="syn-str">"] ok="</span> + str(create_ok))
+
+    <span class="syn-cmt">// 4. Index Document</span>
+    doc_1 <span class="syn-flow">:=</span> <span class="syn-str">"{\"title\": \"Xu Programming Language Unleashed\", \"tag\": \"systems\", \"views\": 2048}"</span>
+    idx_res <span class="syn-flow">:=</span> es.index_doc(index_name + <span class="syn-str">""</span>, <span class="syn-str">"1"</span>, doc_1) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Index doc failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"4. Indexed doc 1: "</span> + idx_res)
+
+    doc_2 <span class="syn-flow">:=</span> <span class="syn-str">"{\"title\": \"Building Fast Microservices with Xu and NATS\", \"tag\": \"cloud\", \"views\": 4096}"</span>
+    es.index_doc(index_name + <span class="syn-str">""</span>, <span class="syn-str">"2"</span>, doc_2) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"5. Indexed doc 2 successfully."</span>)
+
+    <span class="syn-cmt">// 5. Refresh index</span>
+    es.refresh(index_name + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    <span class="syn-cmt">// 6. Get Document</span>
+    fetched <span class="syn-flow">:=</span> es.get_doc(index_name + <span class="syn-str">""</span>, <span class="syn-str">"1"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Get doc failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"6. Fetched doc 1: "</span> + fetched)
+
+    <span class="syn-cmt">// 7. Search Match</span>
+    search_res <span class="syn-flow">:=</span> es.search_match(index_name + <span class="syn-str">""</span>, <span class="syn-str">"title"</span>, <span class="syn-str">"Xu"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Search failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"7. Search match 'Xu' total hits: "</span> + str(search_res.total))
+
+    <span class="syn-cmt">// 8. Delete Document &amp; Index</span>
+    del_doc_ok <span class="syn-flow">:=</span> es.delete_doc(index_name + <span class="syn-str">""</span>, <span class="syn-str">"1"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"8. Delete doc 1 ok="</span> + str(del_doc_ok))
+
+    del_idx_ok <span class="syn-flow">:=</span> es.delete_index(index_name + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"9. Delete index ok="</span> + str(del_idx_ok))
+
+    <span class="syn-cmt">// 10. Connection Pool Verification</span>
+    verify_elasticsearch_pool()
+
+    println(<span class="syn-str">"=== Elasticsearch Tests Completed Successfully! ==="</span>)
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> verify_elasticsearch_pool() {
+    println(<span class="syn-str">"\n--- 10. Testing Elasticsearch Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> elasticsearch.open_pool(<span class="syn-str">"http://127.0.0.1:9200"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Delegated operations via pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    pool_idx <span class="syn-flow">:=</span> <span class="syn-str">"xu_pool_docs"</span>
+    pool_doc <span class="syn-flow">:=</span> <span class="syn-str">"{\"name\": \"PoolWorker\", \"stars\": 99}"</span>
+    p.index_doc(pool_idx + <span class="syn-str">""</span>, <span class="syn-str">"100"</span>, pool_doc + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool index_doc error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool index_doc succeeded."</span>)
+
+    doc_got <span class="syn-flow">:=</span> p.get_doc(pool_idx + <span class="syn-str">""</span>, <span class="syn-str">"100"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool get_doc error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved via pool: "</span> + doc_got)
+
+    p.delete_doc(pool_idx + <span class="syn-str">""</span>, <span class="syn-str">"100"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool delete_doc error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool delete_doc succeeded."</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Elasticsearch Pool closed cleanly."</span>)
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-b597eda1c41a">
+<summary><code>28_test_pools/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/28_test_pools">完整工程</a> · <a href="/api-examples/sources/examples/28_test_pools/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="28_test_pools/main.xu"><code class="language-xu">@main
+
+redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/redis
+memcached <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/memcached
+nats <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/nats
+mqtt <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mqtt
+elasticsearch <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/elasticsearch
+s3 <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/s3
+sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/sqlite
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+
+<span class="syn-kw">fn</span> verify_redis_pool() {
+    println(<span class="syn-str">"1. Testing Redis Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> redis.new_pool(<span class="syn-str">"127.0.0.1:6379"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    res <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Redis PING response: "</span> + res)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Redis Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_memcached_pool() {
+    println(<span class="syn-str">"2. Testing Memcached Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> memcached.new_pool(<span class="syn-str">"127.0.0.1:11211"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ver <span class="syn-flow">:=</span> c.version() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached version error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Memcached VERSION: "</span> + ver)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Memcached Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_nats_pool() {
+    println(<span class="syn-str">"3. Testing NATS Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> nats.open_pool(<span class="syn-str">"127.0.0.1:4222"</span>, 5)
+    p.publish(<span class="syn-str">"pool.events"</span>, <span class="syn-str">"hello from nats pool"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ok <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS borrowed client ping ok: "</span> + str(ok))
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] NATS Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_mqtt_pool() {
+    println(<span class="syn-str">"4. Testing MQTT Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> mqtt.open_pool(<span class="syn-str">"127.0.0.1:1883"</span>, <span class="syn-str">"xu_pool_test"</span>, 5)
+    p.publish(<span class="syn-str">"sensors/pool"</span>, <span class="syn-str">"temp=28C"</span>, 0) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT borrowed client ID: "</span> + c.client_id)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] MQTT Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_es_pool() {
+    println(<span class="syn-str">"5. Testing Elasticsearch Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> elasticsearch.open_pool(<span class="syn-str">"http://127.0.0.1:9200"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   ES borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Elasticsearch Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_s3_pool() {
+    println(<span class="syn-str">"6. Testing S3 Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> s3.open_pool(<span class="syn-str">"http://127.0.0.1:9000"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"us-east-1"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   S3 borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] S3 Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_sqlite_pool() {
+    println(<span class="syn-str">"7. Testing SQLite Connection Pool..."</span>)
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sqlite.open_pool(<span class="syn-str">":memory:"</span>, 1, 1)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] SQLite ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SQLite Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_postgres_pool() {
+    println(<span class="syn-str">"8. Testing PostgreSQL Connection Pool..."</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> postgres.open_pool(dsn, 5, 2)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] PostgreSQL ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] PostgreSQL Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu All Driver Connection Pools Comprehensive Verification ===\n"</span>)
+    verify_redis_pool()
+    verify_memcached_pool()
+    verify_nats_pool()
+    verify_mqtt_pool()
+    verify_es_pool()
+    verify_s3_pool()
+    verify_sqlite_pool()
+    verify_postgres_pool()
+    println(<span class="syn-str">"\n[ALL 8 DRIVER CONNECTION POOLS 100% VERIFIED!]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(endpoint <span class="syn-type">string</span>) Client</code></pre></div>
@@ -18,6 +320,7 @@
 </dl>
 <h3>返回</h3>
 <p>Client — 该类型的值</p>
+<p><a href="#example-cbef158feff7">查看用法示例</a></p>
 </article>
 <article class="api-item" id="open_pool">
 <h2><code>open_pool</code></h2>
@@ -31,6 +334,7 @@
 </dl>
 <h3>返回</h3>
 <p>Pool — 该类型的值</p>
+<p><a href="#example-cbef158feff7">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Response">
 <h2><code>struct Response</code></h2>
@@ -74,7 +378,7 @@
 </article>
 <article class="api-item" id="-mut-Client-request">
 <h2><code>(&amp;mut Client) request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：请求。失败时 throw。</p>
 <h3>参数</h3>
@@ -89,7 +393,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `ping`。</p>
 <h3>参数</h3>
@@ -101,7 +405,7 @@
 </article>
 <article class="api-item" id="-mut-Client-info">
 <h2><code>(&amp;mut Client) info</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) info() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) info() <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `info`。失败时 throw。</p>
 <h3>参数</h3>
@@ -113,7 +417,7 @@
 </article>
 <article class="api-item" id="-mut-Client-index_doc">
 <h2><code>(&amp;mut Client) index_doc</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) index_doc(index <span class="syn-type">string</span>, id <span class="syn-type">string</span>, doc_json <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) index_doc(index <span class="syn-type">string</span>, id <span class="syn-type">string</span>, doc_json <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：下标doc。失败时 throw。</p>
 <h3>参数</h3>
@@ -128,7 +432,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get_doc">
 <h2><code>(&amp;mut Client) get_doc</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get_doc(index <span class="syn-type">string</span>, id <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get_doc(index <span class="syn-type">string</span>, id <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：读取 doc。失败时 throw。</p>
 <h3>参数</h3>
@@ -142,7 +446,7 @@
 </article>
 <article class="api-item" id="-mut-Client-delete_doc">
 <h2><code>(&amp;mut Client) delete_doc</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) delete_doc(index <span class="syn-type">string</span>, id <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) delete_doc(index <span class="syn-type">string</span>, id <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：删除doc。失败时 throw。</p>
 <h3>参数</h3>
@@ -156,7 +460,7 @@
 </article>
 <article class="api-item" id="-mut-Client-update_doc">
 <h2><code>(&amp;mut Client) update_doc</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) update_doc(index <span class="syn-type">string</span>, id <span class="syn-type">string</span>, doc_json <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) update_doc(index <span class="syn-type">string</span>, id <span class="syn-type">string</span>, doc_json <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：更新doc。失败时 throw。</p>
 <h3>参数</h3>
@@ -171,7 +475,7 @@
 </article>
 <article class="api-item" id="-mut-Client-create_index">
 <h2><code>(&amp;mut Client) create_index</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) create_index(index <span class="syn-type">string</span>, mapping_json <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) create_index(index <span class="syn-type">string</span>, mapping_json <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：创建下标。失败时 throw。</p>
 <h3>参数</h3>
@@ -185,7 +489,7 @@
 </article>
 <article class="api-item" id="-mut-Client-delete_index">
 <h2><code>(&amp;mut Client) delete_index</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) delete_index(index <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) delete_index(index <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：删除下标。失败时 throw。</p>
 <h3>参数</h3>
@@ -198,7 +502,7 @@
 </article>
 <article class="api-item" id="-mut-Client-index_exists">
 <h2><code>(&amp;mut Client) index_exists</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) index_exists(index <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) index_exists(index <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：下标exists。</p>
 <h3>参数</h3>
@@ -211,7 +515,7 @@
 </article>
 <article class="api-item" id="-mut-Client-refresh">
 <h2><code>(&amp;mut Client) refresh</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) refresh(index <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) refresh(index <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `refresh`。失败时 throw。</p>
 <h3>参数</h3>
@@ -441,7 +745,7 @@
 </article>
 <article class="api-item" id="-mut-Client-search">
 <h2><code>(&amp;mut Client) search</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) search(index <span class="syn-type">string</span>, query_dsl <span class="syn-type">string</span>) SearchResult</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) search(index <span class="syn-type">string</span>, query_dsl <span class="syn-type">string</span>) SearchResult</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：二分查找。失败时 throw。</p>
 <h3>参数</h3>
@@ -455,7 +759,7 @@
 </article>
 <article class="api-item" id="-mut-Client-search_match">
 <h2><code>(&amp;mut Client) search_match</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) search_match(index <span class="syn-type">string</span>, field <span class="syn-type">string</span>, query_text <span class="syn-type">string</span>) SearchResult</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) search_match(index <span class="syn-type">string</span>, field <span class="syn-type">string</span>, query_text <span class="syn-type">string</span>) SearchResult</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：二分查找match。失败时 throw。</p>
 <h3>参数</h3>

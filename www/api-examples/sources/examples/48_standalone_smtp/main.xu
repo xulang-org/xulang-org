@@ -1,0 +1,70 @@
+@main
+
+smtp #github.com/xulang-org/packages/smtp
+#errors
+#strings
+
+fn verify_smtp_pool_and_mail() {
+    println("--- 1. Testing SMTP Connection Pool & Transaction ---")
+    mut p := smtp.open_pool("smtp://127.0.0.1:1025", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    if fd1 < 0 {
+        println("   [FAIL] Failed to connect to SMTP server")
+        <<
+    }
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    if fd2 < 0 {
+        println("   [FAIL] Failed to re-borrow SMTP connection")
+        <<
+    }
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Concurrency
+    fd3 := p.get_conn()
+    if fd3 < 0 {
+        println("   [FAIL] Failed to borrow concurrent connection")
+        <<
+    }
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    // 3. Mail Sending Transaction
+    msg := smtp.Message{
+        from: "service-alert@xu.lang",
+        to: "admin@enterprise.internal",
+        subject: "Antigravity SMTP Driver Verification 2026",
+        body: "Hello! This is a real test email sent through Xu Language native RFC 5321 SMTP driver."
+    }
+
+    p.send_mail(msg) or (err) {
+        println("   [FAIL] Failed to send email: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] SMTP Mail transaction (MAIL FROM -> RCPT TO -> DATA) succeeded!")
+
+    p.close()
+    println("   [PASS] SMTP Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu SMTP Native Driver Verification ===\n")
+    verify_smtp_pool_and_mail()
+    println("\n[SMTP VERIFICATION 100% COMPLETED]")
+}

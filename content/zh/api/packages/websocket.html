@@ -7,6 +7,156 @@
 <p class="meta">counts: 9 函数, 12 方法, 4 类型, 6 常量, 0 方法集</p>
 <p class="lead">扩展包 `websocket #github.com/xulang-org/packages/websocket`，由模块 github.com/xulang-org/packages 提供。</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/zh/docs/packages">安装与使用</a></p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-0015df2aa2b5" open>
+<summary><code>47_standalone_websocket/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/47_standalone_websocket">完整工程</a> · <a href="/api-examples/sources/examples/47_standalone_websocket/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="47_standalone_websocket/main.xu"><code class="language-xu">@main
+
+websocket <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/websocket
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> verify_rfc_handshake_and_framing() {
+    println(<span class="syn-str">"--- 1. Testing RFC 6455 Handshake &amp; Frame Masking ---"</span>)
+
+    <span class="syn-cmt">// RFC 6455 Section 1.3 example</span>
+    sec_key <span class="syn-flow">:=</span> <span class="syn-str">"dGhlIHNhbXBsZSBub25jZQ=="</span>
+    accept <span class="syn-flow">:=</span> websocket.compute_accept_key(sec_key)
+    expected_accept <span class="syn-flow">:=</span> <span class="syn-str">"s3pPLMBiTxaQ9kYGzzhZRbK+xOo="</span>
+    <span class="syn-kw">if</span> accept == expected_accept {
+        println(<span class="syn-str">"   [PASS] RFC 6455 Sec-WebSocket-Accept calculation: "</span> + accept)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected "</span> + expected_accept + <span class="syn-str">", got "</span> + accept)
+    }
+
+    <span class="syn-cmt">// Masking test</span>
+    plain <span class="syn-flow">:=</span> <span class="syn-str">"WebSocket Mask Test"</span>
+    masked <span class="syn-flow">:=</span> websocket.apply_mask(plain + <span class="syn-str">""</span>, 0x11, 0x22, 0x33, 0x44)
+    unmasked <span class="syn-flow">:=</span> websocket.apply_mask(masked + <span class="syn-str">""</span>, 0x11, 0x22, 0x33, 0x44)
+    <span class="syn-kw">if</span> unmasked == plain {
+        println(<span class="syn-str">"   [PASS] 4-byte XOR Masking &amp; Unmasking matched cleanly."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Masking round-trip failed!"</span>)
+    }
+
+    <span class="syn-cmt">// Build frame test</span>
+    frame_bytes <span class="syn-flow">:=</span> websocket.build_frame(websocket.opcode_text, <span class="syn-str">"Hello"</span>, true, true)
+    <span class="syn-cmt">// 2 bytes hdr + 4 bytes mask + 5 bytes payload = 11 bytes</span>
+    <span class="syn-kw">if</span> frame_bytes.len == 11 {
+        println(<span class="syn-str">"   [PASS] Masked Frame length verified: 11 bytes"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Unexpected frame length: "</span> + str(frame_bytes.len))
+    }
+}
+
+<span class="syn-kw">fn</span> ws_coro_worker(id <span class="syn-type">int</span>, host <span class="syn-type">string</span>, port <span class="syn-type">int</span>, idle <span class="syn-kw">chan</span> <span class="syn-type">int</span>, done <span class="syn-kw">chan</span> <span class="syn-type">int</span>) {
+    p <span class="syn-flow">:=</span> websocket.WsPool{
+        client: websocket.WsClient{host: host, port: port, path: <span class="syn-str">"/"</span>},
+        idle: idle,
+        max_idle: 5
+    }
+    msg <span class="syn-flow">:=</span> <span class="syn-str">"ws_coro_msg_"</span> + str(id)
+    echoed <span class="syn-flow">:=</span> p.echo_text(msg + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] ws worker "</span> + str(id) + <span class="syn-str">" echo failed: "</span> + err.msg())
+        done <span class="syn-flow">&lt;-</span> -id
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">if</span> echoed == msg {
+        println(<span class="syn-str">"   [PASS] xu ws worker "</span> + str(id) + <span class="syn-str">" echo round-trip succeeded: "</span> + echoed)
+        done <span class="syn-flow">&lt;-</span> id
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] ws worker "</span> + str(id) + <span class="syn-str">" echo mismatch"</span>)
+        done <span class="syn-flow">&lt;-</span> -id
+    }
+}
+
+<span class="syn-kw">fn</span> verify_ws_pool_and_echo() {
+    println(<span class="syn-str">"\n--- 2. Testing WebSocket Connection Pool &amp; Echo ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> websocket.open_pool(<span class="syn-str">"ws://127.0.0.1:8080"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd1 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to connect"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd2 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to re-borrow"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Concurrency</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd3 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to borrow concurrent"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Pool Echo round-trip</span>
+    test_msg <span class="syn-flow">:=</span> <span class="syn-str">"Hello Xu WebSocket 2026!"</span>
+    echoed <span class="syn-flow">:=</span> p.echo_text(test_msg + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool echo failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">if</span> echoed == test_msg {
+        println(<span class="syn-str">"   [PASS] Echo round-trip matched exactly: '"</span> + echoed + <span class="syn-str">"'"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Echo mismatch: expected '"</span> + test_msg + <span class="syn-str">"', got '"</span> + echoed + <span class="syn-str">"'"</span>)
+    }
+
+    <span class="syn-cmt">// 4. Testing Pool with Real 'xu' Coroutines</span>
+    println(<span class="syn-str">"\n   Testing WebSocket Pool with Real 'xu' Coroutines..."</span>)
+    done_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">int</span>{cap: 10}
+    <span class="syn-kw">xu</span> ws_coro_worker(1, p.client.host + <span class="syn-str">""</span>, p.client.port, p.idle, done_ch)
+    <span class="syn-kw">xu</span> ws_coro_worker(2, p.client.host + <span class="syn-str">""</span>, p.client.port, p.idle, done_ch)
+    <span class="syn-kw">xu</span> ws_coro_worker(3, p.client.host + <span class="syn-str">""</span>, p.client.port, p.idle, done_ch)
+    <span class="syn-kw">xu</span> ws_coro_worker(4, p.client.host + <span class="syn-str">""</span>, p.client.port, p.idle, done_ch)
+
+    <span class="syn-kw">mut</span> completed_ws <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">for</span> w <span class="syn-kw">in</span> 0:4 {
+        res_id <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span>done_ch
+        <span class="syn-kw">if</span> res_id &gt; 0 {
+            completed_ws = completed_ws + 1
+        }
+    }
+    println(<span class="syn-str">"   [PASS] All "</span> + str(completed_ws) + <span class="syn-str">" concurrent 'xu' WebSocket coroutines completed via Pool!"</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] WebSocket Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu WebSocket Native Driver Verification ===\n"</span>)
+    verify_rfc_handshake_and_framing()
+    verify_ws_pool_and_echo()
+    println(<span class="syn-str">"\n[WEBSOCKET VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="client">
 <h2><code>client</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> client(endpoint <span class="syn-type">string</span>) WsClient</code></pre></div>
@@ -47,6 +197,7 @@
 <dt><code>port</code> <span class="type">int</span></dt><dd>端口</dd>
 <dt><code>path</code> <span class="type">string</span></dt><dd>文件系统路径</dd>
 </dl>
+<p><a href="#example-0015df2aa2b5">查看用法示例</a></p>
 </article>
 <article class="api-item" id="new_client">
 <h2><code>new_client</code></h2>
@@ -180,6 +331,7 @@
 <p>公开常量 `opcode_text`。 值为 `1`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-0015df2aa2b5">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-opcode_binary">
 <h2><code>const opcode_binary</code></h2>
@@ -245,6 +397,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0015df2aa2b5">查看用法示例</a></p>
 </article>
 <article class="api-item" id="apply_mask">
 <h2><code>apply_mask</code></h2>
@@ -261,6 +414,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0015df2aa2b5">查看用法示例</a></p>
 </article>
 <article class="api-item" id="compute_accept_key">
 <h2><code>compute_accept_key</code></h2>
@@ -273,6 +427,7 @@
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-0015df2aa2b5">查看用法示例</a></p>
 </article>
 <article class="api-item" id="build_handshake_request">
 <h2><code>build_handshake_request</code></h2>
@@ -330,6 +485,7 @@
 <dt><code>idle</code> <span class="type">chan int</span></dt><dd>字段（通道；类型 chan int）</dd>
 <dt><code>max_idle</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+<p><a href="#example-0015df2aa2b5">查看用法示例</a></p>
 </article>
 <article class="api-item" id="open_pool">
 <h2><code>open_pool</code></h2>
@@ -343,6 +499,7 @@
 </dl>
 <h3>返回</h3>
 <p>WsPool — 该类型的值</p>
+<p><a href="#example-0015df2aa2b5">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-WsPool-get_conn">
 <h2><code>(&amp;WsPool) get_conn</code></h2>

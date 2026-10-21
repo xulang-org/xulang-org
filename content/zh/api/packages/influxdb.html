@@ -7,6 +7,167 @@
 <p class="meta">counts: 6 函数, 25 方法, 6 类型, 0 常量, 0 方法集</p>
 <p class="lead">扩展包 `influxdb #github.com/xulang-org/packages/influxdb`，由模块 github.com/xulang-org/packages 提供。</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/zh/docs/packages">安装与使用</a></p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-25431a6af401" open>
+<summary><code>32_standalone_influxdb/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/32_standalone_influxdb">完整工程</a> · <a href="/api-examples/sources/examples/32_standalone_influxdb/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="32_standalone_influxdb/main.xu"><code class="language-xu">@main
+
+influxdb <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/influxdb
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_influxdb_health() {
+    println(<span class="syn-str">"--- 1. Testing InfluxDB Health &amp; Ping ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> influxdb.open(
+        <span class="syn-str">"http://127.0.0.1:8086"</span>,
+        <span class="syn-str">"my-super-secret-token"</span>,
+        <span class="syn-str">"xu-org"</span>,
+        <span class="syn-str">"xu-bucket"</span>
+    )
+
+    is_ping <span class="syn-flow">:=</span> client.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Ping failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">if</span> is_ping {
+        println(<span class="syn-str">"   [PASS] Ping succeeded."</span>)
+    }
+
+    is_health <span class="syn-flow">:=</span> client.health() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Health check failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">if</span> is_health {
+        println(<span class="syn-str">"   [PASS] Health check passed."</span>)
+    }
+}
+
+<span class="syn-kw">fn</span> verify_influxdb_write_query() {
+    println(<span class="syn-str">"\n--- 2. Testing InfluxDB Line Protocol &amp; Flux Query ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> influxdb.open(
+        <span class="syn-str">"http://127.0.0.1:8086"</span>,
+        <span class="syn-str">"my-super-secret-token"</span>,
+        <span class="syn-str">"xu-org"</span>,
+        <span class="syn-str">"xu-bucket"</span>
+    )
+
+    <span class="syn-cmt">// 1. Write single point using Point builder</span>
+    println(<span class="syn-str">"   Constructing point 'cpu_load' with tags &amp; fields..."</span>)
+    <span class="syn-kw">mut</span> pt <span class="syn-flow">:=</span> influxdb.new_point(<span class="syn-str">"cpu_load"</span>)
+    pt.add_tag(<span class="syn-str">"host"</span>, <span class="syn-str">"worker-01"</span>)
+    pt.add_tag(<span class="syn-str">"env"</span>, <span class="syn-str">"prod"</span>)
+    pt.add_field_float(<span class="syn-str">"usage"</span>, <span class="syn-str">"45.8"</span>)
+    pt.add_field_int(<span class="syn-str">"cores"</span>, 16)
+    pt.add_field_bool(<span class="syn-str">"alert"</span>, false)
+
+    client.write_point(pt) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] write_point failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Point written successfully."</span>)
+
+    <span class="syn-cmt">// 2. Write raw batch lines</span>
+    println(<span class="syn-str">"   Writing batch metrics via raw line protocol..."</span>)
+    <span class="syn-kw">mut</span> raw_lines <span class="syn-flow">:=</span> <span class="syn-str">"mem_metrics,host=worker-01 total=32768i,used=16384i\n"</span>
+    raw_lines = raw_lines + <span class="syn-str">"mem_metrics,host=worker-02 total=65536i,used=20480i\n"</span>
+    client.write_raw(raw_lines) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] write_raw failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Batch lines written successfully."</span>)
+
+    <span class="syn-cmt">// 3. Query using Flux</span>
+    println(<span class="syn-str">"   Executing Flux query..."</span>)
+    flux <span class="syn-flow">:=</span> <span class="syn-str">"from(bucket: \"xu-bucket\") |&gt; range(start: -1h) |&gt; filter(fn: (r) =&gt; r._measurement == \"cpu_load\") |&gt; limit(n: 5)"</span>
+    csv <span class="syn-flow">:=</span> client.query_flux(flux) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Flux query failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Flux result preview:"</span>)
+    println(csv)
+    println(<span class="syn-str">"   [PASS] Flux query executed successfully."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_influxdb_pool() {
+    println(<span class="syn-str">"\n--- 3. Testing InfluxDB Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> influxdb.open_pool(
+        <span class="syn-str">"http://127.0.0.1:8086"</span>,
+        <span class="syn-str">"my-super-secret-token"</span>,
+        <span class="syn-str">"xu-org"</span>,
+        <span class="syn-str">"xu-bucket"</span>,
+        5
+    )
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Delegated operations via pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    <span class="syn-kw">mut</span> pt <span class="syn-flow">:=</span> influxdb.new_point(<span class="syn-str">"pool_sensor"</span>)
+    pt.add_tag(<span class="syn-str">"room"</span>, <span class="syn-str">"lab-01"</span>)
+    pt.add_field_float(<span class="syn-str">"humidity"</span>, <span class="syn-str">"55.2"</span>)
+    p.write_point(pt) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool write_point error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool write_point succeeded."</span>)
+
+    p.write_raw(<span class="syn-str">"pool_sensor,room=lab-02 humidity=60.1\n"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool write_raw error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool write_raw succeeded."</span>)
+
+    flux <span class="syn-flow">:=</span> <span class="syn-str">"from(bucket: \"xu-bucket\") |&gt; range(start: -5m) |&gt; filter(fn: (r) =&gt; r._measurement == \"pool_sensor\") |&gt; limit(n: 5)"</span>
+    csv <span class="syn-flow">:=</span> p.query_flux(flux) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool query_flux error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved flux data preview length: "</span> + str(csv.len) + <span class="syn-str">" bytes"</span>)
+    <span class="syn-kw">if</span> csv.len &gt; 0 {
+        println(<span class="syn-str">"   [PASS] Pool delegated query_flux succeeded."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Pool query returned empty."</span>)
+    }
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] InfluxDB Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu InfluxDB v2 Time-Series Database Driver Verification ===\n"</span>)
+    verify_influxdb_health()
+    verify_influxdb_write_query()
+    verify_influxdb_pool()
+    println(<span class="syn-str">"\n[INFLUXDB VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(endpoint <span class="syn-type">string</span>, token <span class="syn-type">string</span>, org <span class="syn-type">string</span>, bucket <span class="syn-type">string</span>) Client</code></pre></div>
@@ -21,6 +182,7 @@
 </dl>
 <h3>返回</h3>
 <p>Client — 该类型的值</p>
+<p><a href="#example-25431a6af401">查看用法示例</a></p>
 </article>
 <article class="api-item" id="open_pool_client">
 <h2><code>open_pool_client</code></h2>
@@ -89,7 +251,7 @@
 </article>
 <article class="api-item" id="-mut-Client-request">
 <h2><code>(&amp;mut Client) request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>, content_type <span class="syn-type">string</span>, accept <span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) request(method <span class="syn-type">string</span>, path <span class="syn-type">string</span>, body <span class="syn-type">string</span>, content_type <span class="syn-type">string</span>, accept <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：请求。失败时 throw。</p>
 <h3>参数</h3>
@@ -161,10 +323,11 @@
 </dl>
 <h3>返回</h3>
 <p>Point — 该类型的值</p>
+<p><a href="#example-25431a6af401">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-mut-Point-add_tag">
 <h2><code>(&amp;mut Point) add_tag</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Point) add_tag(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Point) add_tag(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Point` 上的方法：增加标签。</p>
 <h3>参数</h3>
@@ -176,7 +339,7 @@
 </article>
 <article class="api-item" id="-mut-Point-add_field_string">
 <h2><code>(&amp;mut Point) add_field_string</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Point) add_field_string(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Point) add_field_string(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Point` 上的方法：增加field字符串。</p>
 <h3>参数</h3>
@@ -188,7 +351,7 @@
 </article>
 <article class="api-item" id="-mut-Point-add_field_int">
 <h2><code>(&amp;mut Point) add_field_int</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Point) add_field_int(key <span class="syn-type">string</span>, val <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Point) add_field_int(key <span class="syn-type">string</span>, val <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Point` 上的方法：增加fieldint。</p>
 <h3>参数</h3>
@@ -200,7 +363,7 @@
 </article>
 <article class="api-item" id="-mut-Point-add_field_float">
 <h2><code>(&amp;mut Point) add_field_float</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Point) add_field_float(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Point) add_field_float(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Point` 上的方法：增加fieldfloat。</p>
 <h3>参数</h3>
@@ -212,7 +375,7 @@
 </article>
 <article class="api-item" id="-mut-Point-add_field_bool">
 <h2><code>(&amp;mut Point) add_field_bool</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Point) add_field_bool(key <span class="syn-type">string</span>, val <span class="syn-type">bool</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Point) add_field_bool(key <span class="syn-type">string</span>, val <span class="syn-type">bool</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Point` 上的方法：增加fieldbool。</p>
 <h3>参数</h3>
@@ -224,7 +387,7 @@
 </article>
 <article class="api-item" id="-mut-Point-set_timestamp">
 <h2><code>(&amp;mut Point) set_timestamp</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;<span class="syn-kw">mut</span> Point) set_timestamp(ts <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">&amp;mut</span> Point) set_timestamp(ts <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Point` 上的方法：设置 timestamp。</p>
 <h3>参数</h3>
@@ -247,7 +410,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_point">
 <h2><code>(&amp;mut Client) write_point</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_point(point Point) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_point(point Point) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：写入point。失败时 throw。</p>
 <h3>参数</h3>
@@ -260,7 +423,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_line">
 <h2><code>(&amp;mut Client) write_line</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_line(line <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_line(line <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：写入line。失败时 throw。</p>
 <h3>参数</h3>
@@ -273,7 +436,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_raw">
 <h2><code>(&amp;mut Client) write_raw</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_raw(lines <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_raw(lines <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：写入raw。失败时 throw。</p>
 <h3>参数</h3>
@@ -339,6 +502,7 @@
 </dl>
 <h3>返回</h3>
 <p>Pool — 该类型的值</p>
+<p><a href="#example-25431a6af401">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-Pool-get">
 <h2><code>(&amp;Pool) get</code></h2>
@@ -474,7 +638,7 @@
 </article>
 <article class="api-item" id="-mut-Client-health">
 <h2><code>(&amp;mut Client) health</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) health() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) health() <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `health`。失败时 throw。</p>
 <h3>参数</h3>
@@ -486,7 +650,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `ping`。失败时 throw。</p>
 <h3>参数</h3>
@@ -498,7 +662,7 @@
 </article>
 <article class="api-item" id="-mut-Client-query_flux">
 <h2><code>(&amp;mut Client) query_flux</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) query_flux(flux <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) query_flux(flux <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：查询串flux。失败时 throw。</p>
 <h3>参数</h3>

@@ -1,5 +1,7 @@
 XU_ROOT ?= $(abspath ../xu)
 XU_PACKAGES_ROOT ?= $(abspath ../packages)
+XU_EXAMPLES_ROOT ?=
+XU_EXAMPLES_REF ?=
 PYTHON ?= python3
 BASE_PATH ?=
 PORT ?= 8080
@@ -17,7 +19,7 @@ check-playground:
 check-chan:
 	$(PYTHON) tests/check_chan_examples.py --xu-root "$(XU_ROOT)"
 api:
-	$(PYTHON) scripts/gen-api.py --src "$(XU_ROOT)/src" --packages "$(XU_PACKAGES_ROOT)"
+	$(PYTHON) scripts/gen-api.py --src "$(XU_ROOT)/src" --packages "$(XU_PACKAGES_ROOT)" $(if $(XU_EXAMPLES_ROOT),--examples "$(XU_EXAMPLES_ROOT)" --examples-ref "$(XU_EXAMPLES_REF)")
 wasm:
 	XU_ROOT="$(XU_ROOT)" ./scripts/build-playground.sh
 clean:

@@ -60,6 +60,17 @@ make clean                      # Clean dist/ and build/playground/
 
 Static compilation requires no compiler or external dependencies. Content fragments in `content/` declare titles via `<!--title: ...-->` and render into clean directory routes (e.g. `docs/start/index.html`).
 
+API pages include usage examples imported from the official `examples` repository, with source downloads and links to the complete projects at an immutable commit. Snapshots in `www/api-examples/` let local and CI builds preserve examples without a companion checkout. Package imports and qualified symbol uses associate examples with their API pages; native examples are copied/downloaded for local SDK execution.
+
+To regenerate declarations, set `XU_ROOT` and `XU_PACKAGES_ROOT` to the selected release SDK and its `packages/` directory. To refresh examples too, select compatible source files in `templates/api-examples.json`, check them with that SDK, and pass the examples checkout and its full commit SHA:
+
+```sh
+make api XU_ROOT=/path/to/xu-v0.9.4 XU_PACKAGES_ROOT=/path/to/xu-v0.9.4/packages \
+  XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
+```
+
+Selected source files must match that commit. Without the two examples variables, `make api` reuses and verifies the bundled snapshots. Curated prose and additional snippets remain in `templates/api-guides/{en,zh}/`.
+
 ## WebAssembly Playground
 
 The interactive playground compiler is compiled from Xu sources into WebAssembly:

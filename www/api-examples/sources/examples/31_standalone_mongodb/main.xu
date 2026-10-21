@@ -1,0 +1,146 @@
+@main
+
+mongodb #github.com/xulang-org/packages/mongodb
+#errors
+
+fn verify_mongodb_hello() {
+    println("--- 1. Testing MongoDB Hello Handshake ---")
+    mut client := mongodb.open("127.0.0.1:27017") or (err) {
+        println("   [FAIL] Connect error: " + err.msg())
+        <<
+    }
+    is_ok := client.hello()
+    if is_ok {
+        println("   [PASS] MongoDB hello handshake succeeded.")
+    } else {
+        println("   [FAIL] MongoDB hello handshake failed.")
+    }
+    client.close()
+}
+
+fn verify_mongodb_crud() {
+    println("\n--- 2. Testing MongoDB Document CRUD ---")
+    mut client := mongodb.open("127.0.0.1:27017") or (err) {
+        println("   [FAIL] Connect error: " + err.msg())
+        <<
+    }
+
+    db_name := "xu_test_db"
+    col_name := "users"
+
+    // 1. Drop collection if exists
+    println("   Cleaning up existing collection...")
+    client.drop_collection(db_name + "", col_name + "")
+
+    // 2. Insert document
+    println("   Inserting document: name='Antigravity', role='AI Assistant'...")
+    mut doc := mongodb.bson_string("name", "Antigravity")
+    doc = doc + mongodb.bson_string("role", "AI Assistant")
+    doc = doc + mongodb.bson_int32("stars", 100)
+
+    client.insert_one(db_name + "", col_name + "", doc) or (err) {
+        println("   [FAIL] Insert failed: " + err.msg())
+        client.close()
+        <<
+    }
+    println("   [PASS] Document inserted.")
+
+    // 3. Find first document string field
+    println("   Querying document field 'role'...")
+    role := client.find_first_string(db_name + "", col_name + "", "role") or (err) {
+        println("   [FAIL] Query failed: " + err.msg())
+        client.close()
+        <<
+    }
+    println("   Retrieved role: " + role)
+    if role == "AI Assistant" {
+        println("   [PASS] Field value matches exactly!")
+    } else {
+        println("   [FAIL] Field mismatch: expected 'AI Assistant', got: " + role)
+    }
+
+    // 4. Clean up
+    println("   Dropping collection...")
+    client.drop_collection(db_name + "", col_name + "")
+    println("   [PASS] Collection cleaned up.")
+
+    client.close()
+}
+
+fn verify_mongodb_pool() {
+    println("\n--- 3. Testing MongoDB Connection Pool ---")
+    mut p := mongodb.open_pool("127.0.0.1:27017", 5)
+
+    // 1. Connection Reuse Test
+    mut c1 := p.get() or (err) {
+        println("   [FAIL] Failed to get c1: " + err.msg())
+        <<
+    }
+    fd1 := c1.fd
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put(c1)
+
+    mut c2 := p.get() or (err) {
+        println("   [FAIL] Failed to get c2: " + err.msg())
+        <<
+    }
+    fd2 := c2.fd
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    mut c3 := p.get() or (err) {
+        println("   [FAIL] Failed to get c3: " + err.msg())
+        <<
+    }
+    fd3 := c3.fd
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put(c2)
+    p.put(c3)
+
+    // 3. Delegated CRUD Operations via Pool
+    println("   Testing delegated operations via pool...")
+    p.drop_collection("xu_test_db", "pool_users")
+
+    mut doc := mongodb.bson_string("name", "PoolWorker")
+    doc = doc + mongodb.bson_string("dept", "CoreEngine")
+    p.insert_one("xu_test_db", "pool_users", doc) or (err) {
+        println("   [FAIL] Pool insert_one error: " + err.msg())
+        <<
+    }
+    println("   [PASS] Pool delegated insert_one succeeded.")
+
+    dept := p.find_first_string("xu_test_db", "pool_users", "dept") or (err) {
+        println("   [FAIL] Pool find_first_string error: " + err.msg())
+        <<
+    }
+    println("   Retrieved dept via pool: " + dept)
+    if dept == "CoreEngine" {
+        println("   [PASS] Pool delegated query matched exactly!")
+    } else {
+        println("   [FAIL] Pool delegated query mismatch!")
+    }
+
+    p.drop_collection("xu_test_db", "pool_users")
+    println("   [PASS] Pool delegated collection cleanup succeeded.")
+
+    p.close()
+    println("   [PASS] MongoDB Pool closed cleanly.")
+}
+
+fn main() {
+    println("=== Xu MongoDB Document Database Native Driver Verification ===\n")
+    verify_mongodb_hello()
+    verify_mongodb_crud()
+    verify_mongodb_pool()
+    println("\n[MONGODB VERIFICATION 100% COMPLETED]")
+}

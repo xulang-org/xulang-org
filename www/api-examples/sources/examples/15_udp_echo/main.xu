@@ -1,0 +1,26 @@
+@main
+
+#net
+
+// UDP echo（Go net.ListenPacket / ListenUDP）。
+//   printf ping | nc -u 127.0.0.1 19001
+// TCP 见 14tcp_echo。
+
+fn main() int {
+    mut c := net.listen_packet("udp", "127.0.0.1:19001") or (err) {
+        println(err.msg())
+        << 1
+    }
+    println("udp://127.0.0.1:19001  echo")
+    mut running := true
+    while running {
+        pkt := c.read_from(4096) or (err) {
+            ->
+        }
+        data := pkt.data + ""
+        c.write_to(&data, &pkt.addr) or (err) {
+            ->
+        }
+    }
+    << 0
+}

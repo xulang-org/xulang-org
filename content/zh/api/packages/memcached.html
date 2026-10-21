@@ -7,6 +7,290 @@
 <p class="meta">counts: 3 函数, 21 方法, 2 类型, 0 常量, 0 方法集</p>
 <p class="lead">扩展包 `memcached #github.com/xulang-org/packages/memcached`，由模块 github.com/xulang-org/packages 提供。</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/zh/docs/packages">安装与使用</a></p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-090e6c1a6000" open>
+<summary><code>23_standalone_memcached/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/23_standalone_memcached">完整工程</a> · <a href="/api-examples/sources/examples/23_standalone_memcached/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="23_standalone_memcached/main.xu"><code class="language-xu">@main
+
+memcached <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/memcached
+<span class="syn-import"><span class="hash">#</span>os</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    println(<span class="syn-str">"=== Memcached Standalone Library Integration Test ==="</span>)
+    addr <span class="syn-flow">:=</span> <span class="syn-str">"127.0.0.1:11211"</span>
+    println(<span class="syn-str">"Connecting to Memcached at "</span> + addr + <span class="syn-str">"..."</span>)
+
+    <span class="syn-kw">mut</span> mc <span class="syn-flow">:=</span> memcached.open(addr + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Connection to Memcached failed (skipping live tests): "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 0
+    }
+
+    ver <span class="syn-flow">:=</span> mc.version() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Version failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"1. Memcached version: "</span> + ver)
+
+    <span class="syn-cmt">// Set &amp; Get</span>
+    set_ok <span class="syn-flow">:=</span> mc.set(<span class="syn-str">"xu_test_key"</span>, <span class="syn-str">"Hello Memcached from Xu!"</span>, 0, 300) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Set failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"2. SET xu_test_key ok="</span> + str(set_ok))
+
+    val <span class="syn-flow">:=</span> mc.get(<span class="syn-str">"xu_test_key"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Get failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"3. GET xu_test_key: "</span> + val)
+
+    <span class="syn-cmt">// Incr &amp; Decr</span>
+    mc.set(<span class="syn-str">"xu_counter"</span>, <span class="syn-str">"100"</span>, 0, 300) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    new_n <span class="syn-flow">:=</span> mc.incr(<span class="syn-str">"xu_counter"</span>, 5) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Incr failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"4. INCR xu_counter by 5 = "</span> + str(new_n))
+
+    decr_n <span class="syn-flow">:=</span> mc.decr(<span class="syn-str">"xu_counter"</span>, 2) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Decr failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"5. DECR xu_counter by 2 = "</span> + str(decr_n))
+
+    <span class="syn-cmt">// Append &amp; Prepend</span>
+    mc.set(<span class="syn-str">"xu_str"</span>, <span class="syn-str">"World"</span>, 0, 300) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    mc.prepend(<span class="syn-str">"xu_str"</span>, <span class="syn-str">"Hello "</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    mc.append(<span class="syn-str">"xu_str"</span>, <span class="syn-str">"!"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    prep_val <span class="syn-flow">:=</span> mc.get(<span class="syn-str">"xu_str"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"6. Prepend &amp; Append result: "</span> + prep_val)
+
+    <span class="syn-cmt">// Delete</span>
+    del_ok <span class="syn-flow">:=</span> mc.delete(<span class="syn-str">"xu_test_key"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"7. DELETE xu_test_key ok="</span> + str(del_ok))
+
+    mc.close()
+
+    <span class="syn-cmt">// Test Pool with Reuse &amp; Concurrency</span>
+    pool <span class="syn-flow">:=</span> memcached.new_pool(addr + <span class="syn-str">""</span>, 5)
+    <span class="syn-kw">mut</span> p_conn <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool get failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_first <span class="syn-flow">:=</span> p_conn.fd
+    p_ver <span class="syn-flow">:=</span> p_conn.version() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"8. Pool connection version: "</span> + p_ver + <span class="syn-str">" (fd="</span> + str(fd_first) + <span class="syn-str">")"</span>)
+    pool.put(p_conn)
+    println(<span class="syn-str">"9. Pool connection returned successfully."</span>)
+
+    <span class="syn-cmt">// Verify Pool Connection REUSE: second get gives same fd</span>
+    <span class="syn-kw">mut</span> p_conn2 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool second get failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_second <span class="syn-flow">:=</span> p_conn2.fd
+    <span class="syn-kw">if</span> fd_first == fd_second {
+        println(<span class="syn-str">"10. [PASS] Pool Connection REUSE verified! (fd_first == fd_second: "</span> + str(fd_first) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"10. [WARN] Pool connection not reused: fd1="</span> + str(fd_first) + <span class="syn-str">", fd2="</span> + str(fd_second))
+    }
+
+    <span class="syn-cmt">// Concurrent borrow another connection</span>
+    <span class="syn-kw">mut</span> p_conn3 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"Pool third get failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    fd_third <span class="syn-flow">:=</span> p_conn3.fd
+    <span class="syn-kw">if</span> fd_second != fd_third {
+        println(<span class="syn-str">"11. [PASS] Pool Multi-connection concurrency verified! (fd2="</span> + str(fd_second) + <span class="syn-str">" != fd3="</span> + str(fd_third) + <span class="syn-str">")"</span>)
+    }
+    p_conn3.set(<span class="syn-str">"pool_mc_key"</span>, <span class="syn-str">"mc_val"</span>, 0, 300) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    got_mc <span class="syn-flow">:=</span> p_conn2.get(<span class="syn-str">"pool_mc_key"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"12. [PASS] Concurrent connection cross-get verified: got="</span> + got_mc)
+
+    pool.put(p_conn2)
+    pool.put(p_conn3)
+    pool.close()
+    println(<span class="syn-str">"13. [PASS] Memcached Pool closed cleanly."</span>)
+
+    println(<span class="syn-str">"=== Memcached Tests Completed Successfully! ==="</span>)
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-b597eda1c41a">
+<summary><code>28_test_pools/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/28_test_pools">完整工程</a> · <a href="/api-examples/sources/examples/28_test_pools/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="28_test_pools/main.xu"><code class="language-xu">@main
+
+redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/redis
+memcached <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/memcached
+nats <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/nats
+mqtt <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mqtt
+elasticsearch <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/elasticsearch
+s3 <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/s3
+sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/sqlite
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>database/sql</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+
+<span class="syn-kw">fn</span> verify_redis_pool() {
+    println(<span class="syn-str">"1. Testing Redis Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> redis.new_pool(<span class="syn-str">"127.0.0.1:6379"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    res <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Redis ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Redis PING response: "</span> + res)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Redis Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_memcached_pool() {
+    println(<span class="syn-str">"2. Testing Memcached Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> memcached.new_pool(<span class="syn-str">"127.0.0.1:11211"</span>, 5)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ver <span class="syn-flow">:=</span> c.version() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Memcached version error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Memcached VERSION: "</span> + ver)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Memcached Pool get/put/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_nats_pool() {
+    println(<span class="syn-str">"3. Testing NATS Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> nats.open_pool(<span class="syn-str">"127.0.0.1:4222"</span>, 5)
+    p.publish(<span class="syn-str">"pool.events"</span>, <span class="syn-str">"hello from nats pool"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    ok <span class="syn-flow">:=</span> c.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] NATS ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   NATS borrowed client ping ok: "</span> + str(ok))
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] NATS Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_mqtt_pool() {
+    println(<span class="syn-str">"4. Testing MQTT Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> mqtt.open_pool(<span class="syn-str">"127.0.0.1:1883"</span>, <span class="syn-str">"xu_pool_test"</span>, 5)
+    p.publish(<span class="syn-str">"sensors/pool"</span>, <span class="syn-str">"temp=28C"</span>, 0) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT pool publish error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT pool published message successfully."</span>)
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] MQTT get error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   MQTT borrowed client ID: "</span> + c.client_id)
+    p.put(c)
+    p.close()
+    println(<span class="syn-str">"   [PASS] MQTT Pool get/put/publish/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_es_pool() {
+    println(<span class="syn-str">"5. Testing Elasticsearch Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> elasticsearch.open_pool(<span class="syn-str">"http://127.0.0.1:9200"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   ES borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] Elasticsearch Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_s3_pool() {
+    println(<span class="syn-str">"6. Testing S3 Connection Pool..."</span>)
+    p <span class="syn-flow">:=</span> s3.open_pool(<span class="syn-str">"http://127.0.0.1:9000"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"minioadmin"</span>, <span class="syn-str">"us-east-1"</span>, 5)
+    fd <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   S3 borrowed connection fd: "</span> + str(fd))
+    p.put_conn(fd)
+    p.close()
+    println(<span class="syn-str">"   [PASS] S3 Pool get_conn/put_conn/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_sqlite_pool() {
+    println(<span class="syn-str">"7. Testing SQLite Connection Pool..."</span>)
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sqlite.open_pool(<span class="syn-str">":memory:"</span>, 1, 1)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] SQLite ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] SQLite Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_postgres_pool() {
+    println(<span class="syn-str">"8. Testing PostgreSQL Connection Pool..."</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://postgres:secret@127.0.0.1:5432/postgres?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> postgres.open_pool(dsn, 5, 2)
+    db.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] PostgreSQL ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    db.close() <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] PostgreSQL Pool ping/close verified."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu All Driver Connection Pools Comprehensive Verification ===\n"</span>)
+    verify_redis_pool()
+    verify_memcached_pool()
+    verify_nats_pool()
+    verify_mqtt_pool()
+    verify_es_pool()
+    verify_s3_pool()
+    verify_sqlite_pool()
+    verify_postgres_pool()
+    println(<span class="syn-str">"\n[ALL 8 DRIVER CONNECTION POOLS 100% VERIFIED!]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(addr <span class="syn-type">string</span>) Client</code></pre></div>
@@ -18,6 +302,7 @@
 </dl>
 <h3>返回</h3>
 <p>Client — 该类型的值</p>
+<p><a href="#example-090e6c1a6000">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Client">
 <h2><code>struct Client</code></h2>
@@ -49,7 +334,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_line">
 <h2><code>(&amp;mut Client) read_line</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_line() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_line() <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：读取line。失败时 throw。</p>
 <h3>参数</h3>
@@ -61,7 +346,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_bytes">
 <h2><code>(&amp;mut Client) read_bytes</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_bytes(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_bytes(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：读到 delim（含 delim）。失败时 throw。</p>
 <h3>参数</h3>
@@ -74,7 +359,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_raw">
 <h2><code>(&amp;mut Client) write_raw</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_raw(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_raw(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：写入raw。失败时 throw。</p>
 <h3>参数</h3>
@@ -87,7 +372,7 @@
 </article>
 <article class="api-item" id="-mut-Client-close">
 <h2><code>(&amp;mut Client) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) close() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) close() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：关闭资源。</p>
 <h3>参数</h3>
@@ -99,7 +384,7 @@
 </article>
 <article class="api-item" id="-mut-Client-set">
 <h2><code>(&amp;mut Client) set</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) set(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>, flags <span class="syn-type">int</span>, exptime <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) set(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>, flags <span class="syn-type">int</span>, exptime <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `set`。失败时 throw。</p>
 <h3>参数</h3>
@@ -115,7 +400,7 @@
 </article>
 <article class="api-item" id="-mut-Client-add">
 <h2><code>(&amp;mut Client) add</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) add(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>, flags <span class="syn-type">int</span>, exptime <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) add(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>, flags <span class="syn-type">int</span>, exptime <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：相加。失败时 throw。</p>
 <h3>参数</h3>
@@ -131,7 +416,7 @@
 </article>
 <article class="api-item" id="-mut-Client-replace">
 <h2><code>(&amp;mut Client) replace</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) replace(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>, flags <span class="syn-type">int</span>, exptime <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) replace(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>, flags <span class="syn-type">int</span>, exptime <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：替换子串，次数由 n 限制。失败时 throw。</p>
 <h3>参数</h3>
@@ -147,7 +432,7 @@
 </article>
 <article class="api-item" id="-mut-Client-append">
 <h2><code>(&amp;mut Client) append</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) append(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) append(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `append`。失败时 throw。</p>
 <h3>参数</h3>
@@ -161,7 +446,7 @@
 </article>
 <article class="api-item" id="-mut-Client-prepend">
 <h2><code>(&amp;mut Client) prepend</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) prepend(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) prepend(key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `prepend`。失败时 throw。</p>
 <h3>参数</h3>
@@ -175,7 +460,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get">
 <h2><code>(&amp;mut Client) get</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get(key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `get`。失败时 throw。</p>
 <h3>参数</h3>
@@ -188,7 +473,7 @@
 </article>
 <article class="api-item" id="-mut-Client-get_multi">
 <h2><code>(&amp;mut Client) get_multi</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) get_multi(keys []<span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) get_multi(keys []<span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：读取 multi。失败时 throw。</p>
 <h3>参数</h3>
@@ -201,7 +486,7 @@
 </article>
 <article class="api-item" id="-mut-Client-delete">
 <h2><code>(&amp;mut Client) delete</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) delete(key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) delete(key <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：删除。失败时 throw。</p>
 <h3>参数</h3>
@@ -214,7 +499,7 @@
 </article>
 <article class="api-item" id="-mut-Client-incr">
 <h2><code>(&amp;mut Client) incr</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) incr(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) incr(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `incr`。失败时 throw。</p>
 <h3>参数</h3>
@@ -228,7 +513,7 @@
 </article>
 <article class="api-item" id="-mut-Client-decr">
 <h2><code>(&amp;mut Client) decr</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) decr(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) decr(key <span class="syn-type">string</span>, delta <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `decr`。失败时 throw。</p>
 <h3>参数</h3>
@@ -242,7 +527,7 @@
 </article>
 <article class="api-item" id="-mut-Client-touch">
 <h2><code>(&amp;mut Client) touch</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) touch(key <span class="syn-type">string</span>, exptime <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) touch(key <span class="syn-type">string</span>, exptime <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `touch`。失败时 throw。</p>
 <h3>参数</h3>
@@ -256,7 +541,7 @@
 </article>
 <article class="api-item" id="-mut-Client-version">
 <h2><code>(&amp;mut Client) version</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) version() <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) version() <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `version`。失败时 throw。</p>
 <h3>参数</h3>
@@ -268,7 +553,7 @@
 </article>
 <article class="api-item" id="-mut-Client-flush_all">
 <h2><code>(&amp;mut Client) flush_all</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) flush_all() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) flush_all() <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Client` 上的方法：刷出all。失败时 throw。</p>
 <h3>参数</h3>
@@ -280,7 +565,7 @@
 </article>
 <article class="api-item" id="-mut-Client-stats">
 <h2><code>(&amp;mut Client) stats</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) stats() []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) stats() []<span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut Client` 上调用 `stats`。失败时 throw。</p>
 <h3>参数</h3>
@@ -318,6 +603,7 @@
 </dl>
 <h3>返回</h3>
 <p>Pool — 该类型的值</p>
+<p><a href="#example-090e6c1a6000">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-Pool-get">
 <h2><code>(&amp;Pool) get</code></h2>

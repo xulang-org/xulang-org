@@ -7,6 +7,92 @@
 <p class="meta">counts: 4 fns, 18 methods, 4 types, 0 consts, 0 ifaces</p>
 <p class="lead">External package `meilisearch #github.com/xulang-org/packages/meilisearch`, provided by github.com/xulang-org/packages.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-3a8bfb19b82c" open>
+<summary><code>51_standalone_meilisearch/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/51_standalone_meilisearch">Complete project</a> · <a href="/api-examples/sources/examples/51_standalone_meilisearch/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="51_standalone_meilisearch/main.xu"><code class="language-xu">@main
+
+meilisearch <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/meilisearch
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> verify_meilisearch_pool_and_models() {
+    println(<span class="syn-str">"--- 1. Testing Meilisearch Protocol &amp; Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> meilisearch.open_pool(<span class="syn-str">"http://127.0.0.1:7700"</span>, <span class="syn-str">"masterKey"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd1 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to connect to Meilisearch server"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd2 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to re-borrow Meilisearch connection"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Concurrency</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd3 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to borrow concurrent connection"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Real Operations via Pool</span>
+    h <span class="syn-flow">:=</span> p.health()
+    <span class="syn-kw">if</span> h {
+        println(<span class="syn-str">"   [PASS] Meilisearch health check: available"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Meilisearch health check failed"</span>)
+    }
+
+    p.create_index(<span class="syn-str">"books"</span>, <span class="syn-str">"id"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to create index: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    docs <span class="syn-flow">:=</span> <span class="syn-str">"[{\"id\":101,\"title\":\"Antigravity Architecture\"},{\"id\":102,\"title\":\"Compiler Design\"}]"</span>
+    p.add_documents(<span class="syn-str">"books"</span>, docs) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to add documents: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Meilisearch index &amp; docs added via pool"</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Meilisearch Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu Meilisearch Native Driver Verification ===\n"</span>)
+    verify_meilisearch_pool_and_models()
+    println(<span class="syn-str">"\n[MEILISEARCH VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="client">
 <h2><code>client</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> client(endpoint <span class="syn-type">string</span>, api_key <span class="syn-type">string</span>) MeiliClient</code></pre></div>
@@ -203,6 +289,7 @@
 </dl>
 <h3>Returns</h3>
 <p>MeiliPool — a value of this type</p>
+<p><a href="#example-3a8bfb19b82c">See usage example</a></p>
 </article>
 <article class="api-item" id="-MeiliPool-dup">
 <h2><code>(&amp;MeiliPool) dup</code></h2>

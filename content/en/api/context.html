@@ -6,6 +6,412 @@
 <p class="meta">import: <code>#context</code></p>
 <p class="meta">counts: 9 fns, 2 methods, 2 types, 0 consts, 0 ifaces</p>
 <p class="lead">Background / WithCancel / WithTimeout; Done is a chan. No WithValue.</p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-869911852ff2" open>
+<summary><code>34_standalone_postgres/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/34_standalone_postgres">Complete project</a> · <a href="/api-examples/sources/examples/34_standalone_postgres/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="34_standalone_postgres/main.xu"><code class="language-xu">@main
+
+postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
+<span class="syn-import"><span class="hash">#</span>database/sql/driver</span>
+<span class="syn-import"><span class="hash">#</span>context</span>
+
+<span class="syn-kw">fn</span> verify_postgres_live() {
+    println(<span class="syn-str">"--- Testing Native Postgres Driver Wire Protocol ---"</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> conn <span class="syn-flow">:=</span> postgres.open(dsn)
+
+    <span class="syn-cmt">// 1. Ping</span>
+    err <span class="syn-flow">:=</span> conn.ping()
+    <span class="syn-kw">if</span> err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Ping failed: "</span> + err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Postgres Ping succeeded."</span>)
+
+    <span class="syn-cmt">// 2. Exec DDL</span>
+    r1 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_heroes;"</span>, []driver.NamedValue{})
+    <span class="syn-kw">if</span> r1.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + r1.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    r2 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"CREATE TABLE xu_heroes (id INTEGER PRIMARY KEY, name VARCHAR(50), power INTEGER);"</span>, []driver.NamedValue{})
+    <span class="syn-kw">if</span> r2.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Create table error: "</span> + r2.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Table 'xu_heroes' created."</span>)
+
+    <span class="syn-cmt">// 3. Exec DML Insert</span>
+    <span class="syn-kw">mut</span> args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    args1.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
+    args1.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Ironman"</span>})
+    args1.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 100})
+    r3 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO xu_heroes (id, name, power) VALUES ($$1, $$2, $$3);"</span>, args1)
+    <span class="syn-kw">if</span> r3.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Insert error: "</span> + r3.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Hero inserted (rows="</span> + str(r3.rows_affected) + <span class="syn-str">")."</span>)
+
+    <span class="syn-cmt">// 4. Query</span>
+    <span class="syn-kw">mut</span> q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
+    q_args.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
+    rows <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, power FROM xu_heroes WHERE id = $$1;"</span>, q_args)
+    <span class="syn-kw">if</span> rows.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Query error: "</span> + rows.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Query executed, columns count: "</span> + str(rows.columns.len))
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> i &lt; rows.columns.len {
+        println(<span class="syn-str">"      Col["</span> + str(i) + <span class="syn-str">"]: "</span> + rows.columns[i])
+        i = i + 1
+    }
+    println(<span class="syn-str">"   Total cells retrieved: "</span> + str(rows.cells.len))
+    <span class="syn-kw">mut</span> j <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> j &lt; rows.cells.len {
+        println(<span class="syn-str">"      Cell["</span> + str(j) + <span class="syn-str">"]: "</span> + rows.cells[j])
+        j = j + 1
+    }
+
+    <span class="syn-cmt">// 5. Transaction</span>
+    println(<span class="syn-str">"   Testing Transaction Commit..."</span>)
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> conn.begin()
+    <span class="syn-kw">mut</span> args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    args2.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 2})
+    args2.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Thor"</span>})
+    args2.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 200})
+    tx_res <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO xu_heroes (id, name, power) VALUES ($$1, $$2, $$3);"</span>, args2)
+    <span class="syn-kw">if</span> tx_res.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Tx insert error: "</span> + tx_res.err)
+    }
+    tx_err <span class="syn-flow">:=</span> tx.commit()
+    <span class="syn-kw">if</span> tx_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Tx commit error: "</span> + tx_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Transaction committed."</span>)
+    }
+
+    <span class="syn-cmt">// 6. Reset session</span>
+    ctx <span class="syn-flow">:=</span> context.background()
+    reset_err <span class="syn-flow">:=</span> conn.reset_session(&amp;ctx)
+    <span class="syn-kw">if</span> reset_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Reset session error: "</span> + reset_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Reset session completed."</span>)
+    }
+
+    <span class="syn-cmt">// 7. Close</span>
+    close_err <span class="syn-flow">:=</span> conn.close()
+    <span class="syn-kw">if</span> close_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Close error: "</span> + close_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Connection closed cleanly."</span>)
+    }
+}
+
+<span class="syn-kw">fn</span> verify_postgres_pool() {
+    println(<span class="syn-str">"\n--- Testing Native Postgres Connection Pool ---"</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
+    <span class="syn-kw">mut</span> pool <span class="syn-flow">:=</span> postgres.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
+
+    pool.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Postgres Pool ping succeeded."</span>)
+
+    <span class="syn-cmt">// 1. DDL</span>
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_users;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    pool.exec(<span class="syn-str">"CREATE TABLE xu_pool_users (id INTEGER PRIMARY KEY, name VARCHAR(50), balance INTEGER);"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool created table xu_pool_users."</span>)
+
+    <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">while</span> i &lt;= 5 {
+        pool.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, i, <span class="syn-str">"User_"</span> + str(i), i * 100) <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        i = i + 1
+    }
+    println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
+
+    <span class="syn-cmt">// 3. Query</span>
+    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, name, balance FROM xu_pool_users ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> rows.next() {
+        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        uid <span class="syn-flow">:=</span> vals[0] as <span class="syn-type">int</span>
+        uname <span class="syn-flow">:=</span> vals[1] as <span class="syn-type">string</span>
+        ubal <span class="syn-flow">:=</span> vals[2] as <span class="syn-type">int</span>
+        println(<span class="syn-str">"      Row["</span> + str(count) + <span class="syn-str">"]: id="</span> + str(uid) + <span class="syn-str">", name="</span> + uname + <span class="syn-str">", bal="</span> + str(ubal))
+        count = count + 1
+    }
+    rows.close()
+    <span class="syn-kw">if</span> count == 5 {
+        println(<span class="syn-str">"   [PASS] Pool query verified 5 rows."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Row count mismatch: "</span> + str(count))
+    }
+
+    <span class="syn-cmt">// 4. Transaction via Pool</span>
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    tx.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, 6, <span class="syn-str">"User_6"</span>, 600) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Tx insert error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    tx.commit() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Tx commit error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Transaction committed via pool."</span>)
+
+    <span class="syn-cmt">// 5. Cleanup &amp; Close</span>
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_users;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Cleanup table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    pool.close() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool close error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Postgres Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu PostgreSQL Native Driver Verification ===\n"</span>)
+    verify_postgres_live()
+    verify_postgres_pool()
+    println(<span class="syn-str">"\n[POSTGRES VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-4d43ae676054">
+<summary><code>35_standalone_mysql/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/35_standalone_mysql">Complete project</a> · <a href="/api-examples/sources/examples/35_standalone_mysql/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="35_standalone_mysql/main.xu"><code class="language-xu">@main
+
+mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mysql
+<span class="syn-import"><span class="hash">#</span>database/sql/driver</span>
+<span class="syn-import"><span class="hash">#</span>context</span>
+
+<span class="syn-kw">fn</span> verify_mysql_live() {
+    println(<span class="syn-str">"--- Testing Native MySQL/MariaDB Driver Wire Protocol ---"</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
+    <span class="syn-kw">mut</span> conn <span class="syn-flow">:=</span> mysql.open(dsn)
+
+    <span class="syn-cmt">// 1. Ping</span>
+    err <span class="syn-flow">:=</span> conn.ping()
+    <span class="syn-kw">if</span> err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Ping failed: "</span> + err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] MySQL/MariaDB Ping succeeded."</span>)
+
+    <span class="syn-cmt">// 2. Exec DDL</span>
+    r1 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_developers;"</span>, []driver.NamedValue{})
+    <span class="syn-kw">if</span> r1.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + r1.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    r2 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"CREATE TABLE xu_developers (id INT PRIMARY KEY, name VARCHAR(50), commits INT);"</span>, []driver.NamedValue{})
+    <span class="syn-kw">if</span> r2.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Create table error: "</span> + r2.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Table 'xu_developers' created."</span>)
+
+    <span class="syn-cmt">// 3. Exec DML Insert</span>
+    <span class="syn-kw">mut</span> args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    args1.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
+    args1.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Antigravity"</span>})
+    args1.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 500})
+    r3 <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO xu_developers (id, name, commits) VALUES (?, ?, ?);"</span>, args1)
+    <span class="syn-kw">if</span> r3.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Insert error: "</span> + r3.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Developer inserted (rows="</span> + str(r3.rows_affected) + <span class="syn-str">")."</span>)
+
+    <span class="syn-cmt">// 4. Query</span>
+    <span class="syn-kw">mut</span> q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
+    q_args.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
+    rows <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, commits FROM xu_developers WHERE id = ?;"</span>, q_args)
+    <span class="syn-kw">if</span> rows.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Query error: "</span> + rows.err)
+        conn.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Query executed, columns count: "</span> + str(rows.columns.len))
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> i &lt; rows.columns.len {
+        println(<span class="syn-str">"      Col["</span> + str(i) + <span class="syn-str">"]: "</span> + rows.columns[i])
+        i = i + 1
+    }
+    println(<span class="syn-str">"   Total cells retrieved: "</span> + str(rows.cells.len))
+    <span class="syn-kw">mut</span> j <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> j &lt; rows.cells.len {
+        println(<span class="syn-str">"      Cell["</span> + str(j) + <span class="syn-str">"]: "</span> + rows.cells[j])
+        j = j + 1
+    }
+
+    <span class="syn-cmt">// 5. Transaction</span>
+    println(<span class="syn-str">"   Testing Transaction Commit..."</span>)
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> conn.begin()
+    <span class="syn-kw">mut</span> args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    args2.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 2})
+    args2.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"XuArchitect"</span>})
+    args2.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 1000})
+    tx_res <span class="syn-flow">:=</span> conn.exec(<span class="syn-str">"INSERT INTO xu_developers (id, name, commits) VALUES (?, ?, ?);"</span>, args2)
+    <span class="syn-kw">if</span> tx_res.err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Tx insert error: "</span> + tx_res.err)
+    }
+    tx_err <span class="syn-flow">:=</span> tx.commit()
+    <span class="syn-kw">if</span> tx_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Tx commit error: "</span> + tx_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Transaction committed."</span>)
+    }
+
+    <span class="syn-cmt">// 6. Reset session</span>
+    ctx <span class="syn-flow">:=</span> context.background()
+    reset_err <span class="syn-flow">:=</span> conn.reset_session(&amp;ctx)
+    <span class="syn-kw">if</span> reset_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Reset session error: "</span> + reset_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Reset session completed."</span>)
+    }
+
+    <span class="syn-cmt">// 7. Close</span>
+    close_err <span class="syn-flow">:=</span> conn.close()
+    <span class="syn-kw">if</span> close_err.len &gt; 0 {
+        println(<span class="syn-str">"   [FAIL] Close error: "</span> + close_err)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [PASS] Connection closed cleanly."</span>)
+    }
+}
+
+<span class="syn-kw">fn</span> verify_mysql_pool() {
+    println(<span class="syn-str">"\n--- Testing Native MySQL/MariaDB Connection Pool ---"</span>)
+    dsn <span class="syn-flow">:=</span> <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
+    <span class="syn-kw">mut</span> pool <span class="syn-flow">:=</span> mysql.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
+
+    pool.ping() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] MySQL Pool ping succeeded."</span>)
+
+    <span class="syn-cmt">// 1. DDL</span>
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_orders;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    pool.exec(<span class="syn-str">"CREATE TABLE xu_pool_orders (id INT PRIMARY KEY, title VARCHAR(50), amount INT);"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool created table xu_pool_orders."</span>)
+
+    <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">while</span> i &lt;= 5 {
+        pool.exec(<span class="syn-str">"INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"Order_"</span> + str(i), i * 150) <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        i = i + 1
+    }
+    println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
+
+    <span class="syn-cmt">// 3. Query</span>
+    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, title, amount FROM xu_pool_orders ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> rows.next() {
+        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+            println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
+            <span class="syn-flow">&lt;&lt;</span>
+        }
+        oid <span class="syn-flow">:=</span> vals[0] as <span class="syn-type">int</span>
+        otitle <span class="syn-flow">:=</span> vals[1] as <span class="syn-type">string</span>
+        oamt <span class="syn-flow">:=</span> vals[2] as <span class="syn-type">int</span>
+        println(<span class="syn-str">"      Row["</span> + str(count) + <span class="syn-str">"]: id="</span> + str(oid) + <span class="syn-str">", title="</span> + otitle + <span class="syn-str">", amount="</span> + str(oamt))
+        count = count + 1
+    }
+    rows.close()
+    <span class="syn-kw">if</span> count == 5 {
+        println(<span class="syn-str">"   [PASS] Pool query verified 5 rows."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Row count mismatch: "</span> + str(count))
+    }
+
+    <span class="syn-cmt">// 4. Transaction via Pool</span>
+    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    tx.exec(<span class="syn-str">"INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);"</span>, 6, <span class="syn-str">"Order_6"</span>, 900) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Tx insert error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    tx.commit() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Tx commit error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Transaction committed via pool."</span>)
+
+    <span class="syn-cmt">// 5. Cleanup &amp; Close</span>
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_orders;"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Cleanup table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    pool.close() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool close error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] MySQL Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu MySQL / MariaDB Native Driver Verification ===\n"</span>)
+    verify_mysql_live()
+    verify_mysql_pool()
+    println(<span class="syn-str">"\n[MYSQL VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="struct-Context">
 <h2><code>struct Context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Context {
@@ -45,6 +451,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>Context — a value of this type</p>
+<p><a href="#example-869911852ff2">See usage example</a></p>
 </article>
 <article class="api-item" id="with_cancel">
 <h2><code>with_cancel</code></h2>
@@ -58,7 +465,7 @@
 </article>
 <article class="api-item" id="-mut-Cancel-cancel">
 <h2><code>(&amp;mut Cancel) cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Cancel) cancel()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Cancel) cancel()</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `cancel` on `&amp;mut Cancel`.</p>
 <h3>Parameters</h3>

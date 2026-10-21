@@ -7,6 +7,107 @@
 <p class="meta">counts: 3 fns, 16 methods, 3 types, 0 consts, 0 ifaces</p>
 <p class="lead">Chroma AI Vector Database Client for Xu Supports collection management, document and vector embedding storage, and similarity search.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-1b0a0c63a2fa" open>
+<summary><code>44_standalone_chroma/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/44_standalone_chroma">Complete project</a> · <a href="/api-examples/sources/examples/44_standalone_chroma/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="44_standalone_chroma/main.xu"><code class="language-xu">@main
+
+chroma <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/chroma
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> verify_chroma_pool() {
+    println(<span class="syn-str">"--- 1. Testing Chroma Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> chroma.open_pool(<span class="syn-str">"http://127.0.0.1:8000"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Chroma Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_chroma_crud() {
+    println(<span class="syn-str">"\n--- 2. Testing Chroma Vector CRUD &amp; Query ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> chroma.open_pool(<span class="syn-str">"http://127.0.0.1:8000"</span>, 5)
+
+    col_name <span class="syn-flow">:=</span> <span class="syn-str">"xu_test_vectors"</span>
+    <span class="syn-cmt">// Cleanup prior</span>
+    p.delete_collection(col_name + <span class="syn-str">""</span>)
+
+    <span class="syn-cmt">// 1. Create Collection</span>
+    col_id <span class="syn-flow">:=</span> p.create_collection(col_name + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create collection failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Created Chroma Collection ID: "</span> + col_id)
+
+    <span class="syn-cmt">// 2. Add Vectors &amp; Docs</span>
+    ids <span class="syn-flow">:=</span> <span class="syn-str">"[\"doc_101\", \"doc_102\"]"</span>
+    embs <span class="syn-flow">:=</span> <span class="syn-str">"[[0.15, 0.22, 0.88], [0.91, 0.12, 0.05]]"</span>
+    docs <span class="syn-flow">:=</span> <span class="syn-str">"[\"Compiler construction in Xu\", \"Database internals and storage\"]"</span>
+    add_ok <span class="syn-flow">:=</span> p.add(col_id + <span class="syn-str">""</span>, ids, embs, docs)
+    <span class="syn-kw">if</span> add_ok {
+        println(<span class="syn-str">"   [PASS] Added 2 vector embeddings and documents."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to add vector embeddings."</span>)
+    }
+
+    <span class="syn-cmt">// 3. Similarity Query</span>
+    query_emb <span class="syn-flow">:=</span> <span class="syn-str">"[[0.14, 0.20, 0.85]]"</span>
+    res <span class="syn-flow">:=</span> p.query(col_id + <span class="syn-str">""</span>, query_emb, 1) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Similarity query failed: "</span> + err.msg())
+        p.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Query Similarity Match Result preview: "</span> + res)
+
+    <span class="syn-cmt">// 4. Delete Collection</span>
+    del_ok <span class="syn-flow">:=</span> p.delete_collection(col_name + <span class="syn-str">""</span>)
+    <span class="syn-kw">if</span> del_ok {
+        println(<span class="syn-str">"   [PASS] Deleted Chroma Collection successfully."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Failed to delete collection."</span>)
+    }
+
+    p.close()
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu Chroma AI Vector Database Native Driver Verification ===\n"</span>)
+    verify_chroma_pool()
+    verify_chroma_crud()
+    println(<span class="syn-str">"\n[CHROMA VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="struct-Response">
 <h2><code>struct Response</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Response {
@@ -224,6 +325,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-1b0a0c63a2fa">See usage example</a></p>
 </article>
 <article class="api-item" id="-Pool-heartbeat">
 <h2><code>(&amp;Pool) heartbeat</code></h2>

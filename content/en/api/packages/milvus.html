@@ -7,6 +7,90 @@
 <p class="meta">counts: 4 fns, 16 methods, 6 types, 0 consts, 0 ifaces</p>
 <p class="lead">External package `milvus #github.com/xulang-org/packages/milvus`, provided by github.com/xulang-org/packages.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-84e0ce3dc635" open>
+<summary><code>50_standalone_milvus/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/50_standalone_milvus">Complete project</a> · <a href="/api-examples/sources/examples/50_standalone_milvus/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="50_standalone_milvus/main.xu"><code class="language-xu">@main
+
+milvus <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/milvus
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> verify_milvus_pool_and_entities() {
+    println(<span class="syn-str">"--- 1. Testing Milvus Vector Protocol &amp; Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> milvus.open_pool(<span class="syn-str">"http://127.0.0.1:19530"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd1 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to connect to Milvus port 19530"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd2 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to re-borrow Milvus connection"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Concurrency</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    <span class="syn-kw">if</span> fd3 &lt; 0 {
+        println(<span class="syn-str">"   [FAIL] Failed to borrow concurrent connection"</span>)
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 2. Data model validation</span>
+    cfg <span class="syn-flow">:=</span> milvus.CollectionConfig{
+        name: <span class="syn-str">"test_articles"</span>,
+        dimension: 4,
+        metric_type: <span class="syn-str">"COSINE"</span>
+    }
+    <span class="syn-kw">if</span> cfg.name == <span class="syn-str">"test_articles"</span> &amp;&amp; cfg.dimension == 4 &amp;&amp; cfg.metric_type == <span class="syn-str">"COSINE"</span> {
+        println(<span class="syn-str">"   [PASS] Milvus CollectionConfig verified: 4-dim COSINE"</span>)
+    }
+
+    e1 <span class="syn-flow">:=</span> milvus.VectorEntity{
+        id: 101,
+        vector: [<span class="syn-str">"0.15"</span>, <span class="syn-str">"0.25"</span>, <span class="syn-str">"0.35"</span>, <span class="syn-str">"0.45"</span>],
+        text: <span class="syn-str">"Cloud Native Vector Search"</span>
+    }
+    <span class="syn-kw">if</span> e1.id == 101 &amp;&amp; e1.vector.len == 4 {
+        println(<span class="syn-str">"   [PASS] Milvus VectorEntity serialized cleanly: id=101, dim=4"</span>)
+    }
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Milvus Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu Milvus Native Driver Verification ===\n"</span>)
+    verify_milvus_pool_and_entities()
+    println(<span class="syn-str">"\n[MILVUS VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="client">
 <h2><code>client</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> client(endpoint <span class="syn-type">string</span>) MilvusClient</code></pre></div>
@@ -186,6 +270,7 @@
 </dl>
 <h3>Returns</h3>
 <p>MilvusPool — a value of this type</p>
+<p><a href="#example-84e0ce3dc635">See usage example</a></p>
 </article>
 <article class="api-item" id="-MilvusPool-dup">
 <h2><code>(&amp;MilvusPool) dup</code></h2>
@@ -303,7 +388,7 @@
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> CollectionConfig {
     <span class="syn-kw">pub</span> name <span class="syn-type">string</span>
     <span class="syn-kw">pub</span> dimension <span class="syn-type">int</span>
-    <span class="syn-kw">pub</span> metric_type <span class="syn-type">string</span> <span class=<span class="syn-str">"syn-cmt"</span>>// <span class="syn-str">"COSINE"</span>, <span class="syn-str">"L2"</span>, <span class="syn-str">"IP"</span></span>
+    <span class="syn-kw">pub</span> metric_type <span class="syn-type">string</span> <span class="syn-cmt">// "COSINE", "L2", "IP"</span>
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Public struct `CollectionConfig`.</p>
@@ -313,6 +398,7 @@
 <dt><code>dimension</code> <span class="type">int</span></dt><dd>field (int)</dd>
 <dt><code>metric_type</code> <span class="type">string // &quot;COSINE&quot;, &quot;L2&quot;, &quot;IP&quot;</span></dt><dd>field (string // &quot;COSINE&quot;, &quot;L2&quot;, &quot;IP&quot;)</dd>
 </dl>
+<p><a href="#example-84e0ce3dc635">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-VectorEntity">
 <h2><code>struct VectorEntity</code></h2>
@@ -329,6 +415,7 @@
 <dt><code>vector</code> <span class="type">[]string</span></dt><dd>field ([]string)</dd>
 <dt><code>text</code> <span class="type">string</span></dt><dd>text</dd>
 </dl>
+<p><a href="#example-84e0ce3dc635">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-SearchHit">
 <h2><code>struct SearchHit</code></h2>

@@ -7,6 +7,128 @@
 <p class="meta">counts: 5 fns, 15 methods, 3 types, 0 consts, 0 ifaces</p>
 <p class="lead">ClickHouse High-Performance Analytical Database (OLAP) Driver for Xu Features Native HTTP/1.1 REST communication via Xu standard library. SQL query execution with high-throughput batch insert. Connection pooling via reusable TCP socket channels. Full compatibility with ClickHouse 22.x/23.x/24.x+.</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-88cf940e74c6" open>
+<summary><code>29_standalone_clickhouse/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/29_standalone_clickhouse">Complete project</a> · <a href="/api-examples/sources/examples/29_standalone_clickhouse/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="29_standalone_clickhouse/main.xu"><code class="language-xu">@main
+
+clickhouse <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/clickhouse
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_clickhouse_basic() {
+    println(<span class="syn-str">"--- 1. Testing ClickHouse Client &amp; Basic SQL ---"</span>)
+    <span class="syn-kw">mut</span> ch <span class="syn-flow">:=</span> clickhouse.open(<span class="syn-str">"http://127.0.0.1:8123"</span>, <span class="syn-str">"default"</span>, <span class="syn-str">"secret"</span>, <span class="syn-str">"default"</span>)
+
+    <span class="syn-cmt">// Ping check</span>
+    pong <span class="syn-flow">:=</span> ch.ping()
+    println(<span class="syn-str">"   ClickHouse ping: "</span> + str(pong))
+
+    <span class="syn-cmt">// DDL: Create table</span>
+    println(<span class="syn-str">"   Creating table 'xu_metrics'..."</span>)
+    ch.exec(<span class="syn-str">"CREATE TABLE IF NOT EXISTS xu_metrics (id UInt64, service String, latency Float64) ENGINE = Memory"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Create table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Table created."</span>)
+
+    <span class="syn-cmt">// DML: Insert records</span>
+    println(<span class="syn-str">"   Inserting records..."</span>)
+    ch.insert(<span class="syn-str">"xu_metrics"</span>, <span class="syn-str">"(1, 'order_service', 24.5), (2, 'user_service', 12.0), (3, 'order_service', 35.5)"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Insert error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] 3 rows inserted."</span>)
+
+    <span class="syn-cmt">// Query: Aggregation</span>
+    println(<span class="syn-str">"   Running aggregation query..."</span>)
+    res <span class="syn-flow">:=</span> ch.query(<span class="syn-str">"SELECT service, count(), avg(latency) FROM xu_metrics GROUP BY service ORDER BY service"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Query error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Query Results (TSV):\n"</span> + res)
+
+    <span class="syn-cmt">// Cleanup: Drop table</span>
+    ch.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_metrics"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Table dropped successfully."</span>)
+}
+
+<span class="syn-kw">fn</span> verify_clickhouse_pool() {
+    println(<span class="syn-str">"\n--- 2. Testing ClickHouse Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> clickhouse.open_pool(<span class="syn-str">"http://127.0.0.1:8123"</span>, <span class="syn-str">"default"</span>, <span class="syn-str">"secret"</span>, <span class="syn-str">"default"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    fd1 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    fd3 <span class="syn-flow">:=</span> p.get_conn()
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    <span class="syn-cmt">// 3. Delegated Queries &amp; Execution via Pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    p.exec(<span class="syn-str">"CREATE TABLE IF NOT EXISTS xu_pool_events (id UInt64, name String) ENGINE = Memory"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool create table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    p.exec(<span class="syn-str">"INSERT INTO xu_pool_events VALUES (101, 'login'), (102, 'checkout')"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool insert error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    rows <span class="syn-flow">:=</span> p.query_tsv(<span class="syn-str">"SELECT id, name FROM xu_pool_events ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool query_tsv error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Retrieved rows count via pool: "</span> + str(rows.len))
+    <span class="syn-kw">if</span> rows.len == 2 {
+        println(<span class="syn-str">"   [PASS] Query TSV row count verified: 2 rows"</span>)
+        println(<span class="syn-str">"   Row 0: id="</span> + rows[0][0] + <span class="syn-str">", name="</span> + rows[0][1])
+        println(<span class="syn-str">"   Row 1: id="</span> + rows[1][0] + <span class="syn-str">", name="</span> + rows[1][1])
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Row count mismatch!"</span>)
+    }
+
+    p.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_events"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool drop table error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Pool drop table completed."</span>)
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] ClickHouse Pool closed and verified."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu ClickHouse Native Driver Verification ===\n"</span>)
+    verify_clickhouse_basic()
+    verify_clickhouse_pool()
+    println(<span class="syn-str">"\n[CLICKHOUSE VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(endpoint <span class="syn-type">string</span>, user <span class="syn-type">string</span>, password <span class="syn-type">string</span>, database <span class="syn-type">string</span>) Client</code></pre></div>
@@ -21,6 +143,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-88cf940e74c6">See usage example</a></p>
 </article>
 <article class="api-item" id="open_pool">
 <h2><code>open_pool</code></h2>
@@ -37,6 +160,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-88cf940e74c6">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Response">
 <h2><code>struct Response</code></h2>
@@ -101,7 +225,7 @@
 </article>
 <article class="api-item" id="-mut-Client-request">
 <h2><code>(&amp;mut Client) request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) request(sql_query <span class="syn-type">string</span>) Response</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) request(sql_query <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `request` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -261,7 +385,7 @@
 </article>
 <article class="api-item" id="-mut-Client-exec">
 <h2><code>(&amp;mut Client) exec</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) exec(sql_query <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) exec(sql_query <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `exec` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -274,7 +398,7 @@
 </article>
 <article class="api-item" id="-mut-Client-query">
 <h2><code>(&amp;mut Client) query</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) query(sql_query <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) query(sql_query <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `query` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -287,7 +411,7 @@
 </article>
 <article class="api-item" id="-mut-Client-query_tsv">
 <h2><code>(&amp;mut Client) query_tsv</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) query_tsv(sql_query <span class="syn-type">string</span>) [][]<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) query_tsv(sql_query <span class="syn-type">string</span>) [][]<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: query tsv. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -300,7 +424,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ping` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>
@@ -312,7 +436,7 @@
 </article>
 <article class="api-item" id="-mut-Client-insert">
 <h2><code>(&amp;mut Client) insert</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) insert(table <span class="syn-type">string</span>, values_sql <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) insert(table <span class="syn-type">string</span>, values_sql <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `insert` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>

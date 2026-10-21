@@ -7,6 +7,166 @@
 <p class="meta">counts: 29 fns, 17 methods, 3 types, 0 consts, 0 ifaces</p>
 <p class="lead">Apache Kafka High-Performance Distributed Event Streaming Driver for Xu Features Pure native Kafka Wire Protocol implementation (TCP socket + Big-Endian framing). IEEE CRC32 message verification via standard library #hash/crc32. High-throughput Produce &amp; Fetch operations with partition targeting. Heartbeat probe via ApiVersions &amp; Metadata APIs. Connection pooling via reusable TCP socket channels. Full compatibility with Apache Kafka 2.x, 3.x, and 4.x (KRaft &amp; ZooKeeper modes).</p>
 <p class="note">github.com/xulang-org/packages · 0.1.1 · <a href="/docs/packages">Install and use</a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-32a8890abb38" open>
+<summary><code>33_standalone_kafka/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/33_standalone_kafka">Complete project</a> · <a href="/api-examples/sources/examples/33_standalone_kafka/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="33_standalone_kafka/main.xu"><code class="language-xu">@main
+
+kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/kafka
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+<span class="syn-kw">fn</span> verify_kafka_ping() {
+    println(<span class="syn-str">"--- 1. Testing Kafka Heartbeat &amp; ApiVersions Ping ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Connect error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    is_ok <span class="syn-flow">:=</span> client.ping()
+    <span class="syn-kw">if</span> is_ok {
+        println(<span class="syn-str">"   [PASS] Kafka ApiVersions heartbeat succeeded."</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Kafka ping failed."</span>)
+    }
+    client.close()
+}
+
+<span class="syn-kw">fn</span> verify_kafka_produce_fetch() {
+    println(<span class="syn-str">"\n--- 2. Testing Kafka Produce &amp; Fetch Operations ---"</span>)
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Connect error: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+
+    topic <span class="syn-flow">:=</span> <span class="syn-str">"xu_test_topic"</span>
+    partition <span class="syn-flow">:=</span> 0
+
+    <span class="syn-cmt">// Ensure metadata / auto create topic</span>
+    client.metadata(topic + <span class="syn-str">""</span>)
+
+    <span class="syn-cmt">// 1. Produce message</span>
+    msg <span class="syn-flow">:=</span> <span class="syn-str">"Antigravity event message from Xu language"</span>
+    println(<span class="syn-str">"   Producing message to topic '"</span> + topic + <span class="syn-str">"': "</span> + msg)
+    offset <span class="syn-flow">:=</span> client.produce_key_value(topic + <span class="syn-str">""</span>, partition, <span class="syn-str">"event-key-1"</span>, msg + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Produce failed: "</span> + err.msg())
+        client.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Message produced successfully at offset: "</span> + str(offset))
+
+    <span class="syn-cmt">// 2. Fetch message back</span>
+    messages <span class="syn-flow">:=</span> client.fetch(topic + <span class="syn-str">""</span>, partition, offset) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Fetch failed: "</span> + err.msg())
+        client.close()
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Fetched messages count: "</span> + str(messages.len))
+    <span class="syn-kw">mut</span> found <span class="syn-flow">:=</span> false
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> i &lt; messages.len {
+        println(<span class="syn-str">"   Message["</span> + str(i) + <span class="syn-str">"]: "</span> + messages[i])
+        <span class="syn-kw">if</span> messages[i] == msg {
+            found = true
+        }
+        i = i + 1
+    }
+
+    <span class="syn-kw">if</span> found {
+        println(<span class="syn-str">"   [PASS] Produced message was verified in fetch output!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Message not matched in first fetch chunk (may require offset adjustment)."</span>)
+    }
+
+    client.close()
+}
+
+<span class="syn-kw">fn</span> verify_kafka_pool() {
+    println(<span class="syn-str">"\n--- 3. Testing Kafka Connection Pool ---"</span>)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> kafka.open_pool(<span class="syn-str">"127.0.0.1:9092"</span>, <span class="syn-str">"xu-pool-tester"</span>, 5)
+
+    <span class="syn-cmt">// 1. Connection Reuse Test</span>
+    <span class="syn-kw">mut</span> c1 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c1: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd1 <span class="syn-flow">:=</span> c1.fd
+    println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
+    p.put(c1)
+
+    <span class="syn-kw">mut</span> c2 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c2: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd2 <span class="syn-flow">:=</span> c2.fd
+    println(<span class="syn-str">"   Borrow 2 (after return) fd: "</span> + str(fd2))
+    <span class="syn-kw">if</span> fd1 == fd2 {
+        println(<span class="syn-str">"   [PASS] Connection reused successfully (fd "</span> + str(fd1) + <span class="syn-str">" == "</span> + str(fd2) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Different fd allocated: "</span> + str(fd1) + <span class="syn-str">" vs "</span> + str(fd2))
+    }
+
+    <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
+    <span class="syn-kw">mut</span> c3 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Failed to get c3: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    fd3 <span class="syn-flow">:=</span> c3.fd
+    println(<span class="syn-str">"   Borrow 3 (concurrently) fd: "</span> + str(fd3))
+    <span class="syn-kw">if</span> fd2 != fd3 {
+        println(<span class="syn-str">"   [PASS] Concurrently allocated distinct fds ("</span> + str(fd2) + <span class="syn-str">" != "</span> + str(fd3) + <span class="syn-str">")"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [FAIL] Expected distinct fds for concurrent connections!"</span>)
+    }
+    p.put(c2)
+    p.put(c3)
+
+    <span class="syn-cmt">// 3. Delegated Produce &amp; Fetch via Pool</span>
+    println(<span class="syn-str">"   Testing delegated operations via pool..."</span>)
+    pool_topic <span class="syn-flow">:=</span> <span class="syn-str">"xu_pool_topic"</span>
+    pool_msg <span class="syn-flow">:=</span> <span class="syn-str">"pool message payload test"</span>
+
+    offset <span class="syn-flow">:=</span> p.produce_key_value(pool_topic + <span class="syn-str">""</span>, 0, <span class="syn-str">"pk1"</span>, pool_msg + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool produce failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   [PASS] Message produced via pool at offset: "</span> + str(offset))
+
+    msgs <span class="syn-flow">:=</span> p.fetch(pool_topic + <span class="syn-str">""</span>, 0, offset) <span class="syn-kw">or</span> (err) {
+        println(<span class="syn-str">"   [FAIL] Pool fetch failed: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(<span class="syn-str">"   Fetched messages via pool count: "</span> + str(msgs.len))
+    <span class="syn-kw">mut</span> found <span class="syn-flow">:=</span> false
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> i &lt; msgs.len {
+        <span class="syn-kw">if</span> msgs[i] == pool_msg {
+            found = true
+        }
+        i = i + 1
+    }
+    <span class="syn-kw">if</span> found {
+        println(<span class="syn-str">"   [PASS] Pool produce &amp; fetch roundtrip verified successfully!"</span>)
+    } <span class="syn-kw">else</span> {
+        println(<span class="syn-str">"   [WARN] Pool message not in immediate chunk."</span>)
+    }
+
+    p.close()
+    println(<span class="syn-str">"   [PASS] Kafka Pool closed cleanly."</span>)
+}
+
+<span class="syn-kw">fn</span> main() {
+    println(<span class="syn-str">"=== Xu Apache Kafka Distributed Event Streaming Driver Verification ===\n"</span>)
+    verify_kafka_ping()
+    verify_kafka_produce_fetch()
+    verify_kafka_pool()
+    println(<span class="syn-str">"\n[KAFKA VERIFICATION 100% COMPLETED]"</span>)
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="open">
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(broker <span class="syn-type">string</span>) Client</code></pre></div>
@@ -18,6 +178,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Client — a value of this type</p>
+<p><a href="#example-32a8890abb38">See usage example</a></p>
 </article>
 <article class="api-item" id="open_client">
 <h2><code>open_client</code></h2>
@@ -66,7 +227,7 @@
 </article>
 <article class="api-item" id="-mut-Client-write_exact">
 <h2><code>(&amp;mut Client) write_exact</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) write_exact(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) write_exact(data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: write exact. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -79,7 +240,7 @@
 </article>
 <article class="api-item" id="-mut-Client-read_exact">
 <h2><code>(&amp;mut Client) read_exact</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) read_exact(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) read_exact(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: read exact. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -92,7 +253,7 @@
 </article>
 <article class="api-item" id="-mut-Client-round_trip">
 <h2><code>(&amp;mut Client) round_trip</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) round_trip(req_bytes <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) round_trip(req_bytes <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: round trip. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -118,7 +279,7 @@
 </article>
 <article class="api-item" id="-mut-Client-ping">
 <h2><code>(&amp;mut Client) ping</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `ping` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>
@@ -130,7 +291,7 @@
 </article>
 <article class="api-item" id="-mut-Client-metadata">
 <h2><code>(&amp;mut Client) metadata</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) metadata(topic <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) metadata(topic <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `metadata` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>
@@ -143,7 +304,7 @@
 </article>
 <article class="api-item" id="-mut-Client-produce">
 <h2><code>(&amp;mut Client) produce</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) produce(topic <span class="syn-type">string</span>, partition <span class="syn-type">int</span>, message <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) produce(topic <span class="syn-type">string</span>, partition <span class="syn-type">int</span>, message <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `produce` on `&amp;mut Client`.</p>
 <h3>Parameters</h3>
@@ -158,7 +319,7 @@
 </article>
 <article class="api-item" id="-mut-Client-produce_key_value">
 <h2><code>(&amp;mut Client) produce_key_value</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) produce_key_value(topic <span class="syn-type">string</span>, partition <span class="syn-type">int</span>, key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) produce_key_value(topic <span class="syn-type">string</span>, partition <span class="syn-type">int</span>, key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: produce key value. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -174,7 +335,7 @@
 </article>
 <article class="api-item" id="-mut-Client-fetch">
 <h2><code>(&amp;mut Client) fetch</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) fetch(topic <span class="syn-type">string</span>, partition <span class="syn-type">int</span>, offset <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) fetch(topic <span class="syn-type">string</span>, partition <span class="syn-type">int</span>, offset <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `fetch` on `&amp;mut Client`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -189,7 +350,7 @@
 </article>
 <article class="api-item" id="-mut-Client-close">
 <h2><code>(&amp;mut Client) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;<span class="syn-kw">mut</span> Client) close()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Client) close()</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut Client`: close the resource.</p>
 <h3>Parameters</h3>
@@ -242,6 +403,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Pool — a value of this type</p>
+<p><a href="#example-32a8890abb38">See usage example</a></p>
 </article>
 <article class="api-item" id="-Pool-get">
 <h2><code>(&amp;Pool) get</code></h2>

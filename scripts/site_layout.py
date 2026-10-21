@@ -220,9 +220,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             desc = f"下载官方 Xu (v{xu_version}) 编译器 SDK 与工具链（macOS、Linux、Windows）。支持一键自动化安装脚本与原生二进制发行包。"
     elif bare_path.startswith('docs/faq'):
         if en:
-            desc = f"Frequently Asked Questions (FAQ) for Xu v{xu_version} — Technical details on custom native backend vs LLVM, zero-GC memory safety, compilation speed, packages & xu install, and concurrency."
+            desc = f"Frequently Asked Questions (FAQ) for Xu v{xu_version} — Custom native backend, zero-GC memory safety, LSP editor support, xu get vs xu install, native C modules, and WebAssembly."
         else:
-            desc = f"Xu 编程语言 (v{xu_version}) 常见问题解答 (FAQ) — 深度解析自研原生后端与不依赖 LLVM 的架构考量、零 GC 内存安全、毫秒级编译速度、packages 与 xu install 依赖体系、WASM 及并发模型。"
+            desc = f"Xu 编程语言 (v{xu_version}) 常见问题解答 (FAQ) — 自研原生后端、零 GC 内存安全、LSP 编辑器支持、xu get 与 xu install 依赖管理、xu native 原生 C 模块及 WebAssembly。"
     elif bare_path.startswith('docs/tutorial'):
         if en:
             desc = f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
@@ -293,10 +293,18 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
         },
         {
             "@type": "Question",
-            "name": "How are third-party packages installed and referenced?" if en else "如何管理与安装第三方 packages 扩展包？",
+            "name": "Which editors support Xu, and how do I enable LSP?" if en else "Xu 支持哪些编辑器？如何启用 LSP？",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Zero manual configuration. The official ecosystem monorepo packages provides 29 production-grade drivers (Redis, MySQL, Postgres, Kafka, S3, gRPC, etc.). Simply declare the version in xu.xun (e.g. require: \"github.com/xulang-org/packages\": v0.1.1) and run xu install to fetch dependencies into vendor/ and generate xu.lock." if en else "零手动配置。官方维护了涵盖 29 个常用生产级外部服务驱动的 packages 仓库（Redis、MySQL、Postgres、Kafka、S3、gRPC 等）。开发者只需在 xu.xun 声明版本（如 require: \"github.com/xulang-org/packages\": v0.1.1），执行 xu install 即可一键自动下载并生成校验锁 xu.lock，支持 --offline 离线与 --frozen 生产构建。"
+                "text": "The official vscode-xu extension supports VS Code and Cursor. It runs xu lsp to launch the SDK's xu-lsp server for diagnostics, completion, go-to-definition, hover, symbols, references, rename, and formatting. Other LSP-compatible editors can launch xu lsp over stdin/stdout using JSON-RPC 2.0. Run xu lsp --help for help." if en else "官方 vscode-xu 扩展支持 VS Code 与 Cursor，通过 xu lsp 启动 SDK 中的 xu-lsp 语言服务器，提供诊断、补全、跳转定义、悬停、符号大纲、查找引用、重命名与格式化。其他支持 LSP 的编辑器也可配置 xu lsp，通过 stdin/stdout 交换 JSON-RPC 2.0 消息。可用 xu lsp --help 查看帮助。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What is the difference between xu get and xu install?" if en else "xu get 与 xu install 有什么区别？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "In a project containing xu.xun, xu get github.com/xulang-org/packages@v0.1.1 adds or updates a pinned dependency, edits require:, installs sources into vendor/, and updates xu.lock. An explicit exact version is required; @latest is not accepted. xu install installs already-declared dependencies. Both support --offline; use xu build . --frozen for strict lockfile builds. The official packages repository provides 29 extension packages." if en else "在已有 xu.xun 的项目中，xu get github.com/xulang-org/packages@v0.1.1 添加或更新指定依赖，修改 require:、安装源码到 vendor/ 并更新 xu.lock。必须显式指定精确版本，不接受 @latest。xu install 安装清单中已经声明的依赖。两者均支持 --offline；严格按现有锁文件构建使用 xu build . --frozen。官方 packages 仓库提供 29 个扩展包。"
             }
         },
         {
@@ -309,10 +317,10 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
         },
         {
             "@type": "Question",
-            "name": "How does C interoperability (FFI) work in Xu?" if en else "如何与现有 C 语言代码库进行互操作 (C FFI)？",
+            "name": "How do I use xu native to integrate C code?" if en else "如何用 xu native 集成 C 代码？",
             "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Xu conforms to standard System V and AAPCS native C calling conventions (ABI). You can interface with native C libraries through lightweight bridge shims or export C-compatible dynamic libraries (--shared) to interoperate with OS system APIs or embedded C drivers (such as SQLite in packages)." if en else "Xu 遵循标准 System V / AAPCS 原生 C 调用约定（ABI）。可以通过轻量 C 桥接或直接导出 C ABI 兼容的函数签名与动态库（--shared），无缝集成操作系统原生底层库或嵌入式 C 代码（如 packages 中的 SQLite 驱动）。"
+                "text": "xu native compile compiles C sources with interface metadata into .a; xu native archive wraps existing object files with metadata; xu native pack bundles target slices into .xulib; xu native inspect and xu native extract inspect and extract slices. Use .a for a single target and .xulib for distribution with interface contracts and multiple target slices. Build with xu build main.xu native/mylib.xulib -o app. Compiling C requires the corresponding C toolchain; run xu native compile --help for options." if en else "xu native compile 将 C 源码与接口元数据编译为 .a；xu native archive 为已有目标文件封装元数据；xu native pack 将目标切片打包为 .xulib；xu native inspect 与 xu native extract 用于检查和提取切片。.a 用于单目标，.xulib 用于携带接口契约与多个目标切片的分发。构建示例：xu build main.xu native/mylib.xulib -o app。编译 C 需相应的 C 工具链；参数见 xu native compile --help。"
             }
         },
         {

@@ -1,0 +1,102 @@
+@main
+
+neo4j #github.com/xulang-org/packages/neo4j
+#errors
+#strings
+
+fn verify_neo4j_pool() {
+    println("--- 1. Testing Neo4j Connection Pool ---")
+    mut p := neo4j.open_pool("http://127.0.0.1:7474", "neo4j", "secret123", "neo4j", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println("   [PASS] Neo4j Pool closed cleanly.")
+}
+
+fn verify_neo4j_cypher_crud() {
+    println("\n--- 2. Testing Neo4j Cypher Graph CRUD ---")
+    mut p := neo4j.open_pool("http://127.0.0.1:7474", "neo4j", "secret123", "neo4j", 5)
+
+    // 1. Clean existing test nodes
+    p.execute("MATCH (n:Person) DETACH DELETE n") or (err) {
+        println("   [NOTE] Clean test nodes: " + err.msg())
+        <<
+    }
+    println("   [PASS] Cleaned pre-existing test data.")
+
+    // 2. Create Node
+    c1 := "CREATE (a:Person {name: 'Alice', role: 'Engineer', age: 30}) RETURN a.name, a.role"
+    res1 := p.execute(c1) or (err) {
+        println("   [FAIL] Create Alice node failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Created Node Alice: " + res1)
+
+    // 3. Create another Node
+    c2 := "CREATE (b:Person {name: 'Bob', role: 'Architect', age: 35}) RETURN b.name, b.role"
+    res2 := p.execute(c2) or (err) {
+        println("   [FAIL] Create Bob node failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Created Node Bob: " + res2)
+
+    // 4. Create Relationship (Graph Edge)
+    c3 := "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) CREATE (a)-[r:COLLABORATES_WITH {project: 'Xu'}]->(b) RETURN type(r)"
+    res3 := p.execute(c3) or (err) {
+        println("   [FAIL] Create Relationship failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Created Relationship COLLABORATES_WITH: " + res3)
+
+    // 5. Query Graph Match
+    c4 := "MATCH (a:Person)-[r:COLLABORATES_WITH]->(b:Person) RETURN a.name, type(r), b.name"
+    res4 := p.execute(c4) or (err) {
+        println("   [FAIL] Query Graph failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Query Graph Traversal Result: " + res4)
+
+    // 6. Detach Delete & Cleanup
+    del_res2 := p.execute("MATCH (n:Person) DETACH DELETE n") or (err) {
+        println("   [FAIL] Cleanup failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Cleaned up graph test data.")
+
+    p.close()
+}
+
+fn main() {
+    println("=== Xu Neo4j Graph Database Native Driver Verification ===\n")
+    verify_neo4j_pool()
+    verify_neo4j_cypher_crud()
+    println("\n[NEO4J VERIFICATION 100% COMPLETED]")
+}

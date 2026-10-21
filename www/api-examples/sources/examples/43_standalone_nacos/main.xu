@@ -1,0 +1,120 @@
+@main
+
+nacos #github.com/xulang-org/packages/nacos
+#errors
+#strings
+
+fn verify_nacos_pool() {
+    println("--- 1. Testing Nacos Connection Pool ---")
+    mut p := nacos.open_pool("http://127.0.0.1:8848", "public", 5)
+
+    // 1. Connection Reuse
+    fd1 := p.get_conn()
+    println("   Borrow 1 fd: " + str(fd1))
+    p.put_conn(fd1)
+
+    fd2 := p.get_conn()
+    println("   Borrow 2 (after return) fd: " + str(fd2))
+    if fd1 == fd2 {
+        println("   [PASS] Connection reused successfully (fd " + str(fd1) + " == " + str(fd2) + ")")
+    } else {
+        println("   [WARN] Different fd allocated: " + str(fd1) + " vs " + str(fd2))
+    }
+
+    // 2. Multi-connection concurrent borrow
+    fd3 := p.get_conn()
+    println("   Borrow 3 (concurrently) fd: " + str(fd3))
+    if fd2 != fd3 {
+        println("   [PASS] Concurrently allocated distinct fds (" + str(fd2) + " != " + str(fd3) + ")")
+    } else {
+        println("   [FAIL] Expected distinct fds for concurrent connections!")
+    }
+    p.put_conn(fd2)
+    p.put_conn(fd3)
+
+    p.close()
+    println("   [PASS] Nacos Pool closed cleanly.")
+}
+
+fn verify_nacos_naming() {
+    println("\n--- 2. Testing Nacos Naming Service (Registration & Discovery) ---")
+    mut p := nacos.open_pool("http://127.0.0.1:8848", "public", 5)
+
+    srv := "xu-payment-service"
+    ip := "10.0.0.88"
+    port := 8080
+
+    // 1. Register Instance
+    reg_ok := p.register_instance(srv + "", ip + "", port, "DEFAULT_GROUP")
+    if reg_ok {
+        println("   [PASS] Microservice instance registered (" + srv + " -> " + ip + ":" + str(port) + ")")
+    } else {
+        println("   [FAIL] Failed to register instance")
+    }
+
+    // 2. Discover Instances
+    instances := p.get_instances(srv + "", "DEFAULT_GROUP") or (err) {
+        println("   [FAIL] get_instances failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   [PASS] Service discovery instances json length: " + str(instances.len) + " bytes")
+
+    // 3. Deregister Instance
+    dereg_ok := p.deregister_instance(srv + "", ip + "", port, "DEFAULT_GROUP")
+    if dereg_ok {
+        println("   [PASS] Microservice instance deregistered.")
+    } else {
+        println("   [FAIL] Failed to deregister instance")
+    }
+
+    p.close()
+}
+
+fn verify_nacos_config() {
+    println("\n--- 3. Testing Nacos Config Service (Publish & Read) ---")
+    mut p := nacos.open_pool("http://127.0.0.1:8848", "public", 5)
+
+    data_id := "xu-dynamic-config.yaml"
+    group := "DEFAULT_GROUP"
+    content := "server.port=9090\nenv=production"
+
+    // 1. Publish Config
+    pub_ok := p.publish_config(data_id + "", group + "", content + "")
+    if pub_ok {
+        println("   [PASS] Dynamic config published (" + data_id + ")")
+    } else {
+        println("   [FAIL] Failed to publish config")
+    }
+
+    // 2. Get Config
+    got_cfg := p.get_config(data_id + "", group + "") or (err) {
+        println("   [FAIL] get_config failed: " + err.msg())
+        p.close()
+        <<
+    }
+    println("   Retrieved config: " + got_cfg)
+    if got_cfg == content {
+        println("   [PASS] Retrieved config matched exactly!")
+    } else {
+        println("   [FAIL] Config content mismatch!")
+    }
+
+    // 3. Remove Config
+    rm_ok := p.remove_config(data_id + "", group + "")
+    if rm_ok {
+        println("   [PASS] Config removed cleanly.")
+    } else {
+        println("   [FAIL] Failed to remove config")
+    }
+
+    p.close()
+}
+
+fn main() {
+    println("=== Xu Nacos Microservice Driver Verification ===\n")
+    verify_nacos_pool()
+    verify_nacos_naming()
+    verify_nacos_config()
+    println("\n[NACOS VERIFICATION 100% COMPLETED]")
+}

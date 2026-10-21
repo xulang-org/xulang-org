@@ -66,7 +66,7 @@
 <tr><td><code>--no-opt</code></td><td>Disable all MIR optimizations and default register allocation (disables inlining and reduction) for fastest compile speeds.</td></tr>
 <tr><td><code>--debug-build</code></td><td>Unoptimized source build with full DWARF line tables and debug symbols.</td></tr>
 <tr><td><code>--debug</code></td><td>Emit DWARF line tables while preserving full O2-level compiler optimizations.</td></tr>
-<tr><td><code>--timings</code></td><td>Print detailed phase timings across parsing, MIR optimizations, RA, and codegen to stderr.</td></tr>
+<tr><td><code>--timings</code></td><td>Print phase timings across parsing, MIR optimization, register allocation, and codegen to stderr, plus <code>pattern-hits:</code> counters and each function's register-allocation mode.</td></tr>
 <tr><td><code>--offline</code></td><td>Offline build: strictly resolves dependencies from local <code>vendor/</code> or cache without network requests.</td></tr>
 <tr><td><code>--frozen</code></td><td>Frozen build: offline and requires exact matches with <code>xu.lock</code>; rejects any missing dependencies.</td></tr>
 <tr><td><code>--desktop</code></td><td>Desktop packaging mode: invokes <code>xu-desktop</code> to produce macOS <code>.app</code>, Windows <code>.exe</code>, or Linux ELF bundles.</td></tr>
@@ -88,6 +88,25 @@ xu build . --frozen -o release/server
 
 # 4. View compiler phase breakdown and register allocation metrics
 xu build main.xu --timings -o server</code></pre>
+
+<h3>Compiler Diagnostics in 0.9.4</h3>
+<p>Use these environment variables to investigate compilation or optimization problems.</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Environment variable</th><th>Behavior</th></tr></thead>
+<tbody>
+<tr><td><code>XU_VERIFY=1</code></td><td>Run the full MIR verifier after each optimization pass to check intermediate-representation consistency.</td></tr>
+<tr><td><code>XU_DUMP_MIR=&lt;function&gt;</code></td><td>Dump a named function's MIR to inspect lowering and optimization results.</td></tr>
+<tr><td><code>XU_PATTERNS_OFF=all</code></td><td>Disable all named backend patterns, or supply a comma-separated list of pattern names. Use for differential comparison with a default build; unknown names are rejected.</td></tr>
+</tbody></table></div>
+<pre><code># macOS / Linux: verify each pass and inspect pattern hits
+XU_VERIFY=1 xu build main.xu --timings -o myapp
+
+# Dump main's MIR
+XU_DUMP_MIR=main xu build main.xu -o myapp
+
+# Build a reference executable with backend patterns disabled
+XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
+<p>In PowerShell, set the variable first, for example <code>$env:XU_VERIFY = '1'</code>, then run the same <code>xu build</code> command. Clear it afterward with <code>Remove-Item Env:XU_VERIFY</code>.</p>
 
 <h2>2. Automated Testing (test)</h2>
 <p><code>xu test</code> discovers and builds automated test runners. Any source file containing <code>fn test_*</code> (or named <code>test.*.xu</code>) runs natively:</p>

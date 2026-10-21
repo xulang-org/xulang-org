@@ -6,6 +6,686 @@
 <p class="meta">import: <code>#ui/webview</code></p>
 <p class="meta">counts: 38 fns, 10 methods, 1 types, 0 consts, 0 ifaces</p>
 <p class="lead">Attach a webview to ui.Window: load_html/url, eval, on/emit.</p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-2d5c0b649702" open>
+<summary><code>16_ui_webview/shaped_webview/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/shaped_webview">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/shaped_webview/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/shaped_webview/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/webview</span>
+
+<span class="syn-cmt">// Frameless + PNG mask + WKWebView (macOS).</span>
+<span class="syn-cmt">//   xu build examples/16ui_webview/shaped_webview --target macos-arm64 --desktop -o /tmp/xu_shaped_wv</span>
+<span class="syn-cmt">//   /tmp/xu_shaped_wv</span>
+<span class="syn-cmt">// Drag from the top ~28px strip; Close calls shell.quit.</span>
+
+<span class="syn-kw">fn</span> route(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">string</span> {
+    <span class="syn-kw">if</span> name == <span class="syn-str">"ping"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"pong:"</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"greet"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"hello, "</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"win"</span> {
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"quit"</span> {
+            q <span class="syn-flow">:=</span> ui.native_quit() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"quit"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"minimize"</span> {
+            m <span class="syn-flow">:=</span> ui.native_minimize() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"minimized"</span>
+        }
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"win?"</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"miss"</span>
+}
+
+<span class="syn-kw">fn</span> demo_www() <span class="syn-type">string</span> {
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"www"</span>
+}
+
+<span class="syn-kw">fn</span> ipc_boot(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>, shell_ch <span class="syn-kw">chan</span> ui.Event) {
+    webview.bind_ipc_www(demo_www(), route, emit_ch, shell_ch) <span class="syn-kw">or</span> (err) {
+        eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 32}
+    shell_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 32}
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
+    app.set_icon(ui.icon_from_file(<span class="syn-str">"brand/xu_app_logo.png"</span>))
+    webview.stage_www_root(demo_www()) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">xu</span> ipc_boot(emit_ch, shell_ch)
+    sleep_ns(50000000)
+
+    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Shaped WebView"</span>, width: 360, height: 360})
+    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
+    <span class="syn-kw">mut</span> wv <span class="syn-flow">:=</span> webview.attach(r)
+    wv.on(<span class="syn-str">"ping"</span>)
+    wv.on(<span class="syn-str">"greet"</span>)
+    wv.on(<span class="syn-str">"win"</span>)
+
+    a0 <span class="syn-flow">:=</span> ui.native_set_frameless(1)
+    a1 <span class="syn-flow">:=</span> ui.native_set_transparent(1)
+    a2 <span class="syn-flow">:=</span> ui.native_set_window_mask(<span class="syn-str">"brand/xu_app_logo.png"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    a3 <span class="syn-flow">:=</span> ui.native_set_shadow(1)
+    <span class="syn-kw">if</span> a0 + a1 + a2 + a3 &lt; 0 {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    wv.load_url(<span class="syn-str">"xu://app/shaped.html"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"shaped webview — xu://app/shaped.html XUN IPC (drag top; Close quits)"</span>)
+    app.run() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-41d09e469fb1">
+<summary><code>16_ui_webview/remote/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/remote">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/remote/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/remote/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/webview</span>
+
+<span class="syn-cmt">// Remote HTTP document + xu:// IPC.</span>
+<span class="syn-cmt">// 1) python3 examples/16ui_webview/remote_http/serve.py</span>
+<span class="syn-cmt">// 2) xu build examples/16ui_webview/remote --target macos-arm64 --desktop -o /tmp/xu_remote</span>
+<span class="syn-cmt">// 3) /tmp/xu_remote</span>
+<span class="syn-cmt">// Optional: XU_UI_REMOTE_URL=http://127.0.0.1:8765/</span>
+
+<span class="syn-kw">fn</span> route(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">string</span> {
+    <span class="syn-kw">if</span> name == <span class="syn-str">"ping"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"pong:"</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"greet"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"hello, "</span> + payload
+    }
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"unknown:"</span> + name
+}
+
+<span class="syn-kw">fn</span> demo_www() <span class="syn-type">string</span> {
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"www"</span>
+}
+
+<span class="syn-kw">fn</span> remote_url() <span class="syn-type">string</span> {
+    u <span class="syn-flow">:=</span> env_get(<span class="syn-str">"XU_UI_REMOTE_URL"</span>)
+    <span class="syn-kw">if</span> u.len &gt; 0 {
+        <span class="syn-flow">&lt;&lt;</span> u + <span class="syn-str">""</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"http://127.0.0.1:8765/"</span>
+}
+
+<span class="syn-kw">fn</span> ipc_boot(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>, shell_ch <span class="syn-kw">chan</span> ui.Event) {
+    <span class="syn-cmt">// Still stage www + bridge so xu://app/__xu works; main document is remote.</span>
+    webview.bind_ipc_www(demo_www(), route, emit_ch, shell_ch) <span class="syn-kw">or</span> (err) {
+        eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+
+<span class="syn-kw">fn</span> tick_loop(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>) {
+    <span class="syn-kw">mut</span> n <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> true {
+        sleep_ns(3000000000)
+        n = n + 1
+        webview.bus_emit(emit_ch, <span class="syn-str">"tick"</span>, str(n))
+    }
+}
+
+<span class="syn-kw">fn</span> watch_shell(shell_ch <span class="syn-kw">chan</span> ui.Event) {
+    <span class="syn-kw">while</span> true {
+        ev <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span>shell_ch
+        <span class="syn-kw">if</span> ev.kind == ui.ev_exit || ev.kind == ui.ev_closed {
+            println(<span class="syn-str">"shell event kind="</span> + str(ev.kind))
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_loaded {
+            println(<span class="syn-str">"shell event loaded"</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_load_failed {
+            println(<span class="syn-str">"shell event load_failed"</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_ready {
+            println(<span class="syn-str">"shell event ready"</span>)
+        }
+    }
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 32}
+    shell_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 32}
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
+    app.set_icon(ui.icon_from_file(<span class="syn-str">"brand/xu_app_logo.png"</span>))
+    url <span class="syn-flow">:=</span> remote_url()
+    <span class="syn-kw">xu</span> watch_shell(shell_ch)
+    <span class="syn-kw">xu</span> ipc_boot(emit_ch, shell_ch)
+    <span class="syn-kw">xu</span> tick_loop(emit_ch)
+    sleep_ns(50000000)
+    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Remote HTTP + xu:// IPC"</span>, width: 720, height: 520})
+    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
+    <span class="syn-kw">mut</span> wv <span class="syn-flow">:=</span> webview.attach(r)
+    wv.on(<span class="syn-str">"ping"</span>)
+    wv.on(<span class="syn-str">"greet"</span>)
+    url2 <span class="syn-flow">:=</span> url + <span class="syn-str">""</span>
+    wv.load_remote(url2) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"remote document "</span> + url + <span class="syn-str">" — IPC via xu://app/__xu (start remote_http/serve.py first)"</span>)
+    app.run() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-efd1ed863bda">
+<summary><code>16_ui_webview/open/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/open">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/open/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/open/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/webview</span>
+
+<span class="syn-kw">fn</span> route(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">string</span> {
+    <span class="syn-kw">if</span> name == <span class="syn-str">"ping"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"pong:"</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"greet"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"hello, "</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"menu"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"menu:"</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"tray"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"tray:"</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"shell"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"shell:"</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"win"</span> {
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"hide"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_hide() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"hidden"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"show"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_show() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"shown"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"minimize"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_minimize() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"minimized"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"reload"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_reload() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"reloaded"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"float"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_floating(1) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"floating"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"unfloat"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_floating(0) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"unfloated"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"fullscreen"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_fullscreen(1) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"fullscreen"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"unfullscreen"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_fullscreen(0) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"unfullscreen"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"center"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_center() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"centered"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"devtools"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_open_devtools() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"devtools"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"zoom_in"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_zoom(125) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"zoom 125%"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"zoom_out"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_zoom(80) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"zoom 80%"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"zoom_100"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_zoom(100) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"zoom 100%"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"open_ext"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_open_external(<span class="syn-str">"https://example.com"</span>) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"opened browser"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"clip_set"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_clipboard_set(<span class="syn-str">"hello from Xu"</span>) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"clipboard set"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"clip_get"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_clipboard_get()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"clipboard:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"back"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_go_back() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"back"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"forward"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_go_forward() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"forward"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"stop"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_stop() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"stop"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"maximize"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_maximized(1) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"maximized"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"unmaximize"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_maximized(0) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"unmaximized"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"bounce"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_bounce() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"bounce"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"pick"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_pick_file()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"pick:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"save"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_save_file(<span class="syn-str">"xu-note.txt"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"save:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"print"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_print() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"print"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"opacity_low"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_opacity(70) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"opacity 70%"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"opacity_full"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_opacity(100) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"opacity 100%"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"shot"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_screenshot()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"shot:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"alert"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_alert(<span class="syn-str">"Xu"</span>, <span class="syn-str">"Hello from alert"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"alert:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"confirm"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_confirm(<span class="syn-str">"Xu"</span>, <span class="syn-str">"Continue?"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"confirm:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"notify"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_notify(<span class="syn-str">"Xu"</span>, <span class="syn-str">"Desktop notification"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"notified"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"folder"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_pick_folder()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"folder:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"minsize"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_min_size(480, 320) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"minsize 480x320"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"lock_size"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_resizable(0) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"not resizable"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"unlock_size"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_resizable(1) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"resizable"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"eval_result"</span> {
+            r <span class="syn-flow">:=</span> webview.native_eval_result(<span class="syn-str">"1+2+3"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"eval:"</span> + r
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"find"</span> {
+            r <span class="syn-flow">:=</span> webview.native_find(<span class="syn-str">"WebView"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"find:"</span> + str(r)
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"find_clear"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_find_clear()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"find cleared"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"bounds"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_get_bounds()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"bounds:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"ua"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_user_agent(<span class="syn-str">"XuWebView/1.0"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"ua set"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"css"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_inject_css(<span class="syn-str">"body{outline:3px solid #e11d48 !important}"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"css injected"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"titlebar_hide"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_titlebar_visible(0)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"titlebar hidden"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"titlebar_show"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_titlebar_visible(1)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"titlebar shown"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"guard_on"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_close_guard(1)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"close guard on — try red close / Quit (dialog)"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"guard_off"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_close_guard(0)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"close guard off"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"accept_close"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_accept_close()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"accepting close"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"reject_close"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_reject_close()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"close rejected"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"clear_cache"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_clear_cache()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"clearing cache"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"state"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_get_state()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"state:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"all_spaces"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_visible_on_all_spaces(1)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"all spaces on"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"mute"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_muted(1)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"muted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"unmute"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_muted(0)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"unmuted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"bg"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_background(<span class="syn-str">"#dc2626"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"bg #dc2626"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"bg2"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_background(<span class="syn-str">"#2563eb"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"bg #2563eb"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"reveal_shot"</span> {
+            _ <span class="syn-flow">:=</span> write_file(ui.host_tmp() + <span class="syn-str">"/xu_ui_shot_follow.txt"</span>, <span class="syn-str">"reveal"</span>) <span class="syn-kw">or</span> (err) {
+                <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span>
+            }
+            _ <span class="syn-flow">:=</span> ui.native_screenshot()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"reveal_shot:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"open_shot"</span> {
+            _ <span class="syn-flow">:=</span> write_file(ui.host_tmp() + <span class="syn-str">"/xu_ui_shot_follow.txt"</span>, <span class="syn-str">"open"</span>) <span class="syn-kw">or</span> (err) {
+                <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span>
+            }
+            _ <span class="syn-flow">:=</span> ui.native_screenshot()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"open_shot:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"dark"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_appearance(<span class="syn-str">"dark"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"appearance dark"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"light"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_appearance(<span class="syn-str">"light"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"appearance light"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"ctx_off"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_context_menu(0)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"context menu off"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"ctx_on"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_context_menu(1)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"context menu on"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"badge"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_dock_badge(<span class="syn-str">"3"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"dock badge 3"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"badge_clear"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_dock_badge(<span class="syn-str">""</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"dock badge cleared"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"shot_clip"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_screenshot_to_clipboard()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"shot_clip:posted"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"shadow_off"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_shadow(0)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"shadow off"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"shadow_on"</span> {
+            _ <span class="syn-flow">:=</span> ui.native_set_shadow(1)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"shadow on"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"magnify_off"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_magnification(0)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"magnify off"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"magnify_on"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_set_magnification(1)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"magnify on"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"cookie_set"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_cookie_set(<span class="syn-str">"xu_demo"</span>, <span class="syn-str">"1"</span>, <span class="syn-str">"127.0.0.1"</span>)
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"cookie set"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"cookies_get"</span> {
+            c <span class="syn-flow">:=</span> webview.native_cookies_get()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"cookies:\n"</span> + c
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"cookies_clear"</span> {
+            _ <span class="syn-flow">:=</span> webview.native_cookies_clear()
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"cookies clearing"</span>
+        }
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"win:"</span> + payload
+    }
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"unknown:"</span> + name
+}
+
+<span class="syn-kw">fn</span> demo_www() <span class="syn-type">string</span> {
+    <span class="syn-cmt">// Pack oneexe: force in-PE www (never stage developer/... or TEMP/www).</span>
+    <span class="syn-kw">if</span> env_get(<span class="syn-str">"XU_UI_WWW"</span>) == <span class="syn-str">":mem:"</span> || env_get(<span class="syn-str">"XU_UI_PACK"</span>) == <span class="syn-str">"1"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">":mem:"</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"www"</span>
+}
+
+<span class="syn-kw">fn</span> pack_trace(step <span class="syn-type">string</span>) {
+    <span class="syn-cmt">// Pack has no xu_ui TMP dir; skip disk breadcrumbs (console / XU_UI_LOG still work).</span>
+    d <span class="syn-flow">:=</span> env_get(<span class="syn-str">"XU_UI_TMP"</span>)
+    <span class="syn-kw">if</span> d.len == 0 || d == <span class="syn-str">":xu:"</span> {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    _ <span class="syn-flow">:=</span> write_file(d + <span class="syn-str">"/xu_main_trace.txt"</span>, step + <span class="syn-str">"\n"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+
+<span class="syn-kw">fn</span> ipc_boot(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>, shell_ch <span class="syn-kw">chan</span> ui.Event) {
+    webview.bind_ipc_www(demo_www(), route, emit_ch, shell_ch) <span class="syn-kw">or</span> (err) {
+        eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+
+<span class="syn-kw">fn</span> tick_loop(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>) {
+    <span class="syn-kw">mut</span> n <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> true {
+        <span class="syn-cmt">// Short sleeps so a blocked/mis-scheduled task cannot sit on a 2s nanosleep</span>
+        <span class="syn-cmt">// that starves sibling work if threading is ever wrong. Emit only — no</span>
+        <span class="syn-cmt">// native_eval/title on this loop (those jam the AppKit main thread).</span>
+        sleep_ns(200000000)
+        n = n + 1
+        <span class="syn-kw">if</span> n % 10 == 0 {
+            webview.bus_emit(emit_ch, <span class="syn-str">"tick"</span>, str(n / 10))
+        }
+    }
+}
+
+<span class="syn-cmt">// Native app.run blocks main; shell events arrive on event_ch from #ui's host pump.</span>
+<span class="syn-kw">fn</span> watch_shell(shell_ch <span class="syn-kw">chan</span> ui.Event, emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>) {
+    <span class="syn-kw">while</span> true {
+        ev <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span>shell_ch
+        <span class="syn-kw">if</span> ev.kind == ui.ev_progress {
+            <span class="syn-flow">-&gt;</span>
+        }
+        <span class="syn-cmt">// Result-bearing shell ops → XUN emit (same post protocol as invoke).</span>
+        <span class="syn-kw">if</span> ev.kind == ui.ev_clipboard {
+            webview.bus_emit(emit_ch, <span class="syn-str">"clipboard"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_file_picked {
+            webview.bus_emit(emit_ch, <span class="syn-str">"file_picked"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_file_saved {
+            webview.bus_emit(emit_ch, <span class="syn-str">"file_saved"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_folder_picked {
+            webview.bus_emit(emit_ch, <span class="syn-str">"folder_picked"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_screenshot {
+            p <span class="syn-flow">:=</span> ev.menu_id + <span class="syn-str">""</span>
+            webview.bus_emit(emit_ch, <span class="syn-str">"screenshot"</span>, p + <span class="syn-str">""</span>)
+            <span class="syn-cmt">// reveal_shot / open_shot: follow-up after shell event (post protocol).</span>
+            follow <span class="syn-flow">:=</span> shot_follow_take()
+            <span class="syn-kw">if</span> follow == <span class="syn-str">"reveal"</span> &amp;&amp; p.len &gt; 0 {
+                _ <span class="syn-flow">:=</span> ui.native_reveal_path(p + <span class="syn-str">""</span>)
+            } <span class="syn-kw">else</span> <span class="syn-kw">if</span> follow == <span class="syn-str">"open"</span> &amp;&amp; p.len &gt; 0 {
+                _ <span class="syn-flow">:=</span> ui.native_open_path(p + <span class="syn-str">""</span>)
+            }
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_alert {
+            webview.bus_emit(emit_ch, <span class="syn-str">"alert"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_confirm {
+            webview.bus_emit(emit_ch, <span class="syn-str">"confirm"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_bounds {
+            webview.bus_emit(emit_ch, <span class="syn-str">"bounds"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_state {
+            webview.bus_emit(emit_ch, <span class="syn-str">"state"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_notify {
+            webview.bus_emit(emit_ch, <span class="syn-str">"notify"</span>, ev.menu_id + <span class="syn-str">""</span>)
+        }
+        <span class="syn-kw">if</span> ev.kind == ui.ev_menu_clicked {
+            println(<span class="syn-str">"shell event menu_clicked id="</span> + ev.menu_id)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_tray_menu_clicked {
+            println(<span class="syn-str">"shell event tray_menu_clicked id="</span> + ev.menu_id)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_closed {
+            println(<span class="syn-str">"shell event closed"</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_exit {
+            println(<span class="syn-str">"shell event exit"</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_close_requested {
+            println(<span class="syn-str">"shell event close_requested"</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_file_picked {
+            println(<span class="syn-str">"shell event file_picked "</span> + ev.menu_id)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_clipboard {
+            println(<span class="syn-str">"shell event clipboard"</span>)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_bounds {
+            println(<span class="syn-str">"shell event bounds "</span> + ev.menu_id)
+        } <span class="syn-kw">else</span> <span class="syn-kw">if</span> ev.kind == ui.ev_state {
+            println(<span class="syn-str">"shell event state "</span> + ev.menu_id)
+        }
+    }
+}
+
+<span class="syn-kw">fn</span> shot_follow_take() <span class="syn-type">string</span> {
+    path <span class="syn-flow">:=</span> ui.host_tmp() + <span class="syn-str">"/xu_ui_shot_follow.txt"</span>
+    body <span class="syn-flow">:=</span> read_file(path) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+    }
+    _ <span class="syn-flow">:=</span> write_file(path, <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-flow">&lt;&lt;</span> body
+    }
+    <span class="syn-flow">&lt;&lt;</span> body
+}
+
+<span class="syn-kw">fn</span> soft_install_tray() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> tray_items <span class="syn-flow">:=</span> []ui.MenuItem{}
+    tray_items.push(ui.menu_item(<span class="syn-str">"show"</span>, <span class="syn-str">"Show"</span>))
+    tray_items.push(ui.menu_item(<span class="syn-str">"hide"</span>, <span class="syn-str">"Hide"</span>))
+    tray_items.push(ui.menu_item(<span class="syn-str">"quit"</span>, <span class="syn-str">"Quit"</span>))
+    a <span class="syn-flow">:=</span> ui.install_tray(<span class="syn-str">"Xu"</span>, ui.menu(tray_items)) <span class="syn-kw">or</span> (err) {
+        pack_trace(<span class="syn-str">"install_tray soft-fail: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 0
+    }
+    b <span class="syn-flow">:=</span> ui.install_tray_icon(<span class="syn-str">"brand/xu_app_logo.png"</span>) <span class="syn-kw">or</span> (err) {
+        pack_trace(<span class="syn-str">"install_tray_icon soft-fail: "</span> + err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 0
+    }
+    <span class="syn-flow">&lt;&lt;</span> a + b
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 64}
+    <span class="syn-cmt">// Large cap: host floods progress/moved/focus during load; a full channel</span>
+    <span class="syn-cmt">// blocks the IPC worker on `shell_ch &lt;-` and delays invoke by ~1s.</span>
+    shell_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 4096}
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
+    pack_trace(<span class="syn-str">"main begin"</span>)
+    app.set_icon(ui.icon_from_file(<span class="syn-str">"brand/xu_app_logo.png"</span>))
+    <span class="syn-cmt">// Stage www before the window so host xu://app/ load is not empty.</span>
+    webview.stage_www_root(demo_www()) <span class="syn-kw">or</span> (err) {
+        pack_trace(<span class="syn-str">"stage_www_root fail: "</span> + err.msg())
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    pack_trace(<span class="syn-str">"stage_www_root ok"</span>)
+    <span class="syn-kw">xu</span> watch_shell(shell_ch, emit_ch)
+    <span class="syn-kw">xu</span> ipc_boot(emit_ch, shell_ch)
+    <span class="syn-kw">xu</span> tick_loop(emit_ch)
+    pack_trace(<span class="syn-str">"xu tasks spawned"</span>)
+    sleep_ns(50000000)
+    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu WebView IPC"</span>, width: 800, height: 560})
+    <span class="syn-kw">mut</span> menu_items <span class="syn-flow">:=</span> []ui.MenuItem{}
+    menu_items.push(ui.menu_item(<span class="syn-str">"about"</span>, <span class="syn-str">"About"</span>))
+    menu_items.push(ui.menu_item(<span class="syn-str">"quit"</span>, <span class="syn-str">"Quit"</span>))
+    win.set_menu(ui.menu(menu_items))
+    soft_install_tray()
+    app.new_tray(ui.TrayOpts{tip: <span class="syn-str">"Xu"</span>, icon: ui.icon_default(), menu: ui.menu([]ui.MenuItem{})})
+    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
+    <span class="syn-kw">mut</span> wv <span class="syn-flow">:=</span> webview.attach(r)
+    pack_trace(<span class="syn-str">"webview.attach ok"</span>)
+    wv.on(<span class="syn-str">"ping"</span>)
+    wv.on(<span class="syn-str">"greet"</span>)
+    wv.load_url(webview.app_scheme_url()) <span class="syn-kw">or</span> (err) {
+        pack_trace(<span class="syn-str">"load_url fail: "</span> + err.msg())
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    pack_trace(<span class="syn-str">"before app.run"</span>)
+    println(<span class="syn-str">"shell events on App.event_ch / xu://app/ (XUN IPC)"</span>)
+    app.run() <span class="syn-kw">or</span> (err) {
+        pack_trace(<span class="syn-str">"app.run fail: "</span> + err.msg())
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    pack_trace(<span class="syn-str">"window closed"</span>)
+    println(<span class="syn-str">"window closed"</span>)
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="struct-WebView">
 <h2><code>struct WebView</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> WebView {
@@ -32,7 +712,7 @@
 </article>
 <article class="api-item" id="attach">
 <h2><code>attach</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach(w &amp;<span class="syn-kw">mut</span> ui.Window) WebView</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach(w <span class="syn-borrow">&amp;mut</span> ui.Window) WebView</code></pre></div>
 <h3>Purpose</h3>
 <p>attach; returns WebView.</p>
 <h3>Parameters</h3>
@@ -41,6 +721,7 @@
 </dl>
 <h3>Returns</h3>
 <p>WebView — a value of this type</p>
+<p><a href="#example-2d5c0b649702">See usage example</a></p>
 </article>
 <article class="api-item" id="www_root_path">
 <h2><code>www_root_path</code></h2>
@@ -75,6 +756,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-2d5c0b649702">See usage example</a></p>
 </article>
 <article class="api-item" id="ipc_encode_xun">
 <h2><code>ipc_encode_xun</code></h2>
@@ -158,6 +840,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="default_ipc_addr">
 <h2><code>default_ipc_addr</code></h2>
@@ -181,7 +864,7 @@
 </article>
 <article class="api-item" id="-mut-WebView-load_html">
 <h2><code>(&amp;mut WebView) load_html</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) load_html(html <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) load_html(html <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut WebView`: load html. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -194,7 +877,7 @@
 </article>
 <article class="api-item" id="-mut-WebView-load_url">
 <h2><code>(&amp;mut WebView) load_url</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) load_url(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) load_url(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut WebView`: load url. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -207,7 +890,7 @@
 </article>
 <article class="api-item" id="-mut-WebView-load_remote">
 <h2><code>(&amp;mut WebView) load_remote</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) load_remote(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) load_remote(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>load_remote: remote HTTP(S) document; Xu does not host it. xu:// IPC still available to adapted pages. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -220,7 +903,7 @@
 </article>
 <article class="api-item" id="-mut-WebView-load_file">
 <h2><code>(&amp;mut WebView) load_file</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) load_file(path <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) load_file(path <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut WebView`: load file. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -252,6 +935,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_open_devtools">
 <h2><code>native_open_devtools</code></h2>
@@ -262,6 +946,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_set_zoom">
 <h2><code>native_set_zoom</code></h2>
@@ -274,6 +959,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_go_back">
 <h2><code>native_go_back</code></h2>
@@ -284,6 +970,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_go_forward">
 <h2><code>native_go_forward</code></h2>
@@ -294,6 +981,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_stop">
 <h2><code>native_stop</code></h2>
@@ -304,6 +992,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_print">
 <h2><code>native_print</code></h2>
@@ -314,6 +1003,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_eval_result">
 <h2><code>native_eval_result</code></h2>
@@ -326,6 +1016,7 @@
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_find">
 <h2><code>native_find</code></h2>
@@ -338,6 +1029,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_find_clear">
 <h2><code>native_find_clear</code></h2>
@@ -348,6 +1040,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_set_user_agent">
 <h2><code>native_set_user_agent</code></h2>
@@ -360,6 +1053,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_inject_css">
 <h2><code>native_inject_css</code></h2>
@@ -372,6 +1066,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_clear_cache">
 <h2><code>native_clear_cache</code></h2>
@@ -382,6 +1077,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_set_muted">
 <h2><code>native_set_muted</code></h2>
@@ -394,6 +1090,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_set_background">
 <h2><code>native_set_background</code></h2>
@@ -406,6 +1103,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_set_context_menu">
 <h2><code>native_set_context_menu</code></h2>
@@ -418,6 +1116,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_set_magnification">
 <h2><code>native_set_magnification</code></h2>
@@ -430,6 +1129,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_cookies_get">
 <h2><code>native_cookies_get</code></h2>
@@ -440,6 +1140,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>string — result string</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_cookies_clear">
 <h2><code>native_cookies_clear</code></h2>
@@ -450,6 +1151,7 @@
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="native_cookie_set">
 <h2><code>native_cookie_set</code></h2>
@@ -464,10 +1166,11 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
 <article class="api-item" id="-mut-WebView-eval">
 <h2><code>(&amp;mut WebView) eval</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) eval(js <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) eval(js <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `eval` on `&amp;mut WebView`. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -480,7 +1183,7 @@
 </article>
 <article class="api-item" id="-mut-WebView-on">
 <h2><code>(&amp;mut WebView) on</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) on(name <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) on(name <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
 <p>Call `on` on `&amp;mut WebView`.</p>
 <h3>Parameters</h3>
@@ -491,7 +1194,7 @@
 </article>
 <article class="api-item" id="-mut-WebView-invoke">
 <h2><code>(&amp;mut WebView) invoke</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) invoke(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>, dispatch <span class="syn-kw">fn</span>(<span class="syn-type">string</span>, <span class="syn-type">string</span>) <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) invoke(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>, dispatch <span class="syn-kw">fn</span>(<span class="syn-type">string</span>, <span class="syn-type">string</span>) <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `invoke` on `&amp;mut WebView`.</p>
 <h3>Parameters</h3>
@@ -515,10 +1218,11 @@
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 <dt><code>payload</code> <span class="type">string</span></dt><dd>payload (string)</dd>
 </dl>
+<p><a href="#example-41d09e469fb1">See usage example</a></p>
 </article>
 <article class="api-item" id="-mut-WebView-emit">
 <h2><code>(&amp;mut WebView) emit</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) emit(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) emit(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Call `emit` on `&amp;mut WebView`.</p>
 <h3>Parameters</h3>
@@ -532,7 +1236,7 @@
 </article>
 <article class="api-item" id="-mut-WebView-emit_pending_count">
 <h2><code>(&amp;mut WebView) emit_pending_count</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) emit_pending_count() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) emit_pending_count() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut WebView`: emit pending count.</p>
 <h3>Parameters</h3>
@@ -544,7 +1248,7 @@
 </article>
 <article class="api-item" id="-mut-WebView-clear_emits">
 <h2><code>(&amp;mut WebView) clear_emits</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv &amp;<span class="syn-kw">mut</span> WebView) clear_emits()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) clear_emits()</code></pre></div>
 <h3>Purpose</h3>
 <p>Method on `&amp;mut WebView`: clear emits.</p>
 <h3>Parameters</h3>
@@ -566,6 +1270,7 @@
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+<p><a href="#example-2d5c0b649702">See usage example</a></p>
 </article>
 <article class="api-item" id="bind_ipc">
 <h2><code>bind_ipc</code></h2>

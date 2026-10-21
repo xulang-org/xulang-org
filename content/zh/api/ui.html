@@ -6,6 +6,237 @@
 <p class="meta">import: <code>#ui</code></p>
 <p class="meta">counts: 71 函数, 17 方法, 10 类型, 47 常量, 0 方法集</p>
 <p class="lead">窗口/菜单/托盘。host 未接时 run 会报 host not available。</p>
+<p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
+<section class="api-examples" id="examples">
+<h2>示例代码</h2>
+<p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
+<details class="api-example" id="example-87c5e058faf2" open>
+<summary><code>16_ui_webview/shaped/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/shaped">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/shaped/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/shaped/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+
+<span class="syn-cmt">// Shaped window: frameless + transparent + PNG alpha mask (macOS / Linux / Windows).</span>
+<span class="syn-cmt">// Chrome flags are written BEFORE App.run() so the first frame has no titlebar.</span>
+<span class="syn-cmt">//   xu build examples/16ui_webview/shaped --target macos-arm64 --desktop -o /tmp/xu_shaped</span>
+<span class="syn-cmt">//   /tmp/xu_shaped</span>
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app()
+    <span class="syn-cmt">// Pack diagnostics: shim sets XU_PACK_TRACE beside the exe.</span>
+    t <span class="syn-flow">:=</span> env_get(<span class="syn-str">"XU_PACK_TRACE"</span>)
+    <span class="syn-kw">if</span> t.len &gt; 0 {
+        _ <span class="syn-flow">:=</span> write_file(t, <span class="syn-str">"shaped main begin\n"</span>) <span class="syn-kw">or</span> (err) {
+            <span class="syn-flow">&lt;&lt;</span> 0
+        }
+    }
+    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Shaped"</span>, width: 320, height: 320})
+    a0 <span class="syn-flow">:=</span> ui.native_set_frameless(1)
+    a1 <span class="syn-flow">:=</span> ui.native_set_transparent(1)
+    a2 <span class="syn-flow">:=</span> ui.native_set_window_mask(<span class="syn-str">"brand/xu_app_logo.png"</span>) <span class="syn-kw">or</span> (err) {
+        <span class="syn-kw">if</span> t.len &gt; 0 {
+            _ <span class="syn-flow">:=</span> write_file(t, <span class="syn-str">"mask fail: "</span> + err.msg() + <span class="syn-str">"\n"</span>) <span class="syn-kw">or</span> (err2) {
+                <span class="syn-flow">&lt;&lt;</span> 0
+            }
+        }
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    a3 <span class="syn-flow">:=</span> ui.native_set_shadow(1)
+    <span class="syn-kw">if</span> a0 + a1 + a2 + a3 &lt; 0 {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">if</span> t.len &gt; 0 {
+        _ <span class="syn-flow">:=</span> write_file(t, <span class="syn-str">"shaped before app.run\n"</span>) <span class="syn-kw">or</span> (err) {
+            <span class="syn-flow">&lt;&lt;</span> 0
+        }
+    }
+    println(<span class="syn-str">"shaped window — no titlebar; Esc or right-click Close; mask brand/xu_app_logo.png"</span>)
+    app.run() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-0d167b78a79e">
+<summary><code>16_ui_webview/draw/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/draw">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/draw/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/draw/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/draw</span>
+
+<span class="syn-cmt">// Smoke for #ui/draw as an immediate-mode canvas (Love2D / Raylib-style).</span>
+<span class="syn-cmt">//   xu build examples/16_ui_webview/draw --target macos-arm64 --desktop -o /tmp/XuDraw</span>
+
+<span class="syn-kw">fn</span> paint(hit <span class="syn-type">int</span>) {
+    draw.begin()
+    draw.set_bg(<span class="syn-str">"#0b1020"</span>)
+
+    draw.set_color(<span class="syn-str">"#38bdf8"</span>)
+    draw.circle(80, 88, 36)
+    draw.set_stroke(<span class="syn-str">"#e2e8f0"</span>)
+    draw.set_width(2)
+    draw.circle_line(80, 88, 50)
+
+    draw.set_color(<span class="syn-str">"#fbbf24"</span>)
+    draw.rect(150, 60, 96, 52)
+    draw.rect_line(150, 60, 96, 52)
+
+    draw.fill_ellipse(280, 56, 110, 60, <span class="syn-str">"#22c55e"</span>)
+    draw.stroke_ellipse(280, 56, 110, 60, <span class="syn-str">"#86efac"</span>, 2)
+
+    draw.push()
+    draw.translate(500, 110)
+    draw.rotate(18)
+    draw.fill_triangle(0 - 36, 28, 36, 28, 0, 0 - 32, <span class="syn-str">"#f87171"</span>)
+    draw.pop()
+
+    <span class="syn-kw">mut</span> pts <span class="syn-flow">:=</span> []draw.Point{}
+    pts.push(draw.Point{x: 40, y: 200})
+    pts.push(draw.Point{x: 100, y: 170})
+    pts.push(draw.Point{x: 160, y: 200})
+    pts.push(draw.Point{x: 130, y: 260})
+    pts.push(draw.Point{x: 70, y: 260})
+    draw.poly(&amp;pts, <span class="syn-str">"#1e3a5f"</span>, <span class="syn-str">"#38bdf8"</span>, 2)
+
+    draw.arc(280, 250, 48, 20, 200, <span class="syn-str">"#4ade80"</span>, 3)
+    draw.point(80, 88, <span class="syn-str">"#ffffff"</span>, 4)
+    draw.round_rect(400, 200, 160, 44, 10, <span class="syn-str">"#1e293b"</span>, <span class="syn-str">"#64748b"</span>, 2)
+    draw.text(416, 212, 13, <span class="syn-str">"#e2e8f0"</span>, <span class="syn-str">"round rect"</span>)
+    <span class="syn-kw">if</span> hit == 1 {
+        draw.text(24, 320, 13, <span class="syn-str">"#38bdf8"</span>, <span class="syn-str">"hit the circle"</span>)
+    } <span class="syn-kw">else</span> {
+        draw.text(24, 320, 13, <span class="syn-str">"#94a3b8"</span>, <span class="syn-str">"click the blue circle"</span>)
+    }
+    draw.present()
+}
+
+<span class="syn-kw">fn</span> watch_clicks(ech <span class="syn-kw">chan</span> ui.Event) {
+    <span class="syn-kw">mut</span> hit <span class="syn-flow">:=</span> 0
+    paint(hit)
+    <span class="syn-kw">while</span> true {
+        sleep_ns(40000000)
+        c <span class="syn-flow">:=</span> draw.poll_click(ech)
+        <span class="syn-kw">if</span> c.ok == 1 {
+            <span class="syn-kw">if</span> draw.in_circle(c, 80, 88, 50) {
+                hit = 1
+            } <span class="syn-kw">else</span> {
+                hit = 0
+            }
+            paint(hit)
+        }
+    }
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app()
+    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Draw"</span>, width: 640, height: 380})
+    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
+    _ <span class="syn-flow">:=</span> draw.attach(r)
+    <span class="syn-kw">xu</span> watch_clicks(app.event_ch)
+    app.run() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-2d5c0b649702">
+<summary><code>16_ui_webview/shaped_webview/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/shaped_webview">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/shaped_webview/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/shaped_webview/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/webview</span>
+
+<span class="syn-cmt">// Frameless + PNG mask + WKWebView (macOS).</span>
+<span class="syn-cmt">//   xu build examples/16ui_webview/shaped_webview --target macos-arm64 --desktop -o /tmp/xu_shaped_wv</span>
+<span class="syn-cmt">//   /tmp/xu_shaped_wv</span>
+<span class="syn-cmt">// Drag from the top ~28px strip; Close calls shell.quit.</span>
+
+<span class="syn-kw">fn</span> route(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">string</span> {
+    <span class="syn-kw">if</span> name == <span class="syn-str">"ping"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"pong:"</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"greet"</span> {
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"hello, "</span> + payload
+    }
+    <span class="syn-kw">if</span> name == <span class="syn-str">"win"</span> {
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"quit"</span> {
+            q <span class="syn-flow">:=</span> ui.native_quit() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"quit"</span>
+        }
+        <span class="syn-kw">if</span> payload == <span class="syn-str">"minimize"</span> {
+            m <span class="syn-flow">:=</span> ui.native_minimize() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
+            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"minimized"</span>
+        }
+        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"win?"</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"miss"</span>
+}
+
+<span class="syn-kw">fn</span> demo_www() <span class="syn-type">string</span> {
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"www"</span>
+}
+
+<span class="syn-kw">fn</span> ipc_boot(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>, shell_ch <span class="syn-kw">chan</span> ui.Event) {
+    webview.bind_ipc_www(demo_www(), route, emit_ch, shell_ch) <span class="syn-kw">or</span> (err) {
+        eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 32}
+    shell_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 32}
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
+    app.set_icon(ui.icon_from_file(<span class="syn-str">"brand/xu_app_logo.png"</span>))
+    webview.stage_www_root(demo_www()) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-kw">xu</span> ipc_boot(emit_ch, shell_ch)
+    sleep_ns(50000000)
+
+    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Shaped WebView"</span>, width: 360, height: 360})
+    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
+    <span class="syn-kw">mut</span> wv <span class="syn-flow">:=</span> webview.attach(r)
+    wv.on(<span class="syn-str">"ping"</span>)
+    wv.on(<span class="syn-str">"greet"</span>)
+    wv.on(<span class="syn-str">"win"</span>)
+
+    a0 <span class="syn-flow">:=</span> ui.native_set_frameless(1)
+    a1 <span class="syn-flow">:=</span> ui.native_set_transparent(1)
+    a2 <span class="syn-flow">:=</span> ui.native_set_window_mask(<span class="syn-str">"brand/xu_app_logo.png"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    a3 <span class="syn-flow">:=</span> ui.native_set_shadow(1)
+    <span class="syn-kw">if</span> a0 + a1 + a2 + a3 &lt; 0 {
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+
+    wv.load_url(<span class="syn-str">"xu://app/shaped.html"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    println(<span class="syn-str">"shaped webview — xu://app/shaped.html XUN IPC (drag top; Close quits)"</span>)
+    app.run() <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+</details>
+<details class="api-example"><summary>更多相关示例</summary><ul>
+<li><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/remote"><code>16_ui_webview/remote/main.xu</code></a></li>
+<li><a href="https://github.com/xulang-org/examples/tree/616b46eed885759d1c18101d1994696b3f7ae94b/examples/16_ui_webview/open"><code>16_ui_webview/open/main.xu</code></a></li>
+</ul></details>
+</section>
+<h2 id="api-declarations">API 声明</h2>
 <article class="api-item" id="const-content_none">
 <h2><code>const content_none</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> content_none = 0</code></pre></div>
@@ -427,6 +658,7 @@
 <dt><code>width</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>height</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Icon">
 <h2><code>struct Icon</code></h2>
@@ -481,6 +713,7 @@
 <dt><code>width</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>height</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+<p><a href="#example-87c5e058faf2">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Window">
 <h2><code>struct Window</code></h2>
@@ -575,6 +808,7 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>App — 该类型的值</p>
+<p><a href="#example-87c5e058faf2">查看用法示例</a></p>
 </article>
 <article class="api-item" id="new_app_events">
 <h2><code>new_app_events</code></h2>
@@ -587,6 +821,7 @@
 </dl>
 <h3>返回</h3>
 <p>App — 该类型的值</p>
+<p><a href="#example-2d5c0b649702">查看用法示例</a></p>
 </article>
 <article class="api-item" id="icon_default">
 <h2><code>icon_default</code></h2>
@@ -609,6 +844,7 @@
 </dl>
 <h3>返回</h3>
 <p>Icon — 该类型的值</p>
+<p><a href="#example-2d5c0b649702">查看用法示例</a></p>
 </article>
 <article class="api-item" id="menu_item">
 <h2><code>menu_item</code></h2>
@@ -657,7 +893,7 @@
 </article>
 <article class="api-item" id="-mut-App-alloc_id">
 <h2><code>(&amp;mut App) alloc_id</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) alloc_id() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) alloc_id() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：allocid。</p>
 <h3>参数</h3>
@@ -669,7 +905,7 @@
 </article>
 <article class="api-item" id="-mut-App-set_icon">
 <h2><code>(&amp;mut App) set_icon</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) set_icon(icon Icon)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) set_icon(icon Icon)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：设置 icon。</p>
 <h3>参数</h3>
@@ -692,7 +928,7 @@
 </article>
 <article class="api-item" id="-mut-App-new_window">
 <h2><code>(&amp;mut App) new_window</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) new_window(opts WindowOpts) Window</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) new_window(opts WindowOpts) Window</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：构造 window。</p>
 <h3>参数</h3>
@@ -742,7 +978,7 @@
 </article>
 <article class="api-item" id="-mut-Window-set_menu">
 <h2><code>(&amp;mut Window) set_menu</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (w &amp;<span class="syn-kw">mut</span> Window) set_menu(m Menu)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (w <span class="syn-borrow">&amp;mut</span> Window) set_menu(m Menu)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Window` 上的方法：设置 menu。</p>
 <h3>参数</h3>
@@ -753,7 +989,7 @@
 </article>
 <article class="api-item" id="-mut-App-new_tray">
 <h2><code>(&amp;mut App) new_tray</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) new_tray(opts TrayOpts) Tray</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) new_tray(opts TrayOpts) Tray</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：构造 tray。</p>
 <h3>参数</h3>
@@ -766,7 +1002,7 @@
 </article>
 <article class="api-item" id="-mut-Window-set_title">
 <h2><code>(&amp;mut Window) set_title</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (w &amp;<span class="syn-kw">mut</span> Window) set_title(title <span class="syn-type">string</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (w <span class="syn-borrow">&amp;mut</span> Window) set_title(title <span class="syn-type">string</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Window` 上的方法：设置 title。</p>
 <h3>参数</h3>
@@ -885,6 +1121,7 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-2d5c0b649702">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_position">
 <h2><code>native_set_position</code></h2>
@@ -1252,6 +1489,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-87c5e058faf2">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_frameless">
 <h2><code>native_set_frameless</code></h2>
@@ -1264,6 +1502,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-87c5e058faf2">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_transparent">
 <h2><code>native_set_transparent</code></h2>
@@ -1276,6 +1515,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-87c5e058faf2">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_window_mask">
 <h2><code>native_set_window_mask</code></h2>
@@ -1288,6 +1528,7 @@
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-87c5e058faf2">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_clear_window_mask">
 <h2><code>native_clear_window_mask</code></h2>
@@ -1308,6 +1549,7 @@
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-2d5c0b649702">查看用法示例</a></p>
 </article>
 <article class="api-item" id="unsupported_msg">
 <h2><code>unsupported_msg</code></h2>
@@ -1321,7 +1563,7 @@
 </article>
 <article class="api-item" id="-mut-App-remember_menu">
 <h2><code>(&amp;mut App) remember_menu</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) remember_menu(m Menu)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) remember_menu(m Menu)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：remembermenu。</p>
 <h3>参数</h3>
@@ -1332,7 +1574,7 @@
 </article>
 <article class="api-item" id="-mut-Window-set_content_slot">
 <h2><code>(&amp;mut Window) set_content_slot</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (w &amp;<span class="syn-kw">mut</span> Window) set_content_slot(kind <span class="syn-type">int</span>, backend_id <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (w <span class="syn-borrow">&amp;mut</span> Window) set_content_slot(kind <span class="syn-type">int</span>, backend_id <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Window` 上的方法：设置 content slot。</p>
 <h3>参数</h3>
@@ -1368,7 +1610,7 @@
 </article>
 <article class="api-item" id="-mut-Window-close">
 <h2><code>(&amp;mut Window) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (w &amp;<span class="syn-kw">mut</span> Window) close()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (w <span class="syn-borrow">&amp;mut</span> Window) close()</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut Window` 上的方法：关闭资源。</p>
 <h3>参数</h3>
@@ -1378,7 +1620,7 @@
 </article>
 <article class="api-item" id="-mut-App-quit">
 <h2><code>(&amp;mut App) quit</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) quit()</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) quit()</code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut App` 上调用 `quit`。</p>
 <h3>参数</h3>
@@ -1388,7 +1630,7 @@
 </article>
 <article class="api-item" id="-mut-App-push_event">
 <h2><code>(&amp;mut App) push_event</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) push_event(ev Event)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) push_event(ev Event)</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：压入event。</p>
 <h3>参数</h3>
@@ -1399,7 +1641,7 @@
 </article>
 <article class="api-item" id="-mut-App-poll_event">
 <h2><code>(&amp;mut App) poll_event</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) poll_event() Event</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) poll_event() Event</code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：pollevent。</p>
 <h3>参数</h3>
@@ -1411,7 +1653,7 @@
 </article>
 <article class="api-item" id="-mut-App-post">
 <h2><code>(&amp;mut App) post</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) post(token <span class="syn-type">int</span>)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) post(token <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
 <p>在 `&amp;mut App` 上调用 `post`。</p>
 <h3>参数</h3>
@@ -1422,7 +1664,7 @@
 </article>
 <article class="api-item" id="-mut-App-try_recv_post">
 <h2><code>(&amp;mut App) try_recv_post</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) try_recv_post() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) try_recv_post() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：tryrecvpost。</p>
 <h3>参数</h3>
@@ -1454,7 +1696,7 @@
 </article>
 <article class="api-item" id="use_draw_content">
 <h2><code>use_draw_content</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> use_draw_content(w &amp;<span class="syn-kw">mut</span> Window) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> use_draw_content(w <span class="syn-borrow">&amp;mut</span> Window) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>usedrawcontent。</p>
 <h3>参数</h3>
@@ -1512,7 +1754,7 @@
 </article>
 <article class="api-item" id="-mut-App-run">
 <h2><code>(&amp;mut App) run</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;<span class="syn-kw">mut</span> App) run() <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">&amp;mut</span> App) run() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>`&amp;mut App` 上的方法：运行。失败时 throw。</p>
 <h3>参数</h3>
