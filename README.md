@@ -1,101 +1,175 @@
 <p align="center">
-  <a href="https://xulang.org"><img src="www/xu_classic.svg" alt="Xu Logo" width="100" height="100"></a>
+  <a href="https://xulang.org">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/xulang-org/xulang-org/main/brand/xu-profile-dark.svg">
+      <img src="https://raw.githubusercontent.com/xulang-org/xulang-org/main/brand/xu-profile-light.svg" alt="XU — Native code. Clear intent." width="100%">
+    </picture>
+  </a>
 </p>
 
-<h1 align="center">xulang.org Official Website & Interactive Portal</h1>
+<h1 align="center">The XU programming language</h1>
 
 <p align="center">
-  <b>Official Portal, WebAssembly Playground, and Cross-Language Benchmark Dashboard for the Xu Programming Language</b>
+  A systems language with native compilation, ownership, and built-in concurrency.<br>
+  <strong>Deterministic memory management. No garbage collector.</strong>
 </p>
 
 <p align="center">
-  <b>English</b> | <a href="README.zh-CN.md">简体中文</a>
+  <a href="https://xulang.org/playground"><strong>Try in your browser</strong></a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/docs/start">Read the guide</a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/download">Download XU</a> &nbsp; · &nbsp;
+  <a href="https://github.com/xulang-org/xu">Compiler source</a>
 </p>
 
 <p align="center">
-  <a href="https://xulang.org"><img src="https://img.shields.io/badge/Site-xulang.org-rose" alt="Site"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <a href="https://xulang.org/benchmarks"><img src="https://img.shields.io/badge/Benchmarks-47%20Tasks-amber" alt="Benchmarks"></a>
-  <a href="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml"><img src="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml/badge.svg" alt="Pages CI"></a>
+  <strong>English</strong> / <a href="README.zh-CN.md">简体中文</a>
 </p>
 
-**xulang.org** is the source repository for the official website, interactive portal, and documentation hub of the [Xu Programming Language](https://github.com/xulang-org/xu), hosted on GitHub Pages at [xulang.org](https://xulang.org).
+## A small language with a clear flow
 
-Key features hosted in this portal:
-- 🌐 **Bilingual Official Docs & Tutorials**: Comprehensive guides, language specs, standard library, and API references with seamless language switching.
-- ⚡ **Multi-Platform 47-Task Benchmark Dashboard**: Interactive cross-language performance and resource comparisons across ARM64, x86-64, and Windows ARM64.
-- 🚀 **Client-Side WebAssembly Playground**: Xu compiled directly to a zero-server-load in-browser WASM sandbox for instant experimentation.
-- 🎨 **Brand Identity Assets**: Official vector logos, typography, and badges.
+XU brings compile-time ownership and borrowing together with lightweight coroutines and typed channels. It compiles ahead of time to native code or WebAssembly, with resource lifetimes managed deterministically.
 
-Official account links:
-- GitHub: [@xulang-org](https://github.com/xulang-org)
-- X (Twitter): [@xulang_org](https://x.com/xulang_org)
+| Language choice | What it gives you |
+| :--- | :--- |
+| **Ownership, without a GC** | Compile-time move and borrow checks, inferred lifetimes, and deterministic resource cleanup. |
+| **Concurrency in the language** | Start a coroutine with `xu`; exchange values through typed `chan` channels. |
+| **Visible control flow** | `<<` returns a value, `>>` raises an error, and `or (err) { … }` handles it at the call site. |
+| **An integrated toolchain** | Build, run, check, test, format, generate docs, and use language services through `xu`. |
 
-## Directory Structure
+## Read a little XU
 
-| Directory / File | Description |
-| --- | --- |
-| `content/{zh,en}/` | Markdown/HTML sources for documentation, tutorials, blogs, and API references |
-| `templates/` | Shell templates and page chrome |
-| `www/` | CSS styles, JavaScript, vector webfonts, icons, and static assets |
-| `playground/runtime/` | In-browser WebAssembly runtime sandbox written entirely in Xu |
-| `scripts/` | Static site builder, WebAssembly compilation, API extraction, and release validator |
-| `tests/` | Regression test suites for static builds, online playground, and channel concurrency |
-| `brand/` | Official Xu logo assets, supergraphics, and brand design guidelines |
+Two workers, one channel, and an explicit error path:
 
-Build artifacts are generated into the untracked `dist/` and `build/` directories.
+```xu
+@main
+#errors
 
-## Local Build & Preview
+fn score(name string) int {
+    if name.len == 0 { >> errors.new("empty name") }
+    << name.len * 10
+}
 
-Requires Python 3.10 or newer (uses standard library only, zero external pip packages):
+fn worker(name string, results chan int) {
+    value := score(name) or (err) {
+        results <- 0
+        <<
+    }
+    results <- value
+}
 
-```sh
-make build                      # Build into dist/, verify internal links and assets
-make run                        # Start local live preview server at http://127.0.0.1:8080
-make run PORT=18080             # Preview on a custom port
-make check                      # Run full static site and playground test suites
-make build BASE_PATH=/xulang-org # Build for a project subpath
-make clean                      # Clean dist/ and build/playground/
+fn main() int {
+    results := chan int{cap: 2}
+    xu worker("hello", results)
+    xu worker("world", results)
+    println(<-results + <-results)
+    << 0
+}
 ```
 
-Static compilation requires no compiler or external dependencies. Content fragments in `content/` declare titles via `<!--title: ...-->` and render into clean directory routes (e.g. `docs/start/index.html`).
+Save as `main.xu`, then run `xu run main.xu`. It prints `100`.
 
-API pages include usage examples imported from the official `examples` repository, with source downloads and links to the complete projects at an immutable commit. Snapshots in `www/api-examples/` let local and CI builds preserve examples without a companion checkout. Package imports and qualified symbol uses associate examples with their API pages; native examples are copied/downloaded for local SDK execution.
+`#errors` imports a package. `xu worker(...)` starts a coroutine. The two receives collect the results; if `score` fails, `or (err) { … }` sends a fallback value of `0` and returns from that worker.
 
-To regenerate declarations, set `XU_ROOT` and `XU_PACKAGES_ROOT` to the selected release SDK and its `packages/` directory. To refresh examples too, select compatible source files in `templates/api-examples.json`, check them with that SDK, and pass the examples checkout and its full commit SHA:
+## Start here
+
+Explore the [browser playground](https://xulang.org/playground) without installing anything, or [download the SDK](https://xulang.org/download) for local development. After installation:
+
+```sh
+xu --version
+xu run main.xu
+xu build main.xu -o hello
+```
+
+Continue with the [getting started guide](https://xulang.org/docs/start), [language reference](https://xulang.org/docs/lang/syntax), or [runnable examples](https://github.com/xulang-org/examples).
+
+XU is actively evolving in the **0.x series**. See [Releases](https://github.com/xulang-org/xu/releases) for published SDKs and [status and limitations](https://xulang.org/docs/status) for platform and runtime coverage. The [benchmark dashboard](https://xulang.org/benchmarks) records measured workloads, compiler versions, and source provenance.
+
+## Explore the ecosystem
+
+| Project | Where to go |
+| :--- | :--- |
+| **Language & compiler** | [xu](https://github.com/xulang-org/xu) — self-hosted compiler, standard library, and CLI tools. |
+| **Learn by running** | [examples](https://github.com/xulang-org/examples) — language basics, concurrency, networking, databases, and UI examples. |
+| **Libraries & integrations** | [packages](https://github.com/xulang-org/packages) — database drivers, messaging, storage, and service integrations. |
+| **Editor support** | [vscode-xu](https://github.com/xulang-org/vscode-xu) — syntax highlighting and XU language services for VS Code and Cursor. |
+| **Performance** | [bench](https://github.com/xulang-org/bench) — cross-language workloads and reproducible benchmark sources. |
+| **Website & documentation** | [xulang-org](https://github.com/xulang-org/xulang-org) — xulang.org, documentation, and the WebAssembly playground. |
+
+## Build XU with us
+
+Try an example, report a compiler issue, improve the docs, or contribute a library. Start with [compiler issues](https://github.com/xulang-org/xu/issues) or [website issues](https://github.com/xulang-org/xulang-org/issues).
+
+[Website](https://xulang.org) · [GitHub](https://github.com/xulang-org) · [X / @xulang_org](https://x.com/xulang_org) · [MIT license](LICENSE)
+
+---
+
+<details>
+<summary><strong>Working on xulang.org</strong> — website build, playground, and deployment</summary>
+
+This profile repository also contains the source for the official website. The site selects the published **XU 0.9.4 SDK**; development builds remain separate.
+
+### Local build
+
+Requires **Python 3.10+**, using only the standard library. Static builds and checks run without XU, Node.js, or companion checkouts.
+
+```sh
+make build                       # Build dist/ and verify internal links and assets
+make run                         # Preview at http://127.0.0.1:8080
+make run PORT=18080               # Preview on a custom port
+make check                       # Run the static site regression suite
+make build BASE_PATH=/xulang-org  # Build for a project subpath
+make clean                       # Remove dist/ and build/playground/
+```
+
+| Path | Purpose |
+| :--- | :--- |
+| `content/{en,zh}/` | Documentation, tutorials, blog posts, and API content. |
+| `templates/` | Page templates, API guides, and example selections. |
+| `www/` | Styles, scripts, fonts, icons, and static assets. |
+| `playground/runtime/` | Browser WebAssembly runtime written in XU. |
+| `scripts/` | Static builder, API generation, and release validation. |
+| `tests/` | Static site, playground, and channel regression coverage. |
+| `brand/` | Brand assets and visual identity guidelines. |
+
+Generated output goes to the ignored `dist/` and `build/` directories. Content fragments declare titles with `<!--title: ...-->` and render into directory routes such as `docs/start/index.html`.
+
+### API content and examples
+
+Curated prose lives in `templates/api-guides/{en,zh}/`. API generation combines it with declarations from the selected SDK. Examples are imported from the official examples repository at an immutable commit; bundled snapshots in `www/api-examples/` preserve independent local and CI builds.
+
+To refresh declarations and examples, select compatible sources in `templates/api-examples.json`, check them with the selected SDK, and supply the examples checkout and its full commit SHA:
 
 ```sh
 make api XU_ROOT=/path/to/xu-v0.9.4 XU_PACKAGES_ROOT=/path/to/xu-v0.9.4/packages \
   XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
 ```
 
-Selected source files must match that commit. Without the two examples variables, `make api` reuses and verifies the bundled snapshots. Curated prose and additional snippets remain in `templates/api-guides/{en,zh}/`.
+Selected files must match that commit. Without the two examples variables, `make api` reuses and verifies bundled snapshots. Native examples run locally with the SDK.
 
-## WebAssembly Playground
+### WebAssembly playground
 
-The interactive playground compiler is compiled from Xu sources into WebAssembly:
+Use the matching SDK to compile the XU runtime to WebAssembly. Execution checks additionally require Node.js.
 
 ```sh
-make wasm                           # Compile xu-play.wasm locally
-make check-playground                # Test real WASM execution and examples in Node.js
-make check-chan                      # Verify channel concurrency examples
-make build                          # Bundle runtime into dist/
+make wasm              # Compile build/playground/xu-play.wasm
+make check-playground  # Check real WASM execution and examples in Node.js
+make check-chan        # Check native channel examples with XU
+make build             # Bundle the runtime into dist/
 ```
 
-The playground runs client-side in the browser with zero backend dependencies, supporting coroutines, channels, ownership checks, and pattern matching.
+The playground runs client-side in the browser. Generated WASM stays in `build/playground/`; `www/` remains source-only.
 
-## GitHub Pages Deployment
+### Benchmarks and deployment
 
-Automated deployment is configured in `.github/workflows/pages.yml`:
-- Pushing to `main` automatically runs checks, validates SDK release alignment, compiles the WebAssembly playground, generates static pages, and deploys to GitHub Pages;
-- The workflow strictly aligns with published releases of `xulang-org/xu` and verifies SHA-256 binary digests before publication.
+To refresh benchmarks, download one complete six-platform Actions run, then run:
 
-## License
+```sh
+python3 scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD
+python3 scripts/gen-benchmarks.py
+```
 
-This repository is open-sourced under the [MIT License](LICENSE).
+Import verifies compiler identities, source closure, fixed point, workload completeness, and stdout. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
 
-## Xu 0.9.4
+`.github/workflows/pages.yml` checks release alignment, verifies published SDK SHA-256 digests, compiles the playground, builds the site, and deploys to GitHub Pages on pushes to `main`.
 
-The site selects the published stable 0.9.4 SDK. Development builds remain separate. To refresh the benchmark page, download one complete six-platform Actions run and use `scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD`, then `python3 scripts/gen-benchmarks.py`. Import verifies compiler identities, source closure, fixed point, workload completeness and stdout. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
-
-Curated API usage guides live in `templates/api-guides/`; generation combines them with declarations from the selected SDK.
+</details>

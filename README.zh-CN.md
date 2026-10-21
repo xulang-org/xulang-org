@@ -1,90 +1,175 @@
 <p align="center">
-  <a href="https://xulang.org"><img src="www/xu_classic.svg" alt="Xu Logo" width="100" height="100"></a>
+  <a href="https://xulang.org/zh">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/xulang-org/xulang-org/main/brand/xu-profile-dark.svg">
+      <img src="https://raw.githubusercontent.com/xulang-org/xulang-org/main/brand/xu-profile-light.svg" alt="XU — 原生编译，清晰表达。" width="100%">
+    </picture>
+  </a>
 </p>
 
-<h1 align="center">xulang.org 官方网站与互动门户</h1>
+<h1 align="center">XU 编程语言</h1>
 
 <p align="center">
-  <b>Xu 编程语言官方门户、WebAssembly 在线演练场与全平台横测大看板源码</b>
+  一门融合原生编译、所有权与内置并发的系统编程语言。<br>
+  <strong>确定性内存管理，无垃圾回收器。</strong>
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> | <b>简体中文</b>
+  <a href="https://xulang.org/zh/playground"><strong>在线体验</strong></a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/zh/docs/start">阅读指南</a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/zh/download">下载 XU</a> &nbsp; · &nbsp;
+  <a href="https://github.com/xulang-org/xu">编译器源码</a>
 </p>
 
 <p align="center">
-  <a href="https://xulang.org"><img src="https://img.shields.io/badge/Site-xulang.org-rose" alt="Site"></a>
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License"></a>
-  <a href="https://xulang.org/benchmarks"><img src="https://img.shields.io/badge/Benchmarks-47%20Tasks-amber" alt="Benchmarks"></a>
-  <a href="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml"><img src="https://github.com/xulang-org/xulang-org/actions/workflows/pages.yml/badge.svg" alt="Pages CI"></a>
+  <a href="README.md">English</a> / <strong>简体中文</strong>
 </p>
 
-**xulang.org** 是 [Xu 编程语言](https://github.com/xulang-org/xu) 的全球官方主站与交互门户源码仓库，生产环境托管部署于 GitHub Pages，生产域名为 [xulang.org](https://xulang.org)。
+## 简洁的语言，清晰的流向
 
-站点聚合了以下核心模块：
-- 🌐 **双语官方主页与文档中心**：完整的中英文教程、语言规范、标准库与 API 手册（支持多语言无损路由切换）；
-- ⚡ **全平台 47 项跨语言性能大看板**：涵盖 ARM64、x86-64、Windows ARM64 等平台，支持即时动态过滤与直观图表对比；
-- 🚀 **纯客户端 WebAssembly 在线演练场**：由 Xu 源码直接 AOT 编译为 WASM 沙箱，零服务器负担，浏览器内秒开演练；
-- 🎨 **品牌物料与 VI 资产**：官方 Logo、矢量标识与徽章设计。
+XU 将编译期所有权与借用检查、轻量协程和强类型信道结合在一起。源码通过 AOT 编译为原生机器码或 WebAssembly，资源按生命周期确定性释放。
 
-官方账号入口统一展示在所有页面的顶部与页脚：
-- GitHub: [@xulang-org](https://github.com/xulang-org)
-- X (Twitter): [@xulang_org](https://x.com/xulang_org)
+| 语言设计 | 带来的体验 |
+| :--- | :--- |
+| **所有权，无 GC** | 编译期检查移动与借用，推导生命周期，确定性回收资源。 |
+| **语言内置并发** | 用 `xu` 启动协程，通过强类型 `chan` 信道传递值。 |
+| **看得见的控制流** | `<<` 返回、`>>` 抛错，`or (err) { … }` 在调用处处理错误。 |
+| **集成的工具链** | 通过 `xu` 完成构建、运行、检查、测试、格式化、文档生成与语言服务。 |
 
-## 目录结构
+## 读一段 XU
 
-| 目录 / 文件 | 说明 |
-| --- | --- |
-| `content/{zh,en}/` | 中英文文档、教程、博客与 API 正文源码 |
-| `templates/` | HTML 页面结构模板 |
-| `www/` | CSS、JavaScript、矢量字体、图标与静态资产 |
-| `playground/runtime/` | 由 Xu 编写的浏览器客户端 WebAssembly 运行器沙箱 |
-| `scripts/` | 静态页面构建、WebAssembly 编译、API 生成与发布校验工具 |
-| `tests/` | 静态路由、在线演练场与并发信道示例测试套件 |
-| `brand/` | Xu 官方品牌物料与 VI 资产 |
+两个工作协程、一个信道，以及明确的错误处理路径：
 
-生成文件统一输出至被忽略的 `dist/` 与 `build/` 目录中。
+```xu
+@main
+#errors
 
-## 本地构建与预览
+fn score(name string) int {
+    if name.len == 0 { >> errors.new("empty name") }
+    << name.len * 10
+}
 
-需要 Python 3.10 或更高版本（仅使用标准库，无需外部三方依赖）：
+fn worker(name string, results chan int) {
+    value := score(name) or (err) {
+        results <- 0
+        <<
+    }
+    results <- value
+}
 
-```sh
-make build                      # 构建至 dist/，检查页面与资源完整性
-make run                        # 启动本地实时预览：http://127.0.0.1:8080
-make run PORT=18080             # 指定端口预览
-make check                      # 执行全量单元测试与路由校验
-make build BASE_PATH=/xulang-org # 指定项目子路径构建
-make clean                      # 清理 dist/ 和 build/playground/
+fn main() int {
+    results := chan int{cap: 2}
+    xu worker("hello", results)
+    xu worker("world", results)
+    println(<-results + <-results)
+    << 0
+}
 ```
 
-静态构建无需配置编译器或相邻仓库。`content/` 中的 HTML 正文片段以 `<!--title: ...-->` 指定标题，自动渲染并生成标准美化路径。
+保存为 `main.xu`，执行 `xu run main.xu`，输出 `100`。
 
-## WebAssembly 在线演练场
+`#errors` 导入包，`xu worker(...)` 启动协程，两次信道接收汇总结果。若 `score` 失败，`or (err) { … }` 会发送兜底值 `0`，然后结束当前工作协程。
 
-演练场运行器由 Xu 源码直接 AOT 编译输出至 WebAssembly：
+## 从这里开始
+
+无需安装，直接打开 [浏览器演练场](https://xulang.org/zh/playground)；也可以 [下载 SDK](https://xulang.org/zh/download)，在本地开发。安装后运行：
 
 ```sh
-make wasm                           # 本地编译 xu-play.wasm
-make check-playground                # Node.js 环境下测试真实 WASM 与交互逻辑
-make check-chan                      # 验证原生信道并发示例
-make build                          # 打包集成到 dist/
+xu --version
+xu run main.xu
+xu build main.xu -o hello
 ```
 
-演练场在浏览器纯客户端内运行，无服务器计算负载，支持协程并发、信道收发与模式匹配等完整语法演练。
+接着阅读 [入门指南](https://xulang.org/zh/docs/start)、[语言参考](https://xulang.org/zh/docs/lang/syntax)，或运行 [官方示例](https://github.com/xulang-org/examples)。
 
-## GitHub Pages 自动化部署
+XU 正在 **0.x 阶段**持续演进。已发布 SDK 见 [Releases](https://github.com/xulang-org/xu/releases)，平台与运行时覆盖见 [限制与现状](https://xulang.org/zh/docs/status)。[基准看板](https://xulang.org/zh/benchmarks) 保留实测负载、编译器版本与源码来源。
 
-仓库配置了 `.github/workflows/pages.yml`：
-- 推送到 `main` 分支时自动触发测试、SDK 版本对齐校验、WASM 编译、静态构建与 GitHub Pages 部署；
-- 自动化流水线会严格校验并下载 `xulang-org/xu` 发布的对应正式 SDK 附件及 SHA-256 签名，保障官网文档与实际编译器版本严密一致。
+## 探索生态
 
-## 许可证
+| 项目 | 入口 |
+| :--- | :--- |
+| **语言与编译器** | [xu](https://github.com/xulang-org/xu) — 自举编译器、标准库与命令行工具。 |
+| **从示例入手** | [examples](https://github.com/xulang-org/examples) — 语法基础、并发、网络、数据库与 UI 示例。 |
+| **库与服务集成** | [packages](https://github.com/xulang-org/packages) — 数据库驱动、消息队列、存储与服务集成。 |
+| **编辑器支持** | [vscode-xu](https://github.com/xulang-org/vscode-xu) — VS Code 与 Cursor 的语法高亮和 XU 语言服务。 |
+| **性能与横测** | [bench](https://github.com/xulang-org/bench) — 跨语言负载与可复现的基准源码。 |
+| **官网与文档** | [xulang-org](https://github.com/xulang-org/xulang-org) — xulang.org、文档中心与 WebAssembly 演练场。 |
 
-本项目采用 [MIT 许可证](LICENSE) 开源。
+## 一起建设 XU
 
-## Xu 0.9.4
+运行一个示例、反馈编译器问题、完善文档，或贡献一个库。可以从 [编译器 Issues](https://github.com/xulang-org/xu/issues) 和 [官网 Issues](https://github.com/xulang-org/xulang-org/issues) 开始。
 
-官网选用已发布的 0.9.4 正式 SDK，开发版另行迭代。刷新基准页面时，下载同一次完整六平台 Actions 附件，运行 `scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD`，再执行 `python3 scripts/gen-benchmarks.py`。导入会验证编译器身份、源闭包、自举定点、完整负载与 stdout；未测项保留空缺，C、Rust 行取 O1/O2/O3 中位数最小值。
+[官网](https://xulang.org/zh) · [GitHub](https://github.com/xulang-org) · [X / @xulang_org](https://x.com/xulang_org) · [MIT 许可证](LICENSE)
 
-API 手写说明与示例保存在 `templates/api-guides/`，生成时与所选 SDK 的公开声明合并。
+---
+
+<details>
+<summary><strong>参与 xulang.org 开发</strong> — 网站构建、演练场与部署</summary>
+
+这个主页仓库也保存了官网源码。站点选用已发布的 **XU 0.9.4 SDK**，开发版另行迭代。
+
+### 本地构建
+
+需要 **Python 3.10+**，仅使用标准库。静态构建与检查无需 XU、Node.js 或相邻仓库。
+
+```sh
+make build                       # 构建 dist/，校验内部链接与资源
+make run                         # 预览：http://127.0.0.1:8080
+make run PORT=18080               # 指定预览端口
+make check                       # 执行静态站点回归检查
+make build BASE_PATH=/xulang-org  # 构建到项目子路径
+make clean                       # 清理 dist/ 与 build/playground/
+```
+
+| 路径 | 用途 |
+| :--- | :--- |
+| `content/{en,zh}/` | 文档、教程、博客与 API 正文。 |
+| `templates/` | 页面模板、API 手写指南与示例选择配置。 |
+| `www/` | 样式、脚本、字体、图标与静态资源。 |
+| `playground/runtime/` | 使用 XU 编写的浏览器 WebAssembly 运行器。 |
+| `scripts/` | 静态构建、API 生成与发布校验。 |
+| `tests/` | 站点、演练场与信道回归检查。 |
+| `brand/` | 品牌物料与视觉识别规范。 |
+
+产物输出至已忽略的 `dist/` 与 `build/`。正文片段通过 `<!--title: ...-->` 声明标题，生成 `docs/start/index.html` 等目录路由。
+
+### API 内容与示例
+
+手写说明保存在 `templates/api-guides/{en,zh}/`，生成时与所选 SDK 的公开声明合并。示例从官方 examples 仓库的固定提交导入；`www/api-examples/` 中的快照支持本地与 CI 独立构建。
+
+刷新声明与示例时，在 `templates/api-examples.json` 中选择兼容源码，用所选 SDK 检查，再指定示例仓库及完整提交 SHA：
+
+```sh
+make api XU_ROOT=/path/to/xu-v0.9.4 XU_PACKAGES_ROOT=/path/to/xu-v0.9.4/packages \
+  XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
+```
+
+所选文件必须与该提交一致。未提供两个示例变量时，`make api` 复用并校验已有快照。原生示例使用本地 SDK 运行。
+
+### WebAssembly 演练场
+
+使用匹配的 SDK 将 XU 运行器编译为 WebAssembly。执行检查还需要 Node.js。
+
+```sh
+make wasm              # 编译 build/playground/xu-play.wasm
+make check-playground  # 在 Node.js 中检查真实 WASM 与示例执行
+make check-chan        # 使用 XU 检查原生信道示例
+make build             # 将运行器打包到 dist/
+```
+
+演练场在浏览器客户端运行。生成的 WASM 保存在 `build/playground/`，`www/` 只保存源码。
+
+### 基准与部署
+
+刷新基准时，下载同一次完整六平台 Actions 附件，然后运行：
+
+```sh
+python3 scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD
+python3 scripts/gen-benchmarks.py
+```
+
+导入会验证编译器身份、源闭包、自举定点、完整负载与 stdout。未测项保留空缺，C、Rust 行取 O1/O2/O3 中位数最小值。
+
+`.github/workflows/pages.yml` 在推送到 `main` 时检查发布版本对齐、校验已发布 SDK 的 SHA-256 摘要、编译演练场、构建站点并部署到 GitHub Pages。
+
+</details>
