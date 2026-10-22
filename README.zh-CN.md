@@ -99,6 +99,8 @@ XU 正在 **0.x 阶段**持续演进。已发布 SDK 见 [Releases](https://gith
 
 运行一个示例、反馈编译器问题、完善文档，或贡献一个库。可以从 [编译器 Issues](https://github.com/xulang-org/xu/issues) 和 [官网 Issues](https://github.com/xulang-org/xulang-org/issues) 开始。
 
+参与开发前请阅读 [贡献指南](CONTRIBUTING.md) 与 [统一仓库管理规范](.github/REPOSITORY_RULES.md)；维护者可按 [GitHub 配置清单](.github/GITHUB_SETTINGS.md) 启用并验收后台规则。
+
 [官网](https://xulang.org/zh) · [GitHub](https://github.com/xulang-org) · [X / @xulang_org](https://x.com/xulang_org) · [MIT 许可证](LICENSE)
 
 ---

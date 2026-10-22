@@ -99,6 +99,8 @@ XU is actively evolving in the **0.x series**. See [Releases](https://github.com
 
 Try an example, report a compiler issue, improve the docs, or contribute a library. Start with [compiler issues](https://github.com/xulang-org/xu/issues) or [website issues](https://github.com/xulang-org/xulang-org/issues).
 
+Read the [contribution guide](CONTRIBUTING.md) and [shared repository rules](.github/REPOSITORY_RULES.md) before contributing. Maintainers can follow the [GitHub settings checklist](.github/GITHUB_SETTINGS.md).
+
 [Website](https://xulang.org) · [GitHub](https://github.com/xulang-org) · [X / @xulang_org](https://x.com/xulang_org) · [MIT license](LICENSE)
 
 ---
