@@ -1,9 +1,9 @@
 <!--title: UI / WebView-->
 <p class="crumb"><a href="/docs/start">文档</a> / </p>
 <h1>UI / WebView</h1>
-<p class="banner">本页介绍 UI 开发分支：基础绘图与保留布局需要 Xu 0.10.0+；编辑控件、扩展菜单、屏幕和 WebView 请求需要 0.10.1-dev.2+；统一控件样式需要 0.10.1-dev.3+。开发版尚未发布，请使用对应源码构建的 SDK。</p>
+<p class="banner">Xu 0.10.1 正式 SDK 包含绘图、保留布局、编辑控件、结构化菜单、屏幕查询、桌面与 WebView 异步请求，以及统一样式控件。请从<a href="/download">下载页面</a>安装对应版本。</p>
 <p><code>#ui</code> 管理窗口、事件与桌面服务；<code>#ui/draw</code> 记录绘图帧；<code>#ui/layout</code> 计算布局；<code>#ui/widgets</code> 管理控件、交互与保留场景；<code>#ui/webview</code> 承载网页及请求桥接。</p>
-<p><a href="/zh/api/preview/ui"><code>#ui</code></a> · <a href="/zh/api/preview/ui/draw"><code>#ui/draw</code></a> · <a href="/zh/api/preview/ui/layout"><code>#ui/layout</code></a> · <a href="/zh/api/preview/ui/widgets"><code>#ui/widgets</code></a> · <a href="/zh/api/preview/ui/webview"><code>#ui/webview</code></a></p>
+<p><a href="/zh/api/ui"><code>#ui</code></a> · <a href="/zh/api/ui/draw"><code>#ui/draw</code></a> · <a href="/zh/api/ui/layout"><code>#ui/layout</code></a> · <a href="/zh/api/ui/widgets"><code>#ui/widgets</code></a> · <a href="/zh/api/ui/webview"><code>#ui/webview</code></a></p>
 <h2 id="build">构建与示例</h2>
 <p>应用包含 <code>main.xu</code>、<code>xu.xun</code>、带 PNG 图标的 <code>brand/</code>；WebView 可添加 <code>www/</code>。macOS 使用 AppKit/WebKit，Windows 使用原生宿主与 WebView2，Linux 使用 GTK4，网页另需 WebKitGTK 6.0。先检查目标工具链，再打包。</p>
 <pre><code># 从匹配的 Xu 源码根目录运行；应用目录须有 xu.xun
@@ -98,6 +98,8 @@ fn configure_menu(window &amp;ui.Window) int {
 }
 fn main() int { &lt;&lt; 0 }</code></pre></div>
 <p><code>Window.screens_async</code> 返回 Request；完成后用 <code>screen_result</code> 解码 bounds、work_area、scale、primary / current。先检查 primary_known / work_area_known。Windows 桌面矩形是物理像素，macOS / GTK 是逻辑桌面坐标，由 physical_coordinates 标明；均不能直接当作画布局部坐标。</p>
+<h2 id="extended-controls">扩展控件与统一样式切换</h2>
+<p>Switch、Radio、Slider、Stepper、Tabs、Select、Badge、Divider、Card 与 ListBox 共享 <code>Styles</code>、组合状态绘制规则、阴影及图标位置。使用 <code>widgets.style_switcher()</code> 创建深色、浅色和高对比预设；调用 <code>use_preset</code>、<code>set_text_scale</code>、<code>set_density</code> 后，通过 <code>apply</code> 应用到保留 View，或用 <code>cycle</code> 切换并应用下一预设。这些方法可能失败，须处理错误。View 接收完整样式快照，控件的显式覆盖继续生效。</p>
 <h2 id="requests">异步桌面请求</h2>
 <p>剪贴板、文件选择、提示、屏幕与 WebView 原生查询返回 ui.Request；接收 ev_request 后用 request_of 解码，再用 result.matches 校验完整身份。提交成功只代表已受理。status 分别为 completed=0、cancelled=1、failed=2、unsupported=3、timed_out=4；空字符串也可能是成功结果。</p>
 <div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
@@ -124,4 +126,4 @@ pending.then(value =&gt; console.log(pending.id, value))
 // pending.cancel();  // or controller.abort()</code></pre></div>
 <p>单个 invoke 请求（含协议头）及返回值最多 1 MiB；最多 64 个活跃派发额度，排队请求体 / 结果共用 8 MiB。请求名最多 256 个 UTF-8 字节。取消、导航和关闭会丢弃迟到结果；取消不能强制中断正在运行的用户回调，额度待回调返回后释放。并发请求可乱序完成。</p>
 <p><code>WebView.eval_async</code>、<code>find_async</code>、<code>cookies_async</code>、<code>set_cookie_async</code>、<code>clear_cookies_async</code> 使用相同 ui.Request / ev_request 生命周期，原生结果最多 64 KiB。原生完成回调在 UI 线程；应用派发在 Xu worker。兼容等待接口不消费 App 的公开事件队列。每窗 / 文档身份隔离，导航后不能把旧结果应用到新页面。</p>
-<p><a href="/docs/tutorial/16">桌面教程</a> · <a href="/api/preview">开发预览 API 索引</a></p>
+<p><a href="/docs/tutorial/16">桌面教程</a> · <a href="/api">正式版 API 索引</a></p>

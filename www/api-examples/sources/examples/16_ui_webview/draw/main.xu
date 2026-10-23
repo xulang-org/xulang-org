@@ -1,80 +1,70 @@
 @main
-
 #ui
 #ui/draw
+demo #"github.com/xulang-org/examples/ui_demo"
 
-// Smoke for #ui/draw as an immediate-mode canvas (Love2D / Raylib-style).
-//   xu build examples/16_ui_webview/draw --target macos-arm64 --desktop -o /tmp/XuDraw
-
-fn paint(hit int) {
-    draw.begin()
-    draw.set_bg("#0b1020")
-
-    draw.set_color("#38bdf8")
-    draw.circle(80, 88, 36)
-    draw.set_stroke("#e2e8f0")
-    draw.set_width(2)
-    draw.circle_line(80, 88, 50)
-
-    draw.set_color("#fbbf24")
-    draw.rect(150, 60, 96, 52)
-    draw.rect_line(150, 60, 96, 52)
-
-    draw.fill_ellipse(280, 56, 110, 60, "#22c55e")
-    draw.stroke_ellipse(280, 56, 110, 60, "#86efac", 2)
-
-    draw.push()
-    draw.translate(500, 110)
-    draw.rotate(18)
-    draw.fill_triangle(0 - 36, 28, 36, 28, 0, 0 - 32, "#f87171")
-    draw.pop()
-
-    mut pts := []draw.Point{}
-    pts.push(draw.Point{x: 40, y: 200})
-    pts.push(draw.Point{x: 100, y: 170})
-    pts.push(draw.Point{x: 160, y: 200})
-    pts.push(draw.Point{x: 130, y: 260})
-    pts.push(draw.Point{x: 70, y: 260})
-    draw.poly(&pts, "#1e3a5f", "#38bdf8", 2)
-
-    draw.arc(280, 250, 48, 20, 200, "#4ade80", 3)
-    draw.point(80, 88, "#ffffff", 4)
-    draw.round_rect(400, 200, 160, 44, 10, "#1e293b", "#64748b", 2)
-    draw.text(416, 212, 13, "#e2e8f0", "round rect")
-    if hit == 1 {
-        draw.text(24, 320, 13, "#38bdf8", "hit the circle")
-    } else {
-        draw.text(24, 320, 13, "#94a3b8", "click the blue circle")
-    }
-    draw.present()
-}
-
-fn watch_clicks(ech chan ui.Event) {
-    mut hit := 0
-    paint(hit)
-    while true {
-        sleep_ns(40000000)
-        c := draw.poll_click(ech)
-        if c.ok == 1 {
-            if draw.in_circle(c, 80, 88, 50) {
-                hit = 1
-            } else {
-                hit = 0
-            }
-            paint(hit)
-        }
-    }
-}
-
-fn main() int {
-    mut app := ui.new_app()
-    mut win := app.new_window(ui.WindowOpts{title: "Xu Draw", width: 640, height: 380})
-    r := mut &win
-    _ := draw.attach(r)
-    xu watch_clicks(app.event_ch)
-    app.run() or (err) {
-        println(err.msg())
-        << 1
-    }
+fn paint(context &draw.Context,frame &mut draw.Frame,hits int) int {
+    frame.begin() or >>
+    frame.set_bg(demo.background()) or >>
+    demo.text(context,frame,32.0,28.0,14.0,demo.accent(),"01 / FRAME RECORDER") or >>
+    demo.text(context,frame,32.0,58.0,30.0,demo.ink(),"Draw a frame. Submit once.") or >>
+    demo.text(context,frame,32.0,108.0,15.0,demo.muted(),"Click the teal circle. Resize the window. Escape closes it.") or >>
+    frame.set_fill(demo.accent()) or >>
+    frame.circle(112.0,228.0,52.0) or >>
+    frame.stroke_rect(200.5,176.5,128.0,104.0,draw.rgb(240,180,91),2.0) or >>
+    frame.push() or >>
+    frame.clip_rect(376.0,168.0,216.0,120.0) or >>
+    frame.translate(478.0,226.0) or >>
+    frame.rotate(18.0) or >>
+    frame.fill_rect(-100.0,-42.0,200.0,84.0,draw.rgb(92,127,203)) or >>
+    frame.pop() or >>
+    demo.text(context,frame,32.0,330.0,20.0,demo.ink(),"Circle activations: " + str(hits)) or >>
+    demo.text(context,frame,32.0,370.0,13.0,demo.muted(),"Logical coordinates / state stack / clipping / one present") or >>
+    frame.present() or >>
+    println("Frame submitted: " + str(frame.command_count()) + " commands / " + str(frame.byte_len()) + " bytes")
     << 0
 }
+fn scene(ech chan ui.Event) int {
+    ready := demo.ready(ech) or >>
+    if ready.kind == ui.ev_exit { << 0 }
+    identity := ui.canvas_of(&ready) or >>
+    context := draw.context_of(&ready) or >>
+    mut frame := context.new_frame(4096)
+    mut hits := 0
+    mut pressed := false
+    paint(&context,mut &frame,hits) or >>
+    while true {
+        event := demo.next(ech)
+        if event.kind == ui.ev_exit { <- }
+        if event.window_id != identity.window_id { -> }
+        if event.kind == ui.ev_canvas_closed { <- }
+        if event.kind == ui.ev_blurred { pressed = false }
+        if event.kind == ui.ev_canvas_metrics { paint(&context,mut &frame,hits) or >> }
+        if ui.is_input_event(event.kind) {
+            input := ui.input_of(&event) or >>
+            if input.generation != identity.generation { -> }
+            if input.kind == ui.ev_key_down && input.key == ui.key_escape { demo.quit() or >> }
+            dx := input.x - 112.0
+            dy := input.y - 228.0
+            inside := dx * dx + dy * dy <= 2704.0
+            if input.kind == ui.ev_pointer_down && input.button == ui.button_left { pressed = inside }
+            if input.kind == ui.ev_pointer_cancel { pressed = false }
+            if input.kind == ui.ev_pointer_up && input.button == ui.button_left {
+                if pressed && inside { hits = hits + 1
+                    paint(&context,mut &frame,hits) or >> }
+                pressed = false
+            }
+        }
+    }
+    frame.dispose()
+    << 0
+}
+fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
+    << } }
+fn launch() int {
+    mut app := demo.app("Xu UI / Frame",680,430) or >>
+    xu worker(app.event_ch)
+    << app.run() or >>
+}
+fn main() int { << launch() or (err) { eprintln(err.msg())
+    << 1 } }

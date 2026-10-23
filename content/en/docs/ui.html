@@ -1,9 +1,9 @@
 <!--title: UI / WebView-->
 <p class="crumb"><a href="/docs/start">Docs</a> / </p>
 <h1>UI / WebView</h1>
-<p class="banner">UI development branch: drawing and retained layout require Xu 0.10.0+; editors, extended menus, screens and WebView requests require 0.10.1-dev.2+; control styles require 0.10.1-dev.3+. These development features are unreleased. Build the matching SDK from source.</p>
+<p class="banner">Xu 0.10.1 includes drawing, retained layout, editors, structured menus, screens, asynchronous desktop and WebView requests, and styled controls. Install the matching official SDK from the <a href="/download">download page</a>.</p>
 <p><code>#ui</code> owns windows, events and desktop services; <code>#ui/draw</code> records drawing frames; <code>#ui/layout</code> computes layout; <code>#ui/widgets</code> manages controls, interaction and retained scenes; <code>#ui/webview</code> hosts web content and request bridging.</p>
-<p><a href="/api/preview/ui"><code>#ui</code></a> · <a href="/api/preview/ui/draw"><code>#ui/draw</code></a> · <a href="/api/preview/ui/layout"><code>#ui/layout</code></a> · <a href="/api/preview/ui/widgets"><code>#ui/widgets</code></a> · <a href="/api/preview/ui/webview"><code>#ui/webview</code></a></p>
+<p><a href="/api/ui"><code>#ui</code></a> · <a href="/api/ui/draw"><code>#ui/draw</code></a> · <a href="/api/ui/layout"><code>#ui/layout</code></a> · <a href="/api/ui/widgets"><code>#ui/widgets</code></a> · <a href="/api/ui/webview"><code>#ui/webview</code></a></p>
 <h2 id="build">Build and examples</h2>
 <p>An application has <code>main.xu</code>, <code>xu.xun</code> and <code>brand/</code> containing a PNG icon, with optional <code>www/</code> resources. macOS uses AppKit/WebKit, Windows uses the native host and WebView2, and Linux uses GTK4 with WebKitGTK 6.0 for web content. Check the target toolchain before packaging.</p>
 <pre><code># Run from the matching Xu source root; the application must contain xu.xun
@@ -98,6 +98,8 @@ fn configure_menu(window &amp;ui.Window) int {
 }
 fn main() int { &lt;&lt; 0 }</code></pre></div>
 <p><code>Window.screens_async</code> returns a Request. Decode a completed result with <code>screen_result</code> for bounds, work_area, scale and primary / current. Check primary_known / work_area_known first. Windows desktop rectangles use physical pixels; macOS / GTK use logical desktop coordinates, identified by physical_coordinates. Neither is canvas-local.</p>
+<h2 id="extended-controls">Extended controls and style switching</h2>
+<p>Switch, Radio, Slider, Stepper, Tabs, Select, Badge, Divider, Card and ListBox share <code>Styles</code>, combined-state paint rules, shadows and icon placement. Create <code>widgets.style_switcher()</code> to select dark, light or contrast presets. Use <code>use_preset</code>, <code>set_text_scale</code> and <code>set_density</code>, then <code>apply</code> to the retained View; <code>cycle</code> advances and applies a preset. These methods can fail, so handle their errors. Each View receives a complete style snapshot; explicit control overrides remain in effect.</p>
 <h2 id="requests">Async desktop requests</h2>
 <p>Clipboard, file selection, prompts, screens and native WebView queries return ui.Request. Decode ev_request with request_of, then validate complete identity with result.matches. Submission means admission, not completion. Status values are completed=0, cancelled=1, failed=2, unsupported=3 and timed_out=4. An empty string can be a successful result.</p>
 <div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
@@ -124,4 +126,4 @@ pending.then(value =&gt; console.log(pending.id, value))
 // pending.cancel();  // or controller.abort()</code></pre></div>
 <p>An invoke request including its header, or a response, is at most 1 MiB. There are at most 64 active dispatch leases and an 8 MiB shared queued body / result budget. Names are at most 256 UTF-8 bytes. Cancellation, navigation and closure discard late results. Cancellation does not interrupt running user code; its lease remains occupied until the callback returns. Concurrent requests may complete out of order.</p>
 <p><code>WebView.eval_async</code>, <code>find_async</code>, <code>cookies_async</code>, <code>set_cookie_async</code> and <code>clear_cookies_async</code> share the ui.Request / ev_request lifecycle with results bounded to 64 KiB. Native completion callbacks run on the UI thread; application dispatch runs on Xu workers. Compatibility wait APIs do not drain the public App event queue. Window and document ownership prevent old results from reaching a newly navigated page.</p>
-<p><a href="/docs/tutorial/16">Desktop tutorial</a> · <a href="/api/preview">Development preview API index</a></p>
+<p><a href="/docs/tutorial/16">Desktop tutorial</a> · <a href="/api">Release API index</a></p>

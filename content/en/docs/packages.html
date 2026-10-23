@@ -1,51 +1,23 @@
 <!--title: Official External Packages-->
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
 <h1>Official External Packages</h1>
-<p class="banner">Official ecosystem monorepo: <code>github.com/xulang-org/packages</code> · Module version v0.1.1 · 29 production-ready packages</p>
-
-<p>To keep the core compiler and standard library minimal, secure, and bloat-free, official third-party service drivers (such as relational databases, in-memory caches, message brokers, object storage, and cloud connectors) are maintained in the standalone <a href="https://github.com/xulang-org/packages" target="_blank" rel="noopener noreferrer">packages repository</a>. Developers <strong>do not need to manually clone repositories or hand-write fragile build configs</strong>: simply declare the dependency in <code>xu.xun</code> and run <code>xu install</code> to fetch and verify everything automatically.</p>
-
-<h2>1. Declare &amp; Install Dependencies Automatically (Zero Manual Config)</h2>
-<p>Adding official external packages is frictionless and supports two fully automated workflows:</p>
-
-<h3>Method A: Use <code>xu get</code> for Instant Addition (Recommended)</h3>
-<p>Run a single command in your project directory. The Xu compiler automatically updates <code>xu.xun</code>, fetches packages, verifies SHA-256 digests, stores them in <code>vendor/</code>, and creates or updates <code>xu.lock</code>:</p>
-
-<pre><code class="language-shell"># Fetch a specific SemVer release of the official packages monorepo
-xu get github.com/xulang-org/packages@v0.1.1</code></pre>
-
-<h3>Method B: Declare in <code>xu.xun</code> &amp; Run <code>xu install</code></h3>
-<p>Create or edit your project's <code>xu.xun</code> manifest file in the root directory. We recommend referencing official SemVer releases:</p>
-
+<p class="banner">Official module: <code>github.com/xulang-org/packages</code> · SDK module version 0.2.0 · 29 service integrations and the shared transport package</p>
+<p>The Xu 0.10.1 SDK bundles the external drivers and their native source resources. The API is generated from that bundle. Drivers cover databases, caches, messaging, object storage and service discovery; check each package for protocol and platform limits.</p>
+<h2>1. Select the SDK bundle or a fixed source commit</h2>
+<p>Place your project beside the extracted SDK and declare its bundled packages using a local source locator. Adjust the relative path if you installed the SDK elsewhere:</p>
 <pre><code class="language-xun">module: my_app
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
-
 require:
-  "github.com/xulang-org/packages": v0.1.1</code></pre>
-
-<p>Then run <code>xu install</code> in your project directory to fetch and lock dependencies:</p>
-
-<pre><code class="language-shell"># Automatically fetch dependencies into vendor/ and generate xu.lock
-xu install
-
-# Subsequent offline compilation and verification (zero network calls)
+  "github.com/xulang-org/packages": file:../xu-v{{xu_version}}/packages</code></pre>
+<p>To fetch the source used by this SDK instead, select its full immutable commit:</p>
+<pre><code class="language-xun">require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@0122e87a5f87b52d3ead9390ad01165e7d7645ad</code></pre>
+<p>From your project directory, resolve and lock dependencies, then check and build:</p>
+<pre><code class="language-shell">xu install
 xu check main.xu --offline
-xu build main.xu --output my_app</code></pre>
-
-<details>
-  <summary style="cursor: pointer; color: var(--xu-brand); font-weight: 600; margin: 0.75rem 0;">Advanced Options: Pin to Git Commits or Local Workspace</summary>
-  <div style="margin-top: 0.5rem;">
-    <p><strong>Pin to a reviewed Git commit or tag:</strong></p>
-    <pre><code class="language-xun">require:
-  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit_hash&gt;</code></pre>
-
-    <p><strong>Local multi-repo co-development (project placed beside packages checkout):</strong></p>
-    <pre><code class="language-xun">require:
-  "github.com/xulang-org/packages": file:../packages</code></pre>
-  </div>
-</details>
-
+xu build main.xu -o my_app</code></pre>
+<p>Module versions and Git tags have separate roles: this bundle declares module version 0.2.0. The fixed source locator above selects the exact source independently of tag availability. Keep <code>xu.lock</code> with your application and consult <a href="/docs/modules">modules and dependencies</a> for frozen, vendor and proxy workflows.</p>
 <h2>2. Importing Packages in Source Code</h2>
 <p>Xu enforces an <strong>explicit namespace alias convention</strong> for all external packages: <code>alias #full/module/path/pkg</code>. This eliminates global namespace pollution and makes all external dependencies visible directly at the top of the file.</p>
 
@@ -122,7 +94,7 @@ fn main() int {
 }</code></pre>
 
 <h2>4. Package Catalog &amp; One-Line Import Snippets</h2>
-<p>The <code>packages</code> repository contains 29 ready-to-use packages. You can copy-paste the exact import snippet into your code:</p>
+<p>The <code>packages</code> repository contains 29 service integrations and a shared transport package. You can copy-paste the exact import snippet into your code:</p>
 
 <div class="doc-table-wrap">
 <table>
@@ -176,3 +148,9 @@ fn main() int {
 </ul>
 
 <p>For more details on MVS resolution, checksum verification, and private proxies, see: <a href="/docs/modules">Modules and Dependencies Specification</a> and <a href="/docs/native">Native Modules &amp; .xulib Specification</a>.</p>
+
+<h2 id="sqlite-native">Build the SQLite native bridge</h2>
+<p>SQLite examples require a native bridge built from the bundled C sources. On macOS ARM64, run these commands from the SDK packages directory with the matching C toolchain. Other targets require a matching native toolchain and target slice.</p>
+<pre><code class="language-shell">cd xu-v{{xu_version}}/packages
+xu native compile --manifest sqlite/native/native.json --target macos-arm64 -O2 -DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 sqlite/native/bridge.c sqlite/vendor/sqlite3.c -o sqlite/native/sqlite-macos-arm64.a
+xu native pack --manifest sqlite/native/native.json --slice macos-arm64=sqlite/native/sqlite-macos-arm64.a -o sqlite/native/sqlite.xulib</code></pre>

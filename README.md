@@ -108,7 +108,7 @@ Read the [contribution guide](CONTRIBUTING.md) and [shared repository rules](.gi
 <details>
 <summary><strong>Working on xulang.org</strong> — website build, playground, and deployment</summary>
 
-This profile repository also contains the source for the official website. The site selects the published **XU 0.9.4 SDK**; development builds remain separate.
+This profile repository also contains the source for the official website. The site selects the published **XU 0.10.1 SDK**; development builds remain separate.
 
 ### Local build
 
@@ -142,7 +142,7 @@ Curated prose lives in `templates/api-guides/{en,zh}/`. API generation combines 
 To refresh declarations and examples, select compatible sources in `templates/api-examples.json`, check them with the selected SDK, and supply the examples checkout and its full commit SHA:
 
 ```sh
-make api XU_ROOT=/path/to/xu-v0.9.4 XU_PACKAGES_ROOT=/path/to/xu-v0.9.4/packages \
+make api XU_ROOT=/path/to/xu-v0.10.1 XU_PACKAGES_ROOT=/path/to/xu-v0.10.1/packages \
   XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
 ```
 
