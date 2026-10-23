@@ -82,6 +82,13 @@ def sidebar(route: str, en: bool, xu_version: str = '') -> str:
                 (prefix + '/docs/' + href, english_label if en else zh_label)
                 for href, zh_label, english_label in links
             ]))
+    elif rest == '/api/preview' or rest.startswith('/api/preview/'):
+        groups.append(('xi-xuui', 'Development preview' if en else '开发预览', [
+            (prefix + '/api/preview', 'Index' if en else '索引'),
+            *[(prefix + '/api/preview/' + package, '#' + package)
+              for package in ('ui', 'ui/draw', 'ui/layout', 'ui/widgets', 'ui/webview')],
+            (prefix + '/api', 'Released SDK API' if en else '正式 SDK API'),
+        ]))
     elif rest == '/api' or rest.startswith('/api/'):
         for icon, zh, english, packages in API_GROUPS:
             groups.append((icon, english if en else zh, [
@@ -89,6 +96,9 @@ def sidebar(route: str, en: bool, xu_version: str = '') -> str:
                  '#' + package.removeprefix('packages/') if package else 'Index')
                 for package in packages
             ]))
+        groups.append(('xi-xuui', 'Development preview' if en else '开发预览', [
+            (prefix + '/api/preview', 'UI API preview' if en else 'UI API 预览'),
+        ]))
     elif rest == '/blog' or rest.startswith('/blog/'):
         groups.append(('xi-chat', 'Blog', [
             (prefix + '/blog', 'Index' if en else '博客索引'),
@@ -233,6 +243,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             desc = f"{title} — Official language specification, memory model, concurrency architecture, and formal grammar for Xu."
         else:
             desc = f"{title} — Xu 编程语言官方规范：语法定义、内存模型与所有权语义、并发调度架构与 EBNF 文法。"
+    elif bare_path == 'api/preview' or bare_path.startswith('api/preview/'):
+        desc = (f'Unreleased Xu development API reference: {title}. Use the SDK version and source digest shown on the page.'
+                if en else f'Xu 开发预览 API：{title}。尚未发布，请使用页面标明的 SDK 版本与源码摘要。')
     elif bare_path.startswith('api'):
         if en:
             desc = f"Official API reference for {title} in the Xu v{xu_version} standard library and extended package ecosystem."

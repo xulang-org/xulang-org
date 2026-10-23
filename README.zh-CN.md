@@ -175,3 +175,15 @@ python3 scripts/gen-benchmarks.py
 `.github/workflows/pages.yml` 在推送到 `main` 时检查发布版本对齐、校验已发布 SDK 的 SHA-256 摘要、编译演练场、构建站点并部署到 GitHub Pages。
 
 </details>
+
+### UI 开发文档
+
+[中文 UI 指南](content/zh/docs/ui.html) 与 [英文指南](content/en/docs/ui.html) 覆盖 UI 分支至 Xu 0.10.1-dev.3。开发 API 单独放在 `/zh/api/preview/` 与 `/api/preview/`，横幅和源码 SHA-256 标明开发输入，可能包含尚未提交的修改；不会修改官网所选正式 SDK、下载入口或正式版示例快照。
+
+```sh
+python3 scripts/gen-api.py --src /path/to/xu-ui/src --preview --package ui
+make build
+make check
+```
+
+`--package ui` 同时包含 ui、ui/draw、ui/layout、ui/widgets、ui/webview。用法说明维护在 `templates/api-guides/{en,zh}/preview/ui*`，中英文语义契约和字段解释维护在 `templates/api-preview-contracts.json`。生成器从源码提取签名和公开字段后合并说明，排除私有字段及内部包。UI API 变化后重新执行生成命令；开发示例取得不可变的发布提交前，在对应 examples 工作树运行。

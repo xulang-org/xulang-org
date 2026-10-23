@@ -1488,7 +1488,8 @@ def pkg_id(pkg) -> str:
 
 def lookup_override(pkg, item: Item, lang: str):
     p = pkg_id(pkg)
-    for key in ((p, item.recv_type, item.name), (p, item.name)):
+    receiver = re.sub(r'^&(?:mut\s+)?', '', item.recv_type).strip()
+    for key in ((p, item.recv_type, item.name), (p, receiver, item.name), (p, item.name)):
         if key in OVERRIDES:
             return OVERRIDES[key][lang]
     return None
@@ -2179,7 +2180,7 @@ def render_item(pkg: Package, item: Item, lang: str, used_ids: dict, examples: S
     return "\n".join(parts)
 
 
-def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "", examples: Sequence[Example] = ()) -> str:
+def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "", examples: Sequence[Example] = (), preview_digest: str = "") -> str:
     L = LABELS[lang]
     blurb = package_blurb(pkg, lang)
     counts = (
@@ -2196,7 +2197,12 @@ def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "
         overview.strip() if overview else f'<p class="lead">{esc(blurb)}</p>',
     ]
     if xu_version:
-        body.insert(3, f'<!--xu-api-version: {esc(xu_version)}-->\n<p class="banner">Xu {{{{xu_version}}}} API</p>')
+        banner = f'Xu {esc(xu_version)} API · ' + ('开发预览，尚未发布' if lang == 'zh' else 'development preview, unreleased') if preview_digest else 'Xu {{xu_version}} API'
+        body.insert(3, f'<!--xu-api-version: {esc(xu_version)}-->\n<p class="banner">{banner}</p>')
+    if preview_digest:
+        body.insert(4, f'<!--xu-api-channel: preview-->\n<!--xu-api-source-sha256: {preview_digest}-->')
+        prefix = '' if lang == 'en' else '/zh'
+        body.append(f'<p><a href="{prefix}/api/preview">' + ('开发预览 API 索引' if lang == 'zh' else 'Development preview API index') + '</a></p>')
     if pkg.module:
         prefix = "" if lang == "en" else "/zh"
         body.append(f'<p class="note">{esc(pkg.module)} · {esc(pkg.version)} · '
@@ -2214,12 +2220,12 @@ def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "
     return "\n".join(body)
 
 
-def render_index(packages: list[Package], lang: str, xu_version: str, examples: Optional[dict[str, list[Example]]] = None) -> str:
+def render_index(packages: list[Package], lang: str, xu_version: str, examples: Optional[dict[str, list[Example]]] = None, preview_digest: str = "") -> str:
     examples = examples or {}
     prefix = "" if lang == "en" else "/zh"
     standard = [p for p in packages if not p.module]
     external = [p for p in packages if p.module]
-    title = "API 索引" if lang == "zh" else "API index"
+    title = ("开发预览 API" if lang == "zh" else "Development preview API") if preview_digest else ("API 索引" if lang == "zh" else "API index")
     intro = (f"Xu {{{{xu_version}}}}：{len(standard)} 个标准库与 UI 包、{len(external)} 个扩展包。"
              if lang == "zh" else f"Xu {{{{xu_version}}}}: {len(standard)} standard-library and UI packages, {len(external)} external packages.")
     body = [f"<!--title: {title}-->", f"<!--xu-api-version: {esc(xu_version)}-->", f"<h1>{title}</h1>", f'<p class="banner">{esc(intro)}</p>',
@@ -2227,6 +2233,12 @@ def render_index(packages: list[Package], lang: str, xu_version: str, examples: 
              if lang == "zh" else '<p>Declarations and counts are generated from current sources and include public API only. See each package for its supported scope.</p>'),
             f'<p><a href="{prefix}/docs/modules">{"模块与依赖" if lang == "zh" else "Modules and dependencies"}</a> · '
             f'<a href="{prefix}/docs/packages">{"扩展包" if lang == "zh" else "External packages"}</a></p>']
+    api_root = '/api/preview' if preview_digest else '/api'
+    if preview_digest:
+        body[3] = '<p class="banner">Xu ' + esc(xu_version) + ' · ' + ('开发预览，尚未发布' if lang == 'zh' else 'development preview, unreleased') + '</p>'
+        body.extend([f'<!--xu-api-channel: preview-->\n<!--xu-api-source-sha256: {preview_digest}-->',
+                     '<p>' + ('从当前开发源码生成，可能含未提交修改。源码摘要 SHA-256：' if lang == 'zh' else 'Generated from development sources, which may include uncommitted changes. Source SHA-256: ') + f'<code>{preview_digest}</code></p>',
+                     f'<p><a href="{prefix}/docs/ui">UI / WebView</a></p>'])
     groups: dict[str, list[Package]] = {}
     for pkg in standard:
         group = pkg.path.split("/", 1)[0] if "/" in pkg.path else ("核心" if lang == "zh" else "Core")
@@ -2238,17 +2250,34 @@ def render_index(packages: list[Package], lang: str, xu_version: str, examples: 
         for pkg in members:
             count = len(pkg.items)
             label = pkg.import_path.split("#", 1)[1]
-            body.append(f'<li><a href="{prefix}/api/{esc(pkg.path)}"><code>#{esc(label)}</code></a> — {count} '
+            body.append(f'<li><a href="{prefix}{api_root}/{esc(pkg.path)}"><code>#{esc(label)}</code></a> — {count} '
                         + ("项公开声明" if lang == "zh" else "public declarations")
                         + (f' · <a href="{prefix}/api/{esc(pkg.path)}#examples">' + ('示例' if lang == 'zh' else 'Examples') + '</a>' if examples.get(pkg.path) else '') + "</li>")
         body.append("</ul>")
     return "\n".join(body) + "\n"
 
 
-def write_packages(site: str, packages: list[Package], xu_version: str = "") -> None:
-    examples = load_examples(site, packages, xu_version)
+def write_packages(site: str, packages: list[Package], xu_version: str = "", preview_digest: str = "") -> None:
+    previous = OVERRIDES.copy()
+    try:
+        contracts = Path(site, 'templates/api-preview-contracts.json')
+        if preview_digest and contracts.is_file():
+            for entry in json.loads(contracts.read_text(encoding='utf-8')):
+                key = (entry['package'], entry['receiver'], entry['name']) if entry.get('receiver') else (entry['package'], entry['name'])
+                OVERRIDES[key] = {lang: entry[lang] for lang in ('zh', 'en')}
+        _write_packages(site, packages, xu_version, preview_digest)
+    finally:
+        OVERRIDES.clear()
+        OVERRIDES.update(previous)
+
+
+def _write_packages(site: str, packages: list[Package], xu_version: str, preview_digest: str) -> None:
+    # Development sources have no published, immutable examples revision yet.
+    examples = {} if preview_digest else load_examples(site, packages, xu_version)
     for lang in ("zh", "en"):
         root = os.path.join(site, "content", lang, "api")
+        if preview_digest:
+            root = os.path.join(root, 'preview')
         os.makedirs(root, exist_ok=True)
         for pkg in packages:
             rel = pkg.path + ".html"
@@ -2256,13 +2285,13 @@ def write_packages(site: str, packages: list[Package], xu_version: str = "") -> 
             os.makedirs(os.path.dirname(dest), exist_ok=True)
             # Keep curated usage guides separate from generated declarations
             # so release regeneration preserves examples and explanations.
-            guide = Path(site, "templates", "api-guides", lang, rel)
+            guide = Path(site, "templates", "api-guides", lang, "preview", rel) if preview_digest else Path(site, "templates", "api-guides", lang, rel)
             overview = guide.read_text(encoding="utf-8") if guide.is_file() else ""
-            html_text = render_page(pkg, lang, xu_version, overview, examples.get(pkg.path, []))
+            html_text = render_page(pkg, lang, xu_version, overview, examples.get(pkg.path, []), preview_digest)
             with open(dest, "w", encoding="utf-8") as f:
                 f.write(html_text)
         with open(os.path.join(root, "index.html"), "w", encoding="utf-8") as f:
-            f.write(render_index(packages, lang, xu_version, examples))
+            f.write(render_index(packages, lang, xu_version, examples, preview_digest))
 
 
 CSS_BLOCK = """
@@ -2390,7 +2419,15 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--examples", help="refresh bundled example sources from an official examples checkout")
     ap.add_argument("--examples-ref", default="", help="full examples commit SHA (required with --examples)")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--preview", action="store_true", help="write unreleased API under api/preview without changing the selected release")
+    ap.add_argument("--package", action="append", default=[], help="package subtree to include in a preview, repeatable (e.g. ui)")
     args = ap.parse_args(argv)
+    if args.preview and not args.package:
+        ap.error('--preview requires an explicit --package scope')
+    if args.package and not args.preview:
+        ap.error('--package requires --preview; release API must remain complete')
+    if args.preview and args.examples:
+        ap.error('preview API does not publish example snapshots from a working tree')
 
     src = os.path.abspath(args.src)
     site = os.path.abspath(args.site)
@@ -2399,6 +2436,11 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     names = list_packages(src)
+    if args.package:
+        for name in args.package:
+            if name not in names:
+                ap.error('unknown package: ' + name)
+        names = [name for name in names if any(name == wanted or name.startswith(wanted + '/') for wanted in args.package)]
     packages = [load_package(src, n) for n in names]
     version_path = os.path.join(os.path.dirname(src), "VERSION")
     xu_version = Path(version_path).read_text(encoding="utf-8").strip() if os.path.isfile(version_path) else ""
@@ -2406,7 +2448,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.packages and not os.path.isdir(external_root):
         print(f"packages not found: {external_root}", file=sys.stderr)
         return 1
-    if os.path.isdir(external_root):
+    if os.path.isdir(external_root) and not args.package:
         manifest = Path(external_root, "xu.xun").read_text(encoding="utf-8")
         module = re.search(r'^module:\s*"?([^"\n]+)"?\s*$', manifest, re.M).group(1)
         module_version = re.search(r'^version:\s*!ver\s+(\S+)', manifest, re.M).group(1)
@@ -2442,6 +2484,21 @@ def main(argv: list[str] | None = None) -> int:
             print("   ", row)
 
     if args.dry_run:
+        return 0
+
+    if args.preview:
+        if not re.fullmatch(r'\d+\.\d+\.\d+-(?:dev|rc)\.\d+', xu_version):
+            ap.error('preview requires a development or release-candidate SDK')
+        digest = hashlib.sha256()
+        digest.update((xu_version + '\n').encode())
+        sources = sorted(source for pkg in packages for source in Path(src, pkg.path).glob('*.xu')
+                         if not source.name.startswith(('test_', 'test.', 'bench_', 'bench.')))
+        for source in sources:
+            digest.update((source.relative_to(src).as_posix() + '\n').encode())
+            digest.update(source.read_bytes())
+        write_packages(site, packages, xu_version, digest.hexdigest())
+        ensure_css(site)
+        print(f'  wrote preview API for {len(packages)} packages; selected release unchanged')
         return 0
 
     if args.examples:
