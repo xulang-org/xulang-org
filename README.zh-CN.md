@@ -108,7 +108,7 @@ XU 正在 **0.x 阶段**持续演进。已发布 SDK 见 [Releases](https://gith
 <details>
 <summary><strong>参与 xulang.org 开发</strong> — 网站构建、演练场与部署</summary>
 
-这个主页仓库也保存了官网源码。站点选用已发布的 **XU 0.9.4 SDK**，开发版另行迭代。
+这个主页仓库也保存了官网源码。站点选用已发布的 **XU 0.10.1 SDK**，开发版另行迭代。
 
 ### 本地构建
 
@@ -142,7 +142,7 @@ make clean                       # 清理 dist/ 与 build/playground/
 刷新声明与示例时，在 `templates/api-examples.json` 中选择兼容源码，用所选 SDK 检查，再指定示例仓库及完整提交 SHA：
 
 ```sh
-make api XU_ROOT=/path/to/xu-v0.9.4 XU_PACKAGES_ROOT=/path/to/xu-v0.9.4/packages \
+make api XU_ROOT=/path/to/xu-v0.10.1 XU_PACKAGES_ROOT=/path/to/xu-v0.10.1/packages \
   XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
 ```
 

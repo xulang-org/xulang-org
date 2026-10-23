@@ -1679,13 +1679,13 @@ BLURB_ZH = {
     "unicode": "码点类别与大小写（含部分空白）。",
     "unicode/utf8": "UTF-8 编解码与合法性。",
     "unicode/utf16": "UTF-16 代理项与编解码。",
-    "regexp": "正则子集：compile/match/find/replace；有界回溯。",
+    "regexp": "正则子集：显式堆栈与共享工作预算；匹配、查找与替换须处理错误。",
     "html": "escape_string / unescape_string（五特殊字符与数字实体）。",
     "html/template": "模板插值默认转义。无分上下文（JS/CSS/URL）。",
     "text/template": "无反射模板：{{.}}、管道、if/with/range/define。",
     "text/scanner": "词法扫描：Ident/Int/Float/Char/String；源为 owning 字符串。",
     "text/tabwriter": "弹性制表：write + flush 返串。",
-    "encoding/json": "严格 JSON；parse 得池化 Doc。valid/compact/indent/quote。",
+    "encoding/json": "严格 JSON 与池化 Doc；as_int/as_f64 传播转换错误，旧数字访问器保留零值回退。",
     "encoding/xml": "文本转义与 Decoder.token。无反射 Unmarshal。",
     "encoding/csv": "RFC4180 Reader/Writer，源为 owning 字符串。",
     "encoding/hex": "十六进制编解码与 dump。",
@@ -1696,7 +1696,7 @@ BLURB_ZH = {
     "encoding/pem": "PEM decode / encode_to_memory。",
     "encoding/asn1": "DER TLV 编解码；INTEGER 拟合 i64。",
     "encoding/xun": "XUN 文档。parse 得池化 Doc。",
-    "compress/flate": "inflate + 字面量 Huffman deflate。",
+    "compress/flate": "inflate 与有界 LZ77、固定 Huffman deflate；不可压缩数据使用存储块回退。",
     "compress/gzip": "gzip Reader/Writer，校验 CRC-32。",
     "compress/zlib": "zlib Reader/Writer，校验 Adler-32；拒字典。",
     "compress/lzw": "GIF LSB / PDF MSB LZW。",
@@ -1722,7 +1722,7 @@ BLURB_ZH = {
     "crypto/ed25519": "Ed25519 密钥、签名、验签。",
     "crypto/subtle": "常时比较外形的工具；后端不保证常时。",
     "crypto/rand": "读密码学随机字节。hosted Unix 走 /dev/urandom；其它目标后置。",
-    "crypto/tls": "TLS 客户端子集。握手走宿主平台库（macOS SecureTransport；Linux/Windows 目前 throw）。",
+    "crypto/tls": "Xu 实现的 TLS 1.2/1.3 客户端子集；系统根证书默认校验。当前后端的 ECDH、RSA、AES 与 GHASH 为可变时间实现。",
     "crypto/x509": "解析证书与验签（Ed25519、RSA SHA-256、SM2-with-SM3）。无签发。",
     "crypto/x509/pkix": "证书 Distinguished Name（CN/O/C 等）。",
     "crypto/sm2": "SM2：密钥、签名、加密、密钥交换。零 C、非商密认证。",
@@ -1732,7 +1732,7 @@ BLURB_ZH = {
     "crypto/zuc": "ZUC-128 与 128-EEA3/EIA3。零 C、非商密认证。",
     "crypto/gmtls": "GMTLS 1.1 子集（SM2 双证 + SM4）。进程内 net.pipe，无 Listen。零 C、非商密认证。",
     "net": "IP/端口解析、Unix 上 TCP/UDP IPv4/IPv6 与 Unix 域套接字；Windows TCP 仍有平台限制。",
-    "net/http": "HTTP/1.1 Client 与 Server、Header、Cookie。本包无 TLS。",
+    "net/http": "HTTP/1.1 客户端与有界并发服务端、Header、Cookie；HTTPS 客户端使用 crypto/tls。",
     "net/http/httptest": "进程内 ResponseRecorder 与测试用 Request。不做真实 listen。",
     "net/http/cookiejar": "内存 Cookie Jar。带 Domain 属性的 cookie 忽略（无公共后缀表）。",
     "net/url": "URL 与 query 编解码。",
@@ -1796,13 +1796,13 @@ BLURB_EN = {
     "unicode": "Code-point classes and case (including extra whitespace).",
     "unicode/utf8": "UTF-8 encode/decode and validation.",
     "unicode/utf16": "UTF-16 surrogates and encode/decode.",
-    "regexp": "Regexp subset: compile/match/find/replace; bounded backtracking.",
+    "regexp": "Regexp subset with explicit stacks and a shared work budget; handle errors from matching, finding and replacement.",
     "html": "escape_string / unescape_string (five specials and numeric entities).",
     "html/template": "Templates with escaped interpolation. No JS/CSS/URL context switch.",
     "text/template": "Templates without reflection: {{.}}, pipelines, if/with/range/define.",
     "text/scanner": "Token scan: Ident/Int/Float/Char/String; source is an owning string.",
     "text/tabwriter": "Elastic tabstops: write + flush returns a string.",
-    "encoding/json": "Strict JSON; parse yields a pooled Doc. valid/compact/indent/quote.",
+    "encoding/json": "Strict JSON and pooled Docs; as_int/as_f64 propagate conversion errors, while legacy numeric accessors retain zero fallback.",
     "encoding/xml": "Text escape and Decoder.token. No reflection unmarshal.",
     "encoding/csv": "RFC4180 Reader/Writer over owning strings.",
     "encoding/hex": "Hex encode/decode and dump.",
@@ -1813,7 +1813,7 @@ BLURB_EN = {
     "encoding/pem": "PEM decode / encode_to_memory.",
     "encoding/asn1": "DER TLV; INTEGER fits in i64.",
     "encoding/xun": "XUN documents. parse yields a pooled Doc.",
-    "compress/flate": "inflate plus literal-only Huffman deflate.",
+    "compress/flate": "Inflate and bounded LZ77/fixed-Huffman deflate, with stored-block fallback for incompressible data.",
     "compress/gzip": "gzip Reader/Writer with CRC-32.",
     "compress/zlib": "zlib Reader/Writer with Adler-32; dictionaries rejected.",
     "compress/lzw": "GIF LSB / PDF MSB LZW.",
@@ -1839,7 +1839,7 @@ BLURB_EN = {
     "crypto/ed25519": "Ed25519 keys, sign, verify.",
     "crypto/subtle": "Constant-time-shaped helpers; the backend does not guarantee timing.",
     "crypto/rand": "Read cryptographic random bytes. Hosted Unix uses /dev/urandom; other targets come later.",
-    "crypto/tls": "TLS client subset. Handshake uses the host library (SecureTransport on macOS; Linux/Windows currently throw).",
+    "crypto/tls": "TLS 1.2/1.3 client subset implemented in Xu, with system-root verification by default. ECDH, RSA, AES and GHASH are variable-time on current backends.",
     "crypto/x509": "Parse certificates and verify (Ed25519, RSA SHA-256, SM2-with-SM3). No issuance.",
     "crypto/x509/pkix": "Certificate distinguished name (CN/O/C and related fields).",
     "crypto/sm2": "SM2 keys, sign, encrypt, key exchange. Pure Xu, not commercial-crypto certified.",
@@ -1849,7 +1849,7 @@ BLURB_EN = {
     "crypto/zuc": "ZUC-128 and 128-EEA3/EIA3. Pure Xu, not commercial-crypto certified.",
     "crypto/gmtls": "GMTLS 1.1 subset (dual SM2 certs + SM4). In-process net.pipe; no Listen. Pure Xu, not commercial-crypto certified.",
     "net": "IP/port parsing, TCP/UDP IPv4/IPv6 and Unix sockets on Unix; Windows TCP remains limited.",
-    "net/http": "HTTP/1.1 Client and Server, Header, Cookie. No TLS in this package.",
+    "net/http": "HTTP/1.1 client and bounded concurrent server, Header and Cookie. The HTTPS client uses crypto/tls.",
     "net/http/httptest": "In-process ResponseRecorder and test Request. No real listen.",
     "net/http/cookiejar": "In-memory cookie Jar. Domain-attribute cookies are ignored (no public suffix list).",
     "net/url": "URL and query encode/decode.",
@@ -2260,8 +2260,9 @@ def render_index(packages: list[Package], lang: str, xu_version: str, examples: 
 def write_packages(site: str, packages: list[Package], xu_version: str = "", preview_digest: str = "") -> None:
     previous = OVERRIDES.copy()
     try:
-        contracts = Path(site, 'templates/api-preview-contracts.json')
-        if preview_digest and contracts.is_file():
+        contract_name = 'api-preview-contracts.json' if preview_digest else 'api-contracts.json'
+        contracts = Path(site, 'templates', contract_name)
+        if contracts.is_file():
             for entry in json.loads(contracts.read_text(encoding='utf-8')):
                 key = (entry['package'], entry['receiver'], entry['name']) if entry.get('receiver') else (entry['package'], entry['name'])
                 OVERRIDES[key] = {lang: entry[lang] for lang in ('zh', 'en')}

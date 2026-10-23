@@ -1,6 +1,7 @@
 """Compile and execute the public chan examples with the hosted Xu compiler."""
 
 import argparse
+import os
 from pathlib import Path
 import subprocess
 
@@ -13,6 +14,10 @@ compiler = xu_root / 'bin/xu'
 wrapper = xu_root / 'scripts/run_product_compiler.sh'
 output = ROOT / 'build/chan-examples'
 output.mkdir(parents=True, exist_ok=True)
+environment = dict(os.environ, XU_ROOT=str(xu_root), XU_STDLIB_ROOT=str(xu_root / 'src'),
+                   XUPATH='', XU_CACHE=str(output / 'cache'))
+for key in ('XUOS', 'XUARCH', 'XU_BOOT_EXTRA'):
+    environment.pop(key, None)
 
 for name, expected in {
     'chan-buffered': '42\n',
@@ -21,8 +26,10 @@ for name, expected in {
 }.items():
     source = ROOT / 'www/examples' / name / 'main.xu'
     binary = output / name
-    subprocess.run([str(wrapper), '--cwd', str(xu_root), str(compiler), 'build',
-                    str(source), '-o', str(binary)], check=True, timeout=60)
+    command = [str(compiler), 'build', str(source), '-o', str(binary)]
+    if wrapper.is_file():
+        command = [str(wrapper), '--cwd', str(xu_root), *command]
+    subprocess.run(command, cwd=xu_root, env=environment, check=True, timeout=60)
     result = subprocess.run([str(binary)], capture_output=True, text=True, check=True, timeout=15)
     if result.stdout != expected or result.stderr:
         raise AssertionError(f'{name}: expected {expected!r}, got {result.stdout!r}, stderr {result.stderr!r}')
