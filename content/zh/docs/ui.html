@@ -1,8 +1,127 @@
 <!--title: UI / WebView-->
 <p class="crumb"><a href="/docs/start">文档</a> / </p>
 <h1>UI / WebView</h1>
-<p><code>#ui</code> 提供窗口、菜单、托盘和事件循环；<code>#ui/webview</code> 提供 HTML 内容与 IPC；<code>#ui/draw</code> 提供立即模式画布。每个应用包含 main.xu、xu.xun、brand/，按需提供 www/ 资源。</p>
-<p>桌面打包使用编译器同目录的 xu-desktop。macOS 通过 AppKit/WebKit 生成 .app；Windows x64/arm64 通过原生宿主与 WebView2 生成 .exe；Linux x64/arm64 通过 GTK4 生成 ELF，WebView 另需 WebKitGTK 6.0。须准备匹配的编译器、链接器和 SDK，先对所选目标执行 xu doctor。</p><pre><code># From the examples repository root
-xu doctor --desktop --target macos-arm64
-xu build examples/16_ui_webview/open --target macos-arm64 --desktop --output /tmp/XuOpen
-open /tmp/XuOpen.app</code></pre><p>brand/ 须有 PNG 图标。www/ 资源打包进原生产物并通过 xu:// 提供，也支持远程 HTTP(S) 内容。交叉生成成功不能替代目标机运行验证。<code>XU_UI_SIM=1</code> 使用进程内模拟；宿主未连接时返回 <code>ui: host not available</code>。</p><p><a href="/docs/tutorial/16">桌面教程</a></p>
+<p class="banner">本页介绍 UI 开发分支：基础绘图与保留布局需要 Xu 0.10.0+；编辑控件、扩展菜单、屏幕和 WebView 请求需要 0.10.1-dev.2+；统一控件样式需要 0.10.1-dev.3+。开发版尚未发布，请使用对应源码构建的 SDK。</p>
+<p><code>#ui</code> 管理窗口、事件与桌面服务；<code>#ui/draw</code> 记录绘图帧；<code>#ui/layout</code> 计算布局；<code>#ui/widgets</code> 管理控件、交互与保留场景；<code>#ui/webview</code> 承载网页及请求桥接。</p>
+<p><a href="/zh/api/preview/ui"><code>#ui</code></a> · <a href="/zh/api/preview/ui/draw"><code>#ui/draw</code></a> · <a href="/zh/api/preview/ui/layout"><code>#ui/layout</code></a> · <a href="/zh/api/preview/ui/widgets"><code>#ui/widgets</code></a> · <a href="/zh/api/preview/ui/webview"><code>#ui/webview</code></a></p>
+<h2 id="build">构建与示例</h2>
+<p>应用包含 <code>main.xu</code>、<code>xu.xun</code>、带 PNG 图标的 <code>brand/</code>；WebView 可添加 <code>www/</code>。macOS 使用 AppKit/WebKit，Windows 使用原生宿主与 WebView2，Linux 使用 GTK4，网页另需 WebKitGTK 6.0。先检查目标工具链，再打包。</p>
+<pre><code># 从匹配的 Xu 源码根目录运行；应用目录须有 xu.xun
+bin/xu doctor --desktop --target macos-arm64
+bin/xu build /path/to/examples/examples/16_ui_webview/style_gallery \
+  --target macos-arm64 --desktop -o /tmp/XuStyles</code></pre>
+<p>示例仓库提供 <code>python3 scripts/ui_examples.py check all</code> 和 <code>run style_gallery</code>；通过 <code>XU_ROOT</code> 选择匹配的 Xu 源码。输出放在 <code>build/ui/&lt;target&gt;/</code>。macOS 为 .app，Windows 为 .exe，Linux 为 ELF。跨目标编译不等于目标机交互验收。</p>
+<table><thead><tr><th>学习顺序</th><th>示例</th><th>关注内容</th></tr></thead><tbody>
+<tr><td>绘图</td><td>draw、draw_gallery</td><td>帧、路径、渐变、文字、资源与缓存</td></tr>
+<tr><td>控件与输入</td><td>widgets、text_input、editor_workbench</td><td>布局、焦点、IME、Input / TextArea</td></tr>
+<tr><td>样式</td><td>style_gallery</td><td>主题、缩放、密度、局部主题、状态、图标与滚动条</td></tr>
+<tr><td>桌面应用</td><td>desktop_services、multiwindow、workbench</td><td>异步服务、窗口身份与综合应用</td></tr>
+<tr><td>网页</td><td>webview_requests、open、shaped、remote</td><td>请求生命周期、网页壳、透明窗口和远程内容</td></tr>
+</tbody></table>
+<h2 id="frames">绘图帧与资源</h2>
+<p>一个 worker 消费 <code>App.event_ch</code>；等待 <code>canvas_ready</code> 后，用 <code>draw.context_of</code> 取得 Context。Context 与资源属于 canvas_id / generation，关闭窗口后失效。每次以 <code>Context.new_frame</code> / <code>Frame.begin</code> 开始，记录完整帧后只调用一次 <code>present</code>；失败时 <code>cancel</code>。空闲时保留上一帧，不持续重绘。可先合并排队事件，再提交一次绘制。</p>
+<p>Frame 的坐标是浮点逻辑像素，原点在左上角；<code>Frame.scale(1.0, 1.0)</code> 是原比例。兼容的包级 <code>draw.scale(100, 100)</code> 使用百分比。<code>push</code> / <code>pop</code> 同时保存变换、裁剪与画笔；栈必须配对。Frame 上限为 4 MiB、100000 条命令、256 层状态。DisplayList 复用命令，Surface / SurfaceCache 复用栅格结果。</p>
+<p><strong>画布默认不平移。</strong> macOS、Windows、Linux 都需要在画布就绪后显式调用 <code>draw.set_pan_enabled(1)</code> 才启用内置拖拽 / 滚轮相机；关闭时重置偏移。应用仍可接收拖拽和滚轮事件。控件 attach 会启用输入并关闭相机。</p>
+<p>Image、TextLayout、DisplayList、Surface、缓存与输入会话都有显式释放方法。资源必须保留到引用它们的 Frame 被 <code>present</code>、<code>freeze</code> 或 <code>snapshot</code> 成功接受；已接受的记录会持有所需资源版本。复制资源句柄不创建独立资源；使用相应 clone / dispose 契约。</p>
+<h2 id="layout">保留布局与事件</h2>
+<p><code>Constraints</code> 从父向子传递，尺寸从子向父返回。布局树支持 row / column / stack / padding；单树最多 4096 节点、深度 64。<code>View</code> 保存稳定节点 ID、脏标记、命中与重绘边界；这不是按需构建的虚拟列表。</p>
+<p>通过 <code>dispatch_event</code> 路由键盘和指针，并把原生文字事件、剪贴板结果交给 <code>Editor.event</code>。节点回调中的绘制矩形、指针位置为节点局部坐标；<code>node_bounds</code> / <code>Editor.place</code> 使用画布坐标。布局或祖先滚动改变后，在绘制前调用 <code>place_editor</code> 同步命中和 IME 几何。拖动滚动条时为节点开启 <code>set_capture_outside</code>，使指针离开视口后仍可拖动。</p>
+<h2 id="styles">统一控件样式</h2>
+<p><code>dark_styles</code>、<code>light_styles</code>、<code>contrast_styles</code> 返回完整 Styles。<code>font</code> 和 <code>text_scale</code> 控制文字，<code>density</code> 控制几何；各 ControlStyle 可用 <code>inherit_font = false</code> 单独选择字体。外观包括颜色、圆角、边框、焦点、内边距、最小尺寸、对齐和阴影。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui/draw
+#ui/widgets
+
+fn main() int {
+    mut styles := widgets.light_styles()
+    styles.text_scale = 1.4
+    styles.density = 0.85
+    styles.button.radius = 10.0
+    styles.button.icon_placement = widgets.icon_trailing
+    mut rule := widgets.state_paint(widgets.state_focused | widgets.state_invalid)
+    rule.unless = widgets.state_disabled
+    rule.fields = widgets.paint_border | widgets.paint_focus
+    rule.border = draw.rgb(220, 38, 38)
+    rule.focus = draw.rgb(251, 113, 133)
+    styles.button.states.push(rule)
+    styles.validate() or (err) {
+        eprintln(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre></div>
+<table><thead><tr><th>控件</th><th>可调整内容与入口</th></tr></thead><tbody>
+<tr><td>Button</td><td>measure_styled / paint_styled；图片用 measure_icon_styled / paint_icon_styled，支持四向位置、间距和禁用透明度</td></tr>
+<tr><td>Checkbox</td><td>字体、间距、指示器尺寸、标记线宽；勾选标记与标签分别取色</td></tr>
+<tr><td>Input / TextArea</td><td>字体、行高、内边距、占位、选区前景 / 背景、光标、预编辑下划线、只读与错误状态</td></tr>
+<tr><td>Progress</td><td>轨道、指示条、尺寸、圆角、禁用和错误状态</td></tr>
+<tr><td>Scroll</td><td>滚动条宽度、边距、最小滑块、焦点和状态；paint_scrollbar 放在 overlay_styled 中</td></tr>
+</tbody></table>
+<p>基础状态位为 disabled=1、hovered=2、pressed=4、focused=8、selected=16、invalid=32、read_only=64。默认背景优先级是禁用 → 错误 → 只读 → 选中 → 按下 → 悬停 → 普通。StatePaint 的 when 位须全部匹配，unless 位须全部不匹配；按数组顺序覆盖，后匹配规则胜出，仅修改 fields 指定的颜色 / 图标透明度。每个控件最多 32 条规则。</p>
+<h3 id="style-scopes">作用域、测量与缓存</h3>
+<p><code>View.set_styles</code> 设置根主题。<code>set_style_scope</code> 保存完整主题快照，后代继承到下一作用域；全局主题变化不会覆盖显式局部主题。<code>clear_style_scope</code> 恢复继承；<code>styles_for</code> 返回独立克隆。颜色或装饰变化只使绘制缓存失效；字体或尺寸变化还会重新测量通过 <code>set_style_measure</code> 注册的节点。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui/widgets
+
+fn configure(view &amp;mut widgets.View, brand_node int, label_node int) int {
+    styles := widgets.light_styles()
+    view.set_styles(&amp;styles) or &gt;&gt;
+    mut local := styles.clone()
+    local.button.radius = 12.0
+    view.set_style_scope(brand_node, &amp;local) or &gt;&gt;
+    view.set_style_measure(label_node, true) or &gt;&gt;
+    view.mark_measure(label_node) or &gt;&gt;
+    &lt;&lt; 0
+}
+fn main() int { &lt;&lt; 0 }</code></pre></div>
+<p>StyledPainter 的 measure_styled / paint_styled / overlay_styled 借用当前有效主题。调用 <code>layout_styled</code>，同步编辑器位置，再调用 <code>present_styled</code>；无脏更新时返回 false。<code>snapshot_styled</code> 用于离屏结果。标签使用 StyledLabel 缓存排版；修改文字后 set_text 并 mark_measure。回调中不修改 View 或拓扑；资源在窗口关闭时释放。</p>
+<p>旧的八字段 Theme 和 paint 接口继续兼容。主题由应用显式切换；原生菜单 / 对话框跟随平台外观，WebView 使用 CSS。阴影是最多八层的有界近似。当前控件范围是上表各项，自定义控件通过 StyledPainter 接入。</p>
+<h2 id="editors">编辑控件与 IME</h2>
+<p><code>widgets.input</code> 与 <code>text_area</code> 创建持久 Editor。聚焦时原生 TextInput 会话拥有编辑和预编辑状态；失焦后 Editor 保留提交值。支持选区拖动、方向键、Home / End、Shift 扩选、系统复制 / 剪切 / 粘贴；单行 Enter 提交，多行 Enter 换行。剪贴板异步结果仅用于发起时的会话版本。</p>
+<p><code>set_read_only(true)</code> 释放原生输入会话，保留本地选择、导航和复制，拒绝输入、剪切和粘贴，迟到 IME 提交不改值。<code>enable(false)</code> 禁用交互。文本最多 16384 字节 UTF-8，不含 NUL；大文本和大字体组合还受原生排版预算限制。选区索引为 UTF-8 字节位置。Windows 命中查询需要 DirectWrite；旧 Wine 缺少对应实现。</p>
+<h2 id="menus-screens">结构化菜单与屏幕</h2>
+<p><code>Window.set_menu_entries</code> 原子替换每窗菜单树。根 parent=-1 且必须是 submenu，其余 parent 是更早的 submenu 数组下标；最多 256 项、深度 8。只有 menu_check 可 checked，只有 action / check 可设置快捷键。menu_primary 在 macOS 对应 Command，在 Windows / GTK 对应 Control。点击以 ev_menu_clicked 返回，应用更新勾选状态后重新设置菜单。macOS 在未提供时补充标准 Edit 菜单。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui
+
+fn configure_menu(window &amp;ui.Window) int {
+    mut entries := []ui.MenuEntry{}
+    entries.push(ui.submenu(&quot;document&quot;, &quot;Document&quot;, -1))
+    mut reset := ui.menu_action(&quot;reset&quot;, &quot;Reset&quot;, 0)
+    reset.key = 82
+    reset.modifiers = ui.menu_primary | ui.mod_shift
+    entries.push(reset)
+    entries.push(ui.menu_separator(0))
+    entries.push(ui.menu_check(&quot;readonly&quot;, &quot;Read only&quot;, 0, false))
+    window.set_menu_entries(entries) or &gt;&gt;
+    &lt;&lt; 0
+}
+fn main() int { &lt;&lt; 0 }</code></pre></div>
+<p><code>Window.screens_async</code> 返回 Request；完成后用 <code>screen_result</code> 解码 bounds、work_area、scale、primary / current。先检查 primary_known / work_area_known。Windows 桌面矩形是物理像素，macOS / GTK 是逻辑桌面坐标，由 physical_coordinates 标明；均不能直接当作画布局部坐标。</p>
+<h2 id="requests">异步桌面请求</h2>
+<p>剪贴板、文件选择、提示、屏幕与 WebView 原生查询返回 ui.Request；接收 ev_request 后用 request_of 解码，再用 result.matches 校验完整身份。提交成功只代表已受理。status 分别为 completed=0、cancelled=1、failed=2、unsupported=3、timed_out=4；空字符串也可能是成功结果。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui
+
+fn handle_result(event &amp;ui.Event, pending &amp;ui.Request) int {
+    if event.kind != ui.ev_request { &lt;&lt; 0 }
+    result := ui.request_of(event) or &gt;&gt;
+    if !result.matches(pending) { &lt;&lt; 0 }
+    if result.status == ui.request_completed { println(result.value) }
+    &lt;&lt; 0
+}
+fn main() int { &lt;&lt; 0 }</code></pre></div>
+<p>RequestOptions.timeout_ms=0 使用 5000 ms，合法显式范围为 1–3600000 ms；提示框默认 300000 ms。Request.cancel 返回是否受理取消，不能撤销已经完成的剪贴板写入。保持事件消费者运行，关闭窗口后不再复用该 generation 的请求或资源。</p>
+<h2 id="webview">WebView 请求生命周期</h2>
+<p>用 <code>bind_ipc_requests_www</code> 接收 InvokeRequest（id、window_id、generation、name、payload），与 App.run 分开在 Xu worker 中运行。网页调用如下；返回值是带 id 和 cancel() 的 Promise。JS 默认超时 30000 ms，显式范围 1–3600000 ms；支持 AbortSignal。listen 返回解除订阅函数。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-javascript">const controller = new AbortController();
+const pending = window.__XU__.invoke(&quot;echo&quot;, &quot;Hello 世界&quot;, {
+  timeoutMs: 5000,
+  signal: controller.signal
+});
+pending.then(value =&gt; console.log(pending.id, value))
+       .catch(error =&gt; console.log(error.name, error.message));
+// pending.cancel();  // or controller.abort()</code></pre></div>
+<p>单个 invoke 请求（含协议头）及返回值最多 1 MiB；最多 64 个活跃派发额度，排队请求体 / 结果共用 8 MiB。请求名最多 256 个 UTF-8 字节。取消、导航和关闭会丢弃迟到结果；取消不能强制中断正在运行的用户回调，额度待回调返回后释放。并发请求可乱序完成。</p>
+<p><code>WebView.eval_async</code>、<code>find_async</code>、<code>cookies_async</code>、<code>set_cookie_async</code>、<code>clear_cookies_async</code> 使用相同 ui.Request / ev_request 生命周期，原生结果最多 64 KiB。原生完成回调在 UI 线程；应用派发在 Xu worker。兼容等待接口不消费 App 的公开事件队列。每窗 / 文档身份隔离，导航后不能把旧结果应用到新页面。</p>
+<p><a href="/docs/tutorial/16">桌面教程</a> · <a href="/api/preview">开发预览 API 索引</a></p>

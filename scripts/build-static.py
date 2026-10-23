@@ -216,7 +216,15 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
             raise ValueError('WASM build checksum does not match; run make wasm')
     for source in pages.values():
         if 'api' in source.relative_to(root / 'content').parts:
-            recorded = re.search(r'<!--xu-api-version:\s*(.*?)-->', source.read_text())
+            text = source.read_text()
+            recorded = re.search(r'<!--xu-api-version:\s*(.*?)-->', text)
+            relative = source.relative_to(root / 'content')
+            if relative.parts[1:3] == ('api', 'preview'):
+                if (not recorded or not re.fullmatch(r'\d+\.\d+\.\d+-(?:dev|rc)\.\d+', recorded[1].strip())
+                        or '<!--xu-api-channel: preview-->' not in text
+                        or not re.search(r'<!--xu-api-source-sha256: [0-9a-f]{64}-->', text)):
+                    raise ValueError('preview API must identify its prerelease SDK and source digest')
+                continue
             if not recorded or recorded[1].strip() != xu_version:
                 raise ValueError(f'API version does not match Xu {xu_version}; regenerate API from the matching SDK')
     benchmark = json.loads((root / 'www/benchmarks.json').read_text())

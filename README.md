@@ -175,3 +175,15 @@ Import verifies compiler identities, source closure, fixed point, workload compl
 `.github/workflows/pages.yml` checks release alignment, verifies published SDK SHA-256 digests, compiles the playground, builds the site, and deploys to GitHub Pages on pushes to `main`.
 
 </details>
+
+### UI development documentation
+
+The [UI guide](content/en/docs/ui.html) and [Chinese guide](content/zh/docs/ui.html) cover the UI development branch through Xu 0.10.1-dev.3. The generated reference is separate from the selected release at `/api/preview/` (Chinese: `/zh/api/preview/`). Its banner and source SHA-256 identify the development input, including possible uncommitted changes. It does not update the official SDK version, download links or bundled release examples.
+
+```sh
+python3 scripts/gen-api.py --src /path/to/xu-ui/src --preview --package ui
+make build
+make check
+```
+
+`--package ui` includes `ui`, `ui/draw`, `ui/layout`, `ui/widgets` and `ui/webview`. Handwritten usage guides live in `templates/api-guides/{en,zh}/preview/ui*`; bilingual semantic contracts and field descriptions live in `templates/api-preview-contracts.json`. The generator extracts signatures and public fields from source, merges these descriptions, and excludes private fields and internal packages. Re-run the command after changing UI APIs. Development example projects remain in the matching examples checkout until they have an immutable published revision.

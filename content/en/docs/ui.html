@@ -1,8 +1,127 @@
 <!--title: UI / WebView-->
-<p class="crumb"><a href="/en/docs/start">Docs</a> / </p>
+<p class="crumb"><a href="/docs/start">Docs</a> / </p>
 <h1>UI / WebView</h1>
-<p><code>#ui</code> provides windows, menus, tray icons, and the event loop. <code>#ui/webview</code> supplies HTML content and IPC; <code>#ui/draw</code> provides an immediate-mode canvas. Each app has main.xu, xu.xun, brand/, and optional www/ assets.</p>
-<p>Desktop packaging uses xu-desktop beside the compiler. macOS produces .app bundles with AppKit/WebKit; Windows x64/arm64 produces .exe with native host code and WebView2; Linux x64/arm64 produces ELF using GTK4 and, for WebView, WebKitGTK 6.0. Matching compiler/linker and SDK dependencies are required: run xu doctor for the chosen target first.</p><pre><code># From the examples repository root
-xu doctor --desktop --target macos-arm64
-xu build examples/16_ui_webview/open --target macos-arm64 --desktop --output /tmp/XuOpen
-open /tmp/XuOpen.app</code></pre><p>brand/ must contain a PNG icon. www/ is embedded into the native artifact and served through xu://; remote HTTP(S) content is also supported. Cross-generation alone is not a target-machine runtime test. <code>XU_UI_SIM=1</code> exercises the in-process simulation; missing host integration reports <code>ui: host not available</code>.</p><p><a href="/en/docs/tutorial/16">Desktop tutorial</a></p>
+<p class="banner">UI development branch: drawing and retained layout require Xu 0.10.0+; editors, extended menus, screens and WebView requests require 0.10.1-dev.2+; control styles require 0.10.1-dev.3+. These development features are unreleased. Build the matching SDK from source.</p>
+<p><code>#ui</code> owns windows, events and desktop services; <code>#ui/draw</code> records drawing frames; <code>#ui/layout</code> computes layout; <code>#ui/widgets</code> manages controls, interaction and retained scenes; <code>#ui/webview</code> hosts web content and request bridging.</p>
+<p><a href="/api/preview/ui"><code>#ui</code></a> · <a href="/api/preview/ui/draw"><code>#ui/draw</code></a> · <a href="/api/preview/ui/layout"><code>#ui/layout</code></a> · <a href="/api/preview/ui/widgets"><code>#ui/widgets</code></a> · <a href="/api/preview/ui/webview"><code>#ui/webview</code></a></p>
+<h2 id="build">Build and examples</h2>
+<p>An application has <code>main.xu</code>, <code>xu.xun</code> and <code>brand/</code> containing a PNG icon, with optional <code>www/</code> resources. macOS uses AppKit/WebKit, Windows uses the native host and WebView2, and Linux uses GTK4 with WebKitGTK 6.0 for web content. Check the target toolchain before packaging.</p>
+<pre><code># Run from the matching Xu source root; the application must contain xu.xun
+bin/xu doctor --desktop --target macos-arm64
+bin/xu build /path/to/examples/examples/16_ui_webview/style_gallery \
+  --target macos-arm64 --desktop -o /tmp/XuStyles</code></pre>
+<p>The examples repository provides <code>python3 scripts/ui_examples.py check all</code> and <code>run style_gallery</code>; set <code>XU_ROOT</code> to the matching compiler checkout. Outputs go to <code>build/ui/&lt;target&gt;/</code>: .app on macOS, .exe on Windows and ELF on Linux. Cross compilation does not establish target-machine interaction support.</p>
+<table><thead><tr><th>Learning order</th><th>Examples</th><th>Focus</th></tr></thead><tbody>
+<tr><td>Drawing</td><td>draw, draw_gallery</td><td>Frames, paths, gradients, text, resources and caching</td></tr>
+<tr><td>Controls and input</td><td>widgets, text_input, editor_workbench</td><td>Layout, focus, IME, Input / TextArea</td></tr>
+<tr><td>Styles</td><td>style_gallery</td><td>Themes, text scaling, density, scopes, states, icons and scrollbars</td></tr>
+<tr><td>Desktop applications</td><td>desktop_services, multiwindow, workbench</td><td>Async services, window identity and integration</td></tr>
+<tr><td>Web content</td><td>webview_requests, open, shaped, remote</td><td>Request lifetime, web shells, transparent windows and remote content</td></tr>
+</tbody></table>
+<h2 id="frames">Drawing frames and resources</h2>
+<p>One worker consumes <code>App.event_ch</code>. Wait for <code>canvas_ready</code>, then obtain a Context with <code>draw.context_of</code>. Contexts and resources belong to a canvas_id / generation and expire when the window closes. Start each recording with <code>Context.new_frame</code> / <code>Frame.begin</code>, record a complete frame and call <code>present</code> once; use <code>cancel</code> on failure. Keep the previous frame while idle. Coalesce queued input events before presenting.</p>
+<p>Frame coordinates are floating-point logical pixels with the origin at the top left. <code>Frame.scale(1.0, 1.0)</code> is identity; the compatible package-level <code>draw.scale(100, 100)</code> uses percentages. <code>push</code> / <code>pop</code> preserve transforms, clipping and pen state and must balance. A frame is bounded to 4 MiB, 100000 commands and 256 state levels. DisplayList reuses commands; Surface / SurfaceCache reuse raster results.</p>
+<p><strong>Canvas panning is off by default.</strong> On macOS, Windows and Linux, call <code>draw.set_pan_enabled(1)</code> after canvas readiness to enable built-in drag / wheel panning. Disabling resets the offset. Applications still receive drag and wheel events. Widget attach enables input and disables the camera.</p>
+<p>Image, TextLayout, DisplayList, Surface, caches and input sessions have explicit disposal methods. Keep referenced resources alive until the recording is accepted by <code>present</code>, <code>freeze</code> or <code>snapshot</code>; accepted records retain their resource versions. Copying a resource handle does not create an independent resource; follow each clone / dispose contract.</p>
+<h2 id="layout">Retained layout and events</h2>
+<p><code>Constraints</code> flow from parent to child and measured sizes return upward. The layout tree supports row / column / stack / padding, with at most 4096 nodes and depth 64. <code>View</code> maintains stable node IDs, dirty flags, hit testing and repaint boundaries. It does not build virtual-list items on demand.</p>
+<p>Route keyboard and pointer events through <code>dispatch_event</code>, and send native text events and clipboard results to <code>Editor.event</code>. Callback paint rectangles and pointer positions are node-local; <code>node_bounds</code> / <code>Editor.place</code> use canvas coordinates. After layout or ancestor scrolling, call <code>place_editor</code> before painting to synchronize hit testing and IME geometry. Enable <code>set_capture_outside</code> for scroll nodes so thumb dragging continues outside the viewport.</p>
+<h2 id="styles">Control styles</h2>
+<p><code>dark_styles</code>, <code>light_styles</code> and <code>contrast_styles</code> create complete Styles. <code>font</code> and <code>text_scale</code> control typography; <code>density</code> scales geometry. A ControlStyle can select a local font with <code>inherit_font = false</code>. Appearance includes colors, radius, borders, focus rings, padding, minimum size, alignment and shadows.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui/draw
+#ui/widgets
+
+fn main() int {
+    mut styles := widgets.light_styles()
+    styles.text_scale = 1.4
+    styles.density = 0.85
+    styles.button.radius = 10.0
+    styles.button.icon_placement = widgets.icon_trailing
+    mut rule := widgets.state_paint(widgets.state_focused | widgets.state_invalid)
+    rule.unless = widgets.state_disabled
+    rule.fields = widgets.paint_border | widgets.paint_focus
+    rule.border = draw.rgb(220, 38, 38)
+    rule.focus = draw.rgb(251, 113, 133)
+    styles.button.states.push(rule)
+    styles.validate() or (err) {
+        eprintln(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre></div>
+<table><thead><tr><th>Control</th><th>Style options and entry points</th></tr></thead><tbody>
+<tr><td>Button</td><td>measure_styled / paint_styled; measure_icon_styled / paint_icon_styled for images, four placements, spacing and disabled opacity</td></tr>
+<tr><td>Checkbox</td><td>Font, spacing, indicator size and mark width; separate colors for the selected mark and label</td></tr>
+<tr><td>Input / TextArea</td><td>Font, line height, padding, placeholder, selection foreground / background, caret, preedit underline, read-only and invalid states</td></tr>
+<tr><td>Progress</td><td>Track, indicator, size, radius, disabled and invalid states</td></tr>
+<tr><td>Scroll</td><td>Scrollbar width, padding, minimum thumb size, focus and states; paint_scrollbar in overlay_styled</td></tr>
+</tbody></table>
+<p>State bits are disabled=1, hovered=2, pressed=4, focused=8, selected=16, invalid=32 and read_only=64. Default background precedence is disabled → invalid → read-only → selected → pressed → hovered → normal. A StatePaint matches all when bits and none of the unless bits. Rules apply in array order; the last matching override wins for the colors / icon opacity selected by fields. Each control permits at most 32 rules.</p>
+<h3 id="style-scopes">Scopes, measurement and caching</h3>
+<p><code>View.set_styles</code> sets the root theme. <code>set_style_scope</code> stores a complete snapshot inherited until another scope; later global changes preserve explicit local themes. <code>clear_style_scope</code> restores inheritance; <code>styles_for</code> returns an owned clone. Palette and decoration changes invalidate painting; font and geometry changes also remeasure nodes registered with <code>set_style_measure</code>.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui/widgets
+
+fn configure(view &amp;mut widgets.View, brand_node int, label_node int) int {
+    styles := widgets.light_styles()
+    view.set_styles(&amp;styles) or &gt;&gt;
+    mut local := styles.clone()
+    local.button.radius = 12.0
+    view.set_style_scope(brand_node, &amp;local) or &gt;&gt;
+    view.set_style_measure(label_node, true) or &gt;&gt;
+    view.mark_measure(label_node) or &gt;&gt;
+    &lt;&lt; 0
+}
+fn main() int { &lt;&lt; 0 }</code></pre></div>
+<p>StyledPainter's measure_styled / paint_styled / overlay_styled borrow the effective theme. Call <code>layout_styled</code>, synchronize editor placement, then <code>present_styled</code>, which returns false when clean. Use <code>snapshot_styled</code> for offscreen output. StyledLabel caches text layout; call set_text and mark_measure after changing a label. Callbacks must not mutate View or its topology. Dispose resources when their window closes.</p>
+<p>The existing eight-field Theme and paint APIs remain compatible. Applications switch themes explicitly. Native menus / dialogs follow platform appearance, while WebView content uses CSS. Shadows use a bounded approximation of at most eight layers. The table lists the current built-in controls; custom controls can implement StyledPainter.</p>
+<h2 id="editors">Editors and IME</h2>
+<p><code>widgets.input</code> and <code>text_area</code> create a persistent Editor. While focused, native TextInput owns editing and composition; Editor retains committed text between focus lifetimes. Controls support dragged selection, arrow keys, Home / End, Shift selection and system copy / cut / paste shortcuts. Enter submits a single line or inserts a newline in TextArea. Async clipboard edits apply only to the session revision that requested them.</p>
+<p><code>set_read_only(true)</code> releases the native input session while preserving local selection, navigation and copying. It rejects typing, cut and paste, including late IME commits. <code>enable(false)</code> disables interaction. Text is at most 16384 UTF-8 bytes without NUL; large text and font combinations also face native shaping budgets. Selection offsets are UTF-8 byte positions. Windows hit testing requires DirectWrite; older Wine lacks the implementation.</p>
+<h2 id="menus-screens">Structured menus and screens</h2>
+<p><code>Window.set_menu_entries</code> atomically replaces a per-window menu tree. Root entries have parent=-1 and must be submenus; other parents are earlier submenu array indexes. Limits are 256 entries and depth 8. Only menu_check can be checked, and only action / check entries can have shortcuts. menu_primary maps to Command on macOS and Control on Windows / GTK. Clicks produce ev_menu_clicked; the application owns subsequent check state. macOS adds a standard Edit menu when absent.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui
+
+fn configure_menu(window &amp;ui.Window) int {
+    mut entries := []ui.MenuEntry{}
+    entries.push(ui.submenu(&quot;document&quot;, &quot;Document&quot;, -1))
+    mut reset := ui.menu_action(&quot;reset&quot;, &quot;Reset&quot;, 0)
+    reset.key = 82
+    reset.modifiers = ui.menu_primary | ui.mod_shift
+    entries.push(reset)
+    entries.push(ui.menu_separator(0))
+    entries.push(ui.menu_check(&quot;readonly&quot;, &quot;Read only&quot;, 0, false))
+    window.set_menu_entries(entries) or &gt;&gt;
+    &lt;&lt; 0
+}
+fn main() int { &lt;&lt; 0 }</code></pre></div>
+<p><code>Window.screens_async</code> returns a Request. Decode a completed result with <code>screen_result</code> for bounds, work_area, scale and primary / current. Check primary_known / work_area_known first. Windows desktop rectangles use physical pixels; macOS / GTK use logical desktop coordinates, identified by physical_coordinates. Neither is canvas-local.</p>
+<h2 id="requests">Async desktop requests</h2>
+<p>Clipboard, file selection, prompts, screens and native WebView queries return ui.Request. Decode ev_request with request_of, then validate complete identity with result.matches. Submission means admission, not completion. Status values are completed=0, cancelled=1, failed=2, unsupported=3 and timed_out=4. An empty string can be a successful result.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui
+
+fn handle_result(event &amp;ui.Event, pending &amp;ui.Request) int {
+    if event.kind != ui.ev_request { &lt;&lt; 0 }
+    result := ui.request_of(event) or &gt;&gt;
+    if !result.matches(pending) { &lt;&lt; 0 }
+    if result.status == ui.request_completed { println(result.value) }
+    &lt;&lt; 0
+}
+fn main() int { &lt;&lt; 0 }</code></pre></div>
+<p>RequestOptions.timeout_ms=0 selects 5000 ms; explicit timeouts range from 1 to 3600000 ms. Prompts default to 300000 ms. Request.cancel reports cancellation admission and cannot undo an already performed clipboard write. Keep the event consumer running and discard requests and resources belonging to closed window generations.</p>
+<h2 id="webview">WebView request lifecycle</h2>
+<p>Run <code>bind_ipc_requests_www</code> on a Xu worker separate from App.run to receive InvokeRequest with id, window_id, generation, name and payload. The page API returns a Promise with id and cancel(). JavaScript defaults to 30000 ms, allows 1–3600000 ms and supports AbortSignal. listen returns an unsubscribe function.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-javascript">const controller = new AbortController();
+const pending = window.__XU__.invoke(&quot;echo&quot;, &quot;Hello 世界&quot;, {
+  timeoutMs: 5000,
+  signal: controller.signal
+});
+pending.then(value =&gt; console.log(pending.id, value))
+       .catch(error =&gt; console.log(error.name, error.message));
+// pending.cancel();  // or controller.abort()</code></pre></div>
+<p>An invoke request including its header, or a response, is at most 1 MiB. There are at most 64 active dispatch leases and an 8 MiB shared queued body / result budget. Names are at most 256 UTF-8 bytes. Cancellation, navigation and closure discard late results. Cancellation does not interrupt running user code; its lease remains occupied until the callback returns. Concurrent requests may complete out of order.</p>
+<p><code>WebView.eval_async</code>, <code>find_async</code>, <code>cookies_async</code>, <code>set_cookie_async</code> and <code>clear_cookies_async</code> share the ui.Request / ev_request lifecycle with results bounded to 64 KiB. Native completion callbacks run on the UI thread; application dispatch runs on Xu workers. Compatibility wait APIs do not drain the public App event queue. Window and document ownership prevent old results from reaching a newly navigated page.</p>
+<p><a href="/docs/tutorial/16">Desktop tutorial</a> · <a href="/api/preview">Development preview API index</a></p>
