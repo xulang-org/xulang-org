@@ -18,6 +18,30 @@ spec.loader.exec_module(api)
 
 
 class APIGenerationTests(unittest.TestCase):
+    def test_usage_links_and_downloads_include_examples_after_inline_limit(self):
+        examples = [api.Example(f'examples/{i}/main.xu', '#ui/widgets\n', 'a' * 40,
+                               {'ui/widgets': {'style_switcher'} if i == 3 else {'button'}})
+                    for i in range(4)]
+        package = api.Package('ui/widgets', '#ui/widgets', items=[
+            api.Item('fn', 'style_switcher', 'pub fn style_switcher() StyleSwitcher')])
+        for lang in ('en', 'zh'):
+            page = api.render_page(package, lang, '0.10.1', examples=examples)
+            related = examples[3]
+            self.assertIn(f'id="{related.anchor}"', page)
+            self.assertIn(f'href="#{related.anchor}"', page)
+            self.assertIn(f'href="{related.asset_url}" download', page)
+
+    def test_released_ui_examples_cover_every_public_package(self):
+        names = ('ui', 'ui/draw', 'ui/layout', 'ui/widgets', 'ui/webview')
+        packages = [api.Package(name, '#' + name) for name in names]
+        examples = api.load_examples(str(ROOT), packages, (ROOT / 'VERSION').read_text().strip())
+        for name in names:
+            self.assertTrue(examples.get(name), name)
+        collected = {ex.path for group in examples.values() for ex in group}
+        for name in ('draw_gallery', 'widgets', 'text_input', 'desktop_services', 'multiwindow',
+                     'workbench', 'editor_workbench', 'style_gallery', 'webview_requests', 'controls_gallery'):
+            self.assertIn(f'examples/16_ui_webview/{name}/main.xu', collected)
+
     def test_example_import_aliases_ignore_comments_and_strings(self):
         uses = api.example_uses('''@main
 #io

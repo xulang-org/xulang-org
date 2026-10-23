@@ -101,6 +101,27 @@ class StaticSiteTests(unittest.TestCase):
         site.build(self.source, output, '/xulang-org')
         self.assertFalse((output / 'stale.html').exists())
 
+    def test_released_ui_navigation_and_legacy_preview_bookmarks(self):
+        output = self.workspace / 'released-ui'
+        site.build(self.source, output, '/repo')
+        packages = ('ui', 'ui/draw', 'ui/layout', 'ui/widgets', 'ui/webview')
+        for prefix in ('', '/zh'):
+            for package in ('', *packages):
+                route = prefix + '/api' + ('/' + package if package else '')
+                page = (output / route.strip('/') / 'index.html').read_text()
+                sidebar = page.split('<aside', 1)[1].split('</aside>', 1)[0]
+                for target in packages:
+                    self.assertIn(f'href="/repo{prefix}/api/{target}/"', sidebar)
+                self.assertNotIn('/api/preview', sidebar)
+            for suffix in ('', *packages):
+                legacy = prefix + '/api/preview' + ('/' + suffix if suffix else '')
+                destination = '/repo' + prefix + '/api' + ('/' + suffix if suffix else '') + '/'
+                alias = (output / legacy.strip('/') / 'index.html').read_text()
+                self.assertIn(f'location.replace("{destination}" + location.search + location.hash)', alias)
+                self.assertIn('content="noindex"', alias)
+                self.assertNotIn('unreleased', alias)
+        self.assertNotIn('/api/preview', (output / 'sitemap.xml').read_text())
+
     def test_rewrite_preserves_examples_queries_and_fragments(self):
         parser = site.RewriteHTML('/repo', {'/api'}, False)
         parser.feed('<a href="/api?q=a&amp;b=c#item">API</a><a href="//example.org/x">External</a>'

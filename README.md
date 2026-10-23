@@ -176,14 +176,18 @@ Import verifies compiler identities, source closure, fixed point, workload compl
 
 </details>
 
-### UI development documentation
+### UI API and examples
 
-The [UI guide](content/en/docs/ui.html) and [Chinese guide](content/zh/docs/ui.html) cover the UI development branch through Xu 0.10.1-dev.3. The generated reference is separate from the selected release at `/api/preview/` (Chinese: `/zh/api/preview/`). Its banner and source SHA-256 identify the development input, including possible uncommitted changes. It does not update the official SDK version, download links or bundled release examples.
+The [UI guide](content/en/docs/ui.html) and [Chinese guide](content/zh/docs/ui.html) document the official Xu 0.10.1 SDK. All five packages — `ui`, `ui/draw`, `ui/layout`, `ui/widgets` and `ui/webview` — appear in the released API navigation. Former UI preview URLs redirect to the corresponding released pages while preserving declaration anchors.
+
+Handwritten release guides live in `templates/api-guides/{en,zh}/ui*`; semantic contracts and field descriptions live in `templates/api-contracts.json`. Run `make api` with the selected release SDK to regenerate declarations. The curated source catalog includes drawing, layout, editors, desktop services, windows, WebView requests, styles and the extended controls gallery. Each example links to its immutable complete project and a checksum-verified source download.
+
+For a future unreleased API, the generator still supports an explicit development preview without changing the selected release:
 
 ```sh
-python3 scripts/gen-api.py --src /path/to/xu-ui/src --preview --package ui
+python3 scripts/gen-api.py --src /path/to/development-sdk/src --preview --package ui
 make build
 make check
 ```
 
-`--package ui` includes `ui`, `ui/draw`, `ui/layout`, `ui/widgets` and `ui/webview`. Handwritten usage guides live in `templates/api-guides/{en,zh}/preview/ui*`; bilingual semantic contracts and field descriptions live in `templates/api-preview-contracts.json`. The generator extracts signatures and public fields from source, merges these descriptions, and excludes private fields and internal packages. Re-run the command after changing UI APIs. Development example projects remain in the matching examples checkout until they have an immutable published revision.
+Preview guides and contracts use `templates/api-guides/{en,zh}/preview/ui*` and `templates/api-preview-contracts.json`. An explicitly generated preview carries its development SDK version and source SHA-256 and takes precedence over legacy redirects. Release builds continue to use the selected official SDK and bundled example snapshots.
