@@ -6,18 +6,19 @@
 <p><a href="/zh/api/ui"><code>#ui</code></a> · <a href="/zh/api/ui/draw"><code>#ui/draw</code></a> · <a href="/zh/api/ui/layout"><code>#ui/layout</code></a> · <a href="/zh/api/ui/widgets"><code>#ui/widgets</code></a> · <a href="/zh/api/ui/webview"><code>#ui/webview</code></a></p>
 <h2 id="build">构建与示例</h2>
 <p>应用包含 <code>main.xu</code>、<code>xu.xun</code>、带 PNG 图标的 <code>brand/</code>；WebView 可添加 <code>www/</code>。macOS 使用 AppKit/WebKit，Windows 使用原生宿主与 WebView2，Linux 使用 GTK4，网页另需 WebKitGTK 6.0。先检查目标工具链，再打包。</p>
-<pre><code># 从匹配的 Xu 源码根目录运行；应用目录须有 xu.xun
+<pre><code># 从匹配的正式 SDK根目录运行；应用目录须有 xu.xun
 bin/xu doctor --desktop --target macos-arm64
-bin/xu build /path/to/examples/examples/16_ui_webview/style_gallery \
+XU_UI_PACK=1 bin/xu build /path/to/examples/examples/16_ui_webview/style_gallery \
   --target macos-arm64 --desktop -o /tmp/XuStyles</code></pre>
-<p>示例仓库提供 <code>python3 scripts/ui_examples.py check all</code> 和 <code>run style_gallery</code>；通过 <code>XU_ROOT</code> 选择匹配的 Xu 源码。输出放在 <code>build/ui/&lt;target&gt;/</code>。macOS 为 .app，Windows 为 .exe，Linux 为 ELF。跨目标编译不等于目标机交互验收。</p>
+<p>示例仓库提供 <code>python3 scripts/ui_examples.py check all</code> 和 <code>run style_gallery</code>；通过 <code>XU_ROOT</code> 选择匹配的正式 SDK。输出放在 <code>build/ui/&lt;target&gt;/</code>。macOS 为 .app，Windows 为 .exe，Linux 为 ELF。跨目标编译不等于目标机交互验收。</p>
 <table><thead><tr><th>学习顺序</th><th>示例</th><th>关注内容</th></tr></thead><tbody>
-<tr><td>绘图</td><td>draw、draw_gallery</td><td>帧、路径、渐变、文字、资源与缓存</td></tr>
-<tr><td>控件与输入</td><td>widgets、text_input、editor_workbench</td><td>布局、焦点、IME、Input / TextArea</td></tr>
-<tr><td>样式</td><td>style_gallery</td><td>主题、缩放、密度、局部主题、状态、图标与滚动条</td></tr>
-<tr><td>桌面应用</td><td>desktop_services、multiwindow、workbench</td><td>异步服务、窗口身份与综合应用</td></tr>
-<tr><td>网页</td><td>webview_requests、open、shaped、remote</td><td>请求生命周期、网页壳、透明窗口和远程内容</td></tr>
-</tbody></table>
+<tr><td>绘图</td><td><a href="/zh/api/ui/draw#example-0d167b78a79e"><code>draw</code></a>、<a href="/zh/api/ui/draw#example-6a8e15392deb"><code>draw_gallery</code></a></td><td>帧、路径、渐变、文字、资源与缓存</td></tr>
+<tr><td>控件与输入</td><td><a href="/zh/api/ui/widgets#example-ba09d69a23c3"><code>widgets</code></a>、<a href="/zh/api/ui/layout#example-008f8a20c76f"><code>text_input</code></a>、<a href="/zh/api/ui/widgets#example-114841dc1d17"><code>editor_workbench</code></a></td><td>布局、焦点、IME、Input / TextArea</td></tr>
+<tr><td>样式</td><td><a href="/zh/api/ui/widgets#example-9beafed00ebd"><code>style_gallery</code></a></td><td>主题、缩放、密度、局部主题、状态、图标与滚动条</td></tr>
+<tr><td>桌面应用</td><td><a href="/zh/api/ui#example-3333a8369d2f"><code>desktop_services</code></a>、<a href="/zh/api/ui#example-029ecd67df0f"><code>multiwindow</code></a>、<a href="/zh/api/ui/widgets#example-b1a0463173fe"><code>workbench</code></a></td><td>异步服务、窗口身份与综合应用</td></tr>
+<tr><td>网页</td><td><a href="/zh/api/ui/webview#example-9bee402dcd14"><code>webview_requests</code></a>、<a href="/zh/api/ui/webview#example-efd1ed863bda"><code>open</code></a>、<a href="/zh/api/ui#example-87c5e058faf2"><code>shaped</code></a>、<a href="/zh/api/ui/webview#example-41d09e469fb1"><code>remote</code></a></td><td>请求生命周期、网页壳、透明窗口和远程内容</td></tr>
+<tr><td>扩展控件</td><td><a href="/zh/api/ui/widgets#example-f3f5764ed94e"><code>controls_gallery</code></a></td><td>Switch / Radio / Slider / Stepper / Tabs / Select / ListBox / Badge / Divider / Card / StyleSwitcher</td></tr></tbody></table>
+<p>正式 SDK 的示例启动器会设置 <code>XU_UI_PACK=1</code>，使桌面 worker 使用较大的 UI 栈；直接运行打包命令时同样设置该编译配置。</p>
 <h2 id="frames">绘图帧与资源</h2>
 <p>一个 worker 消费 <code>App.event_ch</code>；等待 <code>canvas_ready</code> 后，用 <code>draw.context_of</code> 取得 Context。Context 与资源属于 canvas_id / generation，关闭窗口后失效。每次以 <code>Context.new_frame</code> / <code>Frame.begin</code> 开始，记录完整帧后只调用一次 <code>present</code>；失败时 <code>cancel</code>。空闲时保留上一帧，不持续重绘。可先合并排队事件，再提交一次绘制。</p>
 <p>Frame 的坐标是浮点逻辑像素，原点在左上角；<code>Frame.scale(1.0, 1.0)</code> 是原比例。兼容的包级 <code>draw.scale(100, 100)</code> 使用百分比。<code>push</code> / <code>pop</code> 同时保存变换、裁剪与画笔；栈必须配对。Frame 上限为 4 MiB、100000 条命令、256 层状态。DisplayList 复用命令，Surface / SurfaceCache 复用栅格结果。</p>
@@ -75,7 +76,7 @@ fn configure(view &amp;mut widgets.View, brand_node int, label_node int) int {
 }
 fn main() int { &lt;&lt; 0 }</code></pre></div>
 <p>StyledPainter 的 measure_styled / paint_styled / overlay_styled 借用当前有效主题。调用 <code>layout_styled</code>，同步编辑器位置，再调用 <code>present_styled</code>；无脏更新时返回 false。<code>snapshot_styled</code> 用于离屏结果。标签使用 StyledLabel 缓存排版；修改文字后 set_text 并 mark_measure。回调中不修改 View 或拓扑；资源在窗口关闭时释放。</p>
-<p>旧的八字段 Theme 和 paint 接口继续兼容。主题由应用显式切换；原生菜单 / 对话框跟随平台外观，WebView 使用 CSS。阴影是最多八层的有界近似。当前控件范围是上表各项，自定义控件通过 StyledPainter 接入。</p>
+<p>旧的八字段 Theme 和 paint 接口继续兼容。主题由应用显式切换；原生菜单 / 对话框跟随平台外观，WebView 使用 CSS。阴影是最多八层的有界近似。扩展控件见下方说明；自定义控件通过 StyledPainter 接入。</p>
 <h2 id="editors">编辑控件与 IME</h2>
 <p><code>widgets.input</code> 与 <code>text_area</code> 创建持久 Editor。聚焦时原生 TextInput 会话拥有编辑和预编辑状态；失焦后 Editor 保留提交值。支持选区拖动、方向键、Home / End、Shift 扩选、系统复制 / 剪切 / 粘贴；单行 Enter 提交，多行 Enter 换行。剪贴板异步结果仅用于发起时的会话版本。</p>
 <p><code>set_read_only(true)</code> 释放原生输入会话，保留本地选择、导航和复制，拒绝输入、剪切和粘贴，迟到 IME 提交不改值。<code>enable(false)</code> 禁用交互。文本最多 16384 字节 UTF-8，不含 NUL；大文本和大字体组合还受原生排版预算限制。选区索引为 UTF-8 字节位置。Windows 命中查询需要 DirectWrite；旧 Wine 缺少对应实现。</p>

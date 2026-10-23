@@ -1,0 +1,142 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+demo #"github.com/xulang-org/examples/ui_demo"
+
+fn caption(id int) string {
+    if id == 0 { << "1 / Copy greeting" }
+    if id == 1 { << "2 / Read clipboard" }
+    if id == 2 { << "3 / Open files" }
+    if id == 3 { << "4 / Choose save path" }
+    if id == 4 { << "5 / Choose folders" }
+    if id == 5 { << "6 / Prompt (15s timeout)" }
+    << "Cancel pending request"
+}
+fn status_name(status int) string {
+    if status == ui.request_completed { << "completed" }
+    if status == ui.request_cancelled { << "cancelled" }
+    if status == ui.request_timed_out { << "timed out" }
+    if status == ui.request_unsupported { << "unsupported" }
+    << "failed"
+}
+fn submit(identity &ui.CanvasEvent,choice int) ui.Request {
+    options := ui.RequestOptions{timeout_ms: 5000}
+    if choice == 0 { value := "Hello from Xu UI 0.10 / 你好"
+        << ui.clipboard_write_async(identity,&value,&options) or >> }
+    if choice == 1 { << ui.clipboard_read_async(identity,&options) or >> }
+    if choice == 5 { prompt := ui.PromptOptions{title: "Your greeting",seed: "Hello, Xu",timeout_ms: 15000}
+        << ui.prompt_async(identity,&prompt) or >> }
+    mut files := ui.file_dialog_options()
+    if choice == 2 {
+        files.title = "Select one or more text files"
+        files.multiple = true
+        files.filters = [ui.FileFilter{label: "Text",extensions: ["txt","md","xu"]}]
+        << ui.open_files_async(identity,&files) or >>
+    }
+    if choice == 3 { files.title = "Choose a destination (this demo does not write)"
+        files.name = "xu-note.txt"
+        << ui.save_file_async(identity,&files) or >> }
+    files.title = "Choose folders"
+    files.multiple = true
+    << ui.select_folders_async(identity,&files) or >>
+}
+fn paint(context &draw.Context,frame &mut draw.Frame,message string,pending int) int {
+    frame.begin() or >>
+    frame.set_bg(demo.background()) or >>
+    demo.text(context,frame,28.0,26.0,14.0,demo.accent(),"05 / ASYNCHRONOUS DESKTOP SERVICES") or >>
+    demo.text(context,frame,28.0,58.0,28.0,demo.ink(),"A request is not a result.") or >>
+    for id in 0:7 {
+        y := 120.0 + f64(id) * 48.0
+        frame.fill_rect(28.0,y,370.0,38.0,draw.rgb(40,57,73)) or >>
+        demo.text(context,frame,40.0,y + 8.0,15.0,demo.ink(),caption(id)) or >>
+    }
+    demo.text(context,frame,430.0,124.0,17.0,demo.accent(),"Pending request: " + str(pending)) or >>
+    mut options := draw.text_options(16.0)
+    options.width = 360.0
+    mut label := context.layout_text(&message,&options) or >>
+    frame.text_layout(&label,430.0,172.0,demo.ink()) or >>
+    demo.text(context,frame,28.0,490.0,13.0,demo.muted(),"One event channel / request IDs / distinct terminal states / Escape to close") or >>
+    frame.present() or >>
+    label.dispose() or >>
+    << 0
+}
+fn scene(ech chan ui.Event) int {
+    ready := demo.ready(ech) or >>
+    if ready.kind == ui.ev_exit { << 0 }
+    identity := ui.canvas_of(&ready) or >>
+    context := draw.context_of(&ready) or >>
+    mut frame := context.new_frame(4096)
+    mut pending := ui.Request{id: 0,window_id: 0,canvas_id: 0,generation: 0,kind: 0}
+    mut message := "Choose an action. File dialogs return paths; selecting a save path does not write a file."
+    mut armed := -1
+    paint(&context,mut &frame,message + "",pending.id) or >>
+    while true {
+        event := demo.next(ech)
+        if event.kind == ui.ev_exit || event.kind == ui.ev_canvas_closed { <- }
+        if event.window_id != identity.window_id { -> }
+        mut dirty := event.kind == ui.ev_canvas_metrics
+        if event.kind == ui.ev_request {
+            result := ui.request_of(&event) or >>
+            if result.matches(&pending) {
+                message = "Request " + str(pending.id) + " " + status_name(result.status)
+                if result.status == ui.request_completed {
+                    if result.request.kind >= ui.request_open_files {
+                        paths := ui.file_paths(&result) or >>
+                        for path in paths { message = message + "\n" + path }
+                    } else { message = message + "\n" + result.value }
+                }
+                println("Request " + str(pending.id) + ": " + status_name(result.status))
+                pending.id = 0
+                dirty = true
+            }
+        }
+        if event.kind == ui.ev_blurred { armed = -1 }
+        if ui.is_input_event(event.kind) {
+            input := ui.input_of(&event) or >>
+            if input.generation != identity.generation { -> }
+            mut choice := -1
+            for id in 0:7 {
+                bounds := layout.Rect{x: 28.0,y: 120.0 + f64(id) * 48.0,width: 370.0,height: 38.0}
+                if bounds.contains(input.x,input.y) { choice = id }
+            }
+            if input.kind == ui.ev_pointer_down && input.button == ui.button_left { armed = choice }
+            if input.kind == ui.ev_pointer_cancel { armed = -1 }
+            mut activate := -1
+            if input.kind == ui.ev_pointer_up && input.button == ui.button_left {
+                if choice == armed { activate = choice }
+                armed = -1
+            }
+            if input.kind == ui.ev_key_down && input.repeat == 0 {
+                if input.key >= 49 && input.key <= 54 { activate = input.key - 49 }
+                if input.key == ui.key_escape { demo.quit() or >> }
+            }
+            if activate == 6 && pending.id > 0 { _ := pending.cancel()
+                message = "Cancellation requested; waiting for terminal result."
+                dirty = true }
+            if activate >= 0 && activate < 6 {
+                if pending.id == 0 {
+                    request := submit(&identity,activate) or (err) { message = err.msg()
+                        paint(&context,mut &frame,message + "",pending.id) or >>
+                        -> }
+                    pending = request
+                    message = "Request admitted. Keep interacting; the event loop remains active."
+                } else { message = "Finish or cancel the current request first." }
+                dirty = true
+            }
+        }
+        if dirty { paint(&context,mut &frame,message + "",pending.id) or >> }
+    }
+    if pending.id > 0 { _ := pending.cancel() }
+    frame.dispose()
+    << 0
+}
+fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
+    << } }
+fn launch() int {
+    mut app := demo.app("Xu UI / Desktop Services",850,550) or >>
+    xu worker(app.event_ch)
+    << app.run() or >>
+}
+fn main() int { << launch() or (err) { eprintln(err.msg())
+    << 1 } }

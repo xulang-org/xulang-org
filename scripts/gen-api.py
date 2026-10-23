@@ -2104,7 +2104,8 @@ def render_examples(examples: list[Example], lang: str) -> str:
     if len(examples) > 3:
         parts.append('<details class="api-example"><summary>' + ('更多相关示例' if zh else 'More related examples') + '</summary><ul>')
         for example in examples[3:]:
-            parts.append(f'<li><a href="{esc(example.project_url)}"><code>{esc(example.path.removeprefix("examples/"))}</code></a></li>')
+            parts.append(f'<li id="{example.anchor}"><a href="{esc(example.project_url)}"><code>{esc(example.path.removeprefix("examples/"))}</code></a> · '
+                         + f'<a href="{esc(example.asset_url)}" download>' + ('下载源码' if zh else 'Download source') + '</a></li>')
         parts.append('</ul></details>')
     parts.append('</section>')
     return '\n'.join(parts)
@@ -2173,7 +2174,7 @@ def render_item(pkg: Package, item: Item, lang: str, used_ids: dict, examples: S
         parts.append(f"<p>{esc(ret)}</p>")
     if item.kind in ('fn', 'struct', 'enum', 'const', 'iface'):
         module = pkg.import_path.split('#', 1)[1]
-        related = next((ex for ex in examples[:3] if item.name in ex.uses.get(module, set())), None)
+        related = next((ex for ex in examples if item.name in ex.uses.get(module, set())), None)
         if related:
             parts.append(f'<p><a href="#{related.anchor}">' + ('查看用法示例' if lang == 'zh' else 'See usage example') + '</a></p>')
     parts.append("</article>")
@@ -2241,7 +2242,8 @@ def render_index(packages: list[Package], lang: str, xu_version: str, examples: 
                      f'<p><a href="{prefix}/docs/ui">UI / WebView</a></p>'])
     groups: dict[str, list[Package]] = {}
     for pkg in standard:
-        group = pkg.path.split("/", 1)[0] if "/" in pkg.path else ("核心" if lang == "zh" else "Core")
+        group = ('UI' if pkg.path == 'ui' or pkg.path.startswith('ui/') else
+                 pkg.path.split("/", 1)[0] if "/" in pkg.path else ("核心" if lang == "zh" else "Core"))
         groups.setdefault(group, []).append(pkg)
     if external:
         groups["扩展包" if lang == "zh" else "External packages"] = external

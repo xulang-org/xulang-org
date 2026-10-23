@@ -7,13 +7,14 @@
 <p class="meta">counts: 100 函数, 46 方法, 29 类型, 132 常量, 0 方法集</p>
 <p>窗口、事件、结构化菜单、屏幕和异步桌面服务。一个 worker 消费 App.event_ch；用 window_id / canvas_id / generation 校验目标。ev_request 经 request_of 解码，使用 RequestResult.matches 与请求匹配；处理 completed、cancelled、failed、unsupported 和 timed_out。屏幕坐标与画布坐标不可混用。</p>
 <p><a href="/zh/docs/ui#requests">使用指南与生命周期</a></p>
+<p>正式版示例（完整工程与源码下载）：<a href="#example-3333a8369d2f"><code>desktop_services</code></a> · <a href="#example-029ecd67df0f"><code>multiwindow</code></a></p>
 <p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
 <section class="api-examples" id="examples">
 <h2>示例代码</h2>
 <p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
 <details class="api-example" id="example-87c5e058faf2" open>
 <summary><code>16_ui_webview/shaped/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/a62afa5bd8750f92b190e0e7a775126f8bd71c78/examples/16_ui_webview/shaped">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/shaped/main.xu" download>下载源码</a></p>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/shaped">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/shaped/main.xu" download>下载源码</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/shaped/main.xu"><code class="language-xu">@main
 
 <span class="syn-import"><span class="hash">#</span>ui</span>
@@ -61,9 +62,54 @@
     <span class="syn-flow">&lt;&lt;</span> 0
 }</code></pre></div>
 </details>
+<details class="api-example" id="example-9bee402dcd14">
+<summary><code>16_ui_webview/webview_requests/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/webview_requests">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_requests/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/webview_requests/main.xu"><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/webview</span>
+<span class="syn-kw">fn</span> route(request webview.InvokeRequest) <span class="syn-type">string</span> {
+    <span class="syn-kw">if</span> request.name == <span class="syn-str">"slow"</span> { sleep_ns(300000000) }
+    <span class="syn-kw">if</span> request.name == <span class="syn-str">"wait"</span> { sleep_ns(1500000000) }
+    <span class="syn-kw">if</span> request.name == <span class="syn-str">"native"</span> {
+        target <span class="syn-flow">:=</span> ui.CanvasEvent{window_id: request.window_id,canvas_id: request.window_id,generation: request.generation}
+        options <span class="syn-flow">:=</span> ui.RequestOptions{timeout_ms: 2000}
+        script <span class="syn-flow">:=</span> <span class="syn-str">"document.title"</span>
+        result <span class="syn-flow">:=</span> ui.webview_request_wait(&amp;target,ui.request_webview_eval,&amp;script,&amp;options) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"failed: "</span> + err.msg() }
+        <span class="syn-kw">if</span> result.status != ui.request_completed { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"status: "</span> + str(result.status) }
+        <span class="syn-flow">&lt;&lt;</span> result.value + <span class="syn-str">""</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> request.payload + <span class="syn-str">""</span>
+}
+<span class="syn-kw">fn</span> ipc(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>,ech <span class="syn-kw">chan</span> ui.Event) {
+    webview.bind_ipc_requests_www(<span class="syn-str">":mem:"</span>,route,emit_ch,ech) <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> }
+}
+<span class="syn-kw">fn</span> events(ech <span class="syn-kw">chan</span> ui.Event,emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>) {
+    <span class="syn-kw">while</span> true { event <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span>ech
+        <span class="syn-kw">if</span> event.kind == ui.ev_exit { emit_ch <span class="syn-flow">&lt;-</span> <span class="syn-str">""</span>
+            <span class="syn-flow">&lt;&lt;</span> }
+        <span class="syn-kw">if</span> event.kind == ui.ev_closed { println(<span class="syn-str">"Window closed; pending document requests revoked"</span>) }
+    }
+}
+<span class="syn-kw">fn</span> run() <span class="syn-type">int</span> {
+    ech <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 1024}
+    emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 64}
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(ech)
+    webview.stage_www_root(<span class="syn-str">":mem:"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> ipc(emit_ch,ech)
+    <span class="syn-kw">xu</span> events(ech,emit_ch)
+    <span class="syn-kw">mut</span> window <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu UI / WebView Request Lifecycle"</span>,width: 880,height: 640})
+    <span class="syn-kw">mut</span> browser <span class="syn-flow">:=</span> webview.attach(<span class="syn-borrow">mut &amp;</span>window)
+    browser.load_url(webview.app_scheme_url()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> run() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
+</details>
 <details class="api-example" id="example-0d167b78a79e">
 <summary><code>16_ui_webview/draw/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/a62afa5bd8750f92b190e0e7a775126f8bd71c78/examples/16_ui_webview/draw">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/draw/main.xu" download>下载源码</a></p>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/draw">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/draw/main.xu" download>下载源码</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/draw/main.xu"><code class="language-xu">@main
 <span class="syn-import"><span class="hash">#</span>ui</span>
 <span class="syn-import"><span class="hash">#</span>ui/draw</span>
@@ -135,96 +181,19 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
     <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
 </details>
-<details class="api-example" id="example-2d5c0b649702">
-<summary><code>16_ui_webview/shaped_webview/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/a62afa5bd8750f92b190e0e7a775126f8bd71c78/examples/16_ui_webview/shaped_webview">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/shaped_webview/main.xu" download>下载源码</a></p>
-<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/shaped_webview/main.xu"><code class="language-xu">@main
-
-<span class="syn-import"><span class="hash">#</span>ui</span>
-<span class="syn-import"><span class="hash">#</span>ui/webview</span>
-
-<span class="syn-cmt">// Frameless + PNG mask + WKWebView (macOS).</span>
-<span class="syn-cmt">//   xu build examples/16ui_webview/shaped_webview --target macos-arm64 --desktop -o /tmp/xu_shaped_wv</span>
-<span class="syn-cmt">//   /tmp/xu_shaped_wv</span>
-<span class="syn-cmt">// Drag from the top ~28px strip; Close calls shell.quit.</span>
-
-<span class="syn-kw">fn</span> route(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">string</span> {
-    <span class="syn-kw">if</span> name == <span class="syn-str">"ping"</span> {
-        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"pong:"</span> + payload
-    }
-    <span class="syn-kw">if</span> name == <span class="syn-str">"greet"</span> {
-        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"hello, "</span> + payload
-    }
-    <span class="syn-kw">if</span> name == <span class="syn-str">"win"</span> {
-        <span class="syn-kw">if</span> payload == <span class="syn-str">"quit"</span> {
-            q <span class="syn-flow">:=</span> ui.native_quit() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
-            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"quit"</span>
-        }
-        <span class="syn-kw">if</span> payload == <span class="syn-str">"minimize"</span> {
-            m <span class="syn-flow">:=</span> ui.native_minimize() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"err"</span> }
-            <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"minimized"</span>
-        }
-        <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"win?"</span>
-    }
-    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"miss"</span>
-}
-
-<span class="syn-kw">fn</span> demo_www() <span class="syn-type">string</span> {
-    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"www"</span>
-}
-
-<span class="syn-kw">fn</span> ipc_boot(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>, shell_ch <span class="syn-kw">chan</span> ui.Event) {
-    webview.bind_ipc_www(demo_www(), route, emit_ch, shell_ch) <span class="syn-kw">or</span> (err) {
-        eprintln(err.msg())
-        <span class="syn-flow">&lt;&lt;</span>
-    }
-}
-
-<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
-    emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 32}
-    shell_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 32}
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
-    app.set_icon(ui.icon_from_file(<span class="syn-str">"brand/xu_app_logo.png"</span>))
-    webview.stage_www_root(demo_www()) <span class="syn-kw">or</span> (err) {
-        println(err.msg())
-        <span class="syn-flow">&lt;&lt;</span> 1
-    }
-    <span class="syn-kw">xu</span> ipc_boot(emit_ch, shell_ch)
-    sleep_ns(50000000)
-
-    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Shaped WebView"</span>, width: 360, height: 360})
-    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
-    <span class="syn-kw">mut</span> wv <span class="syn-flow">:=</span> webview.attach(r)
-    wv.on(<span class="syn-str">"ping"</span>)
-    wv.on(<span class="syn-str">"greet"</span>)
-    wv.on(<span class="syn-str">"win"</span>)
-
-    a0 <span class="syn-flow">:=</span> ui.native_set_frameless(1)
-    a1 <span class="syn-flow">:=</span> ui.native_set_transparent(1)
-    a2 <span class="syn-flow">:=</span> ui.native_set_window_mask(<span class="syn-str">"brand/xu_app_logo.png"</span>) <span class="syn-kw">or</span> (err) {
-        println(err.msg())
-        <span class="syn-flow">&lt;&lt;</span> 1
-    }
-    a3 <span class="syn-flow">:=</span> ui.native_set_shadow(1)
-    <span class="syn-kw">if</span> a0 + a1 + a2 + a3 &lt; 0 {
-        <span class="syn-flow">&lt;&lt;</span> 1
-    }
-
-    wv.load_url(<span class="syn-str">"xu://app/shaped.html"</span>) <span class="syn-kw">or</span> (err) {
-        println(err.msg())
-        <span class="syn-flow">&lt;&lt;</span> 1
-    }
-    println(<span class="syn-str">"shaped webview — xu://app/shaped.html XUN IPC (drag top; Close quits)"</span>)
-    app.run() <span class="syn-kw">or</span> (err) {
-        println(err.msg())
-        <span class="syn-flow">&lt;&lt;</span> 1
-    }
-    <span class="syn-flow">&lt;&lt;</span> 0
-}</code></pre></div>
-</details>
 <details class="api-example"><summary>更多相关示例</summary><ul>
-<li><a href="https://github.com/xulang-org/examples/tree/a62afa5bd8750f92b190e0e7a775126f8bd71c78/examples/16_ui_webview/remote"><code>16_ui_webview/remote/main.xu</code></a></li>
-<li><a href="https://github.com/xulang-org/examples/tree/a62afa5bd8750f92b190e0e7a775126f8bd71c78/examples/16_ui_webview/open"><code>16_ui_webview/open/main.xu</code></a></li>
+<li id="example-2d5c0b649702"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/shaped_webview"><code>16_ui_webview/shaped_webview/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/shaped_webview/main.xu" download>下载源码</a></li>
+<li id="example-029ecd67df0f"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/multiwindow"><code>16_ui_webview/multiwindow/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/multiwindow/main.xu" download>下载源码</a></li>
+<li id="example-41d09e469fb1"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/remote"><code>16_ui_webview/remote/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/remote/main.xu" download>下载源码</a></li>
+<li id="example-6a8e15392deb"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/draw_gallery"><code>16_ui_webview/draw_gallery/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/draw_gallery/main.xu" download>下载源码</a></li>
+<li id="example-efd1ed863bda"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/open"><code>16_ui_webview/open/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/open/main.xu" download>下载源码</a></li>
+<li id="example-3333a8369d2f"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/desktop_services"><code>16_ui_webview/desktop_services/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/desktop_services/main.xu" download>下载源码</a></li>
+<li id="example-008f8a20c76f"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/text_input"><code>16_ui_webview/text_input/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/text_input/main.xu" download>下载源码</a></li>
+<li id="example-f3f5764ed94e"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/controls_gallery"><code>16_ui_webview/controls_gallery/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/controls_gallery/main.xu" download>下载源码</a></li>
+<li id="example-114841dc1d17"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/editor_workbench"><code>16_ui_webview/editor_workbench/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/editor_workbench/main.xu" download>下载源码</a></li>
+<li id="example-ba09d69a23c3"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/widgets"><code>16_ui_webview/widgets/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/widgets/main.xu" download>下载源码</a></li>
+<li id="example-9beafed00ebd"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/style_gallery"><code>16_ui_webview/style_gallery/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/style_gallery/main.xu" download>下载源码</a></li>
+<li id="example-b1a0463173fe"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/workbench"><code>16_ui_webview/workbench/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/main.xu" download>下载源码</a></li>
 </ul></details>
 </section>
 <h2 id="api-declarations">API 声明</h2>
@@ -251,6 +220,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `content_draw`。 值为 `2`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-029ecd67df0f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-content_native">
 <h2><code>const content_native</code></h2>
@@ -325,6 +295,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_none`。 值为 `0`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-9beafed00ebd">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_ready">
 <h2><code>const ev_ready</code></h2>
@@ -333,6 +304,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_ready`。 值为 `1`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-41d09e469fb1">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_exit">
 <h2><code>const ev_exit</code></h2>
@@ -341,7 +313,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_exit`。 值为 `2`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
-<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_before_exit">
 <h2><code>const ev_before_exit</code></h2>
@@ -358,6 +330,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_close_requested`。 值为 `10`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_closed">
 <h2><code>const ev_closed</code></h2>
@@ -366,6 +339,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_closed`。 值为 `11`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_focused">
 <h2><code>const ev_focused</code></h2>
@@ -407,6 +381,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_menu_clicked`。 值为 `20`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_tray_clicked">
 <h2><code>const ev_tray_clicked</code></h2>
@@ -423,6 +398,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_tray_menu_clicked`。 值为 `31`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_loading">
 <h2><code>const ev_loading</code></h2>
@@ -439,6 +415,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_loaded`。 值为 `41`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-41d09e469fb1">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_load_failed">
 <h2><code>const ev_load_failed</code></h2>
@@ -447,6 +424,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_load_failed`。 值为 `42`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-41d09e469fb1">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_progress">
 <h2><code>const ev_progress</code></h2>
@@ -455,6 +433,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_progress`。 值为 `43`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_file_drop">
 <h2><code>const ev_file_drop</code></h2>
@@ -471,6 +450,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_file_picked`。 值为 `51`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_file_saved">
 <h2><code>const ev_file_saved</code></h2>
@@ -479,6 +459,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_file_saved`。 值为 `52`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_external_nav">
 <h2><code>const ev_external_nav</code></h2>
@@ -495,6 +476,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_screenshot`。 值为 `54`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_folder_picked">
 <h2><code>const ev_folder_picked</code></h2>
@@ -503,6 +485,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_folder_picked`。 值为 `55`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_alert">
 <h2><code>const ev_alert</code></h2>
@@ -511,6 +494,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_alert`。 值为 `56`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_confirm">
 <h2><code>const ev_confirm</code></h2>
@@ -519,6 +503,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_confirm`。 值为 `57`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_notify">
 <h2><code>const ev_notify</code></h2>
@@ -527,6 +512,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_notify`。 值为 `58`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_close_rejected">
 <h2><code>const ev_close_rejected</code></h2>
@@ -583,6 +569,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_clipboard`。 值为 `65`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_bounds">
 <h2><code>const ev_bounds</code></h2>
@@ -591,6 +578,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_bounds`。 值为 `66`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_state">
 <h2><code>const ev_state</code></h2>
@@ -599,6 +587,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_state`。 值为 `67`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_click">
 <h2><code>const ev_click</code></h2>
@@ -655,6 +644,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_window_failed`。 值为 `95`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-029ecd67df0f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_command_unsupported">
 <h2><code>const ev_command_unsupported</code></h2>
@@ -683,7 +673,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>width</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>height</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
-<p><a href="#example-0d167b78a79e">查看用法示例</a></p>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Icon">
 <h2><code>struct Icon</code></h2>
@@ -710,6 +700,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>id</code> <span class="type">string</span></dt><dd>字段（string）</dd>
 <dt><code>label</code> <span class="type">string</span></dt><dd>字段（string）</dd>
 </dl>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Menu">
 <h2><code>struct Menu</code></h2>
@@ -765,6 +756,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>content_backend_id</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>closed</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+<p><a href="#example-029ecd67df0f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-TrayOpts">
 <h2><code>struct TrayOpts</code></h2>
@@ -781,6 +773,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>icon</code> <span class="type">Icon</span></dt><dd>字段（Icon）</dd>
 <dt><code>menu</code> <span class="type">Menu</span></dt><dd>字段（Menu）</dd>
 </dl>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Tray">
 <h2><code>struct Tray</code></h2>
@@ -848,7 +841,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>App — 该类型的值</p>
-<p><a href="#example-2d5c0b649702">查看用法示例</a></p>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="icon_default">
 <h2><code>icon_default</code></h2>
@@ -859,6 +852,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>Icon — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="icon_from_file">
 <h2><code>icon_from_file</code></h2>
@@ -885,6 +879,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>MenuItem — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="menu">
 <h2><code>menu</code></h2>
@@ -897,6 +892,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Menu — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="target_os">
 <h2><code>target_os</code></h2>
@@ -952,6 +948,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-mut-App-new_window">
 <h2><code>(&amp;mut App) new_window</code></h2>
@@ -1002,6 +999,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-mut-Window-set_menu">
 <h2><code>(&amp;mut Window) set_menu</code></h2>
@@ -1118,6 +1116,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_show">
 <h2><code>native_show</code></h2>
@@ -1128,6 +1127,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_hide">
 <h2><code>native_hide</code></h2>
@@ -1138,6 +1138,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_minimize">
 <h2><code>native_minimize</code></h2>
@@ -1174,6 +1175,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_floating">
 <h2><code>native_set_floating</code></h2>
@@ -1186,6 +1188,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_center">
 <h2><code>native_center</code></h2>
@@ -1196,6 +1199,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_open_external">
 <h2><code>native_open_external</code></h2>
@@ -1208,6 +1212,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_clipboard_set">
 <h2><code>native_clipboard_set</code></h2>
@@ -1220,6 +1225,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_clipboard_get">
 <h2><code>native_clipboard_get</code></h2>
@@ -1230,6 +1236,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_maximized">
 <h2><code>native_set_maximized</code></h2>
@@ -1242,6 +1249,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_bounce">
 <h2><code>native_bounce</code></h2>
@@ -1252,6 +1260,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_pick_file">
 <h2><code>native_pick_file</code></h2>
@@ -1262,6 +1271,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_opacity">
 <h2><code>native_set_opacity</code></h2>
@@ -1274,6 +1284,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_save_file">
 <h2><code>native_save_file</code></h2>
@@ -1286,6 +1297,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_screenshot">
 <h2><code>native_screenshot</code></h2>
@@ -1296,6 +1308,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_alert">
 <h2><code>native_alert</code></h2>
@@ -1309,6 +1322,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_confirm">
 <h2><code>native_confirm</code></h2>
@@ -1322,6 +1336,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_notify">
 <h2><code>native_notify</code></h2>
@@ -1335,6 +1350,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_pick_folder">
 <h2><code>native_pick_folder</code></h2>
@@ -1345,6 +1361,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_min_size">
 <h2><code>native_set_min_size</code></h2>
@@ -1358,6 +1375,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_resizable">
 <h2><code>native_set_resizable</code></h2>
@@ -1370,6 +1388,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_get_bounds">
 <h2><code>native_get_bounds</code></h2>
@@ -1380,6 +1399,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_titlebar_visible">
 <h2><code>native_set_titlebar_visible</code></h2>
@@ -1392,6 +1412,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_close_guard">
 <h2><code>native_set_close_guard</code></h2>
@@ -1404,6 +1425,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_accept_close">
 <h2><code>native_accept_close</code></h2>
@@ -1414,6 +1436,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_reject_close">
 <h2><code>native_reject_close</code></h2>
@@ -1424,6 +1447,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_visible_on_all_spaces">
 <h2><code>native_set_visible_on_all_spaces</code></h2>
@@ -1436,6 +1460,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_get_state">
 <h2><code>native_get_state</code></h2>
@@ -1446,6 +1471,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_open_path">
 <h2><code>native_open_path</code></h2>
@@ -1458,6 +1484,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_reveal_path">
 <h2><code>native_reveal_path</code></h2>
@@ -1470,6 +1497,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_appearance">
 <h2><code>native_set_appearance</code></h2>
@@ -1482,6 +1510,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_dock_badge">
 <h2><code>native_set_dock_badge</code></h2>
@@ -1494,6 +1523,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_screenshot_to_clipboard">
 <h2><code>native_screenshot_to_clipboard</code></h2>
@@ -1504,6 +1534,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
+<p><a href="#example-efd1ed863bda">查看用法示例</a></p>
 </article>
 <article class="api-item" id="native_set_shadow">
 <h2><code>native_set_shadow</code></h2>
@@ -1847,6 +1878,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Event — 该类型的值</p>
+<p><a href="#example-9beafed00ebd">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-request_open_files">
 <h2><code>const request_open_files</code></h2>
@@ -1855,6 +1887,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `request_open_files`。 值为 `4`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-request_save_file">
 <h2><code>const request_save_file</code></h2>
@@ -1885,6 +1918,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>label</code> <span class="type">string</span></dt><dd>字段（string）</dd>
 <dt><code>extensions</code> <span class="type">[]string</span></dt><dd>字段（[]string）</dd>
 </dl>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-FileDialogOptions">
 <h2><code>struct FileDialogOptions</code></h2>
@@ -1917,6 +1951,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <h3>返回</h3>
 <p>FileDialogOptions — 该类型的值</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="open_files_async">
 <h2><code>open_files_async</code></h2>
@@ -1930,6 +1965,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Request — 该类型的值</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="save_file_async">
 <h2><code>save_file_async</code></h2>
@@ -1943,6 +1979,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Request — 该类型的值</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="select_folders_async">
 <h2><code>select_folders_async</code></h2>
@@ -1956,6 +1993,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Request — 该类型的值</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="file_paths">
 <h2><code>file_paths</code></h2>
@@ -1968,6 +2006,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>[]string — 切片结果</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_pointer_down">
 <h2><code>const ev_pointer_down</code></h2>
@@ -2052,6 +2091,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_canvas_ready`。 值为 `81`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-029ecd67df0f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_canvas_closed">
 <h2><code>const ev_canvas_closed</code></h2>
@@ -2077,6 +2117,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>canvas_id</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>generation</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="canvas_of">
 <h2><code>canvas_of</code></h2>
@@ -2098,6 +2139,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `mod_shift`。 值为 `1`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-114841dc1d17">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-mod_control">
 <h2><code>const mod_control</code></h2>
@@ -2212,6 +2254,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `key_tab`。 值为 `257`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-f3f5764ed94e">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-key_enter">
 <h2><code>const key_enter</code></h2>
@@ -2398,6 +2441,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>click_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>time_ns</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+<p><a href="#example-114841dc1d17">查看用法示例</a></p>
 </article>
 <article class="api-item" id="is_input_event">
 <h2><code>is_input_event</code></h2>
@@ -2464,6 +2508,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `menu_primary`。 值为 `16`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-114841dc1d17">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-MenuEntry">
 <h2><code>struct MenuEntry</code></h2>
@@ -2504,6 +2549,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>MenuEntry — 该类型的值</p>
+<p><a href="#example-114841dc1d17">查看用法示例</a></p>
 </article>
 <article class="api-item" id="submenu">
 <h2><code>submenu</code></h2>
@@ -2518,6 +2564,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>MenuEntry — 该类型的值</p>
+<p><a href="#example-114841dc1d17">查看用法示例</a></p>
 </article>
 <article class="api-item" id="menu_check">
 <h2><code>menu_check</code></h2>
@@ -2533,6 +2580,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>MenuEntry — 该类型的值</p>
+<p><a href="#example-114841dc1d17">查看用法示例</a></p>
 </article>
 <article class="api-item" id="menu_separator">
 <h2><code>menu_separator</code></h2>
@@ -2545,6 +2593,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>MenuEntry — 该类型的值</p>
+<p><a href="#example-114841dc1d17">查看用法示例</a></p>
 </article>
 <article class="api-item" id="encode_menu_entries">
 <h2><code>encode_menu_entries</code></h2>
@@ -2619,6 +2668,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>CanvasMetrics — 该类型的值</p>
+<p><a href="#example-6a8e15392deb">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_request">
 <h2><code>const ev_request</code></h2>
@@ -2627,6 +2677,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_request`。 值为 `85`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-request_prompt">
 <h2><code>const request_prompt</code></h2>
@@ -2659,6 +2710,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `request_completed`。 值为 `0`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-request_cancelled">
 <h2><code>const request_cancelled</code></h2>
@@ -2667,6 +2719,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `request_cancelled`。 值为 `1`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-request_failed">
 <h2><code>const request_failed</code></h2>
@@ -2683,6 +2736,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `request_unsupported`。 值为 `3`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-request_timed_out">
 <h2><code>const request_timed_out</code></h2>
@@ -2691,6 +2745,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `request_timed_out`。 值为 `4`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-PromptOptions">
 <h2><code>struct PromptOptions</code></h2>
@@ -2707,6 +2762,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>seed</code> <span class="type">string</span></dt><dd>随机种子</dd>
 <dt><code>timeout_ms</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-RequestOptions">
 <h2><code>struct RequestOptions</code></h2>
@@ -2719,6 +2775,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dl class="api-params">
 <dt><code>timeout_ms</code> <span class="type">int</span></dt><dd>毫秒期限；0 选择默认值</dd>
 </dl>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Request">
 <h2><code>struct Request</code></h2>
@@ -2739,6 +2796,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>generation</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>kind</code> <span class="type">int</span></dt><dd>类型标签</dd>
 </dl>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-RequestResult">
 <h2><code>struct RequestResult</code></h2>
@@ -2778,6 +2836,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Request — 该类型的值</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="clipboard_write_async">
 <h2><code>clipboard_write_async</code></h2>
@@ -2792,6 +2851,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Request — 该类型的值</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="prompt_async">
 <h2><code>prompt_async</code></h2>
@@ -2805,6 +2865,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Request — 该类型的值</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-Request-cancel">
 <h2><code>(&amp;Request) cancel</code></h2>
@@ -2829,6 +2890,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>终态 RequestResult；无效事件抛出错误</p>
+<p><a href="#example-3333a8369d2f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-RequestResult-matches">
 <h2><code>(&amp;RequestResult) matches</code></h2>
@@ -2938,6 +3000,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>屏幕数组，最多 64 个；无效结果抛出错误</p>
+<p><a href="#example-114841dc1d17">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_text_commit">
 <h2><code>const ev_text_commit</code></h2>
@@ -2946,6 +3009,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_text_commit`。 值为 `86`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_text_preedit">
 <h2><code>const ev_text_preedit</code></h2>
@@ -2986,6 +3050,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_text_input_ended`。 值为 `91`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_text_input_failed">
 <h2><code>const ev_text_input_failed</code></h2>
@@ -2994,6 +3059,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_text_input_failed`。 值为 `92`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-ev_text_surrounding_delete">
 <h2><code>const ev_text_surrounding_delete</code></h2>
@@ -3002,6 +3068,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `ev_text_surrounding_delete`。 值为 `93`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-text_input_stopped">
 <h2><code>const text_input_stopped</code></h2>
@@ -3060,6 +3127,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>width</code> <span class="type">f64</span></dt><dd>字段（f64）</dd>
 <dt><code>height</code> <span class="type">f64</span></dt><dd>字段（f64）</dd>
 </dl>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-TextInputOptions">
 <h2><code>struct TextInputOptions</code></h2>
@@ -3098,6 +3166,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>canvas_id</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>generation</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-TextInputState">
 <h2><code>struct TextInputState</code></h2>
@@ -3177,6 +3246,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>TextInputOptions — 该类型的值</p>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="start_text_input">
 <h2><code>start_text_input</code></h2>
@@ -3191,6 +3261,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>TextInput — 该类型的值</p>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-TextInput-snapshot">
 <h2><code>(&amp;TextInput) snapshot</code></h2>
@@ -3280,6 +3351,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>TextEditEvent — 该类型的值</p>
+<p><a href="#example-008f8a20c76f">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-TextInputTransform">
 <h2><code>struct TextInputTransform</code></h2>
@@ -3428,6 +3500,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>公开常量 `request_webview_eval`。 值为 `8`</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="const-request_webview_find">
 <h2><code>const request_webview_find</code></h2>
@@ -3490,6 +3563,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>RequestResult — 该类型的值</p>
+<p><a href="#example-9bee402dcd14">查看用法示例</a></p>
 </article>
 <article class="api-item" id="-mut-App-open_window">
 <h2><code>(&amp;mut App) open_window</code></h2>

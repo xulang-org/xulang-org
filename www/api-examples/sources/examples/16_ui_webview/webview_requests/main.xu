@@ -1,0 +1,41 @@
+@main
+#ui
+#ui/webview
+fn route(request webview.InvokeRequest) string {
+    if request.name == "slow" { sleep_ns(300000000) }
+    if request.name == "wait" { sleep_ns(1500000000) }
+    if request.name == "native" {
+        target := ui.CanvasEvent{window_id: request.window_id,canvas_id: request.window_id,generation: request.generation}
+        options := ui.RequestOptions{timeout_ms: 2000}
+        script := "document.title"
+        result := ui.webview_request_wait(&target,ui.request_webview_eval,&script,&options) or (err) { << "failed: " + err.msg() }
+        if result.status != ui.request_completed { << "status: " + str(result.status) }
+        << result.value + ""
+    }
+    << request.payload + ""
+}
+fn ipc(emit_ch chan string,ech chan ui.Event) {
+    webview.bind_ipc_requests_www(":mem:",route,emit_ch,ech) or (err) { eprintln(err.msg())
+        << }
+}
+fn events(ech chan ui.Event,emit_ch chan string) {
+    while true { event := <-ech
+        if event.kind == ui.ev_exit { emit_ch <- ""
+            << }
+        if event.kind == ui.ev_closed { println("Window closed; pending document requests revoked") }
+    }
+}
+fn run() int {
+    ech := chan ui.Event{cap: 1024}
+    emit_ch := chan string{cap: 64}
+    mut app := ui.new_app_events(ech)
+    webview.stage_www_root(":mem:") or >>
+    xu ipc(emit_ch,ech)
+    xu events(ech,emit_ch)
+    mut window := app.new_window(ui.WindowOpts{title: "Xu UI / WebView Request Lifecycle",width: 880,height: 640})
+    mut browser := webview.attach(mut &window)
+    browser.load_url(webview.app_scheme_url()) or >>
+    << app.run() or >>
+}
+fn main() int { << run() or (err) { eprintln(err.msg())
+    << 1 } }

@@ -1,0 +1,172 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+demo #"github.com/xulang-org/examples/ui_demo"
+
+fn rect(x f64,y f64,width f64,height f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: width,height: height}
+}
+
+// One worker owns the controls and their canvas resources. Every recorded
+// label remains alive until the complete frame has been accepted.
+fn scene(ech chan ui.Event) int {
+    ready := demo.ready(ech) or >>
+    if ready.kind == ui.ev_exit { << 0 }
+    identity := ui.canvas_of(&ready) or >>
+    context := draw.context_of(&ready) or >>
+    mut switcher := widgets.style_switcher()
+    switcher.use_preset(widgets.theme_light) or >>
+    mut toggle := widgets.switch_control(&identity,1,&rect(48.0,116.0,280.0,48.0),true) or >>
+    mut radio := widgets.radio(&identity,2,&rect(48.0,180.0,280.0,48.0),1,false) or >>
+    mut slider := widgets.slider(&identity,3,&rect(48.0,260.0,280.0,36.0),0.0,100.0,50.0) or >>
+    slider.set_step(5.0) or >>
+    mut stepper := widgets.stepper(&identity,4,&rect(48.0,324.0,280.0,48.0),0.0,20.0,1.0,5.0) or >>
+    mut tabs := widgets.tabs(&identity,5,&rect(376.0,116.0,348.0,48.0),3,0) or >>
+    mut dropdown := widgets.select_box(&identity,6,&rect(376.0,196.0,348.0,48.0),3,0) or >>
+    mut list := widgets.list_box(&identity,7,&rect(376.0,284.0,348.0,132.0),3,0) or >>
+    panel := widgets.card(&rect(24.0,92.0,724.0,352.0)) or >>
+    badge := widgets.badge(&rect(48.0,392.0,280.0,32.0)) or >>
+    divider := widgets.divider(&rect(48.0,244.0,280.0,2.0),widgets.axis_horizontal) or >>
+    mut label0 := widgets.styled_label(&context,&"Enabled")
+    mut label1 := widgets.styled_label(&context,&"Choose this option")
+    mut label2 := widgets.styled_label(&context,&"Stepper")
+    mut label3 := widgets.styled_label(&context,&"One")
+    mut label4 := widgets.styled_label(&context,&"Two")
+    mut label5 := widgets.styled_label(&context,&"Three")
+    mut label6 := widgets.styled_label(&context,&"Select an option")
+    mut label7 := widgets.styled_label(&context,&"Xu 0.10.1")
+    mut label8 := widgets.styled_label(&context,&"One")
+    mut label9 := widgets.styled_label(&context,&"Two")
+    mut label10 := widgets.styled_label(&context,&"Three")
+    mut frame := context.new_frame(16384)
+    mut dirty := true
+    mut focus := 0
+    while true {
+        if dirty {
+            styles := switcher.styles()
+            frame.begin() or >>
+            frame.set_bg(styles.background) or >>
+            panel.paint_styled(mut &frame,&styles) or >>
+            ink := styles.button.palette.foreground
+            title := "Extended controls / " + switcher.name()
+            frame.text(32.0,28.0,22.0,ink,&title) or >>
+            toggle.paint_styled(mut &frame,mut &label0,&styles) or >>
+            radio.paint_styled(mut &frame,mut &label1,&styles) or >>
+            divider.paint_styled(mut &frame,&styles) or >>
+            slider.paint_styled(mut &frame,&styles) or >>
+            stepper.paint_styled(mut &frame,mut &label2,&styles) or >>
+            tabs.paint_box_styled(mut &frame,&styles) or >>
+            list.paint_box_styled(mut &frame,&styles) or >>
+            tabs.paint_tab_styled(mut &frame,0,mut &label3,&styles) or >>
+            list.paint_item_styled(mut &frame,0,mut &label8,&styles) or >>
+            tabs.paint_tab_styled(mut &frame,1,mut &label4,&styles) or >>
+            list.paint_item_styled(mut &frame,1,mut &label9,&styles) or >>
+            tabs.paint_tab_styled(mut &frame,2,mut &label5,&styles) or >>
+            list.paint_item_styled(mut &frame,2,mut &label10,&styles) or >>
+            dropdown.paint_styled(mut &frame,mut &label6,&styles) or >>
+            badge.paint_styled(mut &frame,mut &label7,&styles) or >>
+            frame.text(32.0,464.0,15.0,ink,&"T: theme / S: text size / D: density / Tab: focus / Esc: quit") or >>
+            status := "Slider " + str(int(slider.value())) + " / Stepper " + str(int(stepper.value())) + " / Select " + str(dropdown.selected() + 1)
+            frame.text(32.0,494.0,15.0,ink,&status) or >>
+            // A Select popup overlays the scene; this basic painter repeats
+            // its label. The selected option index is shown in the status.
+            dropdown.paint_popup_styled(mut &frame,mut &label6,&styles) or >>
+            frame.present() or >>
+            toggle.painted()
+            radio.painted()
+            slider.painted()
+            stepper.painted()
+            tabs.painted()
+            dropdown.painted()
+            list.painted()
+            dirty = false
+        }
+        event := demo.next(ech)
+        if event.kind == ui.ev_exit { <- }
+        if event.window_id != identity.window_id { -> }
+        if event.kind == ui.ev_canvas_closed { <- }
+        if event.kind == ui.ev_canvas_metrics { dirty = true }
+        if ui.is_input_event(event.kind) {
+            input := ui.input_of(&event) or >>
+            if input.generation != identity.generation { -> }
+            if input.kind == ui.ev_key_down && input.repeat == 0 {
+                if input.key == ui.key_escape {
+                    // App shutdown revokes canvas resources. Do not enqueue
+                    // another frame while the native host is closing.
+                    demo.quit() or >>
+                    << 0
+                }
+                if input.key == 84 || input.key == 116 { switcher.next() or >>
+                    dirty = true }
+                if input.key == 83 || input.key == 115 {
+                    mut scale := 1.4
+                    if switcher.text_scale() > 1.0 { scale = 1.0 }
+                    switcher.set_text_scale(scale) or >>
+                    dirty = true
+                }
+                if input.key == 68 || input.key == 100 {
+                    mut density := 0.85
+                    if switcher.density() < 1.0 { density = 1.0 }
+                    switcher.set_density(density) or >>
+                    dirty = true
+                }
+                if input.key == ui.key_tab { focus = focus % 7 + 1
+                    dirty = true }
+            }
+        }
+        // Route the popup first. A modal option click must not also focus
+        // or activate the ListBox underneath it.
+        popup_open := dropdown.is_open()
+        first := dropdown.event(&event) or >>
+        mut actions := [first]
+        if !popup_open && !first.consumed {
+            actions.push(toggle.event(&event) or >>)
+            actions.push(radio.event(&event) or >>)
+            actions.push(slider.event(&event) or >>)
+            actions.push(stepper.event(&event) or >>)
+            actions.push(tabs.event(&event) or >>)
+            actions.push(list.event(&event) or >>)
+        }
+        for action in actions {
+            if action.request_focus { focus = action.id }
+            if action.needs_paint { dirty = true }
+        }
+        toggle.set_focus(focus == 1)
+        radio.set_focus(focus == 2)
+        slider.set_focus(focus == 3)
+        stepper.set_focus(focus == 4)
+        tabs.set_focus(focus == 5)
+        dropdown.set_focus(focus == 6)
+        list.set_focus(focus == 7)
+    }
+    frame.dispose()
+    if demo.alive(&identity) {
+        label0.dispose()
+        label1.dispose()
+        label2.dispose()
+        label3.dispose()
+        label4.dispose()
+        label5.dispose()
+        label6.dispose()
+        label7.dispose()
+        label8.dispose()
+        label9.dispose()
+        label10.dispose()
+    }
+    << 0
+}
+fn worker(ech chan ui.Event) {
+    scene(ech) or (err) { demo.fail(err.msg())
+        << }
+}
+fn launch() int {
+    mut app := demo.app("Xu UI / Extended Controls",780,552) or >>
+    xu worker(app.event_ch)
+    << app.run() or >>
+}
+fn main() int {
+    << launch() or (err) { eprintln(err.msg())
+        << 1 }
+}

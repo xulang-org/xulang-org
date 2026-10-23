@@ -1,0 +1,117 @@
+@main
+#ui
+#ui/draw
+demo #"github.com/xulang-org/examples/ui_demo"
+
+// This entire scene is recorded once; subsequent frames replay its resources.
+fn record(context &draw.Context,image &draw.Image) draw.DisplayList {
+    mut fragment := context.new_frame(4096)
+    fragment.begin() or >>
+    fragment.fill_rect(0.0,0.0,960.0,510.0,draw.rgb(26,37,50)) or >>
+    demo.text(context,mut &fragment,24.0,22.0,18.0,demo.ink(),"Vectors / gradients / embedded PNG / shaped text") or >>
+    mut path := draw.new_path(256)
+    path.move_to(40.0,210.0) or >>
+    path.cubic_to(80.0,60.0,210.0,60.0,250.0,210.0) or >>
+    path.quad_to(145.0,300.0,40.0,210.0) or >>
+    path.close() or >>
+    stops := [draw.GradientStop{offset: 0.0,color: demo.accent()},draw.GradientStop{offset: 1.0,color: draw.rgb(92,127,203)}]
+    gradient := draw.linear_gradient(20.0,80.0,260.0,270.0,stops)
+    bounds := draw.ImageRect{x: 20.0,y: 70.0,width: 260.0,height: 230.0}
+    fragment.fill_path_gradient(&path,&gradient,&bounds,2.0,draw.fill_nonzero) or >>
+    stroke := draw.stroke_options(2.0)
+    fragment.stroke_path(&path,demo.ink(),&stroke) or >>
+    fragment.image(image,320.0,88.0,150.0,150.0) or >>
+    source := draw.ImageRect{x: 0.0,y: 0.0,width: f64(image.width),height: f64(image.height)}
+    destination := draw.ImageRect{x: 510.0,y: 88.0,width: 190.0,height: 150.0}
+    fragment.image_region(image,&source,&destination,0.45,draw.sampler_nearest) or >>
+    demo.text(context,mut &fragment,320.0,260.0,14.0,demo.muted(),"Linear sampling      Nearest / opacity") or >>
+    mut options := draw.text_options(24.0)
+    options.width = 880.0
+    value := "你好，Xu · العربية · café · 👩‍💻\nOne native layout: shaping, fallback, wrapping and metrics."
+    mut text := context.layout_text(&value,&options) or >>
+    fragment.text_layout(&text,32.0,330.0,demo.ink()) or >>
+    println("Text metrics: " + str(text.metrics.lines) + " lines")
+    layer := draw.ImageRect{x: 740.0,y: 80.0,width: 180.0,height: 200.0}
+    fragment.begin_layer(&layer,2.0,0.75) or >>
+    fragment.set_fill(draw.rgb(240,180,91)) or >>
+    fragment.circle(64.0,80.0,52.0) or >>
+    fragment.set_fill(draw.rgb(92,127,203)) or >>
+    fragment.circle(112.0,112.0,52.0) or >>
+    fragment.end_layer() or >>
+    demo.text(context,mut &fragment,740.0,292.0,14.0,demo.muted(),"Isolated group opacity") or >>
+    list := fragment.freeze() or >>
+    text.dispose() or >>
+    fragment.dispose()
+    << list
+}
+fn paint(context &draw.Context,frame &mut draw.Frame,list &draw.DisplayList,cache &mut draw.SurfaceCache,density f64,cached bool) int {
+    frame.begin() or >>
+    frame.set_bg(demo.background()) or >>
+    demo.text(context,frame,32.0,24.0,14.0,demo.accent(),"02 / RESOURCE GALLERY") or >>
+    demo.text(context,frame,32.0,54.0,28.0,demo.ink(),"Record once. Reuse across frames.") or >>
+    frame.push() or >>
+    frame.translate(32.0,110.0) or >>
+    if cached { frame.cached_display_list(cache,list,0.0,0.0,960.0,510.0,density,1.0,draw.sampler_linear) or >> }
+    else { frame.display_list(list) or >> }
+    frame.pop() or >>
+    mut mode := "vector replay"
+    if cached { mode = "raster cache" }
+    demo.text(context,frame,32.0,646.0,15.0,demo.ink(),"Space: vector/cache / R: invalidate / current: " + mode) or >>
+    frame.present() or >>
+    println("Presented " + mode + ": " + str(frame.command_count()) + " frame commands")
+    << 0
+}
+fn scene(ech chan ui.Event) int {
+    ready := demo.ready(ech) or >>
+    if ready.kind == ui.ev_exit { << 0 }
+    identity := ui.canvas_of(&ready) or >>
+    context := draw.context_of(&ready) or >>
+    path := "sample.png"
+    mut image := context.load_embedded_image(&path) or >>
+    mut list := record(&context,&image) or >>
+    mut cache := draw.new_surface_cache()
+    mut frame := context.new_frame(1024)
+    mut density := 1.0
+    mut cached := false
+    paint(&context,mut &frame,&list,mut &cache,density,cached) or >>
+    while true {
+        event := demo.next(ech)
+        if event.kind == ui.ev_exit || event.kind == ui.ev_canvas_closed { <- }
+        if event.window_id != identity.window_id { -> }
+        mut dirty := false
+        if event.kind == ui.ev_canvas_metrics {
+            metrics := ui.metrics_of(&event) or >>
+            density = metrics.scale_x
+            dirty = true
+        }
+        if ui.is_input_event(event.kind) {
+            input := ui.input_of(&event) or >>
+            if input.generation != identity.generation { -> }
+            if input.kind == ui.ev_key_down && input.repeat == 0 {
+                if input.key == 32 { cached = !cached
+                    dirty = true }
+                if input.key == 82 || input.key == 114 { cache.invalidate()
+                    dirty = true }
+                if input.key == ui.key_escape { demo.quit() or >> }
+            }
+        }
+        if dirty { paint(&context,mut &frame,&list,mut &cache,density,cached) or >> }
+    }
+    frame.dispose()
+    cache.dispose()
+    // Native close has already revoked all canvas-owned resources.
+    if demo.alive(&identity) {
+        list.dispose() or >>
+        image.dispose() or >>
+    }
+    << 0
+}
+fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
+    << } }
+fn launch() int {
+    mut app := demo.app("Xu UI / Resource Gallery",1030,710) or >>
+    xu worker(app.event_ch)
+    << app.run() or >>
+}
+fn main() int { << launch() or (err) { eprintln(err.msg())
+    << 1 } }

@@ -22,6 +22,20 @@ URL_ATTR = re.compile(r'''(\s(?:href|src|action|poster)\s*=\s*)(["'])(.*?)\2''',
 TITLE = re.compile(r'\A<!--title:\s*(.*?)-->\s*', re.DOTALL)
 
 
+def write_redirect(output: Path, route: str, destination: str, lang: str) -> None:
+    target = output / route.strip('/') / 'index.html'
+    target.parent.mkdir(parents=True, exist_ok=True)
+    href = escape(destination, quote=True)
+    label = 'Continue to the official page' if lang == 'en' else '前往正式页面'
+    target.write_text(
+        f'<!doctype html><html lang="{lang}"><head><meta charset="utf-8">'
+        f'<meta http-equiv="refresh" content="0;url={href}">'
+        f'<link rel="canonical" href="{href}">'
+        '<meta name="robots" content="noindex"><title>Page moved · Xu</title>'
+        f'<script>location.replace({json.dumps(destination)} + location.search + location.hash);</script>'
+        f'</head><body><a href="{href}">{label}</a></body></html>', encoding='utf-8')
+
+
 def playground_options(root: Path, body: str, lang: str) -> str:
     if 'id="xu-play-ex"' not in body:
         return body
@@ -277,18 +291,18 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
             # Preserve bookmarks to the former English prefix, including hashes
             # and query strings when JavaScript is enabled.
             destination = base + route.rstrip('/') + '/'
-            alias = output / 'en' / route.strip('/') / 'index.html'
-            alias.parent.mkdir(parents=True, exist_ok=True)
-            href = escape(destination, quote=True)
-            alias.write_text(
-                '<!doctype html><html lang="en"><head><meta charset="utf-8">'
-                f'<meta http-equiv="refresh" content="0;url={href}">'
-                f'<link rel="canonical" href="{href}">'
-                '<meta name="robots" content="noindex"><title>Page moved · Xu</title>'
-                f'<script>location.replace({json.dumps(destination)} + location.search + location.hash);</script>'
-                f'</head><body><a href="{href}">Continue to the English page</a></body></html>',
-                encoding='utf-8',
-            )
+            write_redirect(output, '/en' + route, destination, 'en')
+    # UI graduated into the released SDK in 0.10.1. Preserve old bookmarks,
+    # including declaration anchors, without indexing the superseded snapshot.
+    # An explicitly generated future preview takes precedence over the alias.
+    for prefix, lang in (('', 'en'), ('/zh', 'zh-CN')):
+        for suffix in ('', '/ui', '/ui/draw', '/ui/layout', '/ui/widgets', '/ui/webview'):
+            route = prefix + '/api/preview' + suffix
+            destination = prefix + '/api' + suffix
+            if route not in pages and destination in pages:
+                write_redirect(output, route, base + destination + '/', lang)
+                if not prefix:
+                    write_redirect(output, '/en' + route, base + destination + '/', lang)
     body = '<h1>Page not found / 没有这一页</h1><p><a href="/">Home</a> · <a href="/zh">中文首页</a></p>'
     parser = RewriteHTML(base, set(pages), playground, asset_key)
     parser.feed(render(root, '404 · Xu', '/404', body, xu_version))

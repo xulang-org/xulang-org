@@ -7,13 +7,14 @@
 <p class="meta">counts: 61 fns, 85 methods, 21 types, 36 consts, 0 ifaces</p>
 <p>Explicit Context / Frame drawing with paths, gradients, text, images, DisplayList, Surface and caching. Panning is disabled by default; set_pan_enabled(1) enables the camera. Frame.scale uses factors; package-level scale uses percentages. Balance push / pop and retain resources until present / freeze / snapshot accepts the recording.</p>
 <p><a href="/docs/ui#frames">Usage and lifetimes</a></p>
+<p>Release examples (complete projects and source downloads): <a href="#example-6a8e15392deb"><code>draw_gallery</code></a></p>
 <p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
 <section class="api-examples" id="examples">
 <h2>Examples</h2>
 <p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
 <details class="api-example" id="example-0d167b78a79e" open>
 <summary><code>16_ui_webview/draw/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/a62afa5bd8750f92b190e0e7a775126f8bd71c78/examples/16_ui_webview/draw">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/draw/main.xu" download>Download source</a></p>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/draw">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/draw/main.xu" download>Download source</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/draw/main.xu"><code class="language-xu">@main
 <span class="syn-import"><span class="hash">#</span>ui</span>
 <span class="syn-import"><span class="hash">#</span>ui/draw</span>
@@ -85,6 +86,232 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
     <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
 </details>
+<details class="api-example" id="example-029ecd67df0f">
+<summary><code>16_ui_webview/multiwindow/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/multiwindow">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/multiwindow/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/multiwindow/main.xu"><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/draw</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">fn</span> paint(window ui.Window,count <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    context <span class="syn-flow">:=</span> draw.window_context(&amp;window) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(2048)
+    frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,28.0,14.0,demo.accent(),<span class="syn-str">"06 / INDEPENDENT WINDOWS"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,64.0,27.0,demo.ink(),<span class="syn-str">"Window "</span> + str(window.id)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,116.0,17.0,demo.ink(),<span class="syn-str">"Clicks in this window: "</span> + str(count)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,172.0,14.0,demo.muted(),<span class="syn-str">"N: new window / W: close this window"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,208.0,14.0,demo.muted(),<span class="syn-str">"F: focus first window / R: resize / Escape: quit all"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,258.0,13.0,demo.muted(),<span class="syn-str">"One event channel. Each canvas owns its resources."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.dispose()
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> scene(ech <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(ech) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.ev_exit { <span class="syn-flow">&lt;&lt;</span> 0 }
+    identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.windows(ech)
+    first <span class="syn-flow">:=</span> ui.Window{id: identity.window_id,generation: identity.generation,title: <span class="syn-str">"Xu UI / Window 1"</span>,width: 560,height: 340,content_kind: ui.content_draw,content_backend_id: identity.canvas_id,closed: 0}
+    <span class="syn-kw">mut</span> windows <span class="syn-flow">:=</span> []ui.Window{}
+    windows.push(first)
+    <span class="syn-kw">mut</span> counts <span class="syn-flow">:=</span> [0]
+    paint(windows[0],0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">while</span> true {
+        event <span class="syn-flow">:=</span> demo.next(ech)
+        <span class="syn-kw">if</span> event.kind == ui.ev_exit { <span class="syn-flow">&lt;-</span> }
+        <span class="syn-kw">mut</span> index <span class="syn-flow">:=</span> -1
+        <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:windows.len { <span class="syn-kw">if</span> windows[i].id == event.window_id { index = i } }
+        <span class="syn-kw">if</span> index &lt; 0 { <span class="syn-flow">-&gt;</span> }
+        <span class="syn-kw">if</span> event.kind == ui.ev_canvas_ready {
+            window <span class="syn-flow">:=</span> windows[index]
+            window.content_command(<span class="syn-str">"input_enabled\t1"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            window.content_command(<span class="syn-str">"pan_enabled\t0"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            println(<span class="syn-str">"Canvas ready: "</span> + str(event.window_id))
+            paint(window,counts[index]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> event.kind == ui.ev_canvas_metrics { paint(windows[index],counts[index]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> event.kind == ui.ev_closed { windows[index].closed = 1 }
+        <span class="syn-kw">if</span> event.kind == ui.ev_window_failed { windows[index].closed = 1
+            eprintln(<span class="syn-str">"Native window creation failed: "</span> + event.menu_id) }
+        <span class="syn-kw">if</span> !ui.is_input_event(event.kind) { <span class="syn-flow">-&gt;</span> }
+        input <span class="syn-flow">:=</span> ui.input_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">if</span> input.generation != windows[index].generation || windows[index].closed != 0 { <span class="syn-flow">-&gt;</span> }
+        <span class="syn-kw">if</span> input.kind == ui.ev_pointer_up &amp;&amp; input.button == ui.button_left {
+            counts[index] = counts[index] + 1
+            println(<span class="syn-str">"Window "</span> + str(event.window_id) + <span class="syn-str">" count: "</span> + str(counts[index]))
+            paint(windows[index],counts[index]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        }
+        <span class="syn-kw">if</span> input.kind != ui.ev_key_down || input.repeat != 0 { <span class="syn-flow">-&gt;</span> }
+        <span class="syn-kw">if</span> input.key == ui.key_escape { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> input.key == 78 || input.key == 110 {
+            <span class="syn-cmt">// At most six demo windows; the host's own limit is independent.</span>
+            <span class="syn-kw">mut</span> live <span class="syn-flow">:=</span> 0
+            <span class="syn-kw">for</span> window <span class="syn-kw">in</span> windows { <span class="syn-kw">if</span> window.closed == 0 { live = live + 1 } }
+            <span class="syn-kw">if</span> live &lt; 6 {
+                window <span class="syn-flow">:=</span> app.open_content_window(ui.WindowOpts{title: <span class="syn-str">"Xu UI / Additional Window"</span>,width: 560,height: 340},ui.content_draw) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                windows.push(window)
+                counts.push(0)
+            }
+        }
+        <span class="syn-kw">if</span> input.key == 87 || input.key == 119 {
+            <span class="syn-kw">mut</span> window <span class="syn-flow">:=</span> windows[index]
+            window.request_close() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            windows[index] = window
+        }
+        <span class="syn-kw">if</span> input.key == 82 || input.key == 114 {
+            <span class="syn-kw">mut</span> window <span class="syn-flow">:=</span> windows[index]
+            window.resize(660,400) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            windows[index] = window
+        }
+        <span class="syn-kw">if</span> input.key == 70 || input.key == 102 {
+            <span class="syn-kw">for</span> window <span class="syn-kw">in</span> windows { <span class="syn-kw">if</span> window.closed == 0 { window.focus() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                <span class="syn-flow">&lt;-</span> } }
+        }
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> } }
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Window 1"</span>,560,340) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
+</details>
+<details class="api-example" id="example-6a8e15392deb">
+<summary><code>16_ui_webview/draw_gallery/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/draw_gallery">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/draw_gallery/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/draw_gallery/main.xu"><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/draw</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-cmt">// This entire scene is recorded once; subsequent frames replay its resources.</span>
+<span class="syn-kw">fn</span> record(context &amp;draw.Context,image &amp;draw.Image) draw.DisplayList {
+    <span class="syn-kw">mut</span> fragment <span class="syn-flow">:=</span> context.new_frame(4096)
+    fragment.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.fill_rect(0.0,0.0,960.0,510.0,draw.rgb(26,37,50)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,<span class="syn-borrow">mut &amp;</span>fragment,24.0,22.0,18.0,demo.ink(),<span class="syn-str">"Vectors / gradients / embedded PNG / shaped text"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> path <span class="syn-flow">:=</span> draw.new_path(256)
+    path.move_to(40.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    path.cubic_to(80.0,60.0,210.0,60.0,250.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    path.quad_to(145.0,300.0,40.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    path.close() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    stops <span class="syn-flow">:=</span> [draw.GradientStop{offset: 0.0,color: demo.accent()},draw.GradientStop{offset: 1.0,color: draw.rgb(92,127,203)}]
+    gradient <span class="syn-flow">:=</span> draw.linear_gradient(20.0,80.0,260.0,270.0,stops)
+    bounds <span class="syn-flow">:=</span> draw.ImageRect{x: 20.0,y: 70.0,width: 260.0,height: 230.0}
+    fragment.fill_path_gradient(&amp;path,&amp;gradient,&amp;bounds,2.0,draw.fill_nonzero) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    stroke <span class="syn-flow">:=</span> draw.stroke_options(2.0)
+    fragment.stroke_path(&amp;path,demo.ink(),&amp;stroke) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.image(image,320.0,88.0,150.0,150.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    source <span class="syn-flow">:=</span> draw.ImageRect{x: 0.0,y: 0.0,width: <span class="syn-type">f64</span>(image.width),height: <span class="syn-type">f64</span>(image.height)}
+    destination <span class="syn-flow">:=</span> draw.ImageRect{x: 510.0,y: 88.0,width: 190.0,height: 150.0}
+    fragment.image_region(image,&amp;source,&amp;destination,0.45,draw.sampler_nearest) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,<span class="syn-borrow">mut &amp;</span>fragment,320.0,260.0,14.0,demo.muted(),<span class="syn-str">"Linear sampling      Nearest / opacity"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> options <span class="syn-flow">:=</span> draw.text_options(24.0)
+    options.width = 880.0
+    value <span class="syn-flow">:=</span> <span class="syn-str">"你好，Xu · العربية · café · 👩‍💻\nOne native layout: shaping, fallback, wrapping and metrics."</span>
+    <span class="syn-kw">mut</span> text <span class="syn-flow">:=</span> context.layout_text(&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.text_layout(&amp;text,32.0,330.0,demo.ink()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    println(<span class="syn-str">"Text metrics: "</span> + str(text.metrics.lines) + <span class="syn-str">" lines"</span>)
+    layer <span class="syn-flow">:=</span> draw.ImageRect{x: 740.0,y: 80.0,width: 180.0,height: 200.0}
+    fragment.begin_layer(&amp;layer,2.0,0.75) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.set_fill(draw.rgb(240,180,91)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.circle(64.0,80.0,52.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.set_fill(draw.rgb(92,127,203)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.circle(112.0,112.0,52.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.end_layer() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,<span class="syn-borrow">mut &amp;</span>fragment,740.0,292.0,14.0,demo.muted(),<span class="syn-str">"Isolated group opacity"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    list <span class="syn-flow">:=</span> fragment.freeze() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    text.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    fragment.dispose()
+    <span class="syn-flow">&lt;&lt;</span> list
+}
+<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">&amp;mut</span> draw.Frame,list &amp;draw.DisplayList,cache <span class="syn-borrow">&amp;mut</span> draw.SurfaceCache,density <span class="syn-type">f64</span>,cached <span class="syn-type">bool</span>) <span class="syn-type">int</span> {
+    frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,32.0,24.0,14.0,demo.accent(),<span class="syn-str">"02 / RESOURCE GALLERY"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,32.0,54.0,28.0,demo.ink(),<span class="syn-str">"Record once. Reuse across frames."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.push() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.translate(32.0,110.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> cached { frame.cached_display_list(cache,list,0.0,0.0,960.0,510.0,density,1.0,draw.sampler_linear) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> { frame.display_list(list) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    frame.pop() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> mode <span class="syn-flow">:=</span> <span class="syn-str">"vector replay"</span>
+    <span class="syn-kw">if</span> cached { mode = <span class="syn-str">"raster cache"</span> }
+    demo.text(context,frame,32.0,646.0,15.0,demo.ink(),<span class="syn-str">"Space: vector/cache / R: invalidate / current: "</span> + mode) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    println(<span class="syn-str">"Presented "</span> + mode + <span class="syn-str">": "</span> + str(frame.command_count()) + <span class="syn-str">" frame commands"</span>)
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> scene(ech <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(ech) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.ev_exit { <span class="syn-flow">&lt;&lt;</span> 0 }
+    identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    path <span class="syn-flow">:=</span> <span class="syn-str">"sample.png"</span>
+    <span class="syn-kw">mut</span> image <span class="syn-flow">:=</span> context.load_embedded_image(&amp;path) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> list <span class="syn-flow">:=</span> record(&amp;context,&amp;image) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> cache <span class="syn-flow">:=</span> draw.new_surface_cache()
+    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(1024)
+    <span class="syn-kw">mut</span> density <span class="syn-flow">:=</span> 1.0
+    <span class="syn-kw">mut</span> cached <span class="syn-flow">:=</span> false
+    paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,&amp;list,<span class="syn-borrow">mut &amp;</span>cache,density,cached) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">while</span> true {
+        event <span class="syn-flow">:=</span> demo.next(ech)
+        <span class="syn-kw">if</span> event.kind == ui.ev_exit || event.kind == ui.ev_canvas_closed { <span class="syn-flow">&lt;-</span> }
+        <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
+        <span class="syn-kw">mut</span> dirty <span class="syn-flow">:=</span> false
+        <span class="syn-kw">if</span> event.kind == ui.ev_canvas_metrics {
+            metrics <span class="syn-flow">:=</span> ui.metrics_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            density = metrics.scale_x
+            dirty = true
+        }
+        <span class="syn-kw">if</span> ui.is_input_event(event.kind) {
+            input <span class="syn-flow">:=</span> ui.input_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">if</span> input.generation != identity.generation { <span class="syn-flow">-&gt;</span> }
+            <span class="syn-kw">if</span> input.kind == ui.ev_key_down &amp;&amp; input.repeat == 0 {
+                <span class="syn-kw">if</span> input.key == 32 { cached = !cached
+                    dirty = true }
+                <span class="syn-kw">if</span> input.key == 82 || input.key == 114 { cache.invalidate()
+                    dirty = true }
+                <span class="syn-kw">if</span> input.key == ui.key_escape { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+            }
+        }
+        <span class="syn-kw">if</span> dirty { paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,&amp;list,<span class="syn-borrow">mut &amp;</span>cache,density,cached) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    }
+    frame.dispose()
+    cache.dispose()
+    <span class="syn-cmt">// Native close has already revoked all canvas-owned resources.</span>
+    <span class="syn-kw">if</span> demo.alive(&amp;identity) {
+        list.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        image.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> } }
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Resource Gallery"</span>,1030,710) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
+</details>
+<details class="api-example"><summary>More related examples</summary><ul>
+<li id="example-3333a8369d2f"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/desktop_services"><code>16_ui_webview/desktop_services/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/desktop_services/main.xu" download>Download source</a></li>
+<li id="example-008f8a20c76f"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/text_input"><code>16_ui_webview/text_input/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/text_input/main.xu" download>Download source</a></li>
+<li id="example-f3f5764ed94e"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/controls_gallery"><code>16_ui_webview/controls_gallery/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/controls_gallery/main.xu" download>Download source</a></li>
+<li id="example-114841dc1d17"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/editor_workbench"><code>16_ui_webview/editor_workbench/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/editor_workbench/main.xu" download>Download source</a></li>
+<li id="example-ba09d69a23c3"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/widgets"><code>16_ui_webview/widgets/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/widgets/main.xu" download>Download source</a></li>
+<li id="example-9beafed00ebd"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/style_gallery"><code>16_ui_webview/style_gallery/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/style_gallery/main.xu" download>Download source</a></li>
+<li id="example-b1a0463173fe"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/workbench"><code>16_ui_webview/workbench/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/main.xu" download>Download source</a></li>
+</ul></details>
 </section>
 <h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="struct-Point">
@@ -881,6 +1108,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>Owns one rasterized DisplayList. A changed immutable list ID, logical size, density or canvas generation replaces it only after the new snapshot succeeds. Explicitly dispose when retiring the cache. No caller-owned Surface is freed.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="new_surface_cache">
 <h2><code>new_surface_cache</code></h2>
@@ -891,6 +1119,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>SurfaceCache — a value of this type</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="-mut-SurfaceCache-dispose">
 <h2><code>(&amp;mut SurfaceCache) dispose</code></h2>
@@ -1054,6 +1283,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>Immutable vector fragment. Captures current resource versions and compiles native paths once. Copies share one handle. Dispose explicitly; queued frames retain it. Draw under the caller&#x27;s CTM/clip with isolated default pen state. Background-clearing commands cannot be captured: use an explicit rectangle.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="-mut-Frame-freeze">
 <h2><code>(&amp;mut Frame) freeze</code></h2>
@@ -1241,6 +1471,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>Color — a value of this type</p>
+<p><a href="#example-008f8a20c76f">See usage example</a></p>
 </article>
 <article class="api-item" id="-Color-value">
 <h2><code>(&amp;Color) value</code></h2>
@@ -1352,6 +1583,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>Context — a value of this type</p>
+<p><a href="#example-029ecd67df0f">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Frame">
 <h2><code>struct Frame</code></h2>
@@ -1793,6 +2025,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>offset</code> <span class="type">f64</span></dt><dd>offset</dd>
 <dt><code>color</code> <span class="type">Color</span></dt><dd>field (Color)</dd>
 </dl>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Gradient">
 <h2><code>struct Gradient</code></h2>
@@ -1823,6 +2056,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>Gradient — a value of this type</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="radial_gradient">
 <h2><code>radial_gradient</code></h2>
@@ -1862,6 +2096,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>Public constant `sampler_nearest`. Value `0`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="const-sampler_linear">
 <h2><code>const sampler_linear</code></h2>
@@ -1870,6 +2105,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>Public constant `sampler_linear`. Value `1`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="const-max_image_bytes">
 <h2><code>const max_image_bytes</code></h2>
@@ -1900,6 +2136,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>width</code> <span class="type">int</span></dt><dd>field (int)</dd>
 <dt><code>height</code> <span class="type">int</span></dt><dd>field (int)</dd>
 </dl>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-ImageRect">
 <h2><code>struct ImageRect</code></h2>
@@ -1918,6 +2155,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>width</code> <span class="type">f64</span></dt><dd>field (f64)</dd>
 <dt><code>height</code> <span class="type">f64</span></dt><dd>field (f64)</dd>
 </dl>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="-Context-image_rgba">
 <h2><code>(&amp;Context) image_rgba</code></h2>
@@ -2115,6 +2353,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>Public constant `fill_nonzero`. Value `0`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="const-fill_evenodd">
 <h2><code>const fill_evenodd</code></h2>
@@ -2193,6 +2432,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>Path — a value of this type</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="-mut-Path-clear">
 <h2><code>(&amp;mut Path) clear</code></h2>
@@ -2349,6 +2589,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>StrokeOptions — a value of this type</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="-mut-Frame-fill_path">
 <h2><code>(&amp;mut Frame) fill_path</code></h2>
@@ -2529,6 +2770,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>TextOptions — a value of this type</p>
+<p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-TextLayout">
 <h2><code>struct TextLayout</code></h2>
@@ -2541,6 +2783,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dl class="api-params">
 <dt><code>metrics</code> <span class="type">TextMetrics</span></dt><dd>field (TextMetrics)</dd>
 </dl>
+<p><a href="#example-ba09d69a23c3">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-TextHit">
 <h2><code>struct TextHit</code></h2>

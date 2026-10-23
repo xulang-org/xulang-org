@@ -7,6 +7,437 @@
 <p class="meta">counts: 11 fns, 29 methods, 10 types, 19 consts, 0 ifaces</p>
 <p>Constraints, sizes, rectangles, row / column / stack / padding and retained layout trees. Constraints flow downward and measured sizes upward. BoxStyle width / height=-1 means natural size. Trees allow 4096 nodes and depth 64; removed node IDs never repeat. View in widgets handles painting and input.</p>
 <p><a href="/docs/ui#layout">Usage and lifetimes</a></p>
+<p>Release examples (complete projects and source downloads): <a href="#example-ba09d69a23c3"><code>widgets</code></a> · <a href="#example-008f8a20c76f"><code>text_input</code></a></p>
+<p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
+<section class="api-examples" id="examples">
+<h2>Examples</h2>
+<p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
+<details class="api-example" id="example-3333a8369d2f" open>
+<summary><code>16_ui_webview/desktop_services/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/desktop_services">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/desktop_services/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/desktop_services/main.xu"><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/draw</span>
+<span class="syn-import"><span class="hash">#</span>ui/layout</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">fn</span> caption(id <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    <span class="syn-kw">if</span> id == 0 { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"1 / Copy greeting"</span> }
+    <span class="syn-kw">if</span> id == 1 { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"2 / Read clipboard"</span> }
+    <span class="syn-kw">if</span> id == 2 { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"3 / Open files"</span> }
+    <span class="syn-kw">if</span> id == 3 { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"4 / Choose save path"</span> }
+    <span class="syn-kw">if</span> id == 4 { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"5 / Choose folders"</span> }
+    <span class="syn-kw">if</span> id == 5 { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"6 / Prompt (15s timeout)"</span> }
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"Cancel pending request"</span>
+}
+<span class="syn-kw">fn</span> status_name(status <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    <span class="syn-kw">if</span> status == ui.request_completed { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"completed"</span> }
+    <span class="syn-kw">if</span> status == ui.request_cancelled { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"cancelled"</span> }
+    <span class="syn-kw">if</span> status == ui.request_timed_out { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"timed out"</span> }
+    <span class="syn-kw">if</span> status == ui.request_unsupported { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"unsupported"</span> }
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"failed"</span>
+}
+<span class="syn-kw">fn</span> submit(identity &amp;ui.CanvasEvent,choice <span class="syn-type">int</span>) ui.Request {
+    options <span class="syn-flow">:=</span> ui.RequestOptions{timeout_ms: 5000}
+    <span class="syn-kw">if</span> choice == 0 { value <span class="syn-flow">:=</span> <span class="syn-str">"Hello from Xu UI 0.10 / 你好"</span>
+        <span class="syn-flow">&lt;&lt;</span> ui.clipboard_write_async(identity,&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> choice == 1 { <span class="syn-flow">&lt;&lt;</span> ui.clipboard_read_async(identity,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> choice == 5 { prompt <span class="syn-flow">:=</span> ui.PromptOptions{title: <span class="syn-str">"Your greeting"</span>,seed: <span class="syn-str">"Hello, Xu"</span>,timeout_ms: 15000}
+        <span class="syn-flow">&lt;&lt;</span> ui.prompt_async(identity,&amp;prompt) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">mut</span> files <span class="syn-flow">:=</span> ui.file_dialog_options()
+    <span class="syn-kw">if</span> choice == 2 {
+        files.title = <span class="syn-str">"Select one or more text files"</span>
+        files.multiple = true
+        files.filters = [ui.FileFilter{label: <span class="syn-str">"Text"</span>,extensions: [<span class="syn-str">"txt"</span>,<span class="syn-str">"md"</span>,<span class="syn-str">"xu"</span>]}]
+        <span class="syn-flow">&lt;&lt;</span> ui.open_files_async(identity,&amp;files) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-kw">if</span> choice == 3 { files.title = <span class="syn-str">"Choose a destination (this demo does not write)"</span>
+        files.name = <span class="syn-str">"xu-note.txt"</span>
+        <span class="syn-flow">&lt;&lt;</span> ui.save_file_async(identity,&amp;files) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    files.title = <span class="syn-str">"Choose folders"</span>
+    files.multiple = true
+    <span class="syn-flow">&lt;&lt;</span> ui.select_folders_async(identity,&amp;files) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">&amp;mut</span> draw.Frame,message <span class="syn-type">string</span>,pending <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,28.0,26.0,14.0,demo.accent(),<span class="syn-str">"05 / ASYNCHRONOUS DESKTOP SERVICES"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,28.0,58.0,28.0,demo.ink(),<span class="syn-str">"A request is not a result."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> 0:7 {
+        y <span class="syn-flow">:=</span> 120.0 + <span class="syn-type">f64</span>(id) * 48.0
+        frame.fill_rect(28.0,y,370.0,38.0,draw.rgb(40,57,73)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        demo.text(context,frame,40.0,y + 8.0,15.0,demo.ink(),caption(id)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    demo.text(context,frame,430.0,124.0,17.0,demo.accent(),<span class="syn-str">"Pending request: "</span> + str(pending)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> options <span class="syn-flow">:=</span> draw.text_options(16.0)
+    options.width = 360.0
+    <span class="syn-kw">mut</span> label <span class="syn-flow">:=</span> context.layout_text(&amp;message,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.text_layout(&amp;label,430.0,172.0,demo.ink()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,28.0,490.0,13.0,demo.muted(),<span class="syn-str">"One event channel / request IDs / distinct terminal states / Escape to close"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    label.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> scene(ech <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(ech) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.ev_exit { <span class="syn-flow">&lt;&lt;</span> 0 }
+    identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(4096)
+    <span class="syn-kw">mut</span> pending <span class="syn-flow">:=</span> ui.Request{id: 0,window_id: 0,canvas_id: 0,generation: 0,kind: 0}
+    <span class="syn-kw">mut</span> message <span class="syn-flow">:=</span> <span class="syn-str">"Choose an action. File dialogs return paths; selecting a save path does not write a file."</span>
+    <span class="syn-kw">mut</span> armed <span class="syn-flow">:=</span> -1
+    paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,message + <span class="syn-str">""</span>,pending.id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">while</span> true {
+        event <span class="syn-flow">:=</span> demo.next(ech)
+        <span class="syn-kw">if</span> event.kind == ui.ev_exit || event.kind == ui.ev_canvas_closed { <span class="syn-flow">&lt;-</span> }
+        <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
+        <span class="syn-kw">mut</span> dirty <span class="syn-flow">:=</span> event.kind == ui.ev_canvas_metrics
+        <span class="syn-kw">if</span> event.kind == ui.ev_request {
+            result <span class="syn-flow">:=</span> ui.request_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">if</span> result.matches(&amp;pending) {
+                message = <span class="syn-str">"Request "</span> + str(pending.id) + <span class="syn-str">" "</span> + status_name(result.status)
+                <span class="syn-kw">if</span> result.status == ui.request_completed {
+                    <span class="syn-kw">if</span> result.request.kind &gt;= ui.request_open_files {
+                        paths <span class="syn-flow">:=</span> ui.file_paths(&amp;result) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                        <span class="syn-kw">for</span> path <span class="syn-kw">in</span> paths { message = message + <span class="syn-str">"\n"</span> + path }
+                    } <span class="syn-kw">else</span> { message = message + <span class="syn-str">"\n"</span> + result.value }
+                }
+                println(<span class="syn-str">"Request "</span> + str(pending.id) + <span class="syn-str">": "</span> + status_name(result.status))
+                pending.id = 0
+                dirty = true
+            }
+        }
+        <span class="syn-kw">if</span> event.kind == ui.ev_blurred { armed = -1 }
+        <span class="syn-kw">if</span> ui.is_input_event(event.kind) {
+            input <span class="syn-flow">:=</span> ui.input_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">if</span> input.generation != identity.generation { <span class="syn-flow">-&gt;</span> }
+            <span class="syn-kw">mut</span> choice <span class="syn-flow">:=</span> -1
+            <span class="syn-kw">for</span> id <span class="syn-kw">in</span> 0:7 {
+                bounds <span class="syn-flow">:=</span> layout.Rect{x: 28.0,y: 120.0 + <span class="syn-type">f64</span>(id) * 48.0,width: 370.0,height: 38.0}
+                <span class="syn-kw">if</span> bounds.contains(input.x,input.y) { choice = id }
+            }
+            <span class="syn-kw">if</span> input.kind == ui.ev_pointer_down &amp;&amp; input.button == ui.button_left { armed = choice }
+            <span class="syn-kw">if</span> input.kind == ui.ev_pointer_cancel { armed = -1 }
+            <span class="syn-kw">mut</span> activate <span class="syn-flow">:=</span> -1
+            <span class="syn-kw">if</span> input.kind == ui.ev_pointer_up &amp;&amp; input.button == ui.button_left {
+                <span class="syn-kw">if</span> choice == armed { activate = choice }
+                armed = -1
+            }
+            <span class="syn-kw">if</span> input.kind == ui.ev_key_down &amp;&amp; input.repeat == 0 {
+                <span class="syn-kw">if</span> input.key &gt;= 49 &amp;&amp; input.key &lt;= 54 { activate = input.key - 49 }
+                <span class="syn-kw">if</span> input.key == ui.key_escape { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+            }
+            <span class="syn-kw">if</span> activate == 6 &amp;&amp; pending.id &gt; 0 { _ <span class="syn-flow">:=</span> pending.cancel()
+                message = <span class="syn-str">"Cancellation requested; waiting for terminal result."</span>
+                dirty = true }
+            <span class="syn-kw">if</span> activate &gt;= 0 &amp;&amp; activate &lt; 6 {
+                <span class="syn-kw">if</span> pending.id == 0 {
+                    request <span class="syn-flow">:=</span> submit(&amp;identity,activate) <span class="syn-kw">or</span> (err) { message = err.msg()
+                        paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,message + <span class="syn-str">""</span>,pending.id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                        <span class="syn-flow">-&gt;</span> }
+                    pending = request
+                    message = <span class="syn-str">"Request admitted. Keep interacting; the event loop remains active."</span>
+                } <span class="syn-kw">else</span> { message = <span class="syn-str">"Finish or cancel the current request first."</span> }
+                dirty = true
+            }
+        }
+        <span class="syn-kw">if</span> dirty { paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,message + <span class="syn-str">""</span>,pending.id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    }
+    <span class="syn-kw">if</span> pending.id &gt; 0 { _ <span class="syn-flow">:=</span> pending.cancel() }
+    frame.dispose()
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> } }
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Desktop Services"</span>,850,550) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
+</details>
+<details class="api-example" id="example-008f8a20c76f">
+<summary><code>16_ui_webview/text_input/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/text_input">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/text_input/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/text_input/main.xu"><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/draw</span>
+<span class="syn-import"><span class="hash">#</span>ui/layout</span>
+<span class="syn-import"><span class="hash">#</span>math</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">&amp;mut</span> draw.Frame,input &amp;ui.TextInput) <span class="syn-type">int</span> {
+    state <span class="syn-flow">:=</span> input.snapshot() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    value <span class="syn-flow">:=</span> state.display_value()
+    println(<span class="syn-str">"Text revision: "</span> + str(state.revision) + <span class="syn-str">" / display bytes: "</span> + str(value.len))
+    options <span class="syn-flow">:=</span> draw.text_options(28.0)
+    <span class="syn-kw">mut</span> text <span class="syn-flow">:=</span> context.layout_text(&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    text.bind_input(input,state.revision,44.0,180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,28.0,28.0,14.0,demo.accent(),<span class="syn-str">"04 / NATIVE TEXT INPUT"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,28.0,60.0,28.0,demo.ink(),<span class="syn-str">"Type in your own language."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,28.0,112.0,15.0,demo.muted(),<span class="syn-str">"Use an IME, arrows, Shift+arrows and Backspace. Click to move the caret."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.fill_rect(28.0,160.0,790.0,86.0,draw.rgb(26,37,50)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    anchor <span class="syn-flow">:=</span> text.caret(state.display_anchor(),false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    caret <span class="syn-flow">:=</span> text.caret(state.display_focus(),false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> state.display_anchor() != state.display_focus() &amp;&amp; anchor.y == caret.y {
+        frame.fill_rect(44.0 + math.min(anchor.x,caret.x),180.0 + caret.y,math.abs(caret.x - anchor.x),caret.height,draw.rgba(78,205,196,80)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    frame.text_layout(&amp;text,44.0,180.0,demo.ink()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.fill_rect(44.0 + caret.x,180.0 + caret.y,1.5,caret.height,demo.accent()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> state.composing {
+        demo.text(context,frame,28.0,280.0,17.0,demo.accent(),<span class="syn-str">"Composing: "</span> + state.preedit) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    } <span class="syn-kw">else</span> {
+        demo.text(context,frame,28.0,280.0,17.0,demo.muted(),<span class="syn-str">"Committed text / no active preedit"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    demo.text(context,frame,28.0,324.0,14.0,demo.muted(),<span class="syn-str">"Revision "</span> + str(state.revision) + <span class="syn-str">" / anchor byte "</span> + str(state.anchor) + <span class="syn-str">" / focus byte "</span> + str(state.focus)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,frame,28.0,360.0,14.0,demo.muted(),<span class="syn-str">"Selection uses UTF-8 byte offsets. Escape ends the session and closes the window."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    text.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> scene(ech <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(ech) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.ev_exit { <span class="syn-flow">&lt;&lt;</span> 0 }
+    identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    seed <span class="syn-flow">:=</span> <span class="syn-str">"你好，Xu 👩‍💻 · café"</span>
+    caret <span class="syn-flow">:=</span> ui.TextInputRect{x: 44.0,y: 180.0,width: 2.0,height: 36.0}
+    options <span class="syn-flow">:=</span> ui.text_input_options(&amp;seed,caret)
+    <span class="syn-kw">mut</span> input <span class="syn-flow">:=</span> ui.start_text_input(identity.canvas_id,identity.generation,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(4096)
+    paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,&amp;input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">while</span> true {
+        event <span class="syn-flow">:=</span> demo.next(ech)
+        <span class="syn-kw">if</span> event.kind == ui.ev_exit || event.kind == ui.ev_canvas_closed { <span class="syn-flow">&lt;-</span> }
+        <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
+        <span class="syn-kw">mut</span> dirty <span class="syn-flow">:=</span> event.kind == ui.ev_canvas_metrics
+        <span class="syn-kw">if</span> event.kind &gt;= ui.ev_text_commit &amp;&amp; event.kind &lt;= ui.ev_text_surrounding_delete {
+            edit <span class="syn-flow">:=</span> ui.text_edit_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">if</span> edit.input.id == input.id {
+                <span class="syn-kw">if</span> event.kind == ui.ev_text_input_ended || event.kind == ui.ev_text_input_failed { <span class="syn-flow">&lt;-</span> }
+                dirty = true
+            }
+        }
+        <span class="syn-kw">if</span> ui.is_input_event(event.kind) {
+            pointer <span class="syn-flow">:=</span> ui.input_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">if</span> pointer.generation != identity.generation { <span class="syn-flow">-&gt;</span> }
+            <span class="syn-kw">if</span> pointer.kind == ui.ev_key_down &amp;&amp; pointer.key == ui.key_escape { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+            bounds <span class="syn-flow">:=</span> layout.Rect{x: 28.0,y: 160.0,width: 790.0,height: 86.0}
+            <span class="syn-kw">if</span> pointer.kind == ui.ev_pointer_down &amp;&amp; pointer.button == ui.button_left &amp;&amp; bounds.contains(pointer.x,pointer.y) {
+                state <span class="syn-flow">:=</span> input.snapshot() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                <span class="syn-cmt">// The native editor owns preedit; do not overwrite an active composition.</span>
+                <span class="syn-kw">if</span> !state.composing {
+                    hit <span class="syn-flow">:=</span> input.hit_test(state.revision,pointer.x,pointer.y) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    index <span class="syn-flow">:=</span> hit.byte_index()
+                    _ <span class="syn-flow">:=</span> input.update(state.revision,&amp;state.value,index,index,&amp;caret) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    dirty = true
+                }
+            }
+        }
+        <span class="syn-kw">if</span> dirty { paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,&amp;input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    }
+    frame.dispose()
+    input.stop() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> 0 }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> } }
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Native Text Input"</span>,860,430) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
+</details>
+<details class="api-example" id="example-f3f5764ed94e">
+<summary><code>16_ui_webview/controls_gallery/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/controls_gallery">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/controls_gallery/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/controls_gallery/main.xu"><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/draw</span>
+<span class="syn-import"><span class="hash">#</span>ui/layout</span>
+<span class="syn-import"><span class="hash">#</span>ui/widgets</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">fn</span> rect(x <span class="syn-type">f64</span>,y <span class="syn-type">f64</span>,width <span class="syn-type">f64</span>,height <span class="syn-type">f64</span>) layout.Rect {
+    <span class="syn-flow">&lt;&lt;</span> layout.Rect{x: x,y: y,width: width,height: height}
+}
+
+<span class="syn-cmt">// One worker owns the controls and their canvas resources. Every recorded</span>
+<span class="syn-cmt">// label remains alive until the complete frame has been accepted.</span>
+<span class="syn-kw">fn</span> scene(ech <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(ech) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.ev_exit { <span class="syn-flow">&lt;&lt;</span> 0 }
+    identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> switcher <span class="syn-flow">:=</span> widgets.style_switcher()
+    switcher.use_preset(widgets.theme_light) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> toggle <span class="syn-flow">:=</span> widgets.switch_control(&amp;identity,1,&amp;rect(48.0,116.0,280.0,48.0),true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> radio <span class="syn-flow">:=</span> widgets.radio(&amp;identity,2,&amp;rect(48.0,180.0,280.0,48.0),1,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> slider <span class="syn-flow">:=</span> widgets.slider(&amp;identity,3,&amp;rect(48.0,260.0,280.0,36.0),0.0,100.0,50.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    slider.set_step(5.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> stepper <span class="syn-flow">:=</span> widgets.stepper(&amp;identity,4,&amp;rect(48.0,324.0,280.0,48.0),0.0,20.0,1.0,5.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> tabs <span class="syn-flow">:=</span> widgets.tabs(&amp;identity,5,&amp;rect(376.0,116.0,348.0,48.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> dropdown <span class="syn-flow">:=</span> widgets.select_box(&amp;identity,6,&amp;rect(376.0,196.0,348.0,48.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> list <span class="syn-flow">:=</span> widgets.list_box(&amp;identity,7,&amp;rect(376.0,284.0,348.0,132.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    panel <span class="syn-flow">:=</span> widgets.card(&amp;rect(24.0,92.0,724.0,352.0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    badge <span class="syn-flow">:=</span> widgets.badge(&amp;rect(48.0,392.0,280.0,32.0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    divider <span class="syn-flow">:=</span> widgets.divider(&amp;rect(48.0,244.0,280.0,2.0),widgets.axis_horizontal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> label0 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Enabled"</span>)
+    <span class="syn-kw">mut</span> label1 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Choose this option"</span>)
+    <span class="syn-kw">mut</span> label2 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Stepper"</span>)
+    <span class="syn-kw">mut</span> label3 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"One"</span>)
+    <span class="syn-kw">mut</span> label4 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Two"</span>)
+    <span class="syn-kw">mut</span> label5 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Three"</span>)
+    <span class="syn-kw">mut</span> label6 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Select an option"</span>)
+    <span class="syn-kw">mut</span> label7 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Xu 0.10.1"</span>)
+    <span class="syn-kw">mut</span> label8 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"One"</span>)
+    <span class="syn-kw">mut</span> label9 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Two"</span>)
+    <span class="syn-kw">mut</span> label10 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Three"</span>)
+    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(16384)
+    <span class="syn-kw">mut</span> dirty <span class="syn-flow">:=</span> true
+    <span class="syn-kw">mut</span> focus <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">while</span> true {
+        <span class="syn-kw">if</span> dirty {
+            styles <span class="syn-flow">:=</span> switcher.styles()
+            frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            frame.set_bg(styles.background) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            panel.paint_styled(<span class="syn-borrow">mut &amp;</span>frame,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            ink <span class="syn-flow">:=</span> styles.button.palette.foreground
+            title <span class="syn-flow">:=</span> <span class="syn-str">"Extended controls / "</span> + switcher.name()
+            frame.text(32.0,28.0,22.0,ink,&amp;title) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            toggle.paint_styled(<span class="syn-borrow">mut &amp;</span>frame,<span class="syn-borrow">mut &amp;</span>label0,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            radio.paint_styled(<span class="syn-borrow">mut &amp;</span>frame,<span class="syn-borrow">mut &amp;</span>label1,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            divider.paint_styled(<span class="syn-borrow">mut &amp;</span>frame,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            slider.paint_styled(<span class="syn-borrow">mut &amp;</span>frame,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            stepper.paint_styled(<span class="syn-borrow">mut &amp;</span>frame,<span class="syn-borrow">mut &amp;</span>label2,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            tabs.paint_box_styled(<span class="syn-borrow">mut &amp;</span>frame,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            list.paint_box_styled(<span class="syn-borrow">mut &amp;</span>frame,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            tabs.paint_tab_styled(<span class="syn-borrow">mut &amp;</span>frame,0,<span class="syn-borrow">mut &amp;</span>label3,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            list.paint_item_styled(<span class="syn-borrow">mut &amp;</span>frame,0,<span class="syn-borrow">mut &amp;</span>label8,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            tabs.paint_tab_styled(<span class="syn-borrow">mut &amp;</span>frame,1,<span class="syn-borrow">mut &amp;</span>label4,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            list.paint_item_styled(<span class="syn-borrow">mut &amp;</span>frame,1,<span class="syn-borrow">mut &amp;</span>label9,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            tabs.paint_tab_styled(<span class="syn-borrow">mut &amp;</span>frame,2,<span class="syn-borrow">mut &amp;</span>label5,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            list.paint_item_styled(<span class="syn-borrow">mut &amp;</span>frame,2,<span class="syn-borrow">mut &amp;</span>label10,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            dropdown.paint_styled(<span class="syn-borrow">mut &amp;</span>frame,<span class="syn-borrow">mut &amp;</span>label6,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            badge.paint_styled(<span class="syn-borrow">mut &amp;</span>frame,<span class="syn-borrow">mut &amp;</span>label7,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            frame.text(32.0,464.0,15.0,ink,&amp;<span class="syn-str">"T: theme / S: text size / D: density / Tab: focus / Esc: quit"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            status <span class="syn-flow">:=</span> <span class="syn-str">"Slider "</span> + str(<span class="syn-type">int</span>(slider.value())) + <span class="syn-str">" / Stepper "</span> + str(<span class="syn-type">int</span>(stepper.value())) + <span class="syn-str">" / Select "</span> + str(dropdown.selected() + 1)
+            frame.text(32.0,494.0,15.0,ink,&amp;status) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-cmt">// A Select popup overlays the scene; this basic painter repeats</span>
+            <span class="syn-cmt">// its label. The selected option index is shown in the status.</span>
+            dropdown.paint_popup_styled(<span class="syn-borrow">mut &amp;</span>frame,<span class="syn-borrow">mut &amp;</span>label6,&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            toggle.painted()
+            radio.painted()
+            slider.painted()
+            stepper.painted()
+            tabs.painted()
+            dropdown.painted()
+            list.painted()
+            dirty = false
+        }
+        event <span class="syn-flow">:=</span> demo.next(ech)
+        <span class="syn-kw">if</span> event.kind == ui.ev_exit { <span class="syn-flow">&lt;-</span> }
+        <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
+        <span class="syn-kw">if</span> event.kind == ui.ev_canvas_closed { <span class="syn-flow">&lt;-</span> }
+        <span class="syn-kw">if</span> event.kind == ui.ev_canvas_metrics { dirty = true }
+        <span class="syn-kw">if</span> ui.is_input_event(event.kind) {
+            input <span class="syn-flow">:=</span> ui.input_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">if</span> input.generation != identity.generation { <span class="syn-flow">-&gt;</span> }
+            <span class="syn-kw">if</span> input.kind == ui.ev_key_down &amp;&amp; input.repeat == 0 {
+                <span class="syn-kw">if</span> input.key == ui.key_escape {
+                    <span class="syn-cmt">// App shutdown revokes canvas resources. Do not enqueue</span>
+                    <span class="syn-cmt">// another frame while the native host is closing.</span>
+                    demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    <span class="syn-flow">&lt;&lt;</span> 0
+                }
+                <span class="syn-kw">if</span> input.key == 84 || input.key == 116 { switcher.next() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    dirty = true }
+                <span class="syn-kw">if</span> input.key == 83 || input.key == 115 {
+                    <span class="syn-kw">mut</span> scale <span class="syn-flow">:=</span> 1.4
+                    <span class="syn-kw">if</span> switcher.text_scale() &gt; 1.0 { scale = 1.0 }
+                    switcher.set_text_scale(scale) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    dirty = true
+                }
+                <span class="syn-kw">if</span> input.key == 68 || input.key == 100 {
+                    <span class="syn-kw">mut</span> density <span class="syn-flow">:=</span> 0.85
+                    <span class="syn-kw">if</span> switcher.density() &lt; 1.0 { density = 1.0 }
+                    switcher.set_density(density) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    dirty = true
+                }
+                <span class="syn-kw">if</span> input.key == ui.key_tab { focus = focus % 7 + 1
+                    dirty = true }
+            }
+        }
+        <span class="syn-cmt">// Route the popup first. A modal option click must not also focus</span>
+        <span class="syn-cmt">// or activate the ListBox underneath it.</span>
+        popup_open <span class="syn-flow">:=</span> dropdown.is_open()
+        first <span class="syn-flow">:=</span> dropdown.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">mut</span> actions <span class="syn-flow">:=</span> [first]
+        <span class="syn-kw">if</span> !popup_open &amp;&amp; !first.consumed {
+            actions.push(toggle.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+            actions.push(radio.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+            actions.push(slider.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+            actions.push(stepper.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+            actions.push(tabs.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+            actions.push(list.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+        }
+        <span class="syn-kw">for</span> action <span class="syn-kw">in</span> actions {
+            <span class="syn-kw">if</span> action.request_focus { focus = action.id }
+            <span class="syn-kw">if</span> action.needs_paint { dirty = true }
+        }
+        toggle.set_focus(focus == 1)
+        radio.set_focus(focus == 2)
+        slider.set_focus(focus == 3)
+        stepper.set_focus(focus == 4)
+        tabs.set_focus(focus == 5)
+        dropdown.set_focus(focus == 6)
+        list.set_focus(focus == 7)
+    }
+    frame.dispose()
+    <span class="syn-kw">if</span> demo.alive(&amp;identity) {
+        label0.dispose()
+        label1.dispose()
+        label2.dispose()
+        label3.dispose()
+        label4.dispose()
+        label5.dispose()
+        label6.dispose()
+        label7.dispose()
+        label8.dispose()
+        label9.dispose()
+        label10.dispose()
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) {
+    scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> }
+}
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Extended Controls"</span>,780,552) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1 }
+}</code></pre></div>
+</details>
+<details class="api-example"><summary>More related examples</summary><ul>
+<li id="example-114841dc1d17"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/editor_workbench"><code>16_ui_webview/editor_workbench/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/editor_workbench/main.xu" download>Download source</a></li>
+<li id="example-ba09d69a23c3"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/widgets"><code>16_ui_webview/widgets/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/widgets/main.xu" download>Download source</a></li>
+<li id="example-9beafed00ebd"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/style_gallery"><code>16_ui_webview/style_gallery/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/style_gallery/main.xu" download>Download source</a></li>
+<li id="example-b1a0463173fe"><a href="https://github.com/xulang-org/examples/tree/90b4a7f42b6da384929f54c5429508137eb3bc1b/examples/16_ui_webview/workbench"><code>16_ui_webview/workbench/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/main.xu" download>Download source</a></li>
+</ul></details>
+</section>
+<h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="const-max_extent">
 <h2><code>const max_extent</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> max_extent = 1000000000</code></pre></div>
@@ -28,6 +459,7 @@
 <dt><code>width</code> <span class="type">f64</span></dt><dd>field (f64)</dd>
 <dt><code>height</code> <span class="type">f64</span></dt><dd>field (f64)</dd>
 </dl>
+<p><a href="#example-114841dc1d17">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Rect">
 <h2><code>struct Rect</code></h2>
@@ -46,6 +478,7 @@
 <dt><code>width</code> <span class="type">f64</span></dt><dd>field (f64)</dd>
 <dt><code>height</code> <span class="type">f64</span></dt><dd>field (f64)</dd>
 </dl>
+<p><a href="#example-3333a8369d2f">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Insets">
 <h2><code>struct Insets</code></h2>
@@ -122,6 +555,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Constraints — a value of this type</p>
+<p><a href="#example-114841dc1d17">See usage example</a></p>
 </article>
 <article class="api-item" id="loose">
 <h2><code>loose</code></h2>
@@ -197,6 +631,7 @@
 </dl>
 <h3>Returns</h3>
 <p>Insets — a value of this type</p>
+<p><a href="#example-114841dc1d17">See usage example</a></p>
 </article>
 <article class="api-item" id="-Constraints-deflate">
 <h2><code>(&amp;Constraints) deflate</code></h2>
@@ -338,6 +773,7 @@
 <p>Public constant `cross_center`. Value `2`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-9beafed00ebd">See usage example</a></p>
 </article>
 <article class="api-item" id="const-cross_stretch">
 <h2><code>const cross_stretch</code></h2>
@@ -346,6 +782,7 @@
 <p>Public constant `cross_stretch`. Value `3`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-114841dc1d17">See usage example</a></p>
 </article>
 <article class="api-item" id="const-max_children">
 <h2><code>const max_children</code></h2>
@@ -447,6 +884,7 @@
 <p>Public constant `box_leaf`. Value `0`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-114841dc1d17">See usage example</a></p>
 </article>
 <article class="api-item" id="const-box_row">
 <h2><code>const box_row</code></h2>
@@ -455,6 +893,7 @@
 <p>Public constant `box_row`. Value `1`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-9beafed00ebd">See usage example</a></p>
 </article>
 <article class="api-item" id="const-box_column">
 <h2><code>const box_column</code></h2>
@@ -463,6 +902,7 @@
 <p>Public constant `box_column`. Value `2`.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
+<p><a href="#example-114841dc1d17">See usage example</a></p>
 </article>
 <article class="api-item" id="const-box_stack">
 <h2><code>const box_stack</code></h2>
@@ -553,6 +993,7 @@
 </dl>
 <h3>Returns</h3>
 <p>BoxStyle — a value of this type</p>
+<p><a href="#example-114841dc1d17">See usage example</a></p>
 </article>
 <article class="api-item" id="-BoxStyle-validate">
 <h2><code>(&amp;BoxStyle) validate</code></h2>

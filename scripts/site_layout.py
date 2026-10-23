@@ -41,7 +41,7 @@ API_GROUPS = [
     ('xi-database', '数据库', 'Database', 'database/sql database/sql/driver'.split()),
     ('xi-package', '扩展包', 'External packages', ['packages/' + name for name in
         'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite websocket zookeeper'.split()]),
-    ('xi-xuui', 'UI', 'UI', 'ui ui/webview ui/draw'.split()),
+    ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/widgets ui/webview'.split()),
 ]
 
 SOCIAL_PROFILES = [
@@ -96,9 +96,6 @@ def sidebar(route: str, en: bool, xu_version: str = '') -> str:
                  '#' + package.removeprefix('packages/') if package else 'Index')
                 for package in packages
             ]))
-        groups.append(('xi-xuui', 'Development preview' if en else '开发预览', [
-            (prefix + '/api/preview', 'UI API preview' if en else 'UI API 预览'),
-        ]))
     elif rest == '/blog' or rest.startswith('/blog/'):
         groups.append(('xi-chat', 'Blog', [
             (prefix + '/blog', 'Index' if en else '博客索引'),
