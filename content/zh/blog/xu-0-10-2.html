@@ -1,0 +1,40 @@
+<!--title: Xu 0.10.2：工具链路径自感知、原生非阻塞 Socket 等待与 RFC1951 DEFLATE 压缩-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.10.2</h1>
+<p class="meta">2026-10-24 · 正式发布</p>
+<p>Xu 0.10.2 正式发布！本次更新彻底解决了编译器与工具链的路径自感知及全局环境变量劫持问题，为所有主流平台带来了原生的非阻塞 Socket 就绪等待能力（epoll / kqueue / IOCP），集成了符合 RFC1951 的固定 Huffman DEFLATE 压缩实现，并引入了更加人体工学的高级 UI Screen 抽象与全量自举定点验证。</p>
+<p><a class="btn pri" href="https://github.com/xulang-org/xu/releases/tag/v0.10.2">下载 SDK 与校验摘要</a></p>
+
+<h2>工具链自感知与环境隔离</h2>
+<p>此前在全局配置（例如 <code>~/.xu/env.sh</code>）存在的情况下，本地独立构建或工作区的 <code>xu env</code> 及内部标准库路径探测可能会被全局环境变量劫持。0.10.2 重构了自感知逻辑：</p>
+<ul>
+<li>优先基于当前可执行文件自身（<code>argv[0]</code>）的所在目录及其父目录探测伴生标准库 <code>src/</code>，并校验目录可读性；</li>
+<li>将 <code>XU_ROOT</code> 严格绑定为标准库所在目录的父级，确保工具链根目录与标准库根目录强一致；</li>
+<li>杜绝了在多版本共存、CI 构建或本地开发时发生路径错乱的隐患。</li>
+</ul>
+
+<h2>原生 Socket 就绪等待（epoll / kqueue / IOCP）</h2>
+<p>在网络与系统调用底层，0.10.2 引入了原生的非阻塞 Socket 就绪等待能力（<code>sys_socket_wait</code> 及 <code>os.socket_wait</code>）：</p>
+<ul>
+<li><strong>Linux</strong>：原生基于 <code>epoll</code> 事件循环与就绪通知；</li>
+<li><strong>macOS / BSD</strong>：基于 <code>kqueue</code> 内核事件过滤机制；</li>
+<li><strong>Windows</strong>：基于 <code>IOCP</code> 完成端口及 WS2 原语；</li>
+<li>为高并发网络服务与低延迟客户端提供了跨平台的统一非阻塞等待抽象。</li>
+</ul>
+
+<h2>RFC1951 DEFLATE 压缩</h2>
+<p>标准库 <code>compress/flate</code> 现已包含符合 RFC 1951 规范的完整有界 LZ77 压缩与固定 Huffman 编码实现：</p>
+<ul>
+<li>采用 32 KiB 有界环形历史缓冲区与高效 3 字节哈希查找；</li>
+<li>自动检测数据可压缩性，对不可压缩数据或极短输入自动回退至存储块（stored blocks）；</li>
+<li>在兼顾高吞吐与稳健内存开销的同时，保证跨平台无任何未定义行为。</li>
+</ul>
+
+<h2>UI Screen 屏幕抽象与控件扩展</h2>
+<p>桌面 UI 引入了高阶人体工学的 <code>Screen</code> 抽象，简化了视图构建、事件循环与状态绑定的样板代码；同时进一步丰富了样式控件库（涵盖 Breadcrumbs、ColorPicker、ComboBox、DatePicker、TimePicker、MultiSelect、Pagination、Spinner、Table、Toast、Tooltip 与 TreeView 等），并硬化了 Map 结构体值在布局中的槽位排布与渲染一致性。</p>
+
+<h2>ARM32 / Thumb-2 代码生成</h2>
+<p>整合了 Thumb-2 虚拟寄存器分配、紧凑 16 位 T16 窄指令编码与分支跳转松弛优化，提升了嵌入式与 32 位 ARM 平台下的代码密度与执行效率。</p>
+
+<h2>验证与自举收敛</h2>
+<p>编译器通过全量 3 代自举（Gen1 &rarr; Gen2 &rarr; Gen3），达成了 <code>fixed point confirmed (Gen2 == Gen3)</code> 严格字节级定点一致。全部 8 款周边产品（<code>xu-doctor</code>, <code>xu-fmt</code>, <code>xu-map</code>, <code>xu-doc</code>, <code>xu-desktop</code>, <code>xu-setup</code>, <code>xu-lsp</code>, <code>xu-native</code>）及 8 个跨平台编译目标均通过全套契约验证。</p>

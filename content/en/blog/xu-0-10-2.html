@@ -1,0 +1,40 @@
+<!--title: Xu 0.10.2: Self-Contained Toolchain Discovery, Native Nonblocking Socket Readiness, and RFC1951 DEFLATE-->
+<p class="crumb"><a href="/blog">Blog</a></p>
+<h1>Xu 0.10.2</h1>
+<p class="meta">2026-10-24 · Official release</p>
+<p>Xu 0.10.2 is officially released! This update completely resolves toolchain path discovery and ambient environment hijacking, brings native nonblocking socket readiness waiting (epoll / kqueue / IOCP) across all major platforms, integrates a compliant RFC 1951 fixed-Huffman DEFLATE compressor, introduces ergonomic high-level UI Screen abstractions, and achieves full three-generation bootstrap fixed-point verification.</p>
+<p><a class="btn pri" href="https://github.com/xulang-org/xu/releases/tag/v0.10.2">Download SDKs and checksums</a></p>
+
+<h2>Toolchain Discovery and Environment Isolation</h2>
+<p>Previously, global configuration (e.g. <code>~/.xu/env.sh</code>) could hijack <code>xu env</code> and internal standard library resolution in standalone local checkouts or workspace builds. Xu 0.10.2 refactors path discovery:</p>
+<ul>
+<li>Probes the companion standard library <code>src/</code> relative to the running binary (<code>argv[0]</code>) and verifies directory readability first;</li>
+<li>Binds <code>XU_ROOT</code> strictly to the parent directory of the verified standard library root, ensuring perfect consistency between the toolchain and stdlib;</li>
+<li>Completely prevents unintended path crosstalk across multi-version cohabitation, CI workflows, and local checkouts.</li>
+</ul>
+
+<h2>Native Socket Readiness (epoll / kqueue / IOCP)</h2>
+<p>At the runtime and system call layer, 0.10.2 introduces native nonblocking socket readiness waiting (<code>sys_socket_wait</code> and <code>os.socket_wait</code>):</p>
+<ul>
+<li><strong>Linux</strong>: Powered by <code>epoll</code> event loops and readiness dispatch;</li>
+<li><strong>macOS / BSD</strong>: Powered by <code>kqueue</code> kernel event filters;</li>
+<li><strong>Windows</strong>: Powered by <code>IOCP</code> completion ports and WS2 primitives;</li>
+<li>Provides a unified, lightweight nonblocking readiness abstraction for high-concurrency servers and low-latency clients.</li>
+</ul>
+
+<h2>RFC 1951 DEFLATE Compression</h2>
+<p>The standard library <code>compress/flate</code> now includes a fully compliant bounded LZ77 and fixed-Huffman DEFLATE compressor:</p>
+<ul>
+<li>Uses a 32 KiB bounded circular history buffer with fast 3-byte hash table lookup;</li>
+<li>Automatically evaluates compressibility and falls back to stored blocks for incompressible or short streams;</li>
+<li>Ensures high throughput and predictable memory residency with zero undefined behavior across targets.</li>
+</ul>
+
+<h2>UI Screen Abstractions and Widget Expansion</h2>
+<p>Desktop UI gains an ergonomic <code>Screen</code> abstraction, eliminating boilerplate in view setup, event loops, and state management. The styled widget suite now includes Breadcrumbs, ColorPicker, ComboBox, DatePicker, TimePicker, MultiSelect, Pagination, Spinner, Table, Toast, Tooltip, and TreeView, alongside hardened map value struct slot layout calculation.</p>
+
+<h2>ARM32 / Thumb-2 Code Generation</h2>
+<p>Thumb-2 incorporates virtual register allocation, compact 16-bit T16 narrow encodings, and branch relaxation, boosting code density and execution efficiency on 32-bit ARM and embedded environments.</p>
+
+<h2>Verification and Bootstrap Convergence</h2>
+<p>The compiler has completed a full 3-generation self-bootstrap (Gen1 &rarr; Gen2 &rarr; Gen3) achieving bit-for-bit convergence (<code>fixed point confirmed (Gen2 == Gen3)</code>). All 8 companion tools (<code>xu-doctor</code>, <code>xu-fmt</code>, <code>xu-map</code>, <code>xu-doc</code>, <code>xu-desktop</code>, <code>xu-setup</code>, <code>xu-lsp</code>, <code>xu-native</code>) and 8 cross-compilation targets pass comprehensive contract verification.</p>

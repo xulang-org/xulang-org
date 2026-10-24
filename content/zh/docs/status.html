@@ -1,7 +1,7 @@
 <!--title: 限制与现状 — Xu {{xu_version}}-->
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>限制与现状 — Xu {{xu_version}}</h1>
-<p class="meta">2026-10-23 · 与 Xu 0.10.1 正式 SDK 对齐</p>
+<p class="meta">2026-10-24 · 与 Xu 0.10.2 正式 SDK 对齐</p>
 <p class="banner">官网与对应 SDK 版本：Xu {{xu_version}}。Xu 仍处于 0.x 阶段，已发布产物以 GitHub Releases 为准。</p>
 <div class="doc-table-wrap"><table><thead><tr><th>子系统</th><th>状态</th><th>支持范围与边界</th></tr></thead><tbody>
 <tr><td><strong>内存与资源</strong></td><td>已实现</td><td>单所有者、共享/独占借用、move 检查与确定性 drop；File/Conn 资源在作用域退出时自动关闭。</td></tr>
@@ -9,21 +9,22 @@
 <tr><td><strong>原生 AOT 与 WASM</strong></td><td>按目标验证</td><td>支持 macOS arm64/x64、Linux arm64/x64/loongarch64/riscv64/arm32、Windows x64/arm64、WebAssembly (wasm32) 及 Thumb/RISC-V 裸机目标；生成支持不代表全部库均通过目标机运行验收。</td></tr>
 <tr><td><strong>模块依赖</strong></td><td>已实现，保留边界</td><td>斜杠路径身份、显式 file/Git/tar 来源、SemVer 最低要求与 MVS、XUPROXY/私有路径绕过、内容锁、vendor 快照、离线/冻结构建与进程锁。</td></tr>
 <tr><td><strong>独立校验日志</strong></td><td>客户端已实现</td><td>0.8.4 新增固定公钥 XUSUMDB 校验与 XUNOSUMDB 策略；公共 Xu 服务和独立见证仍待发布，未配置或 off 时保持首次使用信任。</td></tr>
-<tr><td><strong>网络与 I/O</strong></td><td>平台差异</td><td>Unix 支持 TCP/UDP IPv4/IPv6 与 Unix 域套接字；已提供流式 I/O 和明确进度结果。Windows TCP dial/listen 仍未支持，raw IP 与 TLS 另有平台边界。</td></tr>
+<tr><td><strong>网络与 I/O</strong></td><td>平台差异</td><td>Unix 支持 TCP/UDP IPv4/IPv6 与 Unix 域套接字；原生 epoll/kqueue/IOCP Socket 就绪等待；已提供流式 I/O 和明确进度结果。Windows TCP dial/listen 仍未支持，raw IP 与 TLS 另有平台边界。</td></tr>
 <tr><td><strong>SQL 与扩展包</strong></td><td>独立模块</td><td>database/sql 提供连接池、事务和驱动契约；SDK 内 packages 模块 0.2.0 提供 29 个服务集成包及共享 transport，MySQL/PostgreSQL 使用协议驱动，SQLite 使用原生 C 资源。</td></tr>
 <tr><td><strong>密码学</strong></td><td>按包说明</td><td>包含 SM2/SM3/SM4/SM9/ZUC/GMTLS 的 Xu 实现；API 可用不代表已取得商用密码认证。</td></tr>
-<tr><td><strong>桌面 GUI</strong></td><td>需宿主工具链</td><td>桌面打包已有 macOS .app、Windows .exe、Linux ELF 路径；须有 GTK4/WebKitGTK 或 WebView2 及匹配工具链，并在目标机验证。</td></tr>
+<tr><td><strong>桌面 GUI</strong></td><td>需宿主工具链</td><td>桌面打包已有 macOS .app、Windows .exe、Linux ELF 路径；提供人体工学 Screen 屏幕上下文抽象与统一样式控件；须有 GTK4/WebKitGTK 或 WebView2 及匹配工具链，并在目标机验证。</td></tr>
 <tr><td><strong>共享库导出</strong></td><td>基础类型签名</td><td>--shared 支持 int、bool、string、f64、i32、u32、u8；原生 .a/.xulib 依赖有独立资源边界。</td></tr>
 <tr><td><strong>Map 容器</strong></td><td>已实现</td><td>支持 int/string 键；缺键直接索引明确失败，需要允许缺键时使用存在性检查或库 API。</td></tr>
-<tr><td><strong>工具与编辑器</strong></td><td>完全实现</td><td>提供开箱即用原生 Setup 离线安装向导（支持 Windows/macOS/Linux 全局环境变量自动配置）；build/run/check/test/install/get/fmt/map/doc/doctor/lsp 可用；up/update 支持直接下载官方二进制 Release 自更新；VS Code 扩展提供语法高亮与基于原生 <code>xu-lsp</code> 的完整语言服务（跳转定义、补全、悬停、实时诊断、大纲、重命名与引用）。</td></tr>
+<tr><td><strong>工具与编辑器</strong></td><td>完全实现</td><td>提供开箱即用原生 Setup 离线安装向导（支持 Windows/macOS/Linux 全局环境变量自动配置）；优先可执行文件探测标准库消除全局环境劫持；build/run/check/test/install/get/fmt/map/doc/doctor/lsp 可用；up/update 支持直接下载官方二进制 Release 自更新；VS Code 扩展提供语法高亮与基于原生 <code>xu-lsp</code> 的完整语言服务（跳转定义、补全、悬停、实时诊断、大纲、重命名与引用）。</td></tr>
 </tbody></table></div>
 <h2>近期进展与待完成项</h2>
+<p>0.10.2 修复编译器与工具链自感知，消除全局环境劫持；带来原生非阻塞 Socket 就绪等待（epoll / kqueue / IOCP）、RFC1951 DEFLATE 压缩与人体工学 UI Screen 抽象。详见<a href="/blog/xu-0-10-2">发布说明</a>。</p>
 <p>0.10.1 加入样式控件与统一主题切换、桌面异步请求及 Thumb-2 寄存器分配，并修复密码学、HTTP 请求接收、正则工作预算、JSON 数字转换与 DEFLATE 压缩。<strong>迁移：</strong>处理正则匹配、查找、分割和替换调用的错误；对并发 HTTP 处理器共享的可变状态进行同步；画布平移须显式启用。详见<a href="/blog/xu-0-10-1">发布与迁移说明</a>。</p>
 <p>0.9.4 补齐借用检查的表达式遍历与循环回边活跃性，移除泛型声明最多 4 个类型参数的限制，并加入逐 pass MIR 验证、MIR 导出与后端模式命中统计；ARM64 循环内核使用 SSA 匹配与循环旋转。诊断用法见<a href="/docs/cli">命令行参考</a>。</p>
 <p><strong>迁移注意</strong>：此前依赖借用检查遗漏才能编译的程序，现在会收到诊断。请分离冲突借用，或在取得共享借用前结束可变使用。</p>
 <p>模块依赖继续支持传递依赖、离线/冻结构建、MVS、代理和固定公钥校验客户端；提供原生 Setup 单文件离线安装程序与 WebAssembly 演练场。官网 API 从对应正式 SDK 提取，收录 130 个标准库/UI 包与 30 个扩展包。47 项横测的实测版本、日期与六平台来源见<a href="/benchmarks">基准页面</a>。</p>
 <p>仍待继续：公共 Xu 代理/校验服务、独立见证、vanity 仓库发现、目标平台的完整运行验收、共享文件系统锁与断电持久性。现有目标生成能力和 API 声明不替代这些验收。</p>
-<p><a href="/blog/xu-0-9-4">Xu 0.9.4 发布公告</a> · <a href="/blog/xu-0-9-3">Xu 0.9.3 发布公告</a> · <a href="/blog/xu-0-8-13">Xu 0.8.13 发布公告</a> · <a href="/blog/xu-0-8-12">Xu 0.8.12 发布公告</a> · <a href="/blog/xu-0-8-11">Xu 0.8.11</a> · <a href="/benchmarks">47 项实测跨语言性能与资源横测</a> · <a href="/blog/xu-0-8-4">Xu 0.8.x 进展与迁移</a> · <a href="/blog/packages-0-1-1">packages 0.1.1 进展</a></p>
+<p><a href="/blog/xu-0-10-2">Xu 0.10.2 发布公告</a> · <a href="/blog/xu-0-10-1">Xu 0.10.1 发布公告</a> · <a href="/blog/xu-0-9-4">Xu 0.9.4 发布公告</a> · <a href="/blog/xu-0-9-3">Xu 0.9.3 发布公告</a> · <a href="/blog/xu-0-8-13">Xu 0.8.13 发布公告</a> · <a href="/blog/xu-0-8-12">Xu 0.8.12 发布公告</a> · <a href="/blog/xu-0-8-11">Xu 0.8.11</a> · <a href="/benchmarks">47 项实测跨语言性能与资源横测</a> · <a href="/blog/xu-0-8-4">Xu 0.8.x 进展与迁移</a> · <a href="/blog/packages-0-1-1">packages 0.1.1 进展</a></p>
 <p><a href="/docs/modules">模块与依赖</a> · <a href="/docs/packages">扩展包</a> · <a href="/docs/ui">UI / WebView</a> · <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a></p>
 
 <p>程序目前最多包含 100 种不同的结果类型。当前 transport 依赖下，全部驱动连接池综合示例超过这一上限；请使用单独的数据库或服务示例。正式 API 快照仅收录已通过对应 SDK 检查的示例。</p>

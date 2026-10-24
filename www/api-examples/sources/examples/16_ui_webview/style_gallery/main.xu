@@ -3,6 +3,7 @@
 #ui/draw
 #ui/widgets
 #ui/layout
+#time
 demo #"github.com/xulang-org/examples/ui_demo"
 
 // IDs follow the stable topology created below. All control bounds are local;
@@ -21,6 +22,13 @@ struct Model {
     stepper widgets.Stepper
     tabs widgets.Tabs
     select_ctrl widgets.Select
+    select_origin layout.Rect
+    select_popup_armed bool
+    transitions []widgets.PaintTransition
+    switch_motion widgets.Tween
+    popup_motion widgets.Tween
+    clock time.Instant
+    reduced_motion bool
     badge widgets.Badge
     divider widgets.Divider
     card widgets.Card
@@ -51,10 +59,73 @@ struct Model {
     tab_2_label widgets.StyledLabel
     tab_3_label widgets.StyledLabel
     select_label widgets.StyledLabel
+    option_auto widgets.StyledLabel
+    option_manual widgets.StyledLabel
+    option_locked widgets.StyledLabel
     list_label widgets.StyledLabel
     list_2_label widgets.StyledLabel
     list_3_label widgets.StyledLabel
     list_4_label widgets.StyledLabel
+}
+fn (m &mut Model) motion_style(id int,base &widgets.ControlStyle,state int) widgets.ControlStyle {
+    now := m.clock
+    reduced := m.reduced_motion
+    motion := mut &m.transitions[id]
+    << motion.style(base,state,now,reduced) or >>
+}
+fn (m &mut Model) tick(view &mut widgets.View,now time.Instant) int {
+    m.clock = now
+    reduced := m.reduced_motion
+    for id in 1:m.transitions.len {
+        motion := mut &m.transitions[id]
+        if reduced && motion.is_animating() { motion.finish()
+            view.mark_paint(id) or >> }
+        else if motion.advance(now) or >> { view.mark_paint(id) or >> }
+    }
+    mut selected := 0.0
+    if m.toggle.value() { selected = 1.0 }
+    switch_motion := mut &m.switch_motion
+    before_switch := switch_motion.value()
+    switch_motion.retarget(selected,now,time.milliseconds(180) or >>,reduced) or >>
+    if before_switch != switch_motion.value() { view.mark_paint(32) or >> }
+    mut opened := 0.0
+    if m.select_ctrl.is_open() { opened = 1.0 }
+    popup_motion := mut &m.popup_motion
+    before_popup := popup_motion.value()
+    mut popup_duration := time.milliseconds(130) or >>
+    if opened == 0.0 { popup_duration = time.milliseconds(95) or >> }
+    popup_motion.retarget(opened,now,popup_duration,reduced) or >>
+    if before_popup != popup_motion.value() { view.mark_paint(1) or >> }
+    input := mut &m.input
+    if input.tick(now,reduced) or >> { view.mark_paint(12) or >> }
+    invalid := mut &m.invalid
+    if invalid.tick(now,reduced) or >> { view.mark_paint(13) or >> }
+    read_only := mut &m.read_only
+    if read_only.tick(now,reduced) or >> { view.mark_paint(14) or >> }
+    area := mut &m.area
+    if area.tick(now,reduced) or >> { view.mark_paint(15) or >> }
+    << 0
+}
+fn (m &Model) next_frame(now time.Instant) time.Instant {
+    if m.switch_motion.is_animating() || m.popup_motion.is_animating() { << now.add(time.milliseconds(16) or >>) or >> }
+    for motion in m.transitions { if motion.is_animating() { << now.add(time.milliseconds(16) or >>) or >> } }
+    mut deadline := time.zero_instant()
+    for next in [m.input.next_caret_tick(now,m.reduced_motion) or >>,m.invalid.next_caret_tick(now,m.reduced_motion) or >>,
+        m.read_only.next_caret_tick(now,m.reduced_motion) or >>,m.area.next_caret_tick(now,m.reduced_motion) or >>] {
+        if !next.is_zero() && (deadline.is_zero() || next.before(deadline)) { deadline = next }
+    }
+    << deadline
+}
+fn (m &Model) next_event(ech chan ui.Event) ui.Event {
+    deadline := m.next_frame(time.instant()) or >>
+    while true {
+        event := ui.poll_chan(ech)
+        if event.kind != ui.ev_none { << event }
+        if !deadline.is_zero() && !time.instant().before(deadline) { << event }
+        pause := time.milliseconds(8) or >>
+        pause.sleep()
+    }
+    << ui.Event{kind: ui.ev_none,window_id: 0,menu_id: "",width: 0,height: 0}
 }
 fn (m &mut Model) measure_node(id int,s &widgets.Styles) layout.Size {
     if id == 4 { control := m.theme
@@ -126,68 +197,122 @@ fn (m &mut Model) measure_styled(id int,s &widgets.Styles) layout.Size {
 fn (m &mut Model) draw_node(id int,b &layout.Rect,s &widgets.Styles,f &mut draw.Frame) int {
     if id == 4 { target := mut &m.theme
         target.set_bounds(b) or >>
-        control := m.theme
+        mut control := m.theme
+        base := control.style_or(s)
+        appearance := m.motion_style(4,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.theme_label
         control.paint_styled(f,label,s) or >> }
     if id == 5 { target := mut &m.scale
         target.set_bounds(b) or >>
-        control := m.scale
+        mut control := m.scale
+        base := control.style_or(s)
+        appearance := m.motion_style(5,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.scale_label
         control.paint_styled(f,label,s) or >> }
     if id == 6 { target := mut &m.density
         target.set_bounds(b) or >>
-        control := m.density
+        mut control := m.density
+        base := control.style_or(s)
+        appearance := m.motion_style(6,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.density_label
         control.paint_styled(f,label,s) or >> }
     if id == 8 { target := mut &m.brand
         target.set_bounds(b) or >>
-        control := m.brand
+        mut control := m.brand
+        base := control.style_or(s)
+        appearance := m.motion_style(8,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         icon := m.icon
         label := mut &m.brand_label
         control.paint_icon_styled(f,label,&icon,s) or >> }
     if id == 9 { target := mut &m.disabled
         target.set_bounds(b) or >>
-        control := m.disabled
+        mut control := m.disabled
+        base := control.style_or(s)
+        appearance := m.motion_style(9,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.disabled_label
         control.paint_styled(f,label,s) or >> }
     if id == 10 { target := mut &m.check
         target.set_bounds(b) or >>
-        control := m.check
+        mut control := m.check
+        base := control.style_or(s)
+        appearance := m.motion_style(10,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.check_label
         control.paint_styled(f,label,s) or >> }
-    if id == 12 { control := mut &m.input
-        control.paint_styled(f,s) or >> }
-    if id == 13 { control := mut &m.invalid
-        control.paint_styled(f,s) or >> }
-    if id == 14 { control := mut &m.read_only
-        control.paint_styled(f,s) or >> }
-    if id == 15 { control := mut &m.area
-        control.paint_styled(f,s) or >> }
+    if id == 12 {
+        now := m.clock
+        reduced := m.reduced_motion
+        mut motion := m.transitions[12]
+        control := mut &m.input
+        control.paint_motion_styled(f,s,mut &motion,now,reduced) or >>
+        m.transitions[12] = motion }
+    if id == 13 {
+        now := m.clock
+        reduced := m.reduced_motion
+        mut motion := m.transitions[13]
+        control := mut &m.invalid
+        control.paint_motion_styled(f,s,mut &motion,now,reduced) or >>
+        m.transitions[13] = motion }
+    if id == 14 {
+        now := m.clock
+        reduced := m.reduced_motion
+        mut motion := m.transitions[14]
+        control := mut &m.read_only
+        control.paint_motion_styled(f,s,mut &motion,now,reduced) or >>
+        m.transitions[14] = motion }
+    if id == 15 {
+        now := m.clock
+        reduced := m.reduced_motion
+        mut motion := m.transitions[15]
+        control := mut &m.area
+        control.paint_motion_styled(f,s,mut &motion,now,reduced) or >>
+        m.transitions[15] = motion }
     if id == 11 { control := mut &m.progress
         control.set_bounds(b) or >>
         control.paint_styled(f,s) or >> }
     if id == 32 { target := mut &m.toggle
         target.set_bounds(b) or >>
-        control := m.toggle
+        mut control := m.toggle
+        base := control.style_or(s)
+        appearance := m.motion_style(32,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
+        position := m.switch_motion.value()
         label := mut &m.toggle_label
-        control.paint_styled(f,label,s) or >> }
+        control.paint_position_styled(f,label,s,position) or >> }
     if id == 33 { target := mut &m.radio_a
         target.set_bounds(b) or >>
-        control := m.radio_a
+        mut control := m.radio_a
+        base := control.style_or(s)
+        appearance := m.motion_style(33,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.radio_a_label
         control.paint_styled(f,label,s) or >> }
     if id == 34 { target := mut &m.radio_b
         target.set_bounds(b) or >>
-        control := m.radio_b
+        mut control := m.radio_b
+        base := control.style_or(s)
+        appearance := m.motion_style(34,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.radio_b_label
         control.paint_styled(f,label,s) or >> }
     if id == 35 { target := mut &m.slider
         target.set_bounds(b) or >>
-        control := m.slider
+        mut control := m.slider
+        base := control.style_or(s)
+        appearance := m.motion_style(35,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         control.paint_styled(f,s) or >> }
     if id == 36 { target := mut &m.stepper
         target.set_bounds(b) or >>
-        control := m.stepper
+        mut control := m.stepper
+        base := control.style_or(s)
+        appearance := m.motion_style(36,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.stepper_label
         control.paint_styled(f,label,s) or >> }
     if id == 37 { target := mut &m.badge
@@ -212,7 +337,10 @@ fn (m &mut Model) draw_node(id int,b &layout.Rect,s &widgets.Styles,f &mut draw.
         control.paint_tab_styled(f,2,l2,s) or >> }
     if id == 41 { target := mut &m.select_ctrl
         target.set_bounds(b) or >>
-        control := m.select_ctrl
+        mut control := m.select_ctrl
+        base := control.style_or(s)
+        appearance := m.motion_style(41,&base,control.visual_state()) or >>
+        control.set_style(&appearance) or >>
         label := mut &m.select_label
         control.paint_styled(f,label,s) or >> }
     if id == 42 { target := mut &m.card
@@ -256,7 +384,71 @@ fn (m &mut Model) overlay_styled(id int,b &layout.Rect,s &widgets.Styles,f &mut 
     if id == 16 { control := mut &m.scroll
         control.paint_scrollbar(f,s) or (err) { eprintln(err.msg())
             << false } }
+    if id == 1 && (m.select_ctrl.is_open() || m.popup_motion.value() > 0.0) {
+        m.paint_select_popup(s,f) or (err) { eprintln(err.msg())
+            << false }
+    }
     << true
+}
+// Root overlay keeps the popup above every sibling and outside the button's box.
+fn (m &mut Model) paint_select_popup(s &widgets.Styles,f &mut draw.Frame) int {
+    mut control := m.select_ctrl
+    control.set_open(true)
+    opacity := m.popup_motion.value()
+    if opacity <= 0.0 { << 0 }
+    base := control.style_or(s)
+    appearance := base.with_opacity(opacity) or >>
+    control.set_style(&appearance) or >>
+    popup := control.popup_bounds(s)
+    mut offset := -4.0 * (1.0 - opacity)
+    if popup.y < 0.0 { offset = 4.0 * (1.0 - opacity) }
+    f.push() or >>
+    f.translate(m.select_origin.x,m.select_origin.y + offset) or >>
+    control.paint_popup_box_styled(f,s) or >>
+    auto_label := mut &m.option_auto
+    control.paint_option_styled(f,0,auto_label,s) or >>
+    manual_label := mut &m.option_manual
+    control.paint_option_styled(f,1,manual_label,s) or >>
+    locked_label := mut &m.option_locked
+    control.paint_option_styled(f,2,locked_label,s) or >>
+    f.pop() or >>
+    << 0
+}
+// The popup is an overlay, so route its pointer sequence before normal tree hits.
+fn (m &mut Model) dispatch_input(view &mut widgets.View,event &ui.InputEvent) []widgets.Action {
+    was_open := m.select_ctrl.is_open()
+    pointer := event.kind == ui.ev_pointer_down || event.kind == ui.ev_pointer_up ||
+        event.kind == ui.ev_pointer_move || event.kind == ui.ev_pointer_scroll
+    if pointer && (was_open || m.select_popup_armed) {
+        local := view.local_input(41,event) or >>
+        styles := view.styles_for(41) or >>
+        pop := m.select_ctrl.popup_bounds(&styles)
+        if pop.contains(local.x,local.y) || m.select_popup_armed {
+            if event.kind == ui.ev_pointer_down && event.button == ui.button_left { m.select_popup_armed = true }
+            control := mut &m.select_ctrl
+            action := control.input(&local) or >>
+            view.set_pointer_cursor(ui.cursor_hand) or >>
+            if event.kind == ui.ev_pointer_up { m.select_popup_armed = false }
+            view.mark_paint(41) or >>
+            view.mark_paint(1) or >>
+            << [action]
+        }
+    }
+    if event.kind == ui.ev_pointer_cancel { m.select_popup_armed = false }
+    actions := widgets.dispatch(view,event,m) or >>
+    if was_open || m.select_ctrl.is_open() { view.mark_paint(1) or >> }
+    << actions
+}
+fn (m &mut Model) dispatch_event(view &mut widgets.View,event &ui.Event) []widgets.Action {
+    if ui.is_input_event(event.kind) {
+        input := ui.input_of(event) or >>
+        << m.dispatch_input(view,&input) or >>
+    }
+    was_open := m.select_ctrl.is_open()
+    actions := widgets.dispatch_event(view,event,m) or >>
+    m.select_popup_armed = false
+    if was_open && !m.select_ctrl.is_open() { view.mark_paint(1) or >> }
+    << actions
 }
 fn (m &mut Model) input(id int,kind int,event &ui.InputEvent) widgets.Action {
     if id == 4 { control := mut &m.theme
@@ -300,6 +492,22 @@ fn (m &mut Model) input(id int,kind int,event &ui.InputEvent) widgets.Action {
     << widgets.Action{kind: 0,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
 }
 fn (m &mut Model) place(view &mut widgets.View) int {
+    select_bounds := view.node_bounds(41) or >>
+    m.select_origin = select_bounds
+    select_styles := view.styles_for(41) or >>
+    select_control := mut &m.select_ctrl
+    select_control.set_bounds(&layout.Rect{x: 0.0,y: 0.0,width: select_bounds.width,height: select_bounds.height}) or >>
+    select_control.apply_styles(&select_styles) or >>
+    popup := select_control.popup_bounds(&select_styles)
+    window_bounds := view.node_bounds(1) or >>
+    below := window_bounds.y + window_bounds.height - select_bounds.y - select_bounds.height
+    above := select_bounds.y - window_bounds.y
+    select_control.set_popup_above(below < popup.height + 2.0 * select_styles.density && above > below)
+    list_bounds := view.node_bounds(43) or >>
+    list_styles := view.styles_for(43) or >>
+    list_control := mut &m.list
+    list_control.set_bounds(&layout.Rect{x: 0.0,y: 0.0,width: list_bounds.width,height: list_bounds.height}) or >>
+    list_control.apply_styles(&list_styles) or >>
     input := mut &m.input
     widgets.place_editor(view,input) or >>
     invalid := mut &m.invalid
@@ -417,6 +625,12 @@ fn (m &mut Model) cleanup() {
     tab_3_label.dispose()
     select_label := mut &m.select_label
     select_label.dispose()
+    option_auto := mut &m.option_auto
+    option_auto.dispose()
+    option_manual := mut &m.option_manual
+    option_manual.dispose()
+    option_locked := mut &m.option_locked
+    option_locked.dispose()
     list_label := mut &m.list_label
     list_label.dispose()
     list_2_label := mut &m.list_2_label
@@ -456,9 +670,9 @@ fn brand_scope(view &mut widgets.View) int {
     hover.foreground = draw.rgb(209,250,229)
     hover.border = draw.rgb(110,231,183)
     brand.button.states = [hover]
-    brand.button.shadow = draw.rgba(0,0,0,90)
+    brand.button.shadow = draw.rgba(0,0,0,28)
     brand.button.shadow_y = 2.0
-    brand.button.shadow_blur = 3.0
+    brand.button.shadow_blur = 6.0
     view.set_style_scope(8,&brand) or >>
     << 0
 }
@@ -486,7 +700,6 @@ fn (m &mut Model) handle_action(view &mut widgets.View,action &widgets.Action) i
             sel := mut &m.select_ctrl
             next_opt := (sel.selected() + 1) % 3
             sel.set_selected(next_opt) or >>
-            sel.set_open(false)
             lbl := mut &m.select_label
             if next_opt == 0 { lbl.set_text(&"Option: Auto") }
             if next_opt == 1 { lbl.set_text(&"Option: Manual") }
@@ -606,6 +819,9 @@ fn scene(ech chan ui.Event) int {
         stepper: widgets.stepper(&identity,36,&empty,0.0,100.0,5.0,65.0) or >>,
         tabs: widgets.tabs(&identity,40,&empty,3,0) or >>,
         select_ctrl: widgets.select_box(&identity,41,&empty,3,0) or >>,
+        select_origin: empty,select_popup_armed: false,
+        transitions: []widgets.PaintTransition{},switch_motion: widgets.tween(1.0) or >>,popup_motion: widgets.tween(0.0) or >>,
+        clock: time.zero_instant(),reduced_motion: false,
         badge: widgets.badge(&empty) or >>,
         divider: widgets.divider(&empty,widgets.axis_horizontal) or >>,
         card: widgets.card(&empty) or >>,
@@ -633,10 +849,17 @@ fn scene(ech chan ui.Event) int {
         tab_2_label: widgets.styled_label(&context,&"Tokens"),
         tab_3_label: widgets.styled_label(&context,&"Themes"),
         select_label: widgets.styled_label(&context,&"Option: Auto"),
+        option_auto: widgets.styled_label(&context,&"Auto"),
+        option_manual: widgets.styled_label(&context,&"Manual"),
+        option_locked: widgets.styled_label(&context,&"Locked"),
         list_label: widgets.styled_label(&context,&"1 · Buttons"),
         list_2_label: widgets.styled_label(&context,&"2 · Editors"),
         list_3_label: widgets.styled_label(&context,&"3 · Surfaces"),
         list_4_label: widgets.styled_label(&context,&"4 · Controls")}
+    for i in 0:44 { m.transitions.push(widgets.paint_transition() or >>) }
+    for id in [4,5,6,8,10,32,33,34,36,40,41,43] { view.set_cursor(id,ui.cursor_hand) or >> }
+    for id in [12,13,14,15] { view.set_cursor(id,ui.cursor_text) or >> }
+    view.set_cursor(35,ui.cursor_resize_horizontal) or >>
     badge_ref := mut &m.badge
     badge_ref.set_selected(true)
     disabled := mut &m.disabled
@@ -652,13 +875,15 @@ fn scene(ech chan ui.Event) int {
     mut event := ui.Event{kind: ui.ev_none,window_id: 0,menu_id: "",width: 0,height: 0}
     // Drain input bursts before painting. Native text snapshots already hold
     // the latest revision; rendering each queued key would fill the frame queue.
+    ui.request_canvas_preferences(&identity) or >>
     while true {
         if event.kind == ui.ev_none {
+            m.tick(mut &view,time.instant()) or >>
             constraints := layout.tight(width,height) or >>
             _ := widgets.layout_styled(mut &view,&constraints,mut &m) or >>
             m.place(mut &view) or >>
             if widgets.present_styled(mut &view,&constraints,mut &m) or >> { m.acknowledge() }
-            event = demo.next(ech)
+            event = m.next_event(ech)
         }
         if event.kind == ui.ev_exit { <- }
         if event.window_id == identity.window_id {
@@ -666,11 +891,20 @@ fn scene(ech chan ui.Event) int {
             if event.kind == ui.ev_canvas_metrics { metrics := ui.metrics_of(&event) or >>
                 width = metrics.width
                 height = metrics.height }
-            actions := widgets.dispatch_event(mut &view,&event,mut &m) or >>
+            if event.kind == ui.ev_focused { ui.request_canvas_preferences(&identity) or >> }
+            if event.kind == ui.ev_canvas_preferences {
+                preferences := ui.canvas_preferences_of(&event) or >>
+                if preferences.identity.canvas_id == identity.canvas_id && preferences.identity.generation == identity.generation {
+                    m.reduced_motion = preferences.reduced_motion
+                    view.mark_paint(1) or >>
+                }
+            }
+            popup_was_open := m.select_ctrl.is_open()
+            actions := m.dispatch_event(mut &view,&event) or >>
             m.native_event(mut &view,&event) or >>
             for action in actions { m.handle_action(mut &view,&action) or >> }
             if ui.is_input_event(event.kind) { input := ui.input_of(&event) or >>
-                if input.kind == ui.ev_key_down && input.key == ui.key_escape {
+                if input.kind == ui.ev_key_down && input.key == ui.key_escape && !popup_was_open {
                     view.dispose()
                     if demo.alive(&identity) { m.cleanup() }
                     demo.quit() or >>
