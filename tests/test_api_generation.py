@@ -25,7 +25,7 @@ class APIGenerationTests(unittest.TestCase):
         package = api.Package('ui/widgets', '#ui/widgets', items=[
             api.Item('fn', 'style_switcher', 'pub fn style_switcher() StyleSwitcher')])
         for lang in ('en', 'zh'):
-            page = api.render_page(package, lang, '0.10.1', examples=examples)
+            page = api.render_page(package, lang, '0.10.2', examples=examples)
             related = examples[3]
             self.assertIn(f'id="{related.anchor}"', page)
             self.assertIn(f'href="#{related.anchor}"', page)

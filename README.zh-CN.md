@@ -108,7 +108,7 @@ XU 正在 **0.x 阶段**持续演进。已发布 SDK 见 [Releases](https://gith
 <details>
 <summary><strong>参与 xulang.org 开发</strong> — 网站构建、演练场与部署</summary>
 
-这个主页仓库也保存了官网源码。站点选用已发布的 **XU 0.10.1 SDK**，开发版另行迭代。
+这个主页仓库也保存了官网源码。站点选用已发布的 **XU 0.10.2 SDK**，开发版另行迭代。
 
 ### 本地构建
 
@@ -142,7 +142,7 @@ make clean                       # 清理 dist/ 与 build/playground/
 刷新声明与示例时，在 `templates/api-examples.json` 中选择兼容源码，用所选 SDK 检查，再指定示例仓库及完整提交 SHA：
 
 ```sh
-make api XU_ROOT=/path/to/xu-v0.10.1 XU_PACKAGES_ROOT=/path/to/xu-v0.10.1/packages \
+make api XU_ROOT=/path/to/xu-v0.10.2 XU_PACKAGES_ROOT=/path/to/xu-v0.10.2/packages \
   XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
 ```
 
@@ -178,7 +178,7 @@ python3 scripts/gen-benchmarks.py
 
 ### UI 开发文档
 
-[中文 UI 指南](content/zh/docs/ui.html) 与 [英文指南](content/en/docs/ui.html) 覆盖 UI 分支至 Xu 0.10.1-dev.3。开发 API 单独放在 `/zh/api/preview/` 与 `/api/preview/`，横幅和源码 SHA-256 标明开发输入，可能包含尚未提交的修改；不会修改官网所选正式 SDK、下载入口或正式版示例快照。
+[中文 UI 指南](content/zh/docs/ui.html) 与 [英文指南](content/en/docs/ui.html) 覆盖 UI 分支至 Xu 0.10.2。开发 API 单独放在 `/zh/api/preview/` 与 `/api/preview/`，横幅和源码 SHA-256 标明开发输入，可能包含尚未提交的修改；不会修改官网所选正式 SDK、下载入口或正式版示例快照。
 
 ```sh
 python3 scripts/gen-api.py --src /path/to/xu-ui/src --preview --package ui
