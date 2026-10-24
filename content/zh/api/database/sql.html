@@ -235,7 +235,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const level_default</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> level_default = 0</code></pre></div>
 <h3>用途</h3>
-<p>`database/sql` user API over `database/sql/driver`. Open takes a Driver value, not a registry name: Xu has no mutable package global (same constraint as slog.SetDefault), so there is no `Register`. `OpenDB(Connector)` is `open_db`. DriverContext OpenConnector on Driver: iface forward-ref). `prepare_context` on driver.Conn is ConnPrepareContext. The pool matches `sql.DB`: lazy Open/OpenDB, idle list, get/put around Query/Exec/Ping. Query puts the conn back after the driver returns (v1 Rows is a snapshot; holds the conn until Rows.Close for streaming cursors). Tx holds a conn until Commit/Rollback. DB.Prepare does not pin (: release after prepare, re-prepare on the borrowed conn). Idle conns live on a channel because `[]driver.Conn` cannot move an element by runtime index. Open stores Driver+DSN and calls Driver.open ( `dsnConnector` is inlined: a second Connector impl next to the user&#x27;s would collide sql.Conn is a pool handle (per-op get/put), not a checked-out exclusive box: struct@ cannot live in Conn and return to idle without a dup that aliases the unique box. Close only marks done. `raw` dups a checkout; drop that dup before the next pool op. SetMaxOpenConns(0)=unlimited; default max idle is 2. Lifetime/idle-time expire on get/put (no background cleaner). Idle reuse calls is_valid + reset_session ( Validator SessionResetter). Invalid conns are closed, not returned to idle. Idle queue cap is 64. DB Ping/Exec/Query retry `driver.ErrBadConn` up to 3 attempts ( `maxBadConnRetries` + alwaysNewConn). Args are snapshotted as cloneable wire strings because `temp` cannot be reused. Tx/Stmt do not retry (bound to one conn / one prepare). Exec/Query take `...temp` like (int/string/bool/f64/time.Time/[]u8/NamedArg (`temp` 拒借用); `Rows.next` + `take` returns a local `[]temp` of Values. Prepare is `Conn.Prepare` → `driver.Stmt`. Begin is `Conn.Begin` → `driver.Tx`. Tx holds a dup handle to the same conn (struct@ is move-only; dup shares the driver object). Isolation is the driver&#x27;s rollback restores the snapshot taken at Begin. QueryRow is -shaped: it does not throw; `Row.take` surfaces ErrNoRows query errors ( `QueryRow` + `Scan`). sql.Rows owns a v1 snapshot from `driver.RowsResult` (not streaming `driver.Rows`); next/take walk flat cells. ColumnType* stubs return &quot;&quot; / ok=false at this layer. Context methods borrow `&amp;context.Context`, check `context.err`, then forward ( `PingContext` &amp;c). BeginTx with non-default isolation/read-only errors like when the driver has no ConnBeginTx. Driver.dup is Xu-only (struct@ is move-only). `Conn` is `sql.Conn` (dedicated pooled handle). Field `dc` is the driver conn so `conn(ctx)` can match `DB.Conn`. Exec/Query args become `[]driver.NamedValue` ( QueryerContext). NamedArg fills Name+Value; others are ordinal-only. Stmt.NumInput ≥ 0 must match argc. Connector.Connect borrows context. `raw` returns a dup of the dedicated driver conn. ColumnType.decimal_size is DecimalSize. 值为 `0`。</p>
+<p>默认事务隔离级别，沿用底层数据库驱动或服务端的默认隔离配置。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -243,7 +243,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const level_read_uncommitted</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> level_read_uncommitted = 1</code></pre></div>
 <h3>用途</h3>
-<p>公开常量 `level_read_uncommitted`。 值为 `1`</p>
+<p>读未提交（Read Uncommitted）事务隔离级别，允许读取其他并发事务未提交的数据变更（脏读）。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -251,7 +251,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const level_read_committed</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> level_read_committed = 2</code></pre></div>
 <h3>用途</h3>
-<p>公开常量 `level_read_committed`。 值为 `2`</p>
+<p>读已提交（Read Committed）事务隔离级别，仅允许读取已提交数据，避免脏读。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -259,7 +259,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const level_write_committed</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> level_write_committed = 3</code></pre></div>
 <h3>用途</h3>
-<p>公开常量 `level_write_committed`。 值为 `3`</p>
+<p>常量 `level_write_committed`，定义了相关的协议或算法配置参数。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -267,7 +267,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const level_repeatable_read</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> level_repeatable_read = 4</code></pre></div>
 <h3>用途</h3>
-<p>公开常量 `level_repeatable_read`。 值为 `4`</p>
+<p>可重复读（Repeatable Read）事务隔离级别，保证同一事务内多次读取相同行数据一致，避免不可重复读。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -275,7 +275,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const level_snapshot</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> level_snapshot = 5</code></pre></div>
 <h3>用途</h3>
-<p>公开常量 `level_snapshot`。 值为 `5`</p>
+<p>常量 `level_snapshot`，定义了相关的协议或算法配置参数。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -283,7 +283,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const level_serializable</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> level_serializable = 6</code></pre></div>
 <h3>用途</h3>
-<p>公开常量 `level_serializable`。 值为 `6`</p>
+<p>串行化（Serializable）事务隔离级别，最高隔离级别，强制事务串行执行，完全避免脏读、不可重复读与幻读。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -291,7 +291,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const level_linearizable</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> level_linearizable = 7</code></pre></div>
 <h3>用途</h3>
-<p>公开常量 `level_linearizable`。 值为 `7`</p>
+<p>常量 `level_linearizable`，定义了相关的协议或算法配置参数。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -302,7 +302,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> read_only <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `TxOptions`。</p>
+<p>Sql 配置参数与选项集合。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>isolation</code> <span class="type">int</span></dt><dd>字段（int）</dd>
@@ -316,7 +316,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> value temp
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `NamedArg`。</p>
+<p>承载 name、value 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>name</code> <span class="type">string</span></dt><dd>名字</dd>
@@ -336,7 +336,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> max_lifetime_closed <span class="syn-type">int</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `DBStats`。</p>
+<p>承载 max_open_connections、open_connections、in_use、idle、wait_count 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>max_open_connections</code> <span class="type">int</span></dt><dd>字段（int）</dd>
@@ -360,7 +360,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> st <span class="syn-kw">chan</span> PoolState
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `DB`。</p>
+<p>并发安全的数据库连接池对象，管理空闲连接、连接生命周期与事务分发。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>drv</code> <span class="type">driver.Driver</span></dt><dd>字段（driver.Driver）</dd>
@@ -385,7 +385,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> opener <span class="syn-kw">chan</span> ConnSlot
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `Conn`。</p>
+<p>承载 closed、created_ns、idle_ns、idle、pst 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>closed</code> <span class="type">int</span></dt><dd>字段（int）</dd>
@@ -416,7 +416,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> opener <span class="syn-kw">chan</span> ConnSlot
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `Tx`。</p>
+<p>在单个专用数据库连接上执行的在建事务，须以 commit 或 rollback 显式结束。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>slot</code> <span class="type">chan PooledConn</span></dt><dd>字段（通道；类型 chan PooledConn）</dd>
@@ -440,7 +440,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> rows_affected <span class="syn-type">int</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `Result`。</p>
+<p>承载 last_insert_id、rows_affected 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>last_insert_id</code> <span class="type">int</span></dt><dd>字段（int）</dd>
@@ -454,7 +454,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `NullInt64`。</p>
+<p>承载 v、valid 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>v</code> <span class="type">int</span></dt><dd>值</dd>
@@ -468,7 +468,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `NullString`。</p>
+<p>承载 s、valid 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">string</span></dt><dd>源字符串</dd>
@@ -482,7 +482,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `NullBool`。</p>
+<p>承载 v、valid 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>v</code> <span class="type">bool</span></dt><dd>值</dd>
@@ -496,7 +496,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `NullFloat64`。</p>
+<p>承载 v、valid 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>v</code> <span class="type">f64</span></dt><dd>值</dd>
@@ -510,7 +510,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `NullInt32`。</p>
+<p>承载 v、valid 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>v</code> <span class="type">i32</span></dt><dd>值</dd>
@@ -524,7 +524,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `NullByte`。</p>
+<p>承载 v、valid 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>v</code> <span class="type">u8</span></dt><dd>值</dd>
@@ -538,7 +538,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `NullTime`。</p>
+<p>承载 t、valid 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">time.Time</span></dt><dd>字段（time.Time）</dd>
@@ -559,7 +559,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> precision_ok <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `ColumnType`。</p>
+<p>承载 col、db_type、length、length_ok、nullable 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>col</code> <span class="type">string</span></dt><dd>字段（string）</dd>
@@ -589,7 +589,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> pst <span class="syn-kw">chan</span> PoolState
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `Rows`。</p>
+<p>SQL 查询结果迭代器游标，按行遍历扫描数据列，使用完毕须调用 close 释放。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>cols</code> <span class="type">[]string</span></dt><dd>字段（[]string）</dd>
@@ -612,7 +612,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> err <span class="syn-type">string</span>
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `Row`。</p>
+<p>承载 cells、err 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>cells</code> <span class="type">[]string</span></dt><dd>字段（[]string）</dd>
@@ -636,7 +636,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-kw">pub</span> opener <span class="syn-kw">chan</span> ConnSlot
 }</code></pre></div>
 <h3>用途</h3>
-<p>公开结构体 `Stmt`。</p>
+<p>承载 ds、qtext、closed、from_db、created_ns 等属性的结构体。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>ds</code> <span class="type">driver.Stmt</span></dt><dd>字段（driver.Stmt）</dd>
@@ -657,7 +657,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>named</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> named(name <span class="syn-type">string</span>, value temp) NamedArg</code></pre></div>
 <h3>用途</h3>
-<p>named，返回 NamedArg。</p>
+<p>构造包含键名与键值的命名 SQL 参数（NamedArg）。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>name</code> <span class="type">string</span></dt><dd>名字（string）</dd>
@@ -670,21 +670,21 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(d driver.Driver, name <span class="syn-type">string</span>) DB</code></pre></div>
 <h3>用途</h3>
-<p>打开。</p>
+<p>根据驱动名与数据源连接串（DSN）初始化数据库连接池 DB；不会立即建立真实网络连接。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>d</code> <span class="type">driver.Driver</span></dt><dd>d（driver.Driver）</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>名字（string）</dd>
 </dl>
 <h3>返回</h3>
-<p>DB — 该类型的值</p>
+<p>数据库连接池实例 DB</p>
 <p><a href="#example-7c834415b2af">查看用法示例</a></p>
 </article>
 <article class="api-item" id="open_db">
 <h2><code>open_db</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open_db(c driver.Connector) DB</code></pre></div>
 <h3>用途</h3>
-<p>打开db。</p>
+<p>执行 open db 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">driver.Connector</span></dt><dd>字节或字符码（driver.Connector）</dd>
@@ -696,7 +696,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>open_db_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open_db_context(ctx &amp;context.Context, c driver.Connector) DB</code></pre></div>
 <h3>用途</h3>
-<p>打开db上下文。失败时 throw。</p>
+<p>执行 open db context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>ctx</code> <span class="type">&amp;context.Context</span></dt><dd>ctx（借用，调用方仍持有；类型 &amp;context.Context）</dd>
@@ -757,7 +757,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>isolation_name</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> isolation_name(level <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>isolation名称。</p>
+<p>执行 isolation name 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>level</code> <span class="type">int</span></dt><dd>level（int）</dd>
@@ -769,7 +769,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) driver</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) driver() driver.Driver</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;DB` 上调用 `driver`。</p>
+<p>`&amp;DB` 上的操作：返回该模块提供的数据库驱动实例（实现 database/sql/driver.Driver 接口）。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -781,7 +781,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) ping</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) ping() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;DB` 上调用 `ping`。失败时 throw。</p>
+<p>发送心跳保活探测请求，检测连接活性与服务可用性。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -793,7 +793,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) ping_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) ping_context(ctx &amp;context.Context) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：ping上下文。失败时 throw。</p>
+<p>`&amp;DB` 上的操作：执行 ping context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -806,7 +806,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) exec</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) exec(query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Result</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;DB` 上调用 `exec`。失败时 throw。</p>
+<p>执行 SQL 语句或服务命令，返回受影响行数或执行结果。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -820,7 +820,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) exec_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) exec_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Result</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：exec上下文。失败时 throw。</p>
+<p>`&amp;DB` 上的操作：执行 exec context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -835,7 +835,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) query</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) query(query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Rows</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：查询串。失败时 throw。</p>
+<p>`&amp;DB` 上的操作：查询串。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -849,7 +849,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) query_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) query_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Rows</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：查询串上下文。</p>
+<p>`&amp;DB` 上的操作：查询串上下文。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -864,7 +864,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) query_row</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) query_row(query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Row</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：查询串row。</p>
+<p>`&amp;DB` 上的操作：执行 query row 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -878,7 +878,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) query_row_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) query_row_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Row</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：查询串row上下文。</p>
+<p>`&amp;DB` 上的操作：执行 query row context 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -893,7 +893,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) prepare</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) prepare(query <span class="syn-type">string</span>) Stmt</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;DB` 上调用 `prepare`。</p>
+<p>在 `&amp;DB` 上执行 `prepare` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -906,7 +906,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) prepare_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) prepare_context(ctx &amp;context.Context, query <span class="syn-type">string</span>) Stmt</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：prepare上下文。失败时 throw。</p>
+<p>`&amp;DB` 上的操作：执行 prepare context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -920,7 +920,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) begin</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) begin() Tx</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;DB` 上调用 `begin`。失败时 throw。</p>
+<p>在 `&amp;DB` 上执行 `begin` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -932,7 +932,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) begin_tx</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) begin_tx(ctx &amp;context.Context, opts TxOptions) Tx</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：begintx。失败时 throw。</p>
+<p>`&amp;DB` 上的操作：执行 begin tx 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -946,7 +946,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) set_max_open_conns</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) set_max_open_conns(n <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：设置 max open conns。</p>
+<p>`&amp;DB` 上的操作：设置 max open conns。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -957,7 +957,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) set_max_idle_conns</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) set_max_idle_conns(n <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：设置 max idle conns。</p>
+<p>`&amp;DB` 上的操作：设置 max idle conns。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -968,7 +968,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) set_conn_max_lifetime</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) set_conn_max_lifetime(d <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：设置 conn max lifetime。</p>
+<p>`&amp;DB` 上的操作：设置 conn max lifetime。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -979,7 +979,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) set_conn_max_idle_time</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) set_conn_max_idle_time(d <span class="syn-type">int</span>)</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：设置 conn max idle time。</p>
+<p>`&amp;DB` 上的操作：设置 conn max idle time。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -990,7 +990,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) stats</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) stats() DBStats</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;DB` 上调用 `stats`。</p>
+<p>在 `&amp;DB` 上执行 `stats` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -1002,7 +1002,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut DB) close</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db <span class="syn-borrow">&amp;mut</span> DB) close() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;mut DB` 上的方法：关闭资源。失败时 throw。</p>
+<p>`&amp;mut DB` 上的操作：关闭资源。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;mut DB</span></dt><dd>接收者 &amp;mut DB（可变借用）</dd>
@@ -1014,7 +1014,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;DB) conn</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (db &amp;DB) conn(ctx &amp;context.Context) Conn</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;DB` 上的方法：连接。失败时 throw。</p>
+<p>`&amp;DB` 上的操作：连接。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>db</code> <span class="type">&amp;DB</span></dt><dd>接收者 &amp;DB（借用）</dd>
@@ -1027,7 +1027,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Conn) ping_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) ping_context(ctx &amp;context.Context) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Conn` 上的方法：ping上下文。失败时 throw。</p>
+<p>`&amp;Conn` 上的操作：执行 ping context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>接收者 &amp;Conn（借用）</dd>
@@ -1040,7 +1040,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Conn) exec_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) exec_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Result</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Conn` 上的方法：exec上下文。失败时 throw。</p>
+<p>`&amp;Conn` 上的操作：执行 exec context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>接收者 &amp;Conn（借用）</dd>
@@ -1055,7 +1055,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Conn) query_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) query_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Rows</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Conn` 上的方法：查询串上下文。失败时 throw。</p>
+<p>`&amp;Conn` 上的操作：查询串上下文。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>接收者 &amp;Conn（借用）</dd>
@@ -1070,7 +1070,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Conn) query_row_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) query_row_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Row</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Conn` 上的方法：查询串row上下文。</p>
+<p>`&amp;Conn` 上的操作：执行 query row context 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>接收者 &amp;Conn（借用）</dd>
@@ -1085,7 +1085,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Conn) raw</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) raw() driver.Conn</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Conn` 上调用 `raw`。失败时 throw。</p>
+<p>在 `&amp;Conn` 上执行 `raw` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>接收者 &amp;Conn（借用）</dd>
@@ -1097,7 +1097,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Conn) prepare_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) prepare_context(ctx &amp;context.Context, query <span class="syn-type">string</span>) Stmt</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Conn` 上的方法：prepare上下文。失败时 throw。</p>
+<p>`&amp;Conn` 上的操作：执行 prepare context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>接收者 &amp;Conn（借用）</dd>
@@ -1111,7 +1111,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Conn) begin_tx</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) begin_tx(ctx &amp;context.Context, opts TxOptions) Tx</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Conn` 上的方法：begintx。失败时 throw。</p>
+<p>`&amp;Conn` 上的操作：执行 begin tx 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>接收者 &amp;Conn（借用）</dd>
@@ -1125,7 +1125,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut Conn) close</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Conn) close() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;mut Conn` 上的方法：关闭资源。</p>
+<p>`&amp;mut Conn` 上的操作：关闭资源。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;mut Conn</span></dt><dd>接收者 &amp;mut Conn（可变借用）</dd>
@@ -1137,7 +1137,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(Result) last_insert_id</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r Result) last_insert_id() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>`Result` 上的方法：last插入id。</p>
+<p>`Result` 上的操作：执行 last insert id 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">Result</span></dt><dd>接收者 Result（值接收者）</dd>
@@ -1149,7 +1149,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(Result) rows_affected</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r Result) rows_affected() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>`Result` 上的方法：rowsaffected。</p>
+<p>`Result` 上的操作：执行 rows affected 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">Result</span></dt><dd>接收者 Result（值接收者）</dd>
@@ -1161,7 +1161,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut Rows) next</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Rows) next() <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;mut Rows` 上的方法：取出下一项；没有则按本类型约定结束。</p>
+<p>`&amp;mut Rows` 上的操作：取出下一项；没有则按本类型约定结束。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;mut Rows</span></dt><dd>接收者 &amp;mut Rows（可变借用）</dd>
@@ -1173,7 +1173,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut Rows) take</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Rows) take() []temp</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;mut Rows` 上调用 `take`。失败时 throw。</p>
+<p>在 `&amp;mut Rows` 上执行 `take` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;mut Rows</span></dt><dd>接收者 &amp;mut Rows（可变借用）</dd>
@@ -1185,7 +1185,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Rows) columns</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;Rows) columns() []<span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Rows` 上调用 `columns`。</p>
+<p>在 `&amp;Rows` 上执行 `columns` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;Rows</span></dt><dd>接收者 &amp;Rows（借用）</dd>
@@ -1197,7 +1197,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut Rows) close</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Rows) close()</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;mut Rows` 上的方法：关闭资源。</p>
+<p>`&amp;mut Rows` 上的操作：关闭资源。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;mut Rows</span></dt><dd>接收者 &amp;mut Rows（可变借用）</dd>
@@ -1207,7 +1207,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Rows) err</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;Rows) err() <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Rows` 上调用 `err`。</p>
+<p>在 `&amp;Rows` 上执行 `err` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;Rows</span></dt><dd>接收者 &amp;Rows（借用）</dd>
@@ -1219,7 +1219,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(ColumnType) name</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (ct ColumnType) name() <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>`ColumnType` 上的方法：名称。</p>
+<p>`ColumnType` 上的操作：名称。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>ct</code> <span class="type">ColumnType</span></dt><dd>接收者 ColumnType（值接收者）</dd>
@@ -1231,7 +1231,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(ColumnType) database_type_name</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (ct ColumnType) database_type_name() <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>`ColumnType` 上的方法：databasetype名称。</p>
+<p>`ColumnType` 上的操作：执行 database type name 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>ct</code> <span class="type">ColumnType</span></dt><dd>接收者 ColumnType（值接收者）</dd>
@@ -1243,7 +1243,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(ColumnType) length</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (ct ColumnType) length() driver.Number</code></pre></div>
 <h3>用途</h3>
-<p>`ColumnType` 上的方法：返回当前长度。</p>
+<p>`ColumnType` 上的操作：返回当前长度。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>ct</code> <span class="type">ColumnType</span></dt><dd>接收者 ColumnType（值接收者）</dd>
@@ -1255,7 +1255,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(ColumnType) nullable</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (ct ColumnType) nullable() driver.NullInfo</code></pre></div>
 <h3>用途</h3>
-<p>在 `ColumnType` 上调用 `nullable`。</p>
+<p>在 `ColumnType` 上执行 `nullable` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>ct</code> <span class="type">ColumnType</span></dt><dd>接收者 ColumnType（值接收者）</dd>
@@ -1267,7 +1267,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(ColumnType) decimal_size</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (ct ColumnType) decimal_size() driver.DecimalSize</code></pre></div>
 <h3>用途</h3>
-<p>`ColumnType` 上的方法：decimal尺寸。</p>
+<p>`ColumnType` 上的操作：执行 decimal size 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>ct</code> <span class="type">ColumnType</span></dt><dd>接收者 ColumnType（值接收者）</dd>
@@ -1279,7 +1279,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Rows) column_types</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;Rows) column_types() []ColumnType</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Rows` 上的方法：columntypes。</p>
+<p>`&amp;Rows` 上的操作：执行 column types 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;Rows</span></dt><dd>接收者 &amp;Rows（借用）</dd>
@@ -1291,7 +1291,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut Rows) next_result_set</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Rows) next_result_set() <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
-<p>`&amp;mut Rows` 上的方法：下一项结果set。</p>
+<p>`&amp;mut Rows` 上的操作：执行 next result set 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;mut Rows</span></dt><dd>接收者 &amp;mut Rows（可变借用）</dd>
@@ -1303,7 +1303,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Row) err</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;Row) err() <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Row` 上调用 `err`。</p>
+<p>在 `&amp;Row` 上执行 `err` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;Row</span></dt><dd>接收者 &amp;Row（借用）</dd>
@@ -1315,7 +1315,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Row) take</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;Row) take() []temp</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Row` 上调用 `take`。失败时 throw。</p>
+<p>在 `&amp;Row` 上执行 `take` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">&amp;Row</span></dt><dd>接收者 &amp;Row（借用）</dd>
@@ -1327,7 +1327,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) exec</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) exec(query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Result</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Tx` 上调用 `exec`。失败时 throw。</p>
+<p>执行 SQL 语句或服务命令，返回受影响行数或执行结果。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1341,7 +1341,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) exec_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) exec_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Result</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Tx` 上的方法：exec上下文。失败时 throw。</p>
+<p>`&amp;Tx` 上的操作：执行 exec context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1356,7 +1356,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) query</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) query(query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Rows</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Tx` 上的方法：查询串。失败时 throw。</p>
+<p>`&amp;Tx` 上的操作：查询串。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1370,7 +1370,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) query_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) query_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Rows</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Tx` 上的方法：查询串上下文。失败时 throw。</p>
+<p>`&amp;Tx` 上的操作：查询串上下文。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1385,7 +1385,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) query_row</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) query_row(query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Row</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Tx` 上的方法：查询串row。</p>
+<p>`&amp;Tx` 上的操作：执行 query row 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1399,7 +1399,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) query_row_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) query_row_context(ctx &amp;context.Context, query <span class="syn-type">string</span>, args <span class="syn-flow">&lt;-</span>&gt; temp) Row</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Tx` 上的方法：查询串row上下文。</p>
+<p>`&amp;Tx` 上的操作：执行 query row context 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1414,7 +1414,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) prepare</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) prepare(query <span class="syn-type">string</span>) Stmt</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Tx` 上调用 `prepare`。</p>
+<p>在 `&amp;Tx` 上执行 `prepare` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1427,7 +1427,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) prepare_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) prepare_context(ctx &amp;context.Context, query <span class="syn-type">string</span>) Stmt</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Tx` 上的方法：prepare上下文。失败时 throw。</p>
+<p>`&amp;Tx` 上的操作：执行 prepare context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1441,7 +1441,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) stmt</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) stmt(s &amp;Stmt) Stmt</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Tx` 上调用 `stmt`。</p>
+<p>在 `&amp;Tx` 上执行 `stmt` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1454,7 +1454,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Tx) stmt_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Tx) stmt_context(ctx &amp;context.Context, s &amp;Stmt) Stmt</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Tx` 上的方法：stmt上下文。失败时 throw。</p>
+<p>`&amp;Tx` 上的操作：执行 stmt context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;Tx</span></dt><dd>接收者 &amp;Tx（借用）</dd>
@@ -1468,7 +1468,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut Tx) commit</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Tx) commit() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;mut Tx` 上调用 `commit`。失败时 throw。</p>
+<p>在 `&amp;mut Tx` 上执行 `commit` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;mut Tx</span></dt><dd>接收者 &amp;mut Tx（可变借用）</dd>
@@ -1480,7 +1480,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut Tx) rollback</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Tx) rollback() <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;mut Tx` 上调用 `rollback`。失败时 throw。</p>
+<p>在 `&amp;mut Tx` 上执行 `rollback` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">&amp;mut Tx</span></dt><dd>接收者 &amp;mut Tx（可变借用）</dd>
@@ -1492,7 +1492,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Stmt) exec</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Stmt) exec(args <span class="syn-flow">&lt;-</span>&gt; temp) Result</code></pre></div>
 <h3>用途</h3>
-<p>在 `&amp;Stmt` 上调用 `exec`。失败时 throw。</p>
+<p>执行 SQL 语句或服务命令，返回受影响行数或执行结果。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">&amp;Stmt</span></dt><dd>接收者 &amp;Stmt（借用）</dd>
@@ -1505,7 +1505,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Stmt) exec_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Stmt) exec_context(ctx &amp;context.Context, args <span class="syn-flow">&lt;-</span>&gt; temp) Result</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Stmt` 上的方法：exec上下文。失败时 throw。</p>
+<p>`&amp;Stmt` 上的操作：执行 exec context 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">&amp;Stmt</span></dt><dd>接收者 &amp;Stmt（借用）</dd>
@@ -1519,7 +1519,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Stmt) query</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Stmt) query(args <span class="syn-flow">&lt;-</span>&gt; temp) Rows</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Stmt` 上的方法：查询串。失败时 throw。</p>
+<p>`&amp;Stmt` 上的操作：查询串。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">&amp;Stmt</span></dt><dd>接收者 &amp;Stmt（借用）</dd>
@@ -1532,7 +1532,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Stmt) query_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Stmt) query_context(ctx &amp;context.Context, args <span class="syn-flow">&lt;-</span>&gt; temp) Rows</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Stmt` 上的方法：查询串上下文。失败时 throw。</p>
+<p>`&amp;Stmt` 上的操作：查询串上下文。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">&amp;Stmt</span></dt><dd>接收者 &amp;Stmt（借用）</dd>
@@ -1546,7 +1546,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Stmt) query_row</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Stmt) query_row(args <span class="syn-flow">&lt;-</span>&gt; temp) Row</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Stmt` 上的方法：查询串row。</p>
+<p>`&amp;Stmt` 上的操作：执行 query row 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">&amp;Stmt</span></dt><dd>接收者 &amp;Stmt（借用）</dd>
@@ -1559,7 +1559,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;Stmt) query_row_context</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Stmt) query_row_context(ctx &amp;context.Context, args <span class="syn-flow">&lt;-</span>&gt; temp) Row</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;Stmt` 上的方法：查询串row上下文。</p>
+<p>`&amp;Stmt` 上的操作：执行 query row context 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">&amp;Stmt</span></dt><dd>接收者 &amp;Stmt（借用）</dd>
@@ -1573,7 +1573,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>(&amp;mut Stmt) close</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Stmt) close()</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;mut Stmt` 上的方法：关闭资源。</p>
+<p>`&amp;mut Stmt` 上的操作：关闭资源。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">&amp;mut Stmt</span></dt><dd>接收者 &amp;mut Stmt（可变借用）</dd>

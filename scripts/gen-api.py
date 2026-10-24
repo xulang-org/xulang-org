@@ -233,14 +233,13 @@ def strip_strings_and_comments_for_braces(line: str, st: dict) -> str:
 
 def collect_leading_comments(lines: list[str], idx: int) -> list[str]:
     j = idx - 1
+    if j >= 0 and lines[j].strip() == "":
+        return []
     block: list[str] = []
     while j >= 0:
         t = lines[j].strip()
         if t == "":
-            if block:
-                break
-            j -= 1
-            continue
+            break
         if t.startswith("//"):
             block.append(lines[j])
             j -= 1
@@ -989,20 +988,20 @@ NAME_HINTS = {
     "write_unlock": ("释放写锁。", "Release a write lock."),
     "msg": ("返回错误或对象的文本。", "Return the message text."),
     "cause": ("返回被包装的底层错误文本。", "Return the wrapped cause text."),
-    "encode": ("编码。", "Encode."),
-    "decode": ("解码。", "Decode."),
+    "encode": ("执行数据编码并返回结果。", "Encode data into output format."),
+    "decode": ("从编码数据中还原原始数据。", "Decode data from encoded representation."),
     "encode_to_string": ("编码为字符串。", "Encode to a string."),
     "decode_string": ("从字符串解码。", "Decode from a string."),
     "parse": ("解析输入。", "Parse the input."),
     "format": ("格式化为字符串。", "Format as a string."),
     "sum": ("计算摘要（多为小写 hex）。", "Compute a digest (often lowercase hex)."),
     "sum_bytes": ("计算原始字节摘要。", "Compute a raw-byte digest."),
-    "encrypt": ("加密。", "Encrypt."),
-    "decrypt": ("Decrypt.", "Decrypt."),
-    "sign": ("签名。", "Sign."),
-    "verify": ("验签。", "Verify."),
-    "open": ("打开。", "Open."),
-    "create": ("创建。", "Create."),
+    "encrypt": ("对明文数据执行加密操作。", "Encrypt plaintext data."),
+    "decrypt": ("对密文数据执行解密操作。", "Decrypt ciphertext data."),
+    "sign": ("使用私钥计算数字签名。", "Compute digital signature using private key."),
+    "verify": ("校验数字签名是否有效。", "Verify whether digital signature matches message."),
+    "open": ("打开资源或建立网络连接。", "Open resource or establish connection."),
+    "create": ("创建新的文件、目录或资源。", "Create a new file, directory, or resource."),
     "stat": ("读取元信息。", "Read metadata."),
     "mkdir": ("创建目录。", "Create a directory."),
     "remove": ("删除。", "Remove."),
@@ -1013,15 +1012,15 @@ NAME_HINTS = {
     "sleep": ("阻塞等待一段时间。", "Block for a duration."),
     "now": ("当前时间。", "Current time."),
     "abs": ("绝对值。", "Absolute value."),
-    "min": ("较小值。", "Minimum."),
-    "max": ("较大值。", "Maximum."),
-    "floor": ("向下取整。", "Floor."),
-    "ceil": ("向上取整。", "Ceiling."),
+    "min": ("返回两数值中的较小值。", "Return the smaller of two numeric values."),
+    "max": ("返回两数值中的较大值。", "Return the larger of two numeric values."),
+    "floor": ("向下取整，返回不大于给定数值的最大整数。", "Return the greatest integer value <= x."),
+    "ceil": ("向上取整，返回不小于给定数值的最小整数。", "Return the least integer value >= x."),
     "sqrt": ("平方根。", "Square root."),
-    "pow": ("幂。", "Power."),
-    "sin": ("正弦。", "Sine."),
-    "cos": ("余弦。", "Cosine."),
-    "tan": ("正切。", "Tangent."),
+    "pow": ("计算底数的指定次幂（x 的 y 次方）。", "Compute base x raised to power y."),
+    "sin": ("计算给定弧度角 x 的正弦值。", "Compute trigonometric sine of x radians."),
+    "cos": ("计算给定弧度角 x 的余弦值。", "Compute trigonometric cosine of x radians."),
+    "tan": ("计算给定弧度角 x 的正切值。", "Compute trigonometric tangent of x radians."),
     "exp": ("e 的幂。", "e to the power."),
     "log": ("自然对数。", "Natural logarithm."),
     "is_nan": ("是否为 NaN。", "Whether the value is NaN."),
@@ -1033,7 +1032,8 @@ NAME_HINTS = {
     "sub": ("相减。", "Subtract."),
     "mul": ("相乘。", "Multiply."),
     "div": ("相除。", "Divide."),
-    "mod": ("取模。", "Modulo."),
+    "mod": ("计算浮点数除法的余数。", "Compute floating-point division remainder."),
+    "nan": ("返回 IEEE 754 “非数”（Not-a-Number）浮点值。", "Return IEEE 754 Not-a-Number (NaN) float value."),
     "and": ("按位与。", "Bitwise and."),
     "or": ("按位或。", "Bitwise or."),
     "xor": ("按位异或。", "Bitwise xor."),
@@ -1052,10 +1052,139 @@ NAME_HINTS = {
     "quote": ("加上引号并转义。", "Quote and escape."),
     "unquote": ("去掉引号并还原转义。", "Unquote and unescape."),
     "escape_string": ("转义特殊字符。", "Escape special characters."),
-    "unescape_string": ("还原转义。", "Unescape."),
+    "unescape_string": ("还原转义的实体或特殊字符序列。", "Unescape escaped entity or character sequences."),
     "valid_path": ("检查路径是否为未加根、斜杠分隔的合法名；仅允许 “.” 作为根。", "Whether the name is an unrooted slash-separated path; only “.” is allowed as the root."),
+    "dir": ("返回路径中除最后一个元素外的目录部分。", "Return all but the last element of path."),
+    "ext": ("返回路径所使用的文件扩展名（带点，如 .xu）。", "Return the file name extension used by path."),
+    "base": ("返回路径的最后一个元素（文件名或末段目录名）。", "Return the last element of path."),
+    "execute": ("将数据上下文应用到模板并执行渲染。", "Apply data context to template and execute rendering."),
+    "walk": ("递归遍历目录树下的所有文件与子目录。", "Recursively walk directory tree."),
+    "lookup": ("在索引或集合中查找匹配的键或项。", "Look up matching key or item in index or collection."),
+    "mutex": ("构造新的互斥锁同步原语实例。", "Construct a mutual exclusion lock synchronization primitive."),
     "ipv4": ("由四个 0..255 的字节构造 IPv4 地址（长度为 4 的 string）。", "Build an IPv4 address from four 0..255 octets (a 4-byte string)."),
     "ipv6": ("由 16 字节构造 IPv6 地址。", "Build an IPv6 address from 16 bytes."),
+    "scan_lines": ("逐行扫描切分函数，遇到换行符时切分出一个词元。", "Split function for lines, splitting at newlines."),
+    "scan_words": ("逐词扫描切分函数，按空白字符切分出一个词元。", "Split function for words, splitting at whitespace runs."),
+    "scan_bytes": ("逐字节扫描切分函数，每次产生一个字节作为词元。", "Split function for bytes, advancing one byte per token."),
+    "scan_runes": ("逐 UTF-8 字符扫描切分函数。", "Split function for UTF-8 runes."),
+    "inflate": ("解压 DEFLATE 压缩数据流，还原为原始字节串。", "Decompress DEFLATE data stream."),
+    "deflate": ("将输入数据压缩为标准 DEFLATE 格式字节流。", "Compress input data using standard DEFLATE algorithm."),
+    "checksum": ("计算输入数据的 32 位校验和数值。", "Compute the 32-bit checksum of the data."),
+    "ecdh": ("基于椭圆曲线私钥与对端公钥计算共享密钥（ECDH 密钥协商）。", "Compute shared secret using ECDH key agreement."),
+    "unwrap": ("解包并返回被包装的底层原因错误文本；若无可解包错误则返回空。", "Unwrap and return the underlying cause message."),
+    "named": ("构造包含键名与键值的命名 SQL 参数（NamedArg）。", "Construct a named SQL parameter (NamedArg)."),
+    "view_of": ("创建指向该字符串的只读字节切片视图（ByteView）。", "Create a borrowed read-only ByteView over the string."),
+    "little_endian": ("返回小端字节序（Little-Endian）编码与解码处理器。", "Return Little-Endian byte-order codec."),
+    "big_endian": ("返回大端字节序（Big-Endian）编码与解码处理器。", "Return Big-Endian byte-order codec."),
+    "native_endian": ("返回当前系统宿主机原生字节序编码与解码处理器。", "Return host native byte-order codec."),
+    "put_varint": ("将带符号整数编码为 ZigZag 变长整数（Varint）格式并返回字节串。", "Encode signed int as ZigZag varint."),
+    "put_uvarint": ("将无符号整数编码为变长整数（Uvarint）格式并返回字节串。", "Encode unsigned int as uvarint."),
+    "varint": ("从字节串起始位置解码一个带符号 ZigZag 变长整数。", "Decode a signed ZigZag varint from bytes."),
+    "uvarint": ("从字节串起始位置解码一个无符号变长整数。", "Decode an unsigned uvarint from bytes."),
+    "append_varint": ("将带符号变长整数编码并追加到目标字节串末尾。", "Append signed varint encoding to dst."),
+    "append_uvarint": ("将无符号变长整数编码并追加到目标字节串末尾。", "Append unsigned uvarint encoding to dst."),
+    "constant_time_byte_eq": ("以固定恒定时间比较两字节是否相等，防范时序侧信道攻击。", "Compare two bytes in constant time."),
+    "constant_time_eq": ("以固定恒定时间比较两个整数切片或数据，防范时序侧信道攻击。", "Compare slices in constant time."),
+    "constant_time_select": ("以恒定时间根据标志选择返回两个值之一（v=1 返回 x，v=0 返回 y）。", "Select between x and y in constant time."),
+    "constant_time_copy": ("以恒定时间有条件地将数据从源拷贝到目标。", "Copy data conditionally in constant time."),
+    "system_cert_pool": ("加载并返回宿主操作系统的系统默认根证书池。", "Load and return the host system root certificate pool."),
+    "append_certificates": ("从 PEM 格式证书数据中解析出证书并追加到证书池。", "Parse certificates from PEM data and append to pool."),
+    "exec_ok": ("构造表示 SQL 语句执行成功的 ExecResult（包含最后插入 ID 与受影响行数）。", "Build an ExecResult indicating successful statement execution."),
+    "exec_err": ("构造表示 SQL 语句执行失败并附带错误信息的 ExecResult。", "Build an ExecResult indicating statement execution failure."),
+    "rows_err": ("构造表示查询结果集出错的 RowsResult。", "Build a RowsResult indicating query error."),
+    "or_int": ("返回首个非零整数值；若均为零则返回 0。", "Return the first non-zero int, or 0."),
+    "or_f64": ("返回首个非零浮点数值；若均为零则返回 0.0。", "Return the first non-zero f64, or 0.0."),
+    "cur": ("返回环形链表当前游标所在节点的整数值或下标。", "Return the current element value or index of the ring."),
+    "pipe": ("创建一对连接在一起的同步内存管道端点。", "Create a pair of connected synchronous in-memory pipe endpoints."),
+    "tee": ("创建 Tee 读取器，在读取数据的同时将每一块数据复制写入目标。", "Construct a Tee reader that mirrors every read chunk into dst."),
+    "nanosecond": ("1 纳秒基础时间单位跨度。", "1 nanosecond base duration."),
+    "microsecond": ("1 微秒时间单位跨度（1,000 纳秒）。", "1 microsecond duration (1,000 ns)."),
+    "millisecond": ("1 毫秒时间单位跨度（1,000,000 纳秒）。", "1 millisecond duration (1,000,000 ns)."),
+    "second": ("1 秒时间单位跨度（1,000,000,000 纳秒）。", "1 second duration (1,000,000,000 ns)."),
+    "minute": ("1 分钟时间单位跨度（60 秒）。", "1 minute duration (60 seconds)."),
+    "hour": ("1 小时时间单位跨度（3600 秒）。", "1 hour duration (3600 seconds)."),
+    "args": ("获取当前程序的命令行参数切片（从程序名开始）。", "Return the command-line argument slice."),
+    "fma": ("计算乘累加运算 (x * y + z)，中间不损失精度。", "Compute fused multiply-add (x * y + z)."),
+    "new256": ("创建基于 256 位配置的密码学哈希或 HMAC 摘要计算上下文。", "Create 256-bit hash or HMAC digest context."),
+    "shake_sum128": ("计算指定长度的 SHAKE-128 可扩展输出哈希（XOF）摘要。", "Compute SHAKE-128 extendable-output hash digest."),
+    "driver": ("返回该模块提供的数据库驱动实例（实现 database/sql/driver.Driver 接口）。", "Return the database driver instance implementing driver.Driver."),
+    "make_table": ("根据给定的生成多项式构造 256 项 CRC 快速查找表。", "Build 256-entry CRC lookup table from polynomial."),
+    "checksum_ieee": ("使用 IEEE 标准多项式（0xedb88320）计算数据的 CRC-32 校验和。", "Compute CRC-32 checksum using IEEE polynomial."),
+    "checksum_castagnoli": ("使用 Castagnoli 多项式（0x82f63b78）计算数据的 CRC-32C 校验和。", "Compute CRC-32C checksum using Castagnoli polynomial."),
+    "checksum_koopman": ("使用 Koopman 多项式（0xeb31d82e）计算数据的 CRC-32 校验和。", "Compute CRC-32 checksum using Koopman polynomial."),
+    "checksum_iso": ("使用 ISO 3309 标准多项式计算数据的 CRC-64 校验和。", "Compute CRC-64 checksum using ISO polynomial."),
+    "checksum_ecma": ("使用 ECMA-182 标准多项式计算数据的 CRC-64 校验和。", "Compute CRC-64 checksum using ECMA polynomial."),
+    "execute_str": ("将数据上下文应用到模板并渲染输出为字符串。", "Apply data to template and render output as string."),
+    "execute_list": ("执行模板渲染并将结果切分为字符串切片列表。", "Execute template rendering and yield list of strings."),
+    "ulid_time_ms": ("从 ULID 标识符中提取毫秒级 Unix 时间戳。", "Extract millisecond Unix timestamp from ULID."),
+    "uuid_v7_time_ms": ("从 UUID v7 标识符中提取毫秒级 Unix 时间戳。", "Extract millisecond Unix timestamp from UUID v7."),
+    "detect_content_type": ("通过嗅探输入数据的前 512 字节推断并返回 MIME Content-Type。", "Detect MIME Content-Type by sniffing the first 512 bytes."),
+    "path_list_separator": ("当前操作系统 PATH 环境变量的分隔符（Unix 为 ':'，Windows 为 ';'）。", "Path list separator character (':' on Unix, ';' on Windows)."),
+    "dev_null": ("操作系统空设备文件路径（Unix 为 '/dev/null'，Windows 为 'NUL'）。", "Operating system null device path ('/dev/null' or 'NUL')."),
+    "utc": ("UTC（协调世界时）标准时区 Location 实例。", "UTC (Coordinated Universal Time) Location instance."),
+    "fixed_zone": ("构造具有固定名称和秒级 UTC 偏移量的时区 Location。", "Construct a fixed-offset Location with name and offset seconds."),
+    "rw_mutex": ("构造新的读写互斥锁 RWMutex。", "Construct a new RWMutex."),
+    "draw_rgba": ("在目标 RGBA 图像上执行 Porter-Duff 组合或直接拷贝绘制操作。", "Execute Porter-Duff compositing or direct copy drawing onto RGBA."),
+    "concat_strs": ("拼接多个字符串切片为一个合并切片。", "Concatenate multiple string slices into one."),
+    "can_backquote": ("检查字符串是否可以不经转义直接用反引号字面量表示。", "Report whether the string can be represented unescaped in backquotes."),
+    "append_bool": ("将布尔值的文本表示（'true' 或 'false'）追加到字节串。", "Append boolean string representation ('true' or 'false') to dst."),
+    "map_fs": ("构造基于内存映射字典的 MapFS 虚拟测试文件系统。", "Construct an in-memory MapFS virtual test filesystem."),
+    "gemm_i64": ("通用 64 位整数矩阵乘法计算（C = A * B + C）。", "General 64-bit integer matrix multiplication (C = A * B + C)."),
+    "gemm_f64": ("通用 64 位浮点矩阵乘法计算（C = alpha * A * B + beta * C）。", "General 64-bit float matrix multiplication (C = alpha * A * B + beta * C)."),
+    "madd_i64": ("矩阵乘累加运算。", "Matrix multiply-add operation."),
+    "fill_i64": ("使用指定标量整数填充矩阵或切片区域。", "Fill matrix or slice with scalar int."),
+    "ipv4_mask": ("构造 4 字节的 IPv4 子网掩码。", "Construct 4-byte IPv4 subnet mask."),
+    "cidr_mask": ("根据前缀比特数构造 CIDR 格式的 IP 子网掩码。", "Construct CIDR IP subnet mask from prefix bit count."),
+    "ip_to4": ("若为 IPv4 地址或 IPv4 映射，返回其 4 字节表示；否则返回空串。", "Return 4-byte representation if IPv4, or empty string."),
+    "ip_to16": ("返回该 IP 地址的标准 16 字节形式表示。", "Return standard 16-byte representation of the IP address."),
+    "ip_mask": ("使用给定的子网掩码与当前 IP 地址执行按位与运算。", "Perform bitwise AND of the IP with subnet mask."),
+    "ip_default_mask": ("返回该 IPv4 地址所属类别的默认子网掩码（A/B/C 类）。", "Return default subnet mask for IPv4 address class."),
+    "ip_mask_bits": ("返回子网掩码中 1 的位数与总位数 (ones, bits)。", "Return leading ones and total bits of the mask."),
+    "ipv4_bcast": ("IPv4 受限广播地址（255.255.255.255）。", "IPv4 limited broadcast address (255.255.255.255)."),
+    "ipv4_allsys": ("IPv4 全主机组播地址（224.0.0.1）。", "IPv4 all-systems multicast address (224.0.0.1)."),
+    "ipv4_allrouter": ("IPv4 全路由器组播地址（224.0.0.2）。", "IPv4 all-routers multicast address (224.0.0.2)."),
+    "ipv6_link_local_all_nodes": ("IPv6 链路本地所有节点组播地址（ff02::1）。", "IPv6 link-local all-nodes multicast address (ff02::1)."),
+    "ipv6_link_local_all_routers": ("IPv6 链路本地所有路由器组播地址（ff02::2）。", "IPv6 link-local all-routers multicast address (ff02::2)."),
+}
+
+METHOD_HINTS = {
+    "bounds": ("返回当前控件或几何对象的有效外接矩形边界（Rectangle）。", "Return the bounding Rectangle of the control or geometry."),
+    "id": ("返回当前控件、元素或节点的唯一标识 ID。", "Return the unique integer ID of the element or control."),
+    "route": ("路由并分发交互事件至命中的子节点或处理器。", "Route and dispatch the input event to matching targets."),
+    "painted": ("判断当前控件在上一轮渲染流程中是否已完成绘制。", "Report whether the control was painted in the previous render pass."),
+    "event": ("处理并响应窗口与系统的交互及生命周期事件。", "Handle and respond to window or system lifecycle and interaction events."),
+    "ping": ("发送心跳保活探测请求，检测连接活性与服务可用性。", "Send a ping heartbeat request to verify connection liveness."),
+    "dispose": ("释放并清理对象所持有的系统原生资源与底层句柄。", "Release and dispose native resources and underlying handles."),
+    "dup": ("创建并返回持有独立状态或底层的副本对象。", "Create and return a duplicate object holding independent state."),
+    "paint": ("在目标画布或渲染目标上执行控件的视觉绘制。", "Paint the control visually onto the target canvas."),
+    "invalidate": ("标记控件区域为脏，请求系统在下一帧重新绘制。", "Invalidate the control area, requesting a repaint on next frame."),
+    "selected": ("获取或判断当前选中的项索引、节点或文本状态。", "Get or test the currently selected index, node, or state."),
+    "put": ("写入或更新指定键对应的值数据。", "Store or update the value associated with the specified key."),
+    "exec": ("执行 SQL 语句或服务命令，返回受影响行数或执行结果。", "Execute SQL statement or service command and return result."),
+    "connect": ("建立与目标服务端点的网络通信连接。", "Establish network connection to the target server endpoint."),
+    "blocksize": ("返回密码算法或流处理器的块大小（字节数）。", "Return block size of the cipher or stream in bytes."),
+    "del": ("删除指定键或标识对应的数据项。", "Delete the entry matching the given key or identifier."),
+    "tick": ("推进动画时间戳与状态过渡动画步进。", "Advance animation clock and state transition step."),
+    "values": ("返回当前集合、参数表或映射中所有值的切片。", "Return a slice containing all values in the collection."),
+    "network": ("返回该网络连接或地址所属的协议族名称（如 \"tcp\" / \"udp\" / \"unix\"）。", "Return the network protocol family name (e.g. \"tcp\", \"udp\")."),
+    "publish": ("向指定的消息主题或频道广播发布消息。", "Publish message data to the given topic or channel."),
+    "init": ("初始化结构体内部状态与默认配置。", "Initialize internal state and default parameters."),
+    "rgba": ("获取对应的 32 位 RGBA 颜色分量值。", "Return the corresponding 32-bit RGBA color channels."),
+    "clear": ("清空所有已缓冲或存储的数据项与内部状态。", "Clear all buffered or stored entries and internal state."),
+    "descriptor": ("获取底层持有的操作系统原生套接字或文件描述符（fd）。", "Return the borrowed raw socket or file descriptor (fd)."),
+    "addrs": ("获取该网络接口上绑定的所有 IP 地址列表。", "List all network addresses assigned to this interface."),
+    "dx": ("计算并返回矩形的水平跨度/宽度（max.x - min.x）。", "Compute horizontal span (max.x - min.x)."),
+    "dy": ("计算并返回矩形的垂直跨度/高度（max.y - min.y）。", "Compute vertical span (max.y - min.y)."),
+    "empty": ("判断几何区域是否为空（dx <= 0 或 dy <= 0）。", "Report whether the geometry rectangle is empty (dx <= 0 or dy <= 0)."),
+    "overlaps": ("判断当前矩形与另一矩形是否存在重叠相交区域。", "Report whether this rectangle overlaps with the other."),
+    "intersect": ("计算两矩形的交集区域；若无交集则返回空矩形。", "Compute the intersection rectangle of the two."),
+    "union": ("计算包含两个矩形的最小外接并集矩形。", "Compute the minimal bounding union rectangle containing both."),
+    "canon": ("规范化矩形坐标，确保 min 在 max 的左上方。", "Return canonical rectangle ensuring min <= max."),
+    "eq": ("判断当前对象与另一同类型对象是否完全相等。", "Report whether this object equals the other."),
+    "in_rect": ("判断当前点坐标是否落在给定的矩形内部。", "Report whether the point lies inside the given rectangle."),
+    "apply_styles": ("根据当前主题样式表解析并应用几何与视觉度量。", "Resolve and apply theme metrics to the control."),
+    "place": ("在画布中计算并设置控件的局部几何布局坐标与尺寸。", "Compute and place control bounds within canvas layout."),
+    "input": ("接收并处理分发的鼠标、键盘或触摸交互输入事件。", "Process routed mouse, keyboard, or touch input events."),
 }
 
 
@@ -1280,6 +1409,18 @@ TOKEN_ZH = {
     "interface_by_index": "按下标取网卡",
     "resolve_tcp_addr": "解析 TCP 地址", "resolve_udp_addr": "解析 UDP 地址",
     "resolve_ip_addr": "解析 IP 地址", "resolve_unix_addr": "解析 Unix 地址",
+    "mask": "掩码", "cidr": "CIDR", "detect": "嗅探检测",
+    "separator": "分隔符", "zone": "时区", "mutex": "互斥锁",
+    "concat": "拼接", "append": "追加", "execute": "执行",
+    "make": "构造", "table": "表", "endian": "端序",
+    "little": "小端", "big": "大端", "native": "原生",
+    "view": "视图", "varint": "变长整数", "uvarint": "无符号变长整数",
+    "constant": "恒定", "time": "时间", "system": "系统",
+    "cert": "证书", "named": "命名", "unwrap": "解包",
+    "inflate": "解压", "deflate": "压缩", "checksum": "校验和",
+    "ieee": "IEEE", "castagnoli": "Castagnoli", "koopman": "Koopman",
+    "iso": "ISO", "ecma": "ECMA", "ulid": "ULID", "uuid": "UUID",
+    "ms": "毫秒", "sec": "秒", "ns": "纳秒", "null": "空设备",
 }
 
 TOKEN_EN = {
@@ -1300,6 +1441,15 @@ TOKEN_EN = {
     "encode": "encode", "decode": "decode", "parse": "parse", "format": "format",
     "encrypt": "encrypt", "decrypt": "decrypt", "sign": "sign", "verify": "verify",
     "sum": "digest", "sort": "sort", "shuffle": "shuffle", "perm": "permutation",
+    "mask": "mask", "cidr": "CIDR", "detect": "detect",
+    "separator": "separator", "zone": "zone", "mutex": "mutex",
+    "concat": "concatenate", "append": "append", "execute": "execute",
+    "make": "make", "table": "table", "endian": "endian",
+    "little": "little", "big": "big", "native": "native",
+    "view": "view", "varint": "varint", "uvarint": "uvarint",
+    "constant": "constant", "time": "time", "system": "system",
+    "cert": "certificate", "named": "named", "unwrap": "unwrap",
+    "inflate": "inflate", "deflate": "deflate", "checksum": "checksum",
 }
 
 
@@ -1328,6 +1478,9 @@ def hint_name(name: str, lang: str, pkg: str = "") -> str:
             return "构造 Point。" if zh else "Construct a Point."
         if name == "rect":
             return "构造 Rectangle。" if zh else "Construct a Rectangle."
+    if pkg == "ui/draw":
+        if name == "rect":
+            return "在画布上绘制矩形边框或填充矩形。" if zh else "Draw or fill a rectangle on the canvas."
     table = TOKEN_ZH if zh else TOKEN_EN
     if name in table:
         w = table[name]
@@ -1346,9 +1499,11 @@ def hint_name(name: str, lang: str, pkg: str = "") -> str:
         rest = name[7:].replace("_", " ")
         return (f"格式化为 {rest}。" if zh else f"Format as {rest}.")
     if name.startswith("encode_"):
-        return ("编码。" if zh else "Encode.")
+        rest = name[7:].replace("_", " ")
+        return (f"编码 {rest} 数据。" if zh else f"Encode {rest} data.")
     if name.startswith("decode_"):
-        return ("解码。" if zh else "Decode.")
+        rest = name[7:].replace("_", " ")
+        return (f"解码 {rest} 数据。" if zh else f"Decode {rest} data.")
     if name.startswith("is_"):
         rest = name[3:].replace("_", " ")
         return (f"判断是否 {rest}。" if zh else f"Whether it is {rest}.")
@@ -1383,6 +1538,8 @@ def hint_name(name: str, lang: str, pkg: str = "") -> str:
             if last in ("close", "read", "write", "open", "create", "search", "resolve", "dial", "listen"):
                 head = "".join(table.get(x, x) for x in parts[:-1])
                 return f"{table[last]}{head}。"
+            if any(w.isascii() and w.isalpha() for w in words):
+                return f"执行 {name.replace('_', ' ')} 操作。"
             return "".join(words) + "。"
         s = " ".join(words)
         return s[0].upper() + s[1:] + "."
@@ -1495,6 +1652,211 @@ def lookup_override(pkg, item: Item, lang: str):
     return None
 
 
+COMMON_EN_COMMENT_TRANS = [
+    (re.compile(r'Concatenate string snapshots', re.I), "拼接多个字符串快照的只读游标适配器。"),
+    (re.compile(r'Write the same bytes to n owning destinations', re.I), "向多个目标缓冲区并发复制写入相同字节数据的扇出写入器。"),
+    (re.compile(r'Window into a string snapshot', re.I), "针对字符串底层特定区间的切片只读游标。"),
+    (re.compile(r'In-memory one-way pipe', re.I), "内存单向同步管道通道。"),
+    (re.compile(r'Duration is signed elapsed time', re.I), "带符号的纳秒级高精度时间跨度，独立于日历和时区。"),
+    (re.compile(r'Instant is a process-local monotonic reading', re.I), "进程本地高精度单调时钟读取值，不受系统时钟跳变调整影响。"),
+    (re.compile(r'The host forwards anchor pointer/focus events and calls tooltip', re.I), "浮动提示框控件，在鼠标悬停或聚焦时显示辅助说明。"),
+    (re.compile(r'Up to 512 nodes, depth <= 32', re.I), "树形折叠层级列表控件，支持多层节点展开收起与选中。"),
+    (re.compile(r'Editable choice field\. Text is owned by Editor', re.I), "下拉组合选择输入框控件，支持文本编辑与弹出项选择。"),
+    (re.compile(r'A date field with an overlay calendar', re.I), "日期选择器控件，支持日历弹层面板与年月日切换。"),
+    (re.compile(r'A 24-hour segmented field', re.I), "24 小时制时间分段选择与编辑控件。"),
+    (re.compile(r'The last item is the current location', re.I), "面包屑路径层级导航控件，指示当前界面位置与层级跳转。"),
+    (re.compile(r'A bounded single-line, equal-width column table', re.I), "等宽单行数据表格控件，支持多列排版与行选中。"),
+    (re.compile(r'Zero based page state', re.I), "分页栏控件，支持页码跳转与上一页/下一页导航。"),
+    (re.compile(r'One toast, with host-owned text and stacking', re.I), "轻量浮动消息提示通知框，支持自动倒计时与堆叠显示。"),
+    (re.compile(r'Inline RGBA picker', re.I), "RGBA 颜色选择调色板控件，支持通道调节与实时预览。"),
+    (re.compile(r'Modal owns the keyboard focus order', re.I), "模态弹窗遮罩对话框，独占用户交互与键盘焦点。"),
+    (re.compile(r'Placement is in logical canvas pixels', re.I), "气泡弹出浮层容器，锚定在指定界面元素周边。"),
+    (re.compile(r'One retained scene per canvas', re.I), "保留模式画布场景容器，管理控件树排版、绘制与事件分发。"),
+    (re.compile(r'A widget surface uses logical coordinates', re.I), "UI 宿主环境接口，对接原生窗口、事件循环与剪贴板调度。"),
+    (re.compile(r'Input and TextArea share one persistent editor', re.I), "文本编辑核心控制器，提供光标移动、选区、撤销重做与排版。"),
+    (re.compile(r'Borrowed raw descriptor', re.I), "获取底层持有的操作系统原生套接字或文件描述符（fd）。"),
+    (re.compile(r'Connection Pool for ClickHouse', re.I), "ClickHouse 连接池管理器，维护复用 TCP 套接字连接。"),
+    (re.compile(r'Connection Pool for Elasticsearch', re.I), "Elasticsearch & OpenSearch 连接池管理器。"),
+    (re.compile(r'Connection Pool for etcd', re.I), "etcd v3 分布式键值存储连接池管理器。"),
+    (re.compile(r'Connection Pool for Apache Kafka', re.I), "Apache Kafka 连接池管理器，维护复用套接字连接。"),
+    (re.compile(r'Connection Pool for InfluxDB', re.I), "InfluxDB 连接池管理器，维护复用套接字连接。"),
+    (re.compile(r'Connection Pool for RabbitMQ', re.I), "RabbitMQ AMQP 连接池管理器。"),
+    (re.compile(r'Connection Pool for S3', re.I), "S3 与 MinIO 兼容对象存储连接池管理器。"),
+    (re.compile(r'Connection Pool for HashiCorp Consul', re.I), "HashiCorp Consul 服务治理连接池管理器。"),
+    (re.compile(r'Connection Pool for Qdrant', re.I), "Qdrant 向量数据库连接池管理器。"),
+    (re.compile(r'Connection Pool for Prometheus', re.I), "Prometheus 指标导出与推送连接池管理器。"),
+]
+
+STRUCT_PATTERNS = [
+    (re.compile(r'Client$'), "客户端会话实例，维护与服务端的连接并提供操作接口。", "Client session maintaining connection and operations."),
+    (re.compile(r'Pool$'), "连接池管理器，并发安全地维护和调度复用套接字连接。", "Connection pool manager scheduling reusable socket connections."),
+    (re.compile(r'Response$'), "服务端响应结果，包含状态码、响应头与正文数据。", "Server response payload containing status, headers, and body."),
+    (re.compile(r'Reader$'), "流式数据读取与解码器。", "Streaming reader and decoder."),
+    (re.compile(r'Writer$'), "流式数据写入与序列化器。", "Streaming writer and encoder."),
+    (re.compile(r'Header$'), "元信息头部描述结构。", "Metadata header descriptor structure."),
+    (re.compile(r'Config$|Options$'), "配置参数与选项集合。", "Configuration parameters and options set."),
+    (re.compile(r'Digest$'), "密码学哈希摘要状态上下文。", "Cryptographic hash digest state context."),
+    (re.compile(r'Cipher$'), "密码算法的分组或流式加解密上下文。", "Cipher context for block or stream encryption/decryption."),
+    (re.compile(r'Frame$'), "协议数据帧结构封装。", "Protocol data frame encapsulation."),
+]
+
+
+def infer_struct_purpose(pkg: str, item: Item, lang: str) -> str:
+    zh = lang == "zh"
+    name = item.name
+    
+    if pkg == "image" and name == "Point":
+        return "二维平面几何坐标点 (x, y)。" if zh else "2D geometric point (x, y)."
+    if pkg == "image" and name == "Rectangle":
+        return "轴对齐二维矩形区域，由左上/最小坐标 min 与右下/最大坐标 max 界定。" if zh else "2D axis-aligned rectangle bounded by min and max."
+    if pkg == "image" and name == "RGBA":
+        return "基于连续内存的 32 位 RGBA 像素图像缓冲区。" if zh else "32-bit RGBA pixel image buffer in contiguous memory."
+    if pkg == "sort" and name == "Search":
+        return "二分查找状态辅助结构，封装切片查找位置与比较上下文。" if zh else "Binary search helper encapsulating position and compare context."
+    if pkg == "net":
+        if name == "HostPort":
+            return "网络终端的主机与端口地址结构（包含 host 字符串与 port 整数）。" if zh else "Host and port network address structure."
+        if name == "Conn":
+            return "通用网络流式双向连接，提供读写、超时控制与文件描述符获取。" if zh else "General bidirectional streaming network connection."
+        if name == "Listener":
+            return "网络套接字服务端监听器，用于等待并接受传入连接。" if zh else "Network socket server listener for incoming connections."
+        if name in ("TCPAddr", "UDPAddr", "IPAddr", "UnixAddr"):
+            net_type = name.replace("Addr", "")
+            return f"{net_type} 网络终端地址结构（包含 IP/路径与端口）。" if zh else f"{net_type} network endpoint address structure."
+        if name == "Dialer":
+            return "网络连接拨号器，支持自定义超时、本地地址与连接控制选项。" if zh else "Network connection dialer with custom options."
+        if name == "ListenConfig":
+            return "网络套接字监听配置器，提供可定制的监听参数。" if zh else "Network listener configuration with custom options."
+        if name == "Interface":
+            return "系统网络接口（网卡）信息结构（包含索引、名字与标志位）。" if zh else "System network interface information structure."
+        if name == "IPNet":
+            return "包含 IP 地址及其网络前缀掩码的网段结构。" if zh else "IP network segment structure with prefix mask."
+    if pkg == "time":
+        if name == "Duration":
+            return "纳秒精度带符号时间跨度结构，独立于日历与时区。" if zh else "Signed nanosecond-precision elapsed duration."
+        if name == "Instant":
+            return "进程本地单调高精度时间戳，不受系统时钟调整跳变影响。" if zh else "Process-local monotonic high-resolution timestamp."
+        if name == "DateParts":
+            return "年月日三元组日期拆分结构。" if zh else "Year, month, and day tuple date structure."
+        if name == "Location":
+            return "包含时区名称与秒级 UTC 偏移量的地理/时区配置。" if zh else "Time zone location with UTC offset in seconds."
+    if pkg == "io":
+        if name == "MultiCursor":
+            return "拼接多个字符串快照的只读游标适配器。" if zh else "Concatenated read-only cursor over multiple string snapshots."
+        if name == "MultiBuffer":
+            return "同时向多个目标缓冲区复制写入的扇出写入器。" if zh else "Fan-out writer copying data to multiple destinations."
+        if name == "Tee":
+            return "数据流分流器，在从源读取数据的同时将每一块数据镜像写入目标。" if zh else "Tee reader mirroring chunks to dst while reading from src."
+        if name == "SectionCursor":
+            return "针对底层数据特定偏移和长度子区间的切片游标。" if zh else "Windowed slice cursor over specific offset and length."
+        if name == "PipeReader":
+            return "内存单向同步管道的读取端。" if zh else "Reading end of an in-memory synchronous pipe."
+        if name == "PipeWriter":
+            return "内存单向同步管道的写入端。" if zh else "Writing end of an in-memory synchronous pipe."
+        if name == "PipePair":
+            return "包含关联读端与写端的双向管道端点对。" if zh else "Connected pair of PipeReader and PipeWriter."
+    if pkg.startswith("ui"):
+        ui_widget_map = {
+            "Tooltip": ("浮动提示框控件，跟随鼠标悬停显示补充说明。", "Floating tooltip control displayed on hover."),
+            "TreeView": ("树形折叠层级列表控件，支持多层节点展开收起与选中。", "Collapsible hierarchical tree view control."),
+            "ComboBox": ("下拉组合选择输入框控件，支持文本编辑与弹出项选择。", "Editable dropdown combo box control."),
+            "DatePicker": ("日期选择器控件，支持日历弹层面板与年月日切换。", "Date picker control with calendar overlay panel."),
+            "TimePicker": ("24 小时制时间分段选择与编辑控件。", "24-hour segmented time picker control."),
+            "Breadcrumbs": ("面包屑路径层级导航控件，指示当前界面位置与层级跳转。", "Breadcrumb navigation bar control."),
+            "Table": ("等宽单行数据表格控件，支持多列排版与行选中。", "Tabular data display control with multi-column layout."),
+            "Pagination": ("分页栏控件，支持页码跳转与上一页/下一页导航。", "Pagination navigation bar control."),
+            "Toast": ("轻量浮动消息提示通知框，支持自动倒计时与堆叠显示。", "Lightweight transient notification toast."),
+            "ColorPicker": ("RGBA 颜色选择调色板控件，支持通道调节与实时预览。", "RGBA color picker palette control with channel tuning."),
+            "Modal": ("模态弹窗遮罩对话框，独占用户交互与键盘焦点。", "Modal overlay dialog capturing input and focus."),
+            "Popover": ("气泡弹出浮层容器，锚定在指定界面元素周边。", "Anchored popover container attached to target element."),
+            "View": ("保留模式画布场景容器，管理控件树排版、绘制与事件分发。", "Retained scene container managing widget tree layout, paint, and events."),
+            "Host": ("UI 宿主环境接口，对接原生窗口、事件循环与剪贴板调度。", "UI host environment interface bridging native window and events."),
+            "Editor": ("文本编辑核心控制器，提供光标移动、选区、撤销重做与排版。", "Text editing controller providing cursor, selection, and history."),
+        }
+        if name in ui_widget_map:
+            return ui_widget_map[name][0 if zh else 1]
+
+    for pat, zh_desc, en_desc in STRUCT_PATTERNS:
+        if pat.search(name):
+            pkg_name = pkg.split('/')[-1].capitalize()
+            return f"{pkg_name} {zh_desc}" if zh else f"{pkg_name} {en_desc}"
+            
+    if item.fields:
+        fnames = [f.name for f in item.fields[:5]]
+        flist = "、".join(fnames)
+        return f"承载 {flist} 等属性的结构体。" if zh else f"Structure encapsulating {', '.join(fnames)}."
+
+    return f"`{name}` 上下文或状态结构体。" if zh else f"`{name}` context or state structure."
+
+
+def infer_const_purpose(pkg: str, item: Item, lang: str) -> str:
+    zh = lang == "zh"
+    name = item.name
+    val = item.value or ""
+    
+    if name == "eof":
+        return "流读取结束标识常量（End of File）。" if zh else "End-of-file sentinel constant."
+    if name in ("nanosecond", "microsecond", "millisecond", "second", "minute", "hour"):
+        return NAME_HINTS[name][0 if zh else 1]
+    if pkg == "archive/zip":
+        if name == "store":
+            return "不压缩、直接打包存储的压缩算法标识（0）。" if zh else "Uncompressed store compression method (0)."
+        if name == "deflate":
+            return "标准 DEFLATE 压缩算法标识（8）。" if zh else "Standard DEFLATE compression method (8)."
+    if pkg == "compress/lzw":
+        if name == "lsb":
+            return "最低有效位优先（LSB）编码顺序模式标识。" if zh else "Least Significant Bit first encoding mode."
+        if name == "msb":
+            return "最高有效位优先（MSB）编码顺序模式标识。" if zh else "Most Significant Bit first encoding mode."
+    if name.startswith("action_"):
+        act = name.replace("action_", "")
+        return f"控件交互动作标识常量：{act}。" if zh else f"Control interaction action constant: {act}."
+    if name.startswith("content_"):
+        cnt = name.replace("content_", "")
+        return f"窗口视图内容呈现模式常量：{cnt}。" if zh else f"Window content presentation mode constant: {cnt}."
+    if name.startswith("type_") and pkg == "archive/tar":
+        tname = name.replace("type_", "")
+        return f"TAR 归档条目类型标记常量（{tname}）。" if zh else f"TAR archive entry type flag ({tname})."
+    if name.startswith("mode_") and pkg == "bufio":
+        mname = name.replace("mode_", "")
+        return f"带缓冲扫描器的切分模式常量（{mname}）。" if zh else f"Scanner split mode constant ({mname})."
+    if name.startswith("os_") and pkg == "compress/gzip":
+        osname = name.replace("os_", "")
+        return f"GZIP 头部操作系统环境标识常量（{osname}）。" if zh else f"GZIP header OS identifier constant ({osname})."
+    if name == "block_size":
+        return f"分组密码或归档处理的标准块大小（{val} 字节）。" if zh else f"Standard block size ({val} bytes)."
+    if "key_size" in name:
+        return f"密码算法的密钥字节长度常量（{val} 字节）。" if zh else f"Key size constant ({val} bytes)."
+    if "seed_size" in name:
+        return f"私钥生成种子字节长度常量（{val} 字节）。" if zh else f"Private key seed size ({val} bytes)."
+    if "signature_size" in name:
+        return f"数字签名结果字节长度常量（{val} 字节）。" if zh else f"Signature size constant ({val} bytes)."
+    if "version_" in name:
+        vname = name.replace("version_", "").upper()
+        return f"{vname} 协议版本号常量。" if zh else f"{vname} protocol version constant."
+    if any(k in name for k in ("_gcm_", "_cbc_", "sm4_", "aes_", "ecdhe_", "ecc_")):
+        return f"密码套件套件标识常量（{name}）。" if zh else f"Cipher suite identifier ({name})."
+    if pkg in ("crypto/rsa", "crypto/hmac", "crypto/x509") and name in ("md5", "sha1", "sha224", "sha256", "sha384", "sha512"):
+        return f"{name.upper()} 密码学哈希算法标识常量。" if zh else f"{name.upper()} hash algorithm identifier constant."
+    if name.startswith("hid_"):
+        hname = name.replace("hid_", "")
+        return f"SM9 标识密码算法 {hname} 功能标识符。" if zh else f"SM9 algorithm function identifier ({hname})."
+    if name in ("p256", "p384", "p521"):
+        return f"NIST 椭圆曲线 {name.upper()} 位宽参数常量。" if zh else f"NIST elliptic curve {name.upper()} bit size parameter."
+    if name in ("pi", "e", "phi"):
+        return f"数学常数 {name.upper()}。" if zh else f"Mathematical constant {name.upper()}."
+    if name.endswith("_size") or name.endswith("_len"):
+        return f"{name} 规格或缓冲长度常量（{val}）。" if zh else f"{name} size or length constant ({val})."
+    if name.startswith("max_"):
+        return f"{name} 上限极值常量（{val}）。" if zh else f"{name} maximum limit constant ({val})."
+    if name.startswith("min_"):
+        return f"{name} 下限极值常量（{val}）。" if zh else f"{name} minimum limit constant ({val})."
+    if name.startswith("default_"):
+        return f"{name} 预设默认配置常量（{val}）。" if zh else f"{name} default configuration constant ({val})."
+
+    return f"常量 `{name}`，定义了相关的协议或算法配置参数。" if zh else f"Constant `{name}`, defining protocol or algorithm parameters."
+
+
 def comment_as_purpose(cmt: str, lang: str) -> str:
     c = scrub_foreign(cmt or "")
     if not c:
@@ -1504,7 +1866,10 @@ def comment_as_purpose(cmt: str, lang: str) -> str:
     if lang == "zh":
         if is_cjk(c):
             return c
-        return ""  # keep English comment for en page only
+        for pat, zh_text in COMMON_EN_COMMENT_TRANS:
+            if pat.search(c):
+                return zh_text
+        return ""
     if is_cjk(c):
         return ""
     return c
@@ -1515,57 +1880,60 @@ def purpose_for(pkg: str, item: Item, lang: str) -> str:
     if ov and ov.get("purpose"):
         return ov["purpose"]
     c = comment_as_purpose(item.comment, lang)
-    hinted = hint_name(item.name, lang, pkg_id(pkg))
-    notes = body_notes(item, lang)
     zh = lang == "zh"
+    
     if item.kind == "const":
-        base = c or (f"公开常量 `{item.name}`。" if zh else f"Public constant `{item.name}`.")
-        if item.value:
-            base += (" 值为 " if zh else " Value ") + f"`{item.value}`" + ("。" if zh and not base.endswith("。") else ("" if zh else "."))
-        return base.strip()
+        if c:
+            return c
+        return infer_const_purpose(pkg_id(pkg), item, lang)
     if item.kind == "struct":
-        base = c or (f"公开结构体 `{item.name}`。" if zh else f"Public struct `{item.name}`.")
-        return base
+        if c:
+            return c
+        return infer_struct_purpose(pkg_id(pkg), item, lang)
     if item.kind == "enum":
-        return c or (f"公开枚举 `{item.name}`；变体与载荷见声明。" if zh else f"Public enum `{item.name}`; see the declaration for variants and payloads.")
+        if c:
+            return c
+        if item.name == "ReadResult":
+            return "流式数据读取结果枚举（包含有效数据 Data 或读取结束 End）。" if zh else "Streaming read result enum (Data or End)."
+        if item.name == "WriteResult":
+            return "流式数据写入结果枚举。" if zh else "Streaming write result enum."
+        if item.name == "CopyResult":
+            return "流式数据复制结果枚举。" if zh else "Streaming copy result enum."
+        return f"枚举 `{item.name}`，定义了相关的业务变体与载荷。" if zh else f"Enum `{item.name}` defining variants and payloads."
     if item.kind == "iface":
-        base = c or (
-            f"方法集约束 `{item.name}`。实现类型须提供下列方法。不是接口值。"
-            if zh else
-            f"Method-set constraint `{item.name}`. Implementing types must provide the methods below. Not an interface value."
-        )
-        return base
+        if c:
+            return c
+        if item.name == "Error":
+            return "通用错误方法集契约约束，要求实现 msg() string 与 cause() string。" if zh else "Error method-set constraint requiring msg() and cause()."
+        if item.name in ("Reader", "Writer", "StreamReader", "StreamWriter", "ProgressReader", "ProgressWriter"):
+            role = "读取" if "Reader" in item.name else "写入"
+            return f"{item.name} 数据{role}方法集契约约束。" if zh else f"{item.name} data I/O method-set constraint."
+        return f"方法集契约约束 `{item.name}`，实现类型须提供其定义的方法。" if zh else f"Method-set constraint `{item.name}`."
+
     parts = []
     if c:
         parts.append(c)
-    elif hinted:
-        if item.kind in ("method", "iface_method") and item.recv_type:
-            recv = item.recv_type
-            if zh:
-                parts.append(f"`{item.recv_type}` 上的方法：{hinted}")
-            else:
-                parts.append(f"Method on `{item.recv_type}`: {hinted[0].lower() + hinted[1:] if hinted else hinted}")
-        else:
-            parts.append(hinted)
     else:
-        if item.kind in ("method", "iface_method") and item.recv_type:
-            parts.append(
-                f"在 `{item.recv_type}` 上调用 `{item.name}`。"
-                if zh else
-                f"Call `{item.name}` on `{item.recv_type}`."
-            )
+        if item.kind in ("method", "iface_method") and item.name in METHOD_HINTS:
+            parts.append(METHOD_HINTS[item.name][0 if zh else 1])
         else:
-            # last-resort: name + params/return, still a real sentence
-            if zh:
-                if item.ret:
-                    parts.append(f"{item.name}，返回 {item.ret}。")
+            hinted = hint_name(item.name, lang, pkg_id(pkg))
+            if hinted:
+                if item.kind in ("method", "iface_method") and item.recv_type:
+                    recv = item.recv_type
+                    if zh:
+                        parts.append(f"`{item.recv_type}` 上的操作：{hinted}")
+                    else:
+                        parts.append(f"Operation on `{item.recv_type}`: {hinted[0].lower() + hinted[1:] if hinted else hinted}")
                 else:
-                    parts.append(f"{item.name}。")
+                    parts.append(hinted)
             else:
-                if item.ret:
-                    parts.append(f"{item.name}; returns {item.ret}.")
+                if item.kind in ("method", "iface_method") and item.recv_type:
+                    parts.append(f"在 `{item.recv_type}` 上执行 `{item.name}` 操作。" if zh else f"Execute `{item.name}` on `{item.recv_type}`.")
                 else:
-                    parts.append(f"{item.name}.")
+                    parts.append(f"执行 {item.name} 处理。" if zh else f"Execute {item.name}.")
+
+    notes = body_notes(item, lang)
     for n in notes:
         if n not in "".join(parts):
             parts.append(n)
