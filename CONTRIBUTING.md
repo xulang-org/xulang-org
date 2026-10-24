@@ -2,6 +2,8 @@
 
 请先阅读 [XU GitHub 仓库管理规范](.github/REPOSITORY_RULES.md)；维护者另见 [GitHub 配置与验收清单](.github/GITHUB_SETTINGS.md)。规范适用于 XU 全部仓库，本文件补充官网的实际入口。
 
+XU 源码还须遵守 [XU 代码规范](https://github.com/xulang-org/xu/blob/main/.github/XU_CODING_STANDARDS.md)；涉及配套语言或跨语言接口时，按各语言工具链及其中的边界契约验证。
+
 日常开发从 `dev` 建立任务分支并通过 PR 合回；正式部署进入 `main`。独立文档、链接或治理修订可按统一规范通过维护 PR 进入 `main`。若尚未启用对应分支与门禁，先由维护者按配置清单完成衔接。不得直接推送或擅自触发发布。
 
 ## 修改与验证
