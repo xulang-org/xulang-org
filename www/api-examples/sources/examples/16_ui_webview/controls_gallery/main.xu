@@ -13,11 +13,11 @@ fn rect(x f64,y f64,width f64,height f64) layout.Rect {
 // label remains alive until the complete frame has been accepted.
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     mut switcher := widgets.style_switcher()
-    switcher.use_preset(widgets.theme_light) or >>
+    switcher.use_preset(widgets.THEME_LIGHT) or >>
     mut toggle := widgets.switch_control(&identity,1,&rect(48.0,116.0,280.0,48.0),true) or >>
     mut radio := widgets.radio(&identity,2,&rect(48.0,180.0,280.0,48.0),1,false) or >>
     mut slider := widgets.slider(&identity,3,&rect(48.0,260.0,280.0,36.0),0.0,100.0,50.0) or >>
@@ -28,7 +28,7 @@ fn scene(ech chan ui.Event) int {
     mut list := widgets.list_box(&identity,7,&rect(376.0,284.0,348.0,132.0),3,0) or >>
     panel := widgets.card(&rect(24.0,92.0,724.0,352.0)) or >>
     badge := widgets.badge(&rect(48.0,392.0,280.0,32.0)) or >>
-    divider := widgets.divider(&rect(48.0,244.0,280.0,2.0),widgets.axis_horizontal) or >>
+    divider := widgets.divider(&rect(48.0,244.0,280.0,2.0),widgets.AXIS_HORIZONTAL) or >>
     mut label0 := widgets.styled_label(&context,&"Enabled")
     mut label1 := widgets.styled_label(&context,&"Choose this option")
     mut label2 := widgets.styled_label(&context,&"Stepper")
@@ -84,15 +84,15 @@ fn scene(ech chan ui.Event) int {
             dirty = false
         }
         event := demo.next(ech)
-        if event.kind == ui.ev_exit { <- }
+        if event.kind == ui.EV_EXIT { <- }
         if event.window_id != identity.window_id { -> }
-        if event.kind == ui.ev_canvas_closed { <- }
-        if event.kind == ui.ev_canvas_metrics { dirty = true }
+        if event.kind == ui.EV_CANVAS_CLOSED { <- }
+        if event.kind == ui.EV_CANVAS_METRICS { dirty = true }
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
             if input.generation != identity.generation { -> }
-            if input.kind == ui.ev_key_down && input.repeat == 0 {
-                if input.key == ui.key_escape {
+            if input.kind == ui.EV_KEY_DOWN && input.repeat == 0 {
+                if input.key == ui.KEY_ESCAPE {
                     // App shutdown revokes canvas resources. Do not enqueue
                     // another frame while the native host is closing.
                     demo.quit() or >>
@@ -112,7 +112,7 @@ fn scene(ech chan ui.Event) int {
                     switcher.set_density(density) or >>
                     dirty = true
                 }
-                if input.key == ui.key_tab { focus = focus % 7 + 1
+                if input.key == ui.KEY_TAB { focus = focus % 7 + 1
                     dirty = true }
             }
         }

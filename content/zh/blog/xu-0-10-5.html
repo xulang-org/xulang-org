@@ -1,0 +1,27 @@
+<!--title: Xu 0.10.5：源码调试、原生安装与编译器修复-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.10.5：源码调试、原生安装与编译器修复</h1>
+<p class="meta">2026-10-25 · 正式发布 · <a href="https://github.com/xulang-org/xu/releases/tag/v0.10.5">SDK 附件与 SHA-256 摘要</a></p>
+<p>Xu 0.10.5 已提供 macOS ARM64/x64、Linux ARM64/x64/LoongArch64/RISC-V 64，以及 Windows x64/ARM64 的发行包。官网 API 与浏览器 Playground 使用同一份正式 SDK。发行标签指向 <a href="https://github.com/xulang-org/xu/commit/2a635a6bb7c443b5c4231575448cf813be0bf052"><code>2a635a6</code></a>。</p>
+<h2>相对 0.10.2 的更新</h2>
+<ul>
+<li><strong>源码调试：</strong><code>xu debug</code> 构建带 DWARF 信息的程序并启动 LLDB 或 GDB，支持源码/函数断点、调用栈与局部变量查看，以及批处理模式。需在宿主系统安装调试器。</li>
+<li><strong>编译器与标准库：</strong>扩展结构体 SSA 提升与 Tile 规划，加入低比特查找表和流水线 API；修正 Map、字符串、编码、flag 与密码学代码；加入 ARM32 整数/ABI 和 STM32F4 开发板支持。</li>
+<li><strong>安装与更新：</strong>原生 Setup 安装器、自动识别 SDK 位置、Windows 当前用户/所有用户范围，以及标准库下载、解包与进度反馈。<code>xu up</code> 与 <code>xu update</code> 继续互为别名。</li>
+<li><strong>编辑器诊断：</strong>LSP 发布诊断时保留文档 URI；编译器版本横幅去掉原有的 “self-hosted” 后缀。</li>
+</ul>
+<h2>迁移：常量使用大写命名</h2>
+<p>常量声明及引用统一使用 <code>UPPER_SNAKE_CASE</code>。将 <code>const max = 100</code> 改为 <code>const MAX = 100</code>，并同步修改引用，包括导入的标准库常量。函数、变量和字段继续使用 snake_case。</p>
+<pre><code>@main
+const MAX = 100
+fn main() int {
+    println(MAX)
+    &lt;&lt; 0
+}</code></pre>
+<p>编译器、配套工具与标准库源码应来自同一份 SDK，升级时不要仅用新编译器覆盖旧源码目录。参见<a href="/download">各平台下载</a>与<a href="/docs/install">安装说明</a>。</p>
+<h2>发行验证</h2>
+<p><a href="https://github.com/xulang-org/xu/actions/runs/40222380681">发布构建</a>通过宿主自举固定点验证（Gen2 = Gen3），完成全部 8 个平台的 SDK 打包，并通过 macOS ARM64 SDK 与原生安装器的安装验收。<a href="https://github.com/xulang-org/xu/actions/runs/40222367139">Windows 宿主构建/检查</a>和<a href="https://github.com/xulang-org/xu/actions/runs/40222367182">完整产品交付工作流</a>也已通过。下载所选归档旁的 <code>SHA256SUMS</code> 核对内容。</p>
+<p>目标代码生成支持不代表每个库都已完成所有目标机的运行验收；剩余边界见<a href="/docs/status">限制与现状</a>。<a href="/benchmarks">基准页面</a>继续保留各次测量实际使用的编译器版本。</p>
+
+<h2>配套示例修正</h2>
+<p>0.10.5 最初打包的部分 UI、WebSocket 和 DNS 示例仍使用旧的小写导入常量。<a href="https://github.com/xulang-org/examples/pull/8">修正后的官方示例</a>已通过全部 54 个官网引用示例的编译检查。使用该修正版源码时仍可保留 0.10.5 编译器；SQLite 示例须按其说明先构建原生桥接库。</p>

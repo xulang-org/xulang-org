@@ -42,7 +42,7 @@ fn (model &mut Model) input(id int,kind int,input &ui.InputEvent) widgets.Action
     if id == model.button_id { << model.button_input(kind,input) or >> }
     if id == model.check_id { << model.checkbox_input(kind,input) or >> }
     if id == model.scroll_id { << model.scroll_input(kind,input) or >> }
-    << widgets.Action{kind: widgets.action_none,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
+    << widgets.Action{kind: widgets.ACTION_NONE,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
 }
 fn (model &mut Model) place_button(bounds &layout.Rect) int {
     button := mut &model.button
@@ -141,24 +141,24 @@ fn (model &mut Model) acknowledge() {
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     host := widgets.Host{context: context,identity: identity}
-    mut column := layout.box_style(layout.box_column)
+    mut column := layout.box_style(layout.BOX_COLUMN)
     column.padding = layout.insets(28.0) or >>
     column.gap = 14.0
-    column.cross_alignment = layout.cross_stretch
+    column.cross_alignment = layout.CROSS_STRETCH
     mut view := host.view(&column,demo.background()) or >>
-    leaf := layout.box_style(layout.box_leaf)
+    leaf := layout.box_style(layout.BOX_LEAF)
     header := view.add(view.root(),&leaf,&layout.Size{width: 400.0,height: 88.0}) or >>
     button_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 44.0}) or >>
     check_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 40.0}) or >>
     progress_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 12.0}) or >>
-    mut viewport := layout.box_style(layout.box_column)
+    mut viewport := layout.box_style(layout.BOX_COLUMN)
     viewport.height = 260.0
     viewport.clip = true
-    viewport.cross_alignment = layout.cross_stretch
+    viewport.cross_alignment = layout.CROSS_STRETCH
     viewport.gap = 6.0
     scroll_id := view.add(view.root(),&viewport,&layout.Size{width: 400.0,height: 260.0}) or >>
     mut rows := []int{}
@@ -176,28 +176,28 @@ fn scene(ech chan ui.Event) int {
     mut model := Model{button: widgets.button(&identity,button_id,&empty) or >>,
         checkbox: widgets.checkbox(&identity,check_id,&empty,true) or >>,
         progress: widgets.progress(&empty,0.0) or >>,
-        scroll: widgets.scroll(&identity,scroll_id,&empty,widgets.axis_vertical,250.0) or >>,
+        scroll: widgets.scroll(&identity,scroll_id,&empty,widgets.AXIS_VERTICAL,250.0) or >>,
         button_label: context.layout_text(&first,&options) or >>,
         checkbox_label: context.layout_text(&second,&options) or >>,
         theme: widgets.default_theme(),context: context,count: 0,message: "Open a local image to begin.",source: "",images: []draw.Image{},header_id: header,button_id: button_id,check_id: check_id,progress_id: progress_id,scroll_id: scroll_id,row_ids: rows}
     mut width := 900.0
     mut height := 700.0
     mut native := demo.windows(ech)
-    mut preview := ui.Window{id: 0,generation: 0,title: "Preview",width: 720,height: 500,content_kind: ui.content_draw,content_backend_id: 0,closed: 1}
+    mut preview := ui.Window{id: 0,generation: 0,title: "Preview",width: 720,height: 500,content_kind: ui.CONTENT_DRAW,content_backend_id: 0,closed: 1}
     mut pending := ui.Request{id: 0,window_id: 0,canvas_id: 0,generation: 0,kind: 0}
     while true {
         constraints := layout.tight(width,height) or >>
         submitted := widgets.present(mut &view,&constraints,mut &model) or >>
         if submitted { model.acknowledge() }
         event := demo.next(ech)
-        if event.kind == ui.ev_exit { <- }
+        if event.kind == ui.EV_EXIT { <- }
         if preview.id > 0 && event.window_id == preview.id {
-            if event.kind == ui.ev_closed || event.kind == ui.ev_window_failed { preview.closed = 1 }
-            if event.kind == ui.ev_canvas_ready && model.source.len > 0 {
+            if event.kind == ui.EV_CLOSED || event.kind == ui.EV_WINDOW_FAILED { preview.closed = 1 }
+            if event.kind == ui.EV_CANVAS_READY && model.source.len > 0 {
                 preview.content_command("input_enabled\t1") or >>
                 preview.content_command("pan_enabled\t0") or >>
                 preview_paint(&preview,&model.source) or >> }
-            if event.kind == ui.ev_canvas_metrics {
+            if event.kind == ui.EV_CANVAS_METRICS {
                 metrics := ui.metrics_of(&event) or >>
                 if metrics.width > 40.0 && metrics.height > 40.0 { preview.width = int(metrics.width)
                     preview.height = int(metrics.height)
@@ -206,12 +206,12 @@ fn scene(ech chan ui.Event) int {
             ->
         }
         if event.window_id != identity.window_id { -> }
-        if event.kind == ui.ev_request {
+        if event.kind == ui.EV_REQUEST {
             result := ui.request_of(&event) or >>
             if result.matches(&pending) {
                 pending.id = 0
                 model.message = "Selection cancelled or failed."
-                if result.status == ui.request_completed {
+                if result.status == ui.REQUEST_COMPLETED {
                     paths := ui.file_paths(&result) or >>
                     if paths.len > 0 {
                         path := paths[0] + ""
@@ -225,7 +225,7 @@ fn scene(ech chan ui.Event) int {
                         model.progress_value(1.0) or >>
                         view.mark_paint(model.row_ids[0]) or >>
                         if model.checkbox.value() {
-                            if preview.closed != 0 { preview = native.open_content_window(ui.WindowOpts{title: "Xu UI / Image Preview",width: 720,height: 500},ui.content_draw) or >> }
+                            if preview.closed != 0 { preview = native.open_content_window(ui.WindowOpts{title: "Xu UI / Image Preview",width: 720,height: 500},ui.CONTENT_DRAW) or >> }
                             else { preview_paint(&preview,&path) or >>
                                 preview.focus() or >> }
                         }
@@ -235,14 +235,14 @@ fn scene(ech chan ui.Event) int {
                 view.mark_paint(progress_id) or >>
             }
         }
-        if event.kind == ui.ev_canvas_metrics {
+        if event.kind == ui.EV_CANVAS_METRICS {
             metrics := ui.metrics_of(&event) or >>
             if metrics.width > 0.0 && metrics.height > 0.0 { width = metrics.width
                 height = metrics.height }
         }
         actions := widgets.dispatch_event(mut &view,&event,mut &model) or >>
         for action in actions {
-            if action.kind == widgets.action_activate && pending.id == 0 {
+            if action.kind == widgets.ACTION_ACTIVATE && pending.id == 0 {
                 mut options := ui.file_dialog_options()
                 options.title = "Open an image"
                 options.filters = [ui.FileFilter{label: "Images",extensions: ["png","jpg","jpeg"]}]
@@ -252,13 +252,13 @@ fn scene(ech chan ui.Event) int {
                 view.mark_paint(header) or >>
                 view.mark_paint(progress_id) or >>
             }
-            if action.kind == widgets.action_scroll { view.set_scroll(scroll_id,0.0,action.value) or >> }
+            if action.kind == widgets.ACTION_SCROLL { view.set_scroll(scroll_id,0.0,action.value) or >> }
         }
-        if event.kind == ui.ev_canvas_closed { demo.quit() or >>
+        if event.kind == ui.EV_CANVAS_CLOSED { demo.quit() or >>
             <- }
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
-            if input.kind == ui.ev_key_down && input.key == ui.key_escape { demo.quit() or >> }
+            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE { demo.quit() or >> }
         }
         stats := view.stats()
         if stats.recorded_boundaries > 0 || stats.reused_boundaries > 0 {

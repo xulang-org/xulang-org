@@ -38,7 +38,7 @@ fn paint(context &draw.Context,frame &mut draw.Frame,input &ui.TextInput) int {
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     seed := "你好，Xu 👩‍💻 · café"
@@ -49,22 +49,22 @@ fn scene(ech chan ui.Event) int {
     paint(&context,mut &frame,&input) or >>
     while true {
         event := demo.next(ech)
-        if event.kind == ui.ev_exit || event.kind == ui.ev_canvas_closed { <- }
+        if event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <- }
         if event.window_id != identity.window_id { -> }
-        mut dirty := event.kind == ui.ev_canvas_metrics
-        if event.kind >= ui.ev_text_commit && event.kind <= ui.ev_text_surrounding_delete {
+        mut dirty := event.kind == ui.EV_CANVAS_METRICS
+        if event.kind >= ui.EV_TEXT_COMMIT && event.kind <= ui.EV_TEXT_SURROUNDING_DELETE {
             edit := ui.text_edit_of(&event) or >>
             if edit.input.id == input.id {
-                if event.kind == ui.ev_text_input_ended || event.kind == ui.ev_text_input_failed { <- }
+                if event.kind == ui.EV_TEXT_INPUT_ENDED || event.kind == ui.EV_TEXT_INPUT_FAILED { <- }
                 dirty = true
             }
         }
         if ui.is_input_event(event.kind) {
             pointer := ui.input_of(&event) or >>
             if pointer.generation != identity.generation { -> }
-            if pointer.kind == ui.ev_key_down && pointer.key == ui.key_escape { demo.quit() or >> }
+            if pointer.kind == ui.EV_KEY_DOWN && pointer.key == ui.KEY_ESCAPE { demo.quit() or >> }
             bounds := layout.Rect{x: 28.0,y: 160.0,width: 790.0,height: 86.0}
-            if pointer.kind == ui.ev_pointer_down && pointer.button == ui.button_left && bounds.contains(pointer.x,pointer.y) {
+            if pointer.kind == ui.EV_POINTER_DOWN && pointer.button == ui.BUTTON_LEFT && bounds.contains(pointer.x,pointer.y) {
                 state := input.snapshot() or >>
                 // The native editor owns preedit; do not overwrite an active composition.
                 if !state.composing {

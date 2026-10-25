@@ -26,7 +26,7 @@ fn paint(context &draw.Context,frame &mut draw.Frame,hits int) int {
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     mut frame := context.new_frame(4096)
@@ -35,21 +35,21 @@ fn scene(ech chan ui.Event) int {
     paint(&context,mut &frame,hits) or >>
     while true {
         event := demo.next(ech)
-        if event.kind == ui.ev_exit { <- }
+        if event.kind == ui.EV_EXIT { <- }
         if event.window_id != identity.window_id { -> }
-        if event.kind == ui.ev_canvas_closed { <- }
-        if event.kind == ui.ev_blurred { pressed = false }
-        if event.kind == ui.ev_canvas_metrics { paint(&context,mut &frame,hits) or >> }
+        if event.kind == ui.EV_CANVAS_CLOSED { <- }
+        if event.kind == ui.EV_BLURRED { pressed = false }
+        if event.kind == ui.EV_CANVAS_METRICS { paint(&context,mut &frame,hits) or >> }
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
             if input.generation != identity.generation { -> }
-            if input.kind == ui.ev_key_down && input.key == ui.key_escape { demo.quit() or >> }
+            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE { demo.quit() or >> }
             dx := input.x - 112.0
             dy := input.y - 228.0
             inside := dx * dx + dy * dy <= 2704.0
-            if input.kind == ui.ev_pointer_down && input.button == ui.button_left { pressed = inside }
-            if input.kind == ui.ev_pointer_cancel { pressed = false }
-            if input.kind == ui.ev_pointer_up && input.button == ui.button_left {
+            if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT { pressed = inside }
+            if input.kind == ui.EV_POINTER_CANCEL { pressed = false }
+            if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT {
                 if pressed && inside { hits = hits + 1
                     paint(&context,mut &frame,hits) or >> }
                 pressed = false

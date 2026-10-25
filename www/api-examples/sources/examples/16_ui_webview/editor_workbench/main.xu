@@ -57,7 +57,7 @@ fn (model &mut Model) native_event(event &ui.Event) bool {
     first := title.event(event) or >>
     body := mut &model.body
     second := body.event(event) or >>
-    << first.kind == widgets.action_change || second.kind == widgets.action_change
+    << first.kind == widgets.ACTION_CHANGE || second.kind == widgets.ACTION_CHANGE
 }
 fn (model &mut Model) editing(on bool) int {
     title := mut &model.title
@@ -77,14 +77,14 @@ fn menus(window &ui.Window,enabled bool) int {
     mut entries := [ui.submenu("document","Document",-1)]
     mut reset := ui.menu_action("reset","Reset note",0)
     reset.key = 82
-    reset.modifiers = ui.menu_primary | ui.mod_shift
+    reset.modifiers = ui.MENU_PRIMARY | ui.MOD_SHIFT
     entries.push(reset)
     entries.push(ui.menu_check("editing","Enable editing",0,enabled))
     entries.push(ui.menu_separator(0))
     entries.push(ui.submenu("display","Displays",0))
     mut query := ui.menu_action("screens","Query current screens",4)
     query.key = 68
-    query.modifiers = ui.menu_primary | ui.mod_shift
+    query.modifiers = ui.MENU_PRIMARY | ui.MOD_SHIFT
     entries.push(query)
     mut unavailable := ui.menu_action("unavailable","Unavailable action",4)
     unavailable.enabled = false
@@ -93,18 +93,18 @@ fn menus(window &ui.Window,enabled bool) int {
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
-    window := ui.Window{id: identity.window_id,generation: identity.generation,title: "",width: 0,height: 0,content_kind: ui.content_draw,content_backend_id: identity.canvas_id,closed: 0}
+    window := ui.Window{id: identity.window_id,generation: identity.generation,title: "",width: 0,height: 0,content_kind: ui.CONTENT_DRAW,content_backend_id: identity.canvas_id,closed: 0}
     menus(&window,true) or >>
     host := widgets.Host{context: context,identity: identity}
-    mut column := layout.box_style(layout.box_column)
+    mut column := layout.box_style(layout.BOX_COLUMN)
     column.padding = layout.insets(24.0) or >>
     column.gap = 16.0
-    column.cross_alignment = layout.cross_stretch
+    column.cross_alignment = layout.CROSS_STRETCH
     mut view := host.view(&column,demo.background()) or >>
-    leaf := layout.box_style(layout.box_leaf)
+    leaf := layout.box_style(layout.BOX_LEAF)
     header := view.add(view.root(),&leaf,&layout.Size{width: 500.0,height: 88.0}) or >>
     title_id := view.add(view.root(),&leaf,&layout.Size{width: 500.0,height: 44.0}) or >>
     body_id := view.add(view.root(),&leaf,&layout.Size{width: 500.0,height: 260.0}) or >>
@@ -132,17 +132,17 @@ fn scene(ech chan ui.Event) int {
             second.painted()
         }
         event := demo.next(ech)
-        if event.kind == ui.ev_exit { <- }
+        if event.kind == ui.EV_EXIT { <- }
         if event.window_id != identity.window_id { -> }
-        if event.kind == ui.ev_canvas_metrics { metrics := ui.metrics_of(&event) or >>
+        if event.kind == ui.EV_CANVAS_METRICS { metrics := ui.metrics_of(&event) or >>
             width = metrics.width
             height = metrics.height }
         actions := widgets.dispatch_event(mut &view,&event,mut &model) or >>
         if model.native_event(&event) or >> { model.changes = model.changes + 1
             view.mark_paint(footer) or >> }
-        for action in actions { if action.kind == widgets.action_submit { model.status = "Title submitted: " + model.title.value()
+        for action in actions { if action.kind == widgets.ACTION_SUBMIT { model.status = "Title submitted: " + model.title.value()
             view.mark_paint(footer) or >> } }
-        if event.kind == ui.ev_menu_clicked {
+        if event.kind == ui.EV_MENU_CLICKED {
             if event.menu_id == "reset" { model.reset() or >> }
             if event.menu_id == "editing" { enabled = !enabled
                 model.editing(enabled) or >>
@@ -151,8 +151,8 @@ fn scene(ech chan ui.Event) int {
             if event.menu_id == "screens" { screens.cancel()
                 screens = window.screens_async(&options) or >> }
         }
-        if event.kind == ui.ev_request { result := ui.request_of(&event) or >>
-            if result.matches(&screens) && result.status == ui.request_completed {
+        if event.kind == ui.EV_REQUEST { result := ui.request_of(&event) or >>
+            if result.matches(&screens) && result.status == ui.REQUEST_COMPLETED {
                 displays := ui.screen_result(&result) or >>
                 model.status = str(displays.len) + " display(s)"
                 for display in displays { println("Screen: " + display.name + " / " + str(int(display.bounds.width)) + " x " + str(int(display.bounds.height)) + " / scale " + str(int(display.scale_x)))
@@ -160,9 +160,9 @@ fn scene(ech chan ui.Event) int {
                 view.mark_paint(footer) or >>
             }
         }
-        if event.kind == ui.ev_canvas_closed || event.kind == ui.ev_closed { <- }
+        if event.kind == ui.EV_CANVAS_CLOSED || event.kind == ui.EV_CLOSED { <- }
         if ui.is_input_event(event.kind) { input := ui.input_of(&event) or >>
-            if input.kind == ui.ev_key_down && input.key == ui.key_escape { demo.quit() or >> } }
+            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE { demo.quit() or >> } }
     }
     screens.cancel()
     view.dispose()
