@@ -1711,9 +1711,9 @@ function searchBenchAll(query) {
 <div class="hero bench-hero">
   <div>
     <p class="banner"><i class="xi xi-benchmark xi-brand"></i> {meta_text}</p>
-    {render_toolchain_versions(platforms, version, en)}
     <h1>{h1_text}</h1>
     <p class="lead">{lead_text}</p>
+    {render_toolchain_versions(platforms, version, en)}
   </div>
 </div>
 
