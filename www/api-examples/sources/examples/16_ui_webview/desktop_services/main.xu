@@ -14,10 +14,10 @@ fn caption(id int) string {
     << "Cancel pending request"
 }
 fn status_name(status int) string {
-    if status == ui.request_completed { << "completed" }
-    if status == ui.request_cancelled { << "cancelled" }
-    if status == ui.request_timed_out { << "timed out" }
-    if status == ui.request_unsupported { << "unsupported" }
+    if status == ui.REQUEST_COMPLETED { << "completed" }
+    if status == ui.REQUEST_CANCELLED { << "cancelled" }
+    if status == ui.REQUEST_TIMED_OUT { << "timed out" }
+    if status == ui.REQUEST_UNSUPPORTED { << "unsupported" }
     << "failed"
 }
 fn submit(identity &ui.CanvasEvent,choice int) ui.Request {
@@ -63,7 +63,7 @@ fn paint(context &draw.Context,frame &mut draw.Frame,message string,pending int)
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     mut frame := context.new_frame(4096)
@@ -73,15 +73,15 @@ fn scene(ech chan ui.Event) int {
     paint(&context,mut &frame,message + "",pending.id) or >>
     while true {
         event := demo.next(ech)
-        if event.kind == ui.ev_exit || event.kind == ui.ev_canvas_closed { <- }
+        if event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <- }
         if event.window_id != identity.window_id { -> }
-        mut dirty := event.kind == ui.ev_canvas_metrics
-        if event.kind == ui.ev_request {
+        mut dirty := event.kind == ui.EV_CANVAS_METRICS
+        if event.kind == ui.EV_REQUEST {
             result := ui.request_of(&event) or >>
             if result.matches(&pending) {
                 message = "Request " + str(pending.id) + " " + status_name(result.status)
-                if result.status == ui.request_completed {
-                    if result.request.kind >= ui.request_open_files {
+                if result.status == ui.REQUEST_COMPLETED {
+                    if result.request.kind >= ui.REQUEST_OPEN_FILES {
                         paths := ui.file_paths(&result) or >>
                         for path in paths { message = message + "\n" + path }
                     } else { message = message + "\n" + result.value }
@@ -91,7 +91,7 @@ fn scene(ech chan ui.Event) int {
                 dirty = true
             }
         }
-        if event.kind == ui.ev_blurred { armed = -1 }
+        if event.kind == ui.EV_BLURRED { armed = -1 }
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
             if input.generation != identity.generation { -> }
@@ -100,16 +100,16 @@ fn scene(ech chan ui.Event) int {
                 bounds := layout.Rect{x: 28.0,y: 120.0 + f64(id) * 48.0,width: 370.0,height: 38.0}
                 if bounds.contains(input.x,input.y) { choice = id }
             }
-            if input.kind == ui.ev_pointer_down && input.button == ui.button_left { armed = choice }
-            if input.kind == ui.ev_pointer_cancel { armed = -1 }
+            if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT { armed = choice }
+            if input.kind == ui.EV_POINTER_CANCEL { armed = -1 }
             mut activate := -1
-            if input.kind == ui.ev_pointer_up && input.button == ui.button_left {
+            if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT {
                 if choice == armed { activate = choice }
                 armed = -1
             }
-            if input.kind == ui.ev_key_down && input.repeat == 0 {
+            if input.kind == ui.EV_KEY_DOWN && input.repeat == 0 {
                 if input.key >= 49 && input.key <= 54 { activate = input.key - 49 }
-                if input.key == ui.key_escape { demo.quit() or >> }
+                if input.key == ui.KEY_ESCAPE { demo.quit() or >> }
             }
             if activate == 6 && pending.id > 0 { _ := pending.cancel()
                 message = "Cancellation requested; waiting for terminal result."

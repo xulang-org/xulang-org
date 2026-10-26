@@ -120,12 +120,12 @@ fn (m &Model) next_event(ech chan ui.Event) ui.Event {
     deadline := m.next_frame(time.instant()) or >>
     while true {
         event := ui.poll_chan(ech)
-        if event.kind != ui.ev_none { << event }
+        if event.kind != ui.EV_NONE { << event }
         if !deadline.is_zero() && !time.instant().before(deadline) { << event }
         pause := time.milliseconds(8) or >>
         pause.sleep()
     }
-    << ui.Event{kind: ui.ev_none,window_id: 0,menu_id: "",width: 0,height: 0}
+    << ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: "",width: 0,height: 0}
 }
 fn (m &mut Model) measure_node(id int,s &widgets.Styles) layout.Size {
     if id == 4 { control := m.theme
@@ -417,24 +417,24 @@ fn (m &mut Model) paint_select_popup(s &widgets.Styles,f &mut draw.Frame) int {
 // The popup is an overlay, so route its pointer sequence before normal tree hits.
 fn (m &mut Model) dispatch_input(view &mut widgets.View,event &ui.InputEvent) []widgets.Action {
     was_open := m.select_ctrl.is_open()
-    pointer := event.kind == ui.ev_pointer_down || event.kind == ui.ev_pointer_up ||
-        event.kind == ui.ev_pointer_move || event.kind == ui.ev_pointer_scroll
+    pointer := event.kind == ui.EV_POINTER_DOWN || event.kind == ui.EV_POINTER_UP ||
+        event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_SCROLL
     if pointer && (was_open || m.select_popup_armed) {
         local := view.local_input(41,event) or >>
         styles := view.styles_for(41) or >>
         pop := m.select_ctrl.popup_bounds(&styles)
         if pop.contains(local.x,local.y) || m.select_popup_armed {
-            if event.kind == ui.ev_pointer_down && event.button == ui.button_left { m.select_popup_armed = true }
+            if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT { m.select_popup_armed = true }
             control := mut &m.select_ctrl
             action := control.input(&local) or >>
-            view.set_pointer_cursor(ui.cursor_hand) or >>
-            if event.kind == ui.ev_pointer_up { m.select_popup_armed = false }
+            view.set_pointer_cursor(ui.CURSOR_HAND) or >>
+            if event.kind == ui.EV_POINTER_UP { m.select_popup_armed = false }
             view.mark_paint(41) or >>
             view.mark_paint(1) or >>
             << [action]
         }
     }
-    if event.kind == ui.ev_pointer_cancel { m.select_popup_armed = false }
+    if event.kind == ui.EV_POINTER_CANCEL { m.select_popup_armed = false }
     actions := widgets.dispatch(view,event,m) or >>
     if was_open || m.select_ctrl.is_open() { view.mark_paint(1) or >> }
     << actions
@@ -649,7 +649,7 @@ fn (m &mut Model) cleanup() {
     area.dispose()
 }
 fn leaf(view &mut widgets.View,parent int,width f64,height f64) int {
-    style := layout.box_style(layout.box_leaf)
+    style := layout.box_style(layout.BOX_LEAF)
     << view.add(parent,&style,&layout.Size{width: width,height: height}) or >>
 }
 fn brand_scope(view &mut widgets.View) int {
@@ -663,10 +663,10 @@ fn brand_scope(view &mut widgets.View) int {
     brand.button.inherit_font = false
     brand.button.radius = 18.0
     brand.button.icon_size = 22.0
-    brand.button.icon_placement = widgets.icon_trailing
-    mut hover := widgets.state_paint(widgets.state_hovered)
-    hover.unless = widgets.state_disabled
-    hover.fields = widgets.paint_foreground | widgets.paint_border
+    brand.button.icon_placement = widgets.ICON_TRAILING
+    mut hover := widgets.state_paint(widgets.STATE_HOVERED)
+    hover.unless = widgets.STATE_DISABLED
+    hover.fields = widgets.PAINT_FOREGROUND | widgets.PAINT_BORDER
     hover.foreground = draw.rgb(209,250,229)
     hover.border = draw.rgb(110,231,183)
     brand.button.states = [hover]
@@ -677,7 +677,7 @@ fn brand_scope(view &mut widgets.View) int {
     << 0
 }
 fn (m &mut Model) handle_action(view &mut widgets.View,action &widgets.Action) int {
-    if action.kind == widgets.action_activate {
+    if action.kind == widgets.ACTION_ACTIVATE {
         if action.id == 4 {
             switcher := mut &m.switcher
             _ := switcher.cycle(view) or >>
@@ -708,8 +708,8 @@ fn (m &mut Model) handle_action(view &mut widgets.View,action &widgets.Action) i
             view.mark_paint(41) or >>
         }
     }
-    if action.id == 16 && action.kind == widgets.action_scroll { view.set_scroll(16,0.0,action.value) or >> }
-    if action.kind == widgets.action_change {
+    if action.id == 16 && action.kind == widgets.ACTION_SCROLL { view.set_scroll(16,0.0,action.value) or >> }
+    if action.kind == widgets.ACTION_CHANGE {
         if action.id == 32 {
             bdg := mut &m.badge
             bdg.set_selected(action.value > 0.5)
@@ -768,33 +768,33 @@ fn (m &mut Model) handle_action(view &mut widgets.View,action &widgets.Action) i
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     host := widgets.Host{context: context,identity: identity}
-    mut column := layout.box_style(layout.box_column)
+    mut column := layout.box_style(layout.BOX_COLUMN)
     column.padding = layout.insets(22.0) or >>
     column.gap = 10.0
-    column.cross_alignment = layout.cross_stretch
+    column.cross_alignment = layout.CROSS_STRETCH
     mut view := host.view(&column,draw.rgb(20,25,34)) or >>
     _ := leaf(mut &view,1,400.0,56.0) or >> // 2 header
-    mut row := layout.box_style(layout.box_row)
+    mut row := layout.box_style(layout.BOX_ROW)
     row.gap = 12.0
-    row.cross_alignment = layout.cross_center
+    row.cross_alignment = layout.CROSS_CENTER
     _ := view.add(1,&row,&layout.Size{width: 0.0,height: 0.0}) or >> // 3 toolbar
     for i in 0:3 { _ := leaf(mut &view,3,0.0,0.0) or >> } // 4..6
     _ := view.add(1,&row,&layout.Size{width: 0.0,height: 0.0}) or >> // 7 controls
     for i in 0:3 { _ := leaf(mut &view,7,0.0,0.0) or >> } // 8..10
     _ := leaf(mut &view,1,300.0,12.0) or >> // 11 progress
     for i in 0:4 { _ := leaf(mut &view,1,300.0,0.0) or >> } // 12..15 editors
-    mut viewport := layout.box_style(layout.box_column)
+    mut viewport := layout.box_style(layout.BOX_COLUMN)
     viewport.height = 84.0
     viewport.clip = true
-    viewport.cross_alignment = layout.cross_stretch
+    viewport.cross_alignment = layout.CROSS_STRETCH
     _ := view.add(1,&viewport,&layout.Size{width: 0.0,height: 0.0}) or >> // 16 scroll
-    mut items := layout.box_style(layout.box_column)
+    mut items := layout.box_style(layout.BOX_COLUMN)
     items.gap = 6.0
-    items.cross_alignment = layout.cross_stretch
+    items.cross_alignment = layout.CROSS_STRETCH
     _ := view.add(16,&items,&layout.Size{width: 0.0,height: 0.0}) or >> // 17 items
     for i in 0:12 { _ := leaf(mut &view,17,300.0,28.0) or >> } // 18..29
     _ := leaf(mut &view,1,400.0,42.0) or >> // 30 footer
@@ -823,14 +823,14 @@ fn scene(ech chan ui.Event) int {
         transitions: []widgets.PaintTransition{},switch_motion: widgets.tween(1.0) or >>,popup_motion: widgets.tween(0.0) or >>,
         clock: time.zero_instant(),reduced_motion: false,
         badge: widgets.badge(&empty) or >>,
-        divider: widgets.divider(&empty,widgets.axis_horizontal) or >>,
+        divider: widgets.divider(&empty,widgets.AXIS_HORIZONTAL) or >>,
         card: widgets.card(&empty) or >>,
         list: widgets.list_box(&identity,43,&empty,4,0) or >>,
         input: widgets.input(&context,&identity,12,&empty,&"Editable input · 你好 Xu") or >>,
         invalid: widgets.input(&context,&identity,13,&empty,&"Invalid value — custom error colors") or >>,
         read_only: widgets.input(&context,&identity,14,&empty,&"Read-only · select and copy, edits are ignored") or >>,
         area: widgets.text_area(&context,&identity,15,&empty,&"TextArea uses the same font, padding and selection theme.\nIME, preedit and caret geometry follow typography changes.") or >>,
-        progress: widgets.progress(&empty,0.64) or >>,scroll: widgets.scroll(&identity,16,&empty,widgets.axis_vertical,402.0) or >>,
+        progress: widgets.progress(&empty,0.64) or >>,scroll: widgets.scroll(&identity,16,&empty,widgets.AXIS_VERTICAL,402.0) or >>,
         context: context,icon: context.load_embedded_image(&"logo.png") or >>,switcher: widgets.style_switcher(),
         theme_label: widgets.styled_label(&context,&"Theme: dark / light / contrast"),
         scale_label: widgets.styled_label(&context,&"Text: 100% / 140%"),
@@ -857,9 +857,9 @@ fn scene(ech chan ui.Event) int {
         list_3_label: widgets.styled_label(&context,&"3 · Surfaces"),
         list_4_label: widgets.styled_label(&context,&"4 · Controls")}
     for i in 0:44 { m.transitions.push(widgets.paint_transition() or >>) }
-    for id in [4,5,6,8,10,32,33,34,36,40,41,43] { view.set_cursor(id,ui.cursor_hand) or >> }
-    for id in [12,13,14,15] { view.set_cursor(id,ui.cursor_text) or >> }
-    view.set_cursor(35,ui.cursor_resize_horizontal) or >>
+    for id in [4,5,6,8,10,32,33,34,36,40,41,43] { view.set_cursor(id,ui.CURSOR_HAND) or >> }
+    for id in [12,13,14,15] { view.set_cursor(id,ui.CURSOR_TEXT) or >> }
+    view.set_cursor(35,ui.CURSOR_RESIZE_HORIZONTAL) or >>
     badge_ref := mut &m.badge
     badge_ref.set_selected(true)
     disabled := mut &m.disabled
@@ -872,12 +872,12 @@ fn scene(ech chan ui.Event) int {
     brand_scope(mut &view) or >>
     mut width := 960.0
     mut height := 820.0
-    mut event := ui.Event{kind: ui.ev_none,window_id: 0,menu_id: "",width: 0,height: 0}
+    mut event := ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: "",width: 0,height: 0}
     // Drain input bursts before painting. Native text snapshots already hold
     // the latest revision; rendering each queued key would fill the frame queue.
     ui.request_canvas_preferences(&identity) or >>
     while true {
-        if event.kind == ui.ev_none {
+        if event.kind == ui.EV_NONE {
             m.tick(mut &view,time.instant()) or >>
             constraints := layout.tight(width,height) or >>
             _ := widgets.layout_styled(mut &view,&constraints,mut &m) or >>
@@ -885,14 +885,14 @@ fn scene(ech chan ui.Event) int {
             if widgets.present_styled(mut &view,&constraints,mut &m) or >> { m.acknowledge() }
             event = m.next_event(ech)
         }
-        if event.kind == ui.ev_exit { <- }
+        if event.kind == ui.EV_EXIT { <- }
         if event.window_id == identity.window_id {
-            if event.kind == ui.ev_canvas_closed || event.kind == ui.ev_closed { <- }
-            if event.kind == ui.ev_canvas_metrics { metrics := ui.metrics_of(&event) or >>
+            if event.kind == ui.EV_CANVAS_CLOSED || event.kind == ui.EV_CLOSED { <- }
+            if event.kind == ui.EV_CANVAS_METRICS { metrics := ui.metrics_of(&event) or >>
                 width = metrics.width
                 height = metrics.height }
-            if event.kind == ui.ev_focused { ui.request_canvas_preferences(&identity) or >> }
-            if event.kind == ui.ev_canvas_preferences {
+            if event.kind == ui.EV_FOCUSED { ui.request_canvas_preferences(&identity) or >> }
+            if event.kind == ui.EV_CANVAS_PREFERENCES {
                 preferences := ui.canvas_preferences_of(&event) or >>
                 if preferences.identity.canvas_id == identity.canvas_id && preferences.identity.generation == identity.generation {
                     m.reduced_motion = preferences.reduced_motion
@@ -904,7 +904,7 @@ fn scene(ech chan ui.Event) int {
             m.native_event(mut &view,&event) or >>
             for action in actions { m.handle_action(mut &view,&action) or >> }
             if ui.is_input_event(event.kind) { input := ui.input_of(&event) or >>
-                if input.kind == ui.ev_key_down && input.key == ui.key_escape && !popup_was_open {
+                if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE && !popup_was_open {
                     view.dispose()
                     if demo.alive(&identity) { m.cleanup() }
                     demo.quit() or >>

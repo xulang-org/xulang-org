@@ -1,10 +1,10 @@
 <!--title: #flag-->
 <p class="crumb">API</p>
 <h1><code>#flag</code></h1>
-<!--xu-api-version: 0.10.2-->
+<!--xu-api-version: 0.10.6-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#flag</code></p>
-<p class="meta">counts: 1 fns, 22 methods, 2 types, 0 consts, 0 ifaces</p>
+<p class="meta">counts: 1 fns, 32 methods, 2 types, 0 consts, 0 ifaces</p>
 <p class="lead">FlagSet with no globals: define_* + parse + print_defaults.</p>
 <article class="api-item" id="struct-Set">
 <h2><code>struct Set</code></h2>
@@ -21,6 +21,9 @@
     <span class="syn-kw">pub</span> set_flags []<span class="syn-type">bool</span>
     <span class="syn-kw">pub</span> rest []<span class="syn-type">string</span>
     <span class="syn-kw">pub</span> parsed <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> alias_keys []<span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> alias_targets []<span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> allow_slash_mode <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating name, names, kinds, bs, ss.</p>
@@ -38,6 +41,9 @@
 <dt><code>set_flags</code> <span class="type">[]bool</span></dt><dd>field ([]bool)</dd>
 <dt><code>rest</code> <span class="type">[]string</span></dt><dd>field ([]string)</dd>
 <dt><code>parsed</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>alias_keys</code> <span class="type">[]string</span></dt><dd>field ([]string)</dd>
+<dt><code>alias_targets</code> <span class="type">[]string</span></dt><dd>field ([]string)</dd>
+<dt><code>allow_slash_mode</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
 </dl>
 </article>
 <article class="api-item" id="new_set">
@@ -51,6 +57,29 @@
 </dl>
 <h3>Returns</h3>
 <p>Set — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Set-allow_slash">
+<h2><code>(&amp;mut Set) allow_slash</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Set) allow_slash(enable <span class="syn-type">bool</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>allow_slash enables Windows-style &#x27;/&#x27; option prefix parsing (e.g. /?, /S).</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;mut Set</span></dt><dd>receiver &amp;mut Set (exclusive borrow)</dd>
+<dt><code>enable</code> <span class="type">bool</span></dt><dd>enable (bool)</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-Set-alias">
+<h2><code>(&amp;mut Set) alias</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Set) alias(short_name <span class="syn-type">string</span>, canonical_name <span class="syn-type">string</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>alias registers an alternative option name pointing to an existing canonical flag.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;mut Set</span></dt><dd>receiver &amp;mut Set (exclusive borrow)</dd>
+<dt><code>short_name</code> <span class="type">string</span></dt><dd>short_name (string)</dd>
+<dt><code>canonical_name</code> <span class="type">string</span></dt><dd>canonical_name (string)</dd>
+</dl>
 </article>
 <article class="api-item" id="-mut-Set-define_bool">
 <h2><code>(&amp;mut Set) define_bool</code></h2>
@@ -117,102 +146,214 @@
 <dt><code>usage</code> <span class="type">string</span></dt><dd>usage text (string)</dd>
 </dl>
 </article>
-<article class="api-item" id="Set-is_set">
-<h2><code>(Set) is_set</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) is_set(name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<article class="api-item" id="-mut-Set-define_bool_alias">
+<h2><code>(&amp;mut Set) define_bool_alias</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Set) define_bool_alias(name <span class="syn-type">string</span>, short_name <span class="syn-type">string</span>, def <span class="syn-type">bool</span>, usage <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: whether it is set.</p>
+<p>Convenience definition methods with an alias</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;mut Set</span></dt><dd>receiver &amp;mut Set (exclusive borrow)</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>short_name</code> <span class="type">string</span></dt><dd>short_name (string)</dd>
+<dt><code>def</code> <span class="type">bool</span></dt><dd>default (bool)</dd>
+<dt><code>usage</code> <span class="type">string</span></dt><dd>usage text (string)</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-Set-define_string_alias">
+<h2><code>(&amp;mut Set) define_string_alias</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Set) define_string_alias(name <span class="syn-type">string</span>, short_name <span class="syn-type">string</span>, def <span class="syn-type">string</span>, usage <span class="syn-type">string</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Set`: define string alias.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;mut Set</span></dt><dd>receiver &amp;mut Set (exclusive borrow)</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>short_name</code> <span class="type">string</span></dt><dd>short_name (string)</dd>
+<dt><code>def</code> <span class="type">string</span></dt><dd>default (string)</dd>
+<dt><code>usage</code> <span class="type">string</span></dt><dd>usage text (string)</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-Set-define_int_alias">
+<h2><code>(&amp;mut Set) define_int_alias</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Set) define_int_alias(name <span class="syn-type">string</span>, short_name <span class="syn-type">string</span>, def <span class="syn-type">int</span>, usage <span class="syn-type">string</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Set`: define int alias.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;mut Set</span></dt><dd>receiver &amp;mut Set (exclusive borrow)</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>short_name</code> <span class="type">string</span></dt><dd>short_name (string)</dd>
+<dt><code>def</code> <span class="type">int</span></dt><dd>default (int)</dd>
+<dt><code>usage</code> <span class="type">string</span></dt><dd>usage text (string)</dd>
+</dl>
+</article>
+<article class="api-item" id="-Set-is_set">
+<h2><code>(&amp;Set) is_set</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) is_set(name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Set`: whether it is set.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>bool — true or false</p>
 </article>
-<article class="api-item" id="Set-get_bool">
-<h2><code>(Set) get_bool</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) get_bool(name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<article class="api-item" id="-Set-get_bool">
+<h2><code>(&amp;Set) get_bool</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_bool(name <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: read bool.</p>
+<p>Operation on `&amp;Set`: read bool.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>bool — true or false</p>
 </article>
-<article class="api-item" id="Set-get_string">
-<h2><code>(Set) get_string</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) get_string(name <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<article class="api-item" id="-Set-get_string">
+<h2><code>(&amp;Set) get_string</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_string(name <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: read string.</p>
+<p>Operation on `&amp;Set`: read string.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
 </article>
-<article class="api-item" id="Set-get_int">
-<h2><code>(Set) get_int</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) get_int(name <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="-Set-get_int">
+<h2><code>(&amp;Set) get_int</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_int(name <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: read int.</p>
+<p>Operation on `&amp;Set`: read int.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="Set-get_float64">
-<h2><code>(Set) get_float64</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) get_float64(name <span class="syn-type">string</span>) <span class="syn-type">f64</span></code></pre></div>
+<article class="api-item" id="-Set-get_float64">
+<h2><code>(&amp;Set) get_float64</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_float64(name <span class="syn-type">string</span>) <span class="syn-type">f64</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: read float64.</p>
+<p>Operation on `&amp;Set`: read float64.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>f64 — a value of this type</p>
 </article>
-<article class="api-item" id="Set-get_duration">
-<h2><code>(Set) get_duration</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) get_duration(name <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="-Set-get_duration">
+<h2><code>(&amp;Set) get_duration</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_duration(name <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: read duration.</p>
+<p>Operation on `&amp;Set`: read duration.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="Set-print_defaults">
-<h2><code>(Set) print_defaults</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) print_defaults()</code></pre></div>
+<article class="api-item" id="-Set-get_bool_or">
+<h2><code>(&amp;Set) get_bool_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_bool_or(name <span class="syn-type">string</span>, def <span class="syn-type">bool</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: print defaults.</p>
+<p>Fallback getters: return specified default value when flag was not explicitly provided on CLI</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>def</code> <span class="type">bool</span></dt><dd>default (bool)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Set-get_string_or">
+<h2><code>(&amp;Set) get_string_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_string_or(name <span class="syn-type">string</span>, def <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Set`: read string or.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>def</code> <span class="type">string</span></dt><dd>default (string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>string — result string</p>
+</article>
+<article class="api-item" id="-Set-get_int_or">
+<h2><code>(&amp;Set) get_int_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_int_or(name <span class="syn-type">string</span>, def <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Set`: read int or.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>def</code> <span class="type">int</span></dt><dd>default (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Set-get_float64_or">
+<h2><code>(&amp;Set) get_float64_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_float64_or(name <span class="syn-type">string</span>, def <span class="syn-type">f64</span>) <span class="syn-type">f64</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Set`: read float64 or.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>def</code> <span class="type">f64</span></dt><dd>default (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>f64 — a value of this type</p>
+</article>
+<article class="api-item" id="-Set-get_duration_or">
+<h2><code>(&amp;Set) get_duration_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) get_duration_or(name <span class="syn-type">string</span>, def <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Set`: read duration or.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>def</code> <span class="type">int</span></dt><dd>default (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Set-print_defaults">
+<h2><code>(&amp;Set) print_defaults</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) print_defaults()</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Set`: print defaults.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 </dl>
 </article>
-<article class="api-item" id="Set-args">
-<h2><code>(Set) args</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) args() []<span class="syn-type">string</span></code></pre></div>
+<article class="api-item" id="-Set-args">
+<h2><code>(&amp;Set) args</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) args() []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: return the command-line argument slice.</p>
+<p>Operation on `&amp;Set`: return the command-line argument slice.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>[]string — slice result</p>
@@ -230,14 +371,14 @@
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="Set-nflag">
-<h2><code>(Set) nflag</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) nflag() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="-Set-nflag">
+<h2><code>(&amp;Set) nflag</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) nflag() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `nflag` on `Set`.</p>
+<p>Execute `nflag` on `&amp;Set`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -256,14 +397,14 @@
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="Set-visit">
-<h2><code>(Set) visit</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) visit() []<span class="syn-type">string</span></code></pre></div>
+<article class="api-item" id="-Set-visit">
+<h2><code>(&amp;Set) visit</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) visit() []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `visit` on `Set`.</p>
+<p>Execute `visit` on `&amp;Set`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>[]string — slice result</p>
@@ -286,64 +427,64 @@
 <dt><code>found</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
 </dl>
 </article>
-<article class="api-item" id="Set-lookup">
-<h2><code>(Set) lookup</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) lookup(name <span class="syn-type">string</span>) Flag</code></pre></div>
+<article class="api-item" id="-Set-lookup">
+<h2><code>(&amp;Set) lookup</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) lookup(name <span class="syn-type">string</span>) Flag</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: look up matching key or item in index or collection.</p>
+<p>Operation on `&amp;Set`: look up matching key or item in index or collection.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>Flag — a value of this type</p>
 </article>
-<article class="api-item" id="Set-narg">
-<h2><code>(Set) narg</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) narg() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="-Set-narg">
+<h2><code>(&amp;Set) narg</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) narg() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `narg` on `Set`.</p>
+<p>Execute `narg` on `&amp;Set`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="Set-parsed">
-<h2><code>(Set) parsed</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) parsed() <span class="syn-type">bool</span></code></pre></div>
+<article class="api-item" id="-Set-parsed">
+<h2><code>(&amp;Set) parsed</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) parsed() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `parsed` on `Set`.</p>
+<p>Execute `parsed` on `&amp;Set`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>bool — true or false</p>
 </article>
-<article class="api-item" id="Set-arg">
-<h2><code>(Set) arg</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) arg(i <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<article class="api-item" id="-Set-arg">
+<h2><code>(&amp;Set) arg</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) arg(i <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `arg` on `Set`.</p>
+<p>Execute `arg` on `&amp;Set`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 <dt><code>i</code> <span class="type">int</span></dt><dd>index or integer (int)</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
 </article>
-<article class="api-item" id="Set-visit_all">
-<h2><code>(Set) visit_all</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s Set) visit_all() []<span class="syn-type">string</span></code></pre></div>
+<article class="api-item" id="-Set-visit_all">
+<h2><code>(&amp;Set) visit_all</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Set) visit_all() []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `Set`: visit all.</p>
+<p>Operation on `&amp;Set`: visit all.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">Set</span></dt><dd>receiver Set (value receiver)</dd>
+<dt><code>s</code> <span class="type">&amp;Set</span></dt><dd>receiver &amp;Set (borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>[]string — slice result</p>

@@ -38,7 +38,7 @@ fn (model &mut Model) input(id int,kind int,input &ui.InputEvent) widgets.Action
     if id == model.button_id { << model.button_input(kind,input) or >> }
     if id == model.check_id { << model.checkbox_input(kind,input) or >> }
     if id == model.scroll_id { << model.scroll_input(kind,input) or >> }
-    << widgets.Action{kind: widgets.action_none,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
+    << widgets.Action{kind: widgets.ACTION_NONE,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
 }
 fn (model &mut Model) place_button(bounds &layout.Rect) int {
     button := mut &model.button
@@ -116,24 +116,24 @@ fn (model &mut Model) acknowledge() {
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     host := widgets.Host{context: context,identity: identity}
-    mut column := layout.box_style(layout.box_column)
+    mut column := layout.box_style(layout.BOX_COLUMN)
     column.padding = layout.insets(28.0) or >>
     column.gap = 14.0
-    column.cross_alignment = layout.cross_stretch
+    column.cross_alignment = layout.CROSS_STRETCH
     mut view := host.view(&column,demo.background()) or >>
-    leaf := layout.box_style(layout.box_leaf)
+    leaf := layout.box_style(layout.BOX_LEAF)
     header := view.add(view.root(),&leaf,&layout.Size{width: 400.0,height: 72.0}) or >>
     button_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 44.0}) or >>
     check_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 40.0}) or >>
     progress_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 12.0}) or >>
-    mut viewport := layout.box_style(layout.box_column)
+    mut viewport := layout.box_style(layout.BOX_COLUMN)
     viewport.height = 220.0
     viewport.clip = true
-    viewport.cross_alignment = layout.cross_stretch
+    viewport.cross_alignment = layout.CROSS_STRETCH
     viewport.gap = 6.0
     scroll_id := view.add(view.root(),&viewport,&layout.Size{width: 400.0,height: 220.0}) or >>
     mut rows := []int{}
@@ -151,7 +151,7 @@ fn scene(ech chan ui.Event) int {
     mut model := Model{button: widgets.button(&identity,button_id,&empty) or >>,
         checkbox: widgets.checkbox(&identity,check_id,&empty,true) or >>,
         progress: widgets.progress(&empty,0.0) or >>,
-        scroll: widgets.scroll(&identity,scroll_id,&empty,widgets.axis_vertical,760.0) or >>,
+        scroll: widgets.scroll(&identity,scroll_id,&empty,widgets.AXIS_VERTICAL,760.0) or >>,
         button_label: context.layout_text(&first,&options) or >>,
         checkbox_label: context.layout_text(&second,&options) or >>,
         theme: widgets.default_theme(),context: context,count: 0,header_id: header,button_id: button_id,check_id: check_id,progress_id: progress_id,scroll_id: scroll_id,row_ids: rows}
@@ -162,32 +162,32 @@ fn scene(ech chan ui.Event) int {
         submitted := widgets.present(mut &view,&constraints,mut &model) or >>
         if submitted { model.acknowledge() }
         event := demo.next(ech)
-        if event.kind == ui.ev_exit { <- }
+        if event.kind == ui.EV_EXIT { <- }
         if event.window_id != identity.window_id { -> }
-        if event.kind == ui.ev_canvas_metrics {
+        if event.kind == ui.EV_CANVAS_METRICS {
             metrics := ui.metrics_of(&event) or >>
             if metrics.width > 0.0 && metrics.height > 0.0 { width = metrics.width
                 height = metrics.height }
         }
         actions := widgets.dispatch_event(mut &view,&event,mut &model) or >>
         for action in actions {
-            if action.kind == widgets.action_activate {
+            if action.kind == widgets.ACTION_ACTIVATE {
                 model.advance() or >>
                 view.mark_paint(header) or >>
                 view.mark_paint(progress_id) or >>
             }
-            if action.kind == widgets.action_change {
+            if action.kind == widgets.ACTION_CHANGE {
                 enabled := model.checkbox.value()
                 model.enable_button(enabled)
                 view.set_input(button_id,enabled,enabled) or >>
                 view.mark_paint(button_id) or >>
             }
-            if action.kind == widgets.action_scroll { view.set_scroll(scroll_id,0.0,action.value) or >> }
+            if action.kind == widgets.ACTION_SCROLL { view.set_scroll(scroll_id,0.0,action.value) or >> }
         }
-        if event.kind == ui.ev_canvas_closed { <- }
+        if event.kind == ui.EV_CANVAS_CLOSED { <- }
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
-            if input.kind == ui.ev_key_down && input.key == ui.key_escape { demo.quit() or >> }
+            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE { demo.quit() or >> }
         }
         stats := view.stats()
         if stats.recorded_boundaries > 0 || stats.reused_boundaries > 0 {

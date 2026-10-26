@@ -17,13 +17,13 @@ fn record(context &draw.Context,image &draw.Image) draw.DisplayList {
     stops := [draw.GradientStop{offset: 0.0,color: demo.accent()},draw.GradientStop{offset: 1.0,color: draw.rgb(92,127,203)}]
     gradient := draw.linear_gradient(20.0,80.0,260.0,270.0,stops)
     bounds := draw.ImageRect{x: 20.0,y: 70.0,width: 260.0,height: 230.0}
-    fragment.fill_path_gradient(&path,&gradient,&bounds,2.0,draw.fill_nonzero) or >>
+    fragment.fill_path_gradient(&path,&gradient,&bounds,2.0,draw.FILL_NONZERO) or >>
     stroke := draw.stroke_options(2.0)
     fragment.stroke_path(&path,demo.ink(),&stroke) or >>
     fragment.image(image,320.0,88.0,150.0,150.0) or >>
     source := draw.ImageRect{x: 0.0,y: 0.0,width: f64(image.width),height: f64(image.height)}
     destination := draw.ImageRect{x: 510.0,y: 88.0,width: 190.0,height: 150.0}
-    fragment.image_region(image,&source,&destination,0.45,draw.sampler_nearest) or >>
+    fragment.image_region(image,&source,&destination,0.45,draw.SAMPLER_NEAREST) or >>
     demo.text(context,mut &fragment,320.0,260.0,14.0,demo.muted(),"Linear sampling      Nearest / opacity") or >>
     mut options := draw.text_options(24.0)
     options.width = 880.0
@@ -51,7 +51,7 @@ fn paint(context &draw.Context,frame &mut draw.Frame,list &draw.DisplayList,cach
     demo.text(context,frame,32.0,54.0,28.0,demo.ink(),"Record once. Reuse across frames.") or >>
     frame.push() or >>
     frame.translate(32.0,110.0) or >>
-    if cached { frame.cached_display_list(cache,list,0.0,0.0,960.0,510.0,density,1.0,draw.sampler_linear) or >> }
+    if cached { frame.cached_display_list(cache,list,0.0,0.0,960.0,510.0,density,1.0,draw.SAMPLER_LINEAR) or >> }
     else { frame.display_list(list) or >> }
     frame.pop() or >>
     mut mode := "vector replay"
@@ -63,7 +63,7 @@ fn paint(context &draw.Context,frame &mut draw.Frame,list &draw.DisplayList,cach
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     path := "sample.png"
@@ -76,10 +76,10 @@ fn scene(ech chan ui.Event) int {
     paint(&context,mut &frame,&list,mut &cache,density,cached) or >>
     while true {
         event := demo.next(ech)
-        if event.kind == ui.ev_exit || event.kind == ui.ev_canvas_closed { <- }
+        if event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <- }
         if event.window_id != identity.window_id { -> }
         mut dirty := false
-        if event.kind == ui.ev_canvas_metrics {
+        if event.kind == ui.EV_CANVAS_METRICS {
             metrics := ui.metrics_of(&event) or >>
             density = metrics.scale_x
             dirty = true
@@ -87,12 +87,12 @@ fn scene(ech chan ui.Event) int {
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
             if input.generation != identity.generation { -> }
-            if input.kind == ui.ev_key_down && input.repeat == 0 {
+            if input.kind == ui.EV_KEY_DOWN && input.repeat == 0 {
                 if input.key == 32 { cached = !cached
                     dirty = true }
                 if input.key == 82 || input.key == 114 { cache.invalidate()
                     dirty = true }
-                if input.key == ui.key_escape { demo.quit() or >> }
+                if input.key == ui.KEY_ESCAPE { demo.quit() or >> }
             }
         }
         if dirty { paint(&context,mut &frame,&list,mut &cache,density,cached) or >> }

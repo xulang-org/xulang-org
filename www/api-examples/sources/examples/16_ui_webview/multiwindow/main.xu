@@ -20,46 +20,46 @@ fn paint(window ui.Window,count int) int {
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.ev_exit { << 0 }
+    if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     mut app := demo.windows(ech)
-    first := ui.Window{id: identity.window_id,generation: identity.generation,title: "Xu UI / Window 1",width: 560,height: 340,content_kind: ui.content_draw,content_backend_id: identity.canvas_id,closed: 0}
+    first := ui.Window{id: identity.window_id,generation: identity.generation,title: "Xu UI / Window 1",width: 560,height: 340,content_kind: ui.CONTENT_DRAW,content_backend_id: identity.canvas_id,closed: 0}
     mut windows := []ui.Window{}
     windows.push(first)
     mut counts := [0]
     paint(windows[0],0) or >>
     while true {
         event := demo.next(ech)
-        if event.kind == ui.ev_exit { <- }
+        if event.kind == ui.EV_EXIT { <- }
         mut index := -1
         for i in 0:windows.len { if windows[i].id == event.window_id { index = i } }
         if index < 0 { -> }
-        if event.kind == ui.ev_canvas_ready {
+        if event.kind == ui.EV_CANVAS_READY {
             window := windows[index]
             window.content_command("input_enabled\t1") or >>
             window.content_command("pan_enabled\t0") or >>
             println("Canvas ready: " + str(event.window_id))
             paint(window,counts[index]) or >> }
-        if event.kind == ui.ev_canvas_metrics { paint(windows[index],counts[index]) or >> }
-        if event.kind == ui.ev_closed { windows[index].closed = 1 }
-        if event.kind == ui.ev_window_failed { windows[index].closed = 1
+        if event.kind == ui.EV_CANVAS_METRICS { paint(windows[index],counts[index]) or >> }
+        if event.kind == ui.EV_CLOSED { windows[index].closed = 1 }
+        if event.kind == ui.EV_WINDOW_FAILED { windows[index].closed = 1
             eprintln("Native window creation failed: " + event.menu_id) }
         if !ui.is_input_event(event.kind) { -> }
         input := ui.input_of(&event) or >>
         if input.generation != windows[index].generation || windows[index].closed != 0 { -> }
-        if input.kind == ui.ev_pointer_up && input.button == ui.button_left {
+        if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT {
             counts[index] = counts[index] + 1
             println("Window " + str(event.window_id) + " count: " + str(counts[index]))
             paint(windows[index],counts[index]) or >>
         }
-        if input.kind != ui.ev_key_down || input.repeat != 0 { -> }
-        if input.key == ui.key_escape { demo.quit() or >> }
+        if input.kind != ui.EV_KEY_DOWN || input.repeat != 0 { -> }
+        if input.key == ui.KEY_ESCAPE { demo.quit() or >> }
         if input.key == 78 || input.key == 110 {
             // At most six demo windows; the host's own limit is independent.
             mut live := 0
             for window in windows { if window.closed == 0 { live = live + 1 } }
             if live < 6 {
-                window := app.open_content_window(ui.WindowOpts{title: "Xu UI / Additional Window",width: 560,height: 340},ui.content_draw) or >>
+                window := app.open_content_window(ui.WindowOpts{title: "Xu UI / Additional Window",width: 560,height: 340},ui.CONTENT_DRAW) or >>
                 windows.push(window)
                 counts.push(0)
             }
