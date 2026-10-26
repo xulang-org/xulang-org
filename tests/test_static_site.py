@@ -76,7 +76,14 @@ class StaticSiteTests(unittest.TestCase):
             self.assertIn('data-wasm-available="false"', html, page)
         self.assertNotIn('href="http://127.0.0.1', home)
         self.assertIn('https://github.com/xulang-org/xu/releases', (output / 'download/index.html').read_text())
-        self.assertFalse((output / 'releases').exists())
+        history = output / 'releases/index.html'
+        self.assertTrue(history.is_file())
+        self.assertEqual({p.relative_to(output / 'releases').as_posix()
+                          for p in (output / 'releases').rglob('*') if p.is_file()}, {'index.html'})
+        self.assertIn('0.10.5', history.read_text())
+        downloads = (output / 'download/index.html').read_text()
+        self.assertNotIn('0.10.5', downloads)
+        self.assertIn('/releases/', downloads)
         self.assertTrue((output / '.nojekyll').exists())
         version = re.search(r'(?m)^xu: !ver (\S+)', (self.source / 'xu.xun').read_text())[1]
         self.assertIn('XU v' + version, home)
