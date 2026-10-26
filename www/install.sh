@@ -272,7 +272,7 @@ mkdir -p "$INSTALL_DIR/bin"
 if [[ -d "$SOURCE_DIR/bin/platform/$PLATFORM" ]]; then
     cp -Rf "$SOURCE_DIR/bin/platform/$PLATFORM/." "$INSTALL_DIR/bin/"
 elif [[ -d "$SOURCE_DIR/bin" ]]; then
-    for b in xu xu-doctor xu-fmt xu-doc xu-map xu-desktop xu-native xu-setup; do
+    for b in xu xu-doctor xu-fmt xu-doc xu-map xu-desktop xu-native xu-setup xu-update xu-lsp; do
         if [[ -f "$SOURCE_DIR/bin/$b" ]]; then
             cp -f "$SOURCE_DIR/bin/$b" "$INSTALL_DIR/bin/"
         fi
