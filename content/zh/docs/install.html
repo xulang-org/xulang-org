@@ -7,17 +7,17 @@
 <p>无需在本地下载或配置任何环境，可直接进入 <a href="/">xulang.org 在线 Playground 沙箱</a>。该沙箱基于客户端 WebAssembly（纯浏览器前端执行，零服务端排队等待），即可实时体验完整的语言特性、标准库调用与语法交互。</p>
 
 <h2>方案二：终端一行命令极速安装 (推荐)</h2>
-<p>Xu 提供了开箱即用的自动化安装脚本，内嵌编译器与标准库源码，自动检测操作系统与芯片架构、下载对应的官方 SDK 并持久化配置全局环境变量，安装后在系统任意终端均可直接执行 <code>xu</code>：</p>
+<p>Xu 提供了开箱即用的自动化安装脚本，自动检测操作系统与芯片架构、下载对应的官方 SDK 并持久化配置全局环境变量，安装后在系统任意终端均可直接执行 <code>xu</code>：</p>
 
 <h3>macOS / Linux（终端一行执行）</h3>
 <pre><code># 自动检测芯片架构（ARM64 / x86_64）、下载并持久化配置 Shell 环境变量
-curl -fsSL https://xulang.org/install.sh | bash</code></pre>
+curl -fsSL https://xulang.org/install.sh | bash -s -- --version {{xu_version}} --yes</code></pre>
 <p>亦可直接从 <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a> 下载各系统独立的免提权安装程序（二进制单文件，无需任何第三方依赖）：</p>
 <pre><code>chmod +x xu-setup-linux-x64 &amp;&amp; ./xu-setup-linux-x64 -y</code></pre>
 
 <h3>Windows（PowerShell 或 GUI 图形向导）</h3>
 <p><strong>PowerShell 单行命令：</strong></p>
-<pre><code>irm https://xulang.org/install.ps1 | iex</code></pre>
+<pre><code>&amp; ([scriptblock]::Create((irm https://xulang.org/install.ps1))) -Version "{{xu_version}}"</code></pre>
 <p><strong>原生自绘 GUI 图形向导：</strong><br>
 从 <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a> 下载 <code>xu-setup-windows-x64.exe</code>，双击即可运行零依赖的原生图形向导，自动配置系统注册表用户 <code>Path</code> 与 <code>XU_ROOT</code>。</p>
 
@@ -51,15 +51,23 @@ curl -fsSL https://xulang.org/install.sh | bash</code></pre>
 
 # macOS / Linux：解压后在终端运行根目录下的 xu-setup
 ./xu-setup -y</code></pre>
-<p>默认安装目录为用户主目录下的 <code>.xu</code>（macOS .pkg 默认为 <code>/usr/local/xu</code>）。如需自定义安装目录，可传入参数 <code>--prefix /custom/path</code>。在自动化 CI 脚本中，使用 <code>./xu-setup --yes</code> 或 <code>.\xu-setup.exe --yes</code> 安装全部工具；若只需临时体验，可在解压目录下执行 <code>source env.sh</code>（PowerShell 为 <code>. .\env.ps1</code>）。</p>
+<p>默认更新 PATH 中已有的 SDK；未发现时安装到用户主目录下的 <code>.xu</code>（macOS .pkg 默认为 <code>/usr/local/xu</code>）。如需自定义安装目录，可传入参数 <code>--prefix /custom/path</code>。在自动化 CI 脚本中，使用 <code>./xu-setup --yes</code> 或 <code>.\xu-setup.exe --yes</code> 安装全部工具；若只需临时体验，可在解压目录下执行 <code>source env.sh</code>（PowerShell 为 <code>. .\env.ps1</code>）。</p>
 <h2>验证全局环境</h2>
 <p>安装完成后，打开<strong>新的终端窗口</strong>（CMD、PowerShell、Terminal 或 VS Code 内置终端），验证工具链全局可用：</p>
 <pre><code>xu --version
 xu env
 xu doctor</code></pre>
-<h2>更新已安装版本</h2>
-<p>0.10.2 等旧版升级器会因版本横幅不再包含 <code>(self-hosted)</code> 而误报版本不匹配。请先使用本页在线安装脚本或完整 Setup 安装器完成一次迁移。若旧 SDK 目录属于其他用户且不可写，请保留原目录并安装到当前用户可写的新目录，再切换环境。</p>
-<p>执行 <code>xu up</code> 或 <code>xu update</code>，直接从 GitHub 下载匹配当前系统的正式 Release 安装包并更新编译器、配套工具与标准库。<code>xu up --check</code> 只检查是否有新版本，<code>xu update --version &lt;版本&gt;</code> 指定安装特定版本。下载解压并验证通过后，才替换本机工具链；配套示例和编辑器文件请使用完整安装器刷新；更多选项见 <a href="/docs/cli">命令行</a>。</p>
+<h2>升级、重复安装与修复</h2>
+<p>重新运行上方安装命令即可升级或修复当前 SDK，包括旧版更新器误报版本不匹配或上次安装未完成的情况。安装器先在同一文件系统准备新 SDK，核验完整文件清单与十个工具，再替换安装目录；原 SDK 保留在安装器输出的备份路径。SDK 管理范围以外的用户数据会保留。</p>
+<p>如需指定目标，Unix 命令末尾追加 <code>--prefix /path/to/xu</code>；PowerShell 追加 <code>-Prefix "C:\Tools\Xu"</code>。目标父目录必须可写；系统安装可能需要管理员权限。不修改终端配置时使用 Unix <code>--no-modify-path</code>、PowerShell <code>-NoModifyPath</code> 或原生 Setup <code>--no-modify-path</code>。</p>
+<pre><code>xu --version
+xu env
+xu update --check
+# 已安装 0.10.7 或更高版本后：
+xu update
+# 重新安装当前版本并修复全部 SDK 文件：
+xu update --force</code></pre>
+<p><code>xu update</code> 与 Setup 使用相同的完整 SDK 替换流程，更新编译器、配套工具、标准库、packages、示例和编辑器文件。<code>xu update --version &lt;版本&gt;</code> 可选择特定发行版本。版本变更请查看<a href="/releases">发行记录</a>。</p>
 <h2>目标平台</h2>
 <div class="doc-table-wrap"><table><tr><th>系统</th><th><code>--target</code></th><th>默认产物</th><th>说明</th></tr>
 <tr><td>macOS</td><td><code>macos-arm64</code>、<code>macos-x64</code></td><td>Mach-O，无后缀</td><td>Apple Silicon 与 Intel 架构</td></tr>

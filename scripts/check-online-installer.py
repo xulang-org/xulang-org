@@ -49,6 +49,18 @@ def main() -> None:
                 env.pop(key, None)
             env.update(HOME=str(work), TMPDIR=str(work), XU_SKIP_EDITOR_INSTALL="1")
             run(["bash", str(installer), "--prefix", str(prefix), "--no-modify-path", "--yes"], work, env)
+            # Repair the same SDK through PATH selection, including read-only
+            # managed files; the website command must not create a second SDK.
+            if manifest.get("files"):
+                (prefix / "src/website-stale.xu").write_text("stale")
+                (prefix / "src/os/mod.xu").write_text("damaged")
+                (prefix / "src").chmod(0o555)
+                selected = env | {"PATH": str(prefix / "bin") + os.pathsep + env.get("PATH", "")}
+                selected.pop("XU_INSTALL_DIR", None)
+                run(["bash", str(installer), "--no-modify-path", "--yes"], work, selected)
+                assert not (prefix / "src/website-stale.xu").exists()
+                for name, expected in manifest["files"].items():
+                    assert sha256(prefix / name) == expected, name
             installed = json.loads((prefix / "bundle.json").read_text())
             assert installed["version"] == manifest["version"]
             for binary, expected in manifest["binaries"].items():

@@ -1233,13 +1233,13 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
     compilers_rows = [
         ("Xu", "xu build -O", "零 GC · 编译期借用生命周期与 RAII 确定性析构"),
         ("C (Clang)", "clang -O1 / -O2 / -O3 (取最优)", "手动 free · 零运行时开销 (性能标尺)"),
-        ("Rust (rustc)", "rustc -O1 / -O2 / -O3 (取最优)", "零 GC · 所有权生命周期与 Scope Drop"),
+        ("Rust (rustc)", "rustc -C opt-level=1 / 2 / 3 (取最优)", "零 GC · 所有权生命周期与 Scope Drop"),
         ("Swift", "swiftc -O", "ARC 自动引用计数运行时 (含 Swift 标准库)"),
         ("Go", "go build (native)", "并发三色标记清除 GC 运行时 (含并发调度器)"),
     ] if not en else [
-        ("Xu", "xu build -O", "Zero GC / RAII Scope Drop / LLVM Backend"),
+        ("Xu", "xu build -O", "Zero GC / RAII Scope Drop / Native machine-code backend"),
         ("C (Clang)", "clang -O1 / -O2 / -O3 (lowest median)", "Manual memory management / Zero runtime"),
-        ("Rust (rustc)", "rustc -O1 / -O2 / -O3 (lowest median)", "Zero GC / Ownership Drop / LLVM Backend"),
+        ("Rust (rustc)", "rustc -C opt-level=1 / 2 / 3 (lowest median)", "Zero GC / Ownership Drop / LLVM Backend"),
         ("Swift", "swiftc -O", "ARC (Automatic Reference Counting) runtime"),
         ("Go", "go build (native)", "Concurrent Tracing GC runtime & Scheduler"),
     ]
@@ -1312,6 +1312,20 @@ def rss_method_note(platforms: dict, en: bool) -> str:
         "Linux 另次运行读取 exec 后目标地址空间的峰值 RSS，跟踪开销不计入耗时。"
         "macOS 使用 wait4，Windows 使用峰值工作集；各系统的内存统计口径不同。"
     )
+
+
+def render_toolchain_versions(platforms: dict, version: str, en: bool) -> str:
+    title = "Toolchain versions from this run" if en else "本轮实测工具链版本"
+    absent = "Unavailable" if en else "本轮未提供"
+    rows = []
+    for target, data in platforms.items():
+        versions = data.get("toolchains", {})
+        values = [target, "Xu " + version] + [versions.get(key) or absent
+                  for key in ("clang", "rustc", "go", "swiftc")]
+        rows.append("<tr>" + "".join("<td><code>" + html.escape(value) + "</code></td>" for value in values) + "</tr>")
+    return (f'<h2>{title}</h2><div class="doc-table-wrap"><table class="bench-toolchains">'
+            '<thead><tr><th>Platform</th><th>Xu</th><th>Clang</th><th>Rust</th><th>Go</th><th>Swift</th></tr></thead>'
+            '<tbody>' + "".join(rows) + '</tbody></table></div>')
 
 
 def render_page(data: dict, lang: str) -> str:
@@ -1697,6 +1711,7 @@ function searchBenchAll(query) {
 <div class="hero bench-hero">
   <div>
     <p class="banner"><i class="xi xi-benchmark xi-brand"></i> {meta_text}</p>
+    {render_toolchain_versions(platforms, version, en)}
     <h1>{h1_text}</h1>
     <p class="lead">{lead_text}</p>
   </div>

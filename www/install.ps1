@@ -10,6 +10,7 @@ param (
 )
 
 $ErrorActionPreference = "Stop"
+$PrefixExplicit = $PSBoundParameters.ContainsKey("Prefix") -or [bool]$env:XU_INSTALL_DIR
 
 # Enable TLS 1.2 (required for downloading from GitHub on Windows PowerShell 5.1)
 try {
@@ -87,7 +88,7 @@ if ($IsLocalScript -and $ScriptDir) {
 }
 
 # Resolve version
-$FallbackVersion = "0.10.6"
+$FallbackVersion = "0.10.7"
 if (-not $Version) {
     if ($SourceDir -and (Test-Path "$SourceDir\VERSION")) {
         $Version = (Get-Content "$SourceDir\VERSION" -Raw).Trim()
@@ -168,6 +169,45 @@ try {
     if ($LASTEXITCODE -ne 0) {
         throw "Distribution compiler cannot run on $Platform."
     }
+    # Current SDKs deploy through the native directory replacement transaction.
+    $NativeSetup = Join-Path $BinarySource "xu-setup.exe"
+    $NativeHelp = ""
+    if (Test-Path $NativeSetup -PathType Leaf) {
+        $NativeHelp = (& $NativeSetup --help 2>$null | Out-String)
+    }
+    if ($NativeHelp.Contains("--no-modify-path")) {
+        $NativeArgs = @("--yes")
+        if ($PrefixExplicit) { $NativeArgs += @("--prefix", $Prefix) }
+        if ($NoModifyPath) { $NativeArgs += "--no-modify-path" }
+        & $NativeSetup @NativeArgs
+        if ($LASTEXITCODE -ne 0) { throw "Native SDK replacement failed (exit $LASTEXITCODE)." }
+        if ($env:XU_SKIP_EDITOR_INSTALL -ne "1" -and (Get-Command "code" -ErrorAction SilentlyContinue)) {
+            $EditorMeta = Join-Path $SourceDir "editors\vscode\package.json"
+            if (Test-Path $EditorMeta -PathType Leaf) {
+                $Editor = Get-Content $EditorMeta -Raw | ConvertFrom-Json
+                if ($Editor.name -match '^[A-Za-z0-9_-]+$' -and $Editor.version -match '^\d+\.\d+\.\d+([.-][A-Za-z0-9.-]+)?$') {
+                    $EditorVsix = Join-Path $SourceDir "editors\vscode\$($Editor.name)-$($Editor.version).vsix"
+                    if (Test-Path $EditorVsix -PathType Leaf) {
+                        try {
+                            & code --install-extension $EditorVsix --force | Out-Null
+                            if ($LASTEXITCODE -ne 0) { throw "VS Code CLI exited with $LASTEXITCODE" }
+                            Write-Color "[OK] VS Code extension installed." -Color Green
+                        } catch {
+                            Write-Color "[WARN] Failed to install VS Code extension automatically." -Color Yellow
+                        }
+                    }
+                }
+            }
+        }
+        return
+    }
+    if (Test-Path "$SourceDir\bundle.json" -PathType Leaf) {
+        $Manifest = Get-Content "$SourceDir\bundle.json" -Raw | ConvertFrom-Json
+        if ($Manifest.PSObject.Properties.Name -contains "files") {
+            throw "The SDK requires its transactional native installer, but it cannot run."
+        }
+    }
+
     if ($Prefix -eq (Resolve-Path $SourceDir).Path) {
         throw "Install directory must differ from source distribution. Use . .\env.ps1 to activate in place."
     }
@@ -183,7 +223,7 @@ try {
     if (Test-Path "$SourceDir\bin\platform\$Platform") {
         Copy-Item -Path "$SourceDir\bin\platform\$Platform\*" -Destination $BinDest -Recurse -Force
     } elseif (Test-Path "$SourceDir\bin") {
-        $Tools = @("xu", "xu-doctor", "xu-fmt", "xu-doc", "xu-map", "xu-desktop", "xu-native", "xu-setup", "xu-update", "xu-lsp")
+        $Tools = @("xu", "xu-doctor", "xu-fmt", "xu-doc", "xu-map", "xu-desktop", "xu-setup", "xu-update", "xu-lsp", "xu-native")
         foreach ($tool in $Tools) {
             if (Test-Path "$SourceDir\bin\$tool.exe") {
                 Copy-Item -Path "$SourceDir\bin\$tool.exe" -Destination $BinDest -Force
