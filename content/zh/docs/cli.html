@@ -22,6 +22,7 @@
 <tr><td><code>map</code></td><td><code>xu map [options] [path...]</code></td><td>分析源码分支与调用链，生成 Mermaid 流程图或拓扑连线数据</td></tr>
 <tr><td><code>doctor</code></td><td><code>xu doctor [options]</code></td><td>检查本机宿主工具链、C 链接器及桌面打包所需依赖库的完整性</td></tr>
 <tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>原生 C 模块编译、<code>xu.o</code> 元数据注入、<code>.xulib</code> 便携切片多目标聚合打包与检视提取</td></tr>
+<tr><td><code>xacp</code></td><td><code>xu xacp &lt;inspect|run|debug|record|control|connect&gt; ...</code></td><td>XACP 宿主原生程序的启动器，转而执行伴生工具 <code>xu-xacp</code>。见 <a href="#xacp">XACP 控制通道</a>。</td></tr>
 <tr><td><code>setup</code></td><td><code>xu setup [options]</code></td><td>启动原生自绘图形向导或执行静默全局环境变量自动配置</td></tr>
 <tr><td><code>lsp</code></td><td><code>xu lsp [options]</code></td><td>启动标准 Language Server Protocol (JSON-RPC 2.0) 守护进程，为 VS Code/Cursor 提供代码服务</td></tr>
 <tr><td><code>up / update</code></td><td><code>xu update [options]</code> (或 <code>xu up</code>)</td><td>直接从 GitHub Releases 检测并下载官方最新构建，原子热更新本地工具链</td></tr>
@@ -69,7 +70,9 @@
 <tr><td><code>--timings</code></td><td>在标准错误 stderr 输出解析、MIR 优化、寄存器分配与代码生成的阶段耗时，以及 <code>pattern-hits:</code> 模式命中统计和每个函数的寄存器分配模式。</td></tr>
 <tr><td><code>--offline</code></td><td>离线构建模式：仅从本地 <code>vendor/</code> 或缓存目录读取依赖，绝不触发网络请求。</td></tr>
 <tr><td><code>--frozen</code></td><td>冻结构建模式：离线且严格匹配现有的 <code>xu.lock</code>；若依赖缺失或摘要不符则强制失败。</td></tr>
-<tr><td><code>--desktop</code></td><td>图形桌面程序打包模式：调用 <code>xu-desktop</code> 打包（生成 macOS <code>.app</code>、Windows <code>.exe</code>、Linux ELF）。</td></tr>
+<tr><td><code>--xacp</code></td><td>嵌入 XACP 启动发现信息与 stdio 控制钩子。<code>./app --xacp-help</code> 打印机器可读摘要（<code>capabilities: stdio</code>）。仅限 hosted native 可执行程序。</td></tr>
+<tr><td><code>--xacp-port &lt;PORT&gt;</code></td><td>同时启用 XACP。<code>PORT</code> 为 0 到 65535 的整数（也接受 <code>--xacp-port=PORT</code>）。<code>0</code> 关闭 TCP。正端口是 <code>&lt;app&gt; --xacp-tcp</code> 在 <code>127.0.0.1</code> 上监听的端口。</td></tr>
+<tr><td><code>--desktop</code></td><td>图形桌面程序打包模式：调用 <code>xu-desktop</code> 打包（生成 macOS <code>.app</code>、Windows <code>.exe</code>、Linux ELF）。不能与 <code>--xacp</code> 一起使用。</td></tr>
 <tr><td><code>--www &lt;dir&gt;</code></td><td>桌面打包时指定嵌入的本地静态前端资产目录（覆盖默认 <code>www/</code>）。</td></tr>
 <tr><td><code>--emit-obj</code></td><td>生成目标平台的 <code>XUOBJ</code> 中间对象文件供外部目标链接器使用，而不直接生成可执行文件。</td></tr>
 <tr><td><code>--cover</code></td><td>在基本块插桩覆盖率计数器，用于覆盖率收集与分析。</td></tr>
@@ -107,6 +110,41 @@ XU_DUMP_MIR=main xu build main.xu -o myapp
 # 生成关闭后端模式的对照产物
 XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
 <p>PowerShell 中先设置变量，例如 <code>$env:XU_VERIFY = '1'</code>，再运行相同的 <code>xu build</code> 命令；诊断完成后用 <code>Remove-Item Env:XU_VERIFY</code> 清除。</p>
+
+<h2 id="xacp">XACP 控制通道（<code>xu xacp</code> / <code>xu-xacp</code>）</h2>
+<p>依据语言仓库 0.10.10-dev.1（<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>）编写。<code>xu xacp</code> 执行伴生二进制 <code>xu-xacp</code>（工具模块 0.1.1）。源码树用 <code>make xu-xacp</code> 构建该二进制。已发布的 {{xu_version}} 下载包是另一份快照。安全核心是 <a href="/api/xacp"><code>#xacp</code></a>。导入该包不会嵌入发现信息或控制循环。可运行样例在语言仓库的 <a href="https://github.com/xulang-org/xu/blob/cursor/xacp-usability-smoke/examples/xacp/README.md"><code>examples/xacp</code></a>。<code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> 是较早的说明，其中「本阶段不做 TCP」已被后续实现取代。</p>
+<p><code>xu --help</code> 把该工具概括为 “inspect, run, and debug”。<code>xu xacp --help</code> 才是完整模式：<code>inspect</code>、<code>run</code>、<code>debug</code>、<code>record</code>、<code>control</code>，以及 <code>connect PORT</code>。</p>
+
+<h3>构建与发现</h3>
+<pre><code>xu build --xacp examples/xacp/main.xu -o app
+xu build --xacp-port 4321 examples/xacp/main.xu -o app
+./app --xacp-help</code></pre>
+<p><code>--xacp-port</code> 隐含 <code>--xacp</code>。生成器只接受 hosted native 可执行程序。库、共享对象、测试脚手架、嵌入式目标和 <code>--desktop</code> 都会被拒绝。<code>--xacp-help</code> 打印后退出，它不是控制会话。端口为 0 时摘要以 <code>tcp: disabled (port 0)</code> 结束。正端口会打印 <code>tcp: enabled</code> 和 <code>bind: 127.0.0.1:PORT</code>。两种情况下 <code>capabilities</code> 都是 <code>stdio</code>。扫描在 <code>--</code> 处停止，因此写在该标记之后的业务参数 <code>--xacp-help</code> 不会触发发现。</p>
+
+<h3>启动器模式</h3>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>模式</th><th>行为</th></tr></thead>
+<tbody>
+<tr><td><code>xu xacp inspect &lt;program&gt;</code></td><td>运行 <code>&lt;program&gt; --xacp-help</code> 并打印发现文本。不接受业务参数。目标程序会被执行。</td></tr>
+<tr><td><code>xu xacp run &lt;program&gt; -- args...</code></td><td>运行业务 main。在转发参数前再插入一个 <code>--</code>。不读取控制 stdin。</td></tr>
+<tr><td><code>xu xacp debug &lt;program&gt; -- args...</code></td><td>先发现，再按同样边界运行。不是断点调试器。发现失败则不会继续运行。</td></tr>
+<tr><td><code>xu xacp record &lt;program&gt; -- args...</code></td><td>流式输出最多 1 MiB 的 stdout，由调用方自行重定向。stderr 仍留给终端。仅 Unix；Windows 打印 <code>record is not available on Windows yet</code> 并以状态 1 退出。这不是 XACP UI 帧文件。</td></tr>
+<tr><td><code>xu xacp control &lt;program&gt;</code></td><td>以 <code>&lt;program&gt; --xacp-stdio</code> 启动，并继承调用方的 stdin 与 stdout。不接受业务参数。业务 main 不运行。合法的 <code>xacp.hello</code> 会在请求 finish 之前调用 <code>enable_development()</code>。</td></tr>
+<tr><td><code>xu xacp connect PORT</code></td><td>把带帧的 stdin/stdout 中继到 <code>127.0.0.1:PORT</code>。一次请求，再等一次响应。目标必须已经用 <code>--xacp-tcp</code> 在监听。<code>PORT</code> 为 1..65535。输入帧以 <code>===</code> 加换行结束。帧边界上的 EOF 会断开连接。</td></tr>
+</tbody></table></div>
+<p><code>run</code>、<code>debug</code>、<code>record</code> 的参数必须写在工具自己的 <code>--</code> 之后。<code>inspect</code> 与 <code>control</code> 拒绝额外参数。子进程失败时，工具能读到退出状态就会原样返回。</p>
+
+<h3>stdio 与本机回环 TCP</h3>
+<pre><code># stdio：管道送入帧；业务 main 被跳过
+xu xacp control ./app &lt; control.xun
+
+# TCP：用正端口构建，先监听，再从另一个终端连接
+xu build --xacp-port 4321 main.xu -o app
+./app --xacp-tcp
+xu xacp connect 4321 &lt; control.xun</code></pre>
+<p>两种控制模式使用同一套帧、会话和操作。帧是夹在 <code>--- !xacp</code> 与 <code>===</code> 之间的 XUN 文档。启动期读取器还要求 <code>===</code> 之后有换行。<code>--</code> 之前先出现的 <code>--xacp-stdio</code> 或 <code>--xacp-tcp</code> 生效。普通启动不监听，也不读取控制 stdin。</p>
+<p>TCP 只监听 <code>127.0.0.1</code>。没有 TLS，也不能绑定其他地址。每个连接是独立会话。连接按顺序处理。失败的对端只结束自己的会话，监听继续接受。stdio 会话结束时进程退出。EOF 时的半帧返回 <code>truncated_frame</code>。超过 1 MiB 的帧返回 <code>frame_too_large</code> 并关闭该会话。非法帧和 schema 错误的 id 为 <code>0</code>。</p>
+<p>合法 hello 之后，<code>proc.status</code> 返回真实 pid。<code>proc.output</code> 以及 <code>ui.tree</code>、<code>ui.screenshot</code>、<code>ui.input</code>、<code>ui.act</code>、<code>ui.record</code> 会先校验，在程序注册 Screen 或输出适配器之前返回 <code>not_implemented</code>。目标持续无输出或不退出时，宿主没有超时。</p>
 
 <h2>2. 自动化测试 (test)</h2>
 <p><code>xu test</code> 自动识别并编译测试用例。任何包含 <code>fn test_*</code> 的源文件（或 <code>test.*.xu</code>）均可被直接执行：</p>
@@ -278,6 +316,7 @@ Development and diagnostic tools:
   map            visualize source architecture flowchart via sibling xu-map
   doctor         check host tools and dependencies via sibling xu-doctor
   native         compile, archive, pack, and inspect native C modules
+  xacp           inspect, run, and debug XACP-enabled programs
   lsp            Language Server Protocol daemon via sibling xu-lsp
   setup          launch native installer via sibling xu-setup
 
@@ -289,6 +328,8 @@ Toolchain management:
 Common build options:
   -o, --output OUT  output binary path (default &lt;stem&gt;; Windows &lt;stem&gt;.exe)
   --target TARGET   target platform (default: host platform)
+  --xacp            enable XACP stdio control and --xacp-help
+  --xacp-port PORT  loopback TCP control port (0 disables TCP)
   --offline         resolve dependencies from local cache/vendor; never download
   --frozen          require offline build with existing lockfile
   --cover           instrument block coverage (hosted targets only)

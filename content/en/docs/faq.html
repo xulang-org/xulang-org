@@ -1,7 +1,7 @@
 <!--title: Frequently Asked Questions (FAQ)-->
 <p class="crumb"><a href="/docs/start">Docs</a></p>
 <h1>Frequently Asked Questions (FAQ)</h1>
-<p class="banner">Core answers on Xu language design, memory model, compilation architecture, LSP editor support, dependency management, and native interoperability</p>
+<p class="banner">Core answers on Xu language design, memory model, compilation architecture, LSP editor support, dependency management, native interoperability, and the XACP control channel</p>
 
 <section class="faq-list">
   <details class="faq-item">
@@ -75,6 +75,45 @@
       <p>Native multi-platform matrix: operating systems include macOS (Darwin), Linux, Windows (PE AOT), and WebAssembly; hardware architectures include ARM64 (Apple Silicon / AWS Graviton), x86-64 (Intel / AMD), LoongArch64, RISC-V 64/32, and Linux ARM32。</p>
     </div>
   </details>
+
+  <details class="faq-item">
+    <summary><h3>What is XACP?</h3></summary>
+    <div class="faq-answer">
+      <p>XACP (Xu Agent Control Protocol) is the framed control channel for a hosted native program built with <code>xu build --xacp</code> and/or <code>--xacp-port PORT</code>. That build embeds discovery. <code>./app --xacp-help</code> prints a machine-readable summary whose <code>capabilities</code> line is <code>stdio</code>, and which says whether TCP is enabled and which address it would bind. This replaces the earlier help-only discovery text.</p>
+      <p><code>#xacp</code> (<code>src/xacp</code>) is the transport-neutral safety core: frame and XUN checks, permissions, and session lifetime. Importing <code>#xacp</code> does not install the startup control entry. Stdio and loopback TCP are runtime hooks inserted by the <code>--xacp</code> build. The launcher is <code>xu xacp</code>, which runs the sibling <code>xu-xacp</code> tool (module 0.1.1). Modes are <code>inspect</code>, <code>run</code>, <code>debug</code>, <code>record</code>, <code>control</code>, and <code>connect</code>. This behavior is from the language repository at 0.10.10-dev.1 (<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>), not from the published {{xu_version}} SDK extract. See the <a href="/docs/cli#xacp">CLI reference</a>, the <a href="/api/xacp"><code>#xacp</code> API</a>, and the <a href="https://github.com/xulang-org/xu/blob/cursor/xacp-usability-smoke/examples/xacp/README.md">runnable example</a>.</p>
+    </div>
+  </details>
+
+  <details class="faq-item">
+    <summary><h3>How do XACP stdio and loopback TCP differ?</h3></summary>
+    <div class="faq-answer">
+      <p><strong>stdio.</strong> Start the target with <code>--xacp-stdio</code>, or run <code>xu xacp control &lt;program&gt;</code>. The session owns stdin and stdout. Frames are <code>--- !xacp</code> … <code>===</code> followed by a newline. Business main does not run.</p>
+      <p><strong>Loopback TCP.</strong> Build with <code>--xacp-port N</code> where <code>N</code> is 1..65535, then run <code>&lt;app&gt; --xacp-tcp</code>. The process listens only on <code>127.0.0.1:N</code>. In another terminal, <code>xu xacp connect PORT</code> relays the same frames, one request and one response at a time. Port <code>0</code> disables TCP (<code>tcp: disabled (port 0)</code> in discovery) while leaving the stdio capability in place. Each accepted connection is its own session. Connections are handled one at a time; a failed peer ends that session and the listener stays up. Stdio exits when its session ends. The first control flag before <code>--</code> wins. A normal start does not listen and does not read control stdin.</p>
+    </div>
+  </details>
+
+  <details class="faq-item">
+    <summary><h3>What does xacp.hello grant?</h3></summary>
+    <div class="faq-answer">
+      <p>A control session starts with no permissions. The startup adapter validates <code>xacp.hello</code> (<code>ver: !ver 1.0.0</code>, monotonic id), begins the request, then calls <code>enable_development()</code> before <code>finish_request</code>, while the session is still <code>STATE_NEW</code>. That grants <code>PERM_ALL</code>. The success frame reports <code>state: OPEN</code> and <code>permissions: development</code>. Schema checks, session lifetime, native-resource disposal, and frame limits still apply.</p>
+      <p>Library <code>dispatch()</code> only completes hello. It does not grant development permissions, and <code>enable_development()</code> returns false once hello has finished and the state is <code>STATE_OPEN</code>. An optional <code>token</code> string is checked only as schema; the startup adapter does not treat it as an access secret. After development permissions are on, <code>proc.status</code> returns the real pid. <code>proc.output</code> and the UI ops (<code>ui.tree</code>, <code>ui.screenshot</code>, <code>ui.input</code>, <code>ui.act</code>, <code>ui.record</code>) are validated and then return <code>not_implemented</code> when no Screen or output adapter is registered.</p>
+    </div>
+  </details>
+
+  <details class="faq-item">
+    <summary><h3>How do xu xacp control and xu xacp run differ?</h3></summary>
+    <div class="faq-answer">
+      <p><code>xu xacp run &lt;program&gt; -- args...</code> starts the program so business main runs. The tool inserts an extra <code>--</code>, so a business argument named <code>--xacp-help</code> does not trigger discovery. <code>debug</code> prints <code>--xacp-help</code> first, then runs the same way. It is not a breakpoint debugger. <code>record</code> streams at most 1 MiB of stdout on Unix; stderr stays on the terminal. That file is not an XACP UI recording, and Windows <code>record</code> is still unavailable. <code>inspect</code> runs <code>--xacp-help</code> and accepts no business arguments. It does execute the target.</p>
+      <p><code>control</code> starts <code>--xacp-stdio</code>, inherits the caller's stdin and stdout, skips business main, and accepts no business arguments. <code>connect PORT</code> does not take a program path. It relays frames to <code>127.0.0.1:PORT</code>. User arguments for <code>run</code>, <code>debug</code>, and <code>record</code> must follow the tool's <code>--</code>.</p>
+    </div>
+  </details>
+
+  <details class="faq-item">
+    <summary><h3>What are the XACP security limits?</h3></summary>
+    <div class="faq-answer">
+      <p>Point the launcher only at a trusted local executable. <code>inspect</code> executes it too. A validated hello on the startup channel grants development permissions, and control mode skips business main. There is no TLS and no bind address other than <code>127.0.0.1</code>. There is no host timeout or forced stop if the target produces no output or does not exit; the caller has to impose one. UI Screen adapters are not wired on this channel, so tree, screenshot, input, act, record, and <code>proc.output</code> do not return live UI data. The generator allows hosted native executables only: it rejects libraries, shared objects, test harnesses, embedded targets, and <code>--desktop</code>.</p>
+    </div>
+  </details>
 </section>
 
-<p><a href="/docs/start">Get Started</a> · <a href="/docs/modules">Modules &amp; Dependencies</a> · <a href="/docs/native">Native Modules &amp; .xulib</a> · <a href="/docs/vscode">Editor Support</a> · <a href="/docs/cli">CLI Reference</a></p>
+<p><a href="/docs/start">Get Started</a> · <a href="/docs/modules">Modules &amp; Dependencies</a> · <a href="/docs/native">Native Modules &amp; .xulib</a> · <a href="/docs/vscode">Editor Support</a> · <a href="/docs/cli#xacp">CLI / XACP</a> · <a href="/api/xacp"><code>#xacp</code> API</a></p>

@@ -31,7 +31,7 @@ DOC_GROUPS = [
 ]
 API_GROUPS = [
     ('xi-api', 'API', 'API', ['']),
-    ('xi-cpu', '核心', 'Core', 'errors fmt flag cmp context sync time runtime maps slices sort testing testing/fstest'.split()),
+    ('xi-cpu', '核心', 'Core', 'errors fmt flag cmp context sync time runtime maps slices sort testing testing/fstest xacp'.split()),
     ('xi-file', '文本', 'Text', 'strings bytes strconv unicode regexp html'.split()),
     ('xi-terminal', 'IO / OS', 'IO / OS', 'io io/fs os os/exec os/signal os/user bufio path log'.split()),
     ('xi-globe', '网络', 'Net', 'net net/http net/http/cookiejar net/http/httptest net/netip net/url'.split()),
@@ -227,9 +227,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             desc = f"下载官方 Xu (v{xu_version}) 编译器 SDK 与工具链（macOS、Linux、Windows）。支持一键自动化安装脚本与原生二进制发行包。"
     elif bare_path.startswith('docs/faq'):
         if en:
-            desc = f"Frequently Asked Questions (FAQ) for Xu v{xu_version} — Custom native backend, zero-GC memory safety, LSP editor support, xu get vs xu install, native C modules, and WebAssembly."
+            desc = f"Frequently Asked Questions (FAQ) for Xu v{xu_version} — Custom native backend, zero-GC memory safety, LSP editor support, xu get vs xu install, native C modules, WebAssembly, and the XACP control channel."
         else:
-            desc = f"Xu 编程语言 (v{xu_version}) 常见问题解答 (FAQ) — 自研原生后端、零 GC 内存安全、LSP 编辑器支持、xu get 与 xu install 依赖管理、xu native 原生 C 模块及 WebAssembly。"
+            desc = f"Xu 编程语言 (v{xu_version}) 常见问题解答 (FAQ) — 自研原生后端、零 GC 内存安全、LSP 编辑器支持、xu get 与 xu install 依赖管理、xu native 原生 C 模块、WebAssembly 与 XACP 控制通道。"
     elif bare_path.startswith('docs/tutorial'):
         if en:
             desc = f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
@@ -243,6 +243,11 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
     elif bare_path == 'api/preview' or bare_path.startswith('api/preview/'):
         desc = (f'Unreleased Xu development API reference: {title}. Use the SDK version and source digest shown on the page.'
                 if en else f'Xu 开发预览 API：{title}。尚未发布，请使用页面标明的 SDK 版本与源码摘要。')
+    elif bare_path == 'api/xacp':
+        if en:
+            desc = f"Xu #xacp safety core from the 0.10.10-dev.1 language repository: sessions, hello, permissions, frame limits, and known ops. Transport is separate from the published v{xu_version} catalog."
+        else:
+            desc = f"Xu #xacp 安全核心（语言仓库 0.10.10-dev.1）：会话、hello、权限、帧上限与已知操作。传输与已发布的 v{xu_version} 目录分开。"
     elif bare_path.startswith('api'):
         if en:
             desc = f"Official API reference for {title} in the Xu v{xu_version} standard library and extended package ecosystem."
@@ -342,6 +347,48 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             }
         }
     ]
+    xacp_faq_entities = [
+        {
+            "@type": "Question",
+            "name": "What is XACP?" if en else "什么是 XACP？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "XACP (Xu Agent Control Protocol) is the framed control channel for a hosted native program built with xu build --xacp and/or --xacp-port PORT. ./app --xacp-help prints a machine-readable summary whose capabilities line is stdio and which reports whether TCP is enabled and the bind address. #xacp (src/xacp) is the transport-neutral safety core. Importing it does not install the startup control entry. The launcher is xu xacp / xu-xacp, with modes inspect, run, debug, record, control, and connect. This behavior is from the language repository at 0.10.10-dev.1 (xu#23)." if en else "XACP（Xu Agent Control Protocol）是用 xu build --xacp 和/或 --xacp-port PORT 构建的 hosted native 程序的帧控制通道。./app --xacp-help 打印机器可读摘要，capabilities 为 stdio，并标明 TCP 是否启用及绑定地址。#xacp（src/xacp）是与传输无关的安全核心。单独导入不会装上启动期控制入口。启动器是 xu xacp / xu-xacp，模式为 inspect、run、debug、record、control、connect。该行为来自语言仓库 0.10.10-dev.1（xu#23）。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How do XACP stdio and loopback TCP differ?" if en else "XACP 的 stdio 与本机回环 TCP 有什么区别？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Stdio uses --xacp-stdio or xu xacp control <program>. Frames are --- !xacp … ===. The session owns stdin/stdout and does not run business main. Loopback TCP requires a build with --xacp-port N (N from 1 to 65535). <app> --xacp-tcp listens on 127.0.0.1:N, and xu xacp connect PORT relays the same frames. Port 0 disables TCP. Each TCP connection is its own session and connections are handled one at a time. The first control flag before -- wins. A normal start does not listen and does not read control stdin. There is no TLS and no non-loopback bind." if en else "stdio 使用 --xacp-stdio 或 xu xacp control <program>。帧为 --- !xacp … ===。会话独占 stdin/stdout，不运行业务 main。本机 TCP 需要用 --xacp-port N 构建（N 为 1 到 65535）。<app> --xacp-tcp 监听 127.0.0.1:N，xu xacp connect PORT 中继同样的帧。端口 0 关闭 TCP。每个 TCP 连接是独立会话，连接按顺序处理。-- 之前的第一个控制标志优先。普通启动不监听，也不读取控制 stdin。没有 TLS，也不能绑定非回环地址。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What does xacp.hello grant?" if en else "xacp.hello 会授予什么权限？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "The startup stdio and TCP adapters validate xacp.hello (ver !ver 1.0.0), begin the request, then call enable_development() before finish_request. That grants PERM_ALL while the session is still STATE_NEW. The success frame reports state OPEN and permissions development. Schema, lifecycle, and frame limits still apply. Library dispatch() completes hello and does not grant development permissions. An optional token string is schema-only and is not an access secret. proc.status then returns the real pid. proc.output and the UI ops are checked and return not_implemented when no Screen or output adapter is registered." if en else "启动期 stdio 与 TCP 适配器校验 xacp.hello（ver 为 !ver 1.0.0），begin 请求后、finish_request 之前调用 enable_development()。会话仍为 STATE_NEW 时授予 PERM_ALL。成功帧报告 state OPEN 与 permissions development。schema、生命周期和帧上限仍然有效。库函数 dispatch() 只完成 hello，不授予 development 权限。可选 token 字符串只参与 schema，不是访问口令。随后 proc.status 返回真实 pid。没有 Screen 或输出适配器时，proc.output 与 UI 操作在校验后返回 not_implemented。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "How do xu xacp control and xu xacp run differ?" if en else "xu xacp control 与 xu xacp run 有什么区别？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "run executes the program so business main runs, and inserts an extra -- so a business argument named --xacp-help does not trigger discovery. debug prints discovery first, then runs the same way; it is not a breakpoint debugger. record streams at most 1 MiB of stdout on Unix and is still unavailable on Windows. inspect runs --xacp-help and also executes the target. control starts --xacp-stdio, owns stdin/stdout, skips business main, and accepts no business arguments. connect PORT only relays frames to 127.0.0.1:PORT." if en else "run 会执行程序，业务 main 会运行，并额外插入 --，因此名为 --xacp-help 的业务参数不会触发发现。debug 先打印发现信息再按同样方式运行，不是断点调试器。record 在 Unix 上流式输出最多 1 MiB stdout，Windows 上仍不可用。inspect 执行 --xacp-help，同样会运行目标程序。control 启动 --xacp-stdio，独占 stdin/stdout，跳过业务 main，且不接受业务参数。connect PORT 只把帧中继到 127.0.0.1:PORT。"
+            }
+        },
+        {
+            "@type": "Question",
+            "name": "What are the XACP security limits?" if en else "XACP 目前有哪些安全限制？",
+            "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Use it only with a trusted local executable. A validated hello on the startup channel grants development permissions, and control mode skips business main. There is no TLS, no bind address other than 127.0.0.1, and no host timeout if the target hangs. UI Screen adapters are not wired, so tree, screenshot, input, act, record, and proc.output do not return live UI data. The generator allows hosted native executables only." if en else "只用于受信任的本地可执行程序。启动通道上合法的 hello 会授予 development 权限，控制模式会跳过业务 main。没有 TLS，不能绑定 127.0.0.1 以外的地址，目标挂起时宿主也没有超时。UI Screen 适配器尚未接入，因此 tree、screenshot、input、act、record 和 proc.output 不会返回真实界面数据。生成器只允许 hosted native 可执行程序。"
+            }
+        },
+    ]
 
     if not bare_path:
         schema = {
@@ -396,7 +443,7 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             "description": desc,
             "url": canonical_url,
             "inLanguage": "en" if en else "zh-CN",
-            "mainEntity": faq_entities,
+            "mainEntity": faq_entities + xacp_faq_entities,
             "publisher": {
                 "@type": "Organization",
                 "name": "Xu Programming Language",
