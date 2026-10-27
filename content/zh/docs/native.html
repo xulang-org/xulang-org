@@ -9,9 +9,10 @@
 
 <h2>1. 核心结论：通用 .a 与 .xulib 的关系</h2>
 <ul>
-  <li><strong>标准通用 <code>.a</code>（Unix 静态归档库）原生支持且地位完全平等</strong>：你可以直接使用本地系统编译器（如 <code>clang</code>、<code>gcc</code>、<code>msvc</code>）编译出标准的 <code>.a</code>，并在命令行 <code>xu build main.xu module.a</code> 或 <code>xu.xun</code> 的 <code>native:</code> 中直接声明引用，底层最终由操作系统原生链接器（<code>ld</code> / <code>clang</code> / <code>lld</code>）静态链接。</li>
+  <li><strong>标准通用 <code>.a</code>（Unix 静态归档库）原生支持且地位完全平等</strong>：使用 <code>xu native compile</code> 或 <code>xu native archive</code> 将 Xu 接口元数据与原生对象一起打包。在 <code>macos-arm64</code> 和 <code>macos-x64</code> 上，可在命令行 <code>xu build main.xu module.a</code> 或 <code>xu.xun</code> 的 <code>native:</code> 中直接声明引用，底层最终由操作系统原生链接器（<code>ld</code> / <code>clang</code> / <code>lld</code>）静态链接。</li>
   <li><strong><code>.xulib</code> 是面向跨平台生态分发的“多目标切片元数据包”</strong>：它并不是一种全新的专有机器码格式，其内部包裹的<strong>依然是各个目标平台标准的 <code>.a</code> 静态切片</strong>，额外附加了强类型签名契约（JSON Manifest）与 SHA-256 完整性哈希。</li>
 </ul>
+<p class="note">一步原生链接目前仅支持 <code>macos-arm64</code> 和 <code>macos-x64</code>，需要 macOS C 工具链。其他目标须使用 <code>--emit-obj</code>，将 XUOBJ 转为平台对象，再由外部系统链接器完成链接。容器支持多目标切片并不扩大一步链接的平台范围。下方七步示例使用 macOS 切片。</p>
 
 <div class="doc-table-wrap"><table>
 <thead><tr><th>特性维度</th><th>通用 <code>.a</code> 静态库</th><th>便携式 <code>.xulib</code> 容器包</th></tr></thead>
@@ -19,7 +20,7 @@
 <tr><td><strong>适用场景</strong></td><td>单目标平台开发、本地临时调试、私有定制 C 链接</td><td>跨平台模块分发、开源生态扩展包（如 <code>packages/sqlite</code>）</td></tr>
 <tr><td><strong>架构支持</strong></td><td>单架构单目标（如仅 <code>linux-x64</code> 或仅 <code>macos-arm64</code>）</td><td><strong>多目标多架构统一打包</strong>（单个文件内嵌全平台切片）</td></tr>
 <tr><td><strong>跨平台切换</strong></td><td>需在配置文件或构建脚本中编写复杂的 OS/Arch 切换条件</td><td><strong>构建器自动按当前 <code>--target</code> 提取匹配切片</strong>，零配置透明跨平台</td></tr>
-<tr><td><strong>类型安全</strong></td><td>仅含裸符号表（Symbol Table），丢失函数参数与返回值类型</td><td><strong>内置 JSON Manifest 与 XUOBJ 契约</strong>，编译期完成强类型检查</td></tr>
+<tr><td><strong>类型安全</strong></td><td><code>xu native compile</code>/<code>archive</code> 生成的归档包含 XUOBJ 导出签名</td><td><strong>内置 JSON Manifest 与 XUOBJ 契约</strong>，编译期完成强类型检查</td></tr>
 <tr><td><strong>完整性校验</strong></td><td>无内置防篡改机制</td><td>每个架构切片均记录 SHA-256 校验和，解包即校验</td></tr>
 </tbody></table></div>
 
@@ -80,7 +81,7 @@
       <div class="binary-frame-cell full-width accent-cell">
         <div class="cell-offset"><i class="xi xi-hash"></i> 0x0F..0x0F+N (N Bytes UTF-8)</div>
         <div class="cell-title">JSON Manifest (模块接口契约与签名清单)</div>
-        <div class="cell-desc">包含 <code>module</code> 命名空间、<code>abi: "xu-c-1"</code>、<code>exports</code> 导出函数与类型签名、<code>slices</code> 各架构 SHA-256 校验散列</div>
+        <div class="cell-desc">包含 <code>module</code> 命名空间、<code>abi: "xu-c-1"</code>、<code>format: "xulib-1"</code>（导出签名位于切片 XUOBJ 元数据中）、<code>slices</code> 各架构 SHA-256 校验散列</div>
       </div>
     </div>
 
@@ -168,10 +169,10 @@
         <td><strong>契约清单 (Manifest)</strong></td>
         <td>UTF-8 紧凑文本</td>
         <td>
-          自描述元数据 JSON 对象，包含四个关键字段：<br>
+          <code>xu native pack</code> 写出的容器顶层元数据：<br>
           • <code>module</code>：全局唯一的模块命名空间标识（如 <code>"native_add"</code>）<br>
           • <code>abi</code>：原生接口协议规范版本（如 <code>"xu-c-1"</code>）<br>
-          • <code>exports</code>：导出的函数名、参数类型列表与返回值类型契约<br>
+          • <code>format</code>：容器格式标识（<code>"xulib-1"</code>）<br>
           • <code>slices</code>：记录各目标平台的切片名及对应的 SHA-256 签名散列
         </td>
       </tr>
@@ -224,6 +225,8 @@
 </div>
 
 <p class="note"><strong>巧妙的双面兼容设计</strong>：每个平台的切片本质是一个标准的 <code>.a</code> 静态归档库。它将<strong>由外部原生工具链（如 C / C++ / Rust）编译出的原生业务对象（如 <code>sqlite3.o</code>、<code>bridge.o</code>）</strong>，与一份<strong>格式合规并包含 Xu 导出类型签名的元数据对象（<code>xu.o</code>）</strong>统一打包在一起。操作系统的通用链接器直接链接这些原生的业务机器码，而 Xu 编译器则读取 <code>xu.o</code> 专用 <code>.xumeta</code> 段（Mach-O 下为 <code>__DATA,__xumeta</code>）中的类型契约完成编译期安全检查，两者互不干扰。</p>
+
+<p>输入 <code>native.json</code> 声明 <code>exports</code>，各归档的 <code>xu.o</code> XUOBJ 元数据保存这些类型签名。产品工具 <code>xu native pack</code> 不把 <code>exports</code> 复制到顶层清单。源码树中的 Python 辅助工具 <code>scripts/xunative.py</code> 会复制输入清单，因此其输出保留 <code>exports</code>。读取方应从切片元数据获取接口，不能要求顶层必有导出表。</p>
 
 <h2>4. 完整的 7 个开发动作指南</h2>
 
@@ -364,7 +367,9 @@ xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</
 
 <h3 id="action-3">动作三：单目标切片静态编译 (<code>xu native compile</code>)</h3>
 <p>为各个受支持的目标平台分别生成带有元数据的 <code>.a</code> 切片：</p>
-<pre><code class="language-shell"># 针对 macOS Apple Silicon (ARM64)
+<pre><code class="language-shell">mkdir -p native
+
+# 针对 macOS Apple Silicon (ARM64)
 xu native compile \
   --manifest native.json --target macos-arm64 bridge.c \
   -o native/native_add-arm64.a
@@ -433,7 +438,7 @@ fn main() int {
     &lt;&lt; 0
 }</code></pre>
 
-<h3 id="action-7">动作七：一键静态构建与运行验证</h3>
+<h3 id="action-7">动作七：macOS 静态构建与运行验证</h3>
 <pre><code class="language-shell"># 编译为原生机器码可执行文件并运行
 xu run .</code></pre>
 
@@ -448,9 +453,17 @@ xu run .</code></pre>
 7. void state counter = 100
 === All Native Type Assertions Passed ===</code></pre>
 
+<h3>Linux x64 外部链接</h3>
+<p>安装 Clang 与归档工具后，使用 <code>xu native compile --manifest native.json --target linux-x64 bridge.c -o native_add-linux.a</code> 准备 <code>linux-x64</code> 归档。使用上面的 <code>main.xu</code> 和该归档，输出 XUOBJ，再用匹配 SDK 的内部辅助命令 <code>_elf_o</code> 转换并外部链接：</p>
+<pre><code class="language-shell">xu build main.xu native_add-linux.a --target linux-x64 --emit-obj -o main.xuobj
+xu _elf_o main.xuobj main.o
+cc -nostartfiles -no-pie main.o native_add-linux.a -o app
+./app</code></pre>
+<p>Xu 提供自己的入口点，因此此 Linux 链接命令省略 C 启动文件。Windows 和其他目标须使用对应的对象转换工具、入口点及运行库链接选项；上述 Linux 命令仅适用于 Linux x64。</p>
+
 <h2>5. 常见问题解答 (FAQ)</h2>
 <p><strong>Q：我只在本地开发单平台工具，不想打包 <code>.xulib</code>，可以直接用 <code>.a</code> 吗？</strong><br>
-A：完全可以！直接在 <code>xu.xun</code> 中写 <code>native_add: file:./native/native_add-arm64.a</code> 或在命令行执行 <code>xu build main.xu ./native/native_add-arm64.a</code> 即可。注意 <code>.a</code> 内需包含带有导出签名的 <code>xu.o</code>（可使用 <code>xu native compile</code> 或 <code>xu native archive</code> 生成）。</p>
+A：在上述 macOS 目标上可以。直接在 <code>xu.xun</code> 中写 <code>native_add: file:./native/native_add-arm64.a</code> 或在命令行执行 <code>xu build main.xu ./native/native_add-arm64.a</code> 即可。注意 <code>.a</code> 内需包含带有导出签名的 <code>xu.o</code>（可使用 <code>xu native compile</code> 或 <code>xu native archive</code> 生成）。</p>
 
 <p><strong>Q：<code>.xulib</code> 会影响运行期性能吗？</strong><br>
 A：<strong>完全为零开销</strong>。<code>.xulib</code> 仅在编译链接期工作，构建器提取切片后直接由平台链接器完成静态硬链接，生成的可执行文件与手写静态 C 链接二进制完全一致，无任何中间件代理或运行时解包负担。</p>

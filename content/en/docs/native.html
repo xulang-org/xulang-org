@@ -9,9 +9,10 @@
 
 <h2>1. Core Architecture: Universal .a vs .xulib Containers</h2>
 <ul>
-  <li><strong>Standard universal <code>.a</code> (Unix static archives) are first-class peers</strong>: You can compile a standard <code>.a</code> using any platform C compiler (e.g. <code>clang</code>, <code>gcc</code>, <code>msvc</code>) and link it directly via <code>xu build main.xu module.a</code> or declare it under <code>native:</code> in <code>xu.xun</code>. It is statically linked by the system linker.</li>
+  <li><strong>Standard universal <code>.a</code> (Unix static archives) are first-class peers</strong>: Use <code>xu native compile</code> or <code>xu native archive</code> to include the Xu interface metadata alongside native objects. On <code>macos-arm64</code> and <code>macos-x64</code>, link via <code>xu build main.xu module.a</code> or declare it under <code>native:</code> in <code>xu.xun</code>. It is statically linked by the system linker.</li>
   <li><strong><code>.xulib</code> is a multi-target slice distribution container</strong>: It is not a proprietary machine-code format. Internally, it bundles <strong>standard platform <code>.a</code> static slices</strong>, augmented by a strongly typed contract (JSON Manifest) and SHA-256 integrity digests.</li>
 </ul>
+<p class="note">One-step native linking currently supports only <code>macos-arm64</code> and <code>macos-x64</code> and requires the macOS C toolchain. Other targets require <code>--emit-obj</code>, conversion of XUOBJ to a platform object, and external system linking. A multi-target container does not extend this linking support. The seven-step example below uses macOS slices.</p>
 
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Dimension</th><th>Universal <code>.a</code> Static Archive</th><th>Portable <code>.xulib</code> Container</th></tr></thead>
@@ -19,7 +20,7 @@
 <tr><td><strong>Primary Scope</strong></td><td>Single-target development, local debugging, private C integrations</td><td>Cross-platform ecosystem packages (e.g. <code>packages/sqlite</code>)</td></tr>
 <tr><td><strong>Target Architecture</strong></td><td>Single OS/Arch slice (e.g. only <code>linux-x64</code> or <code>macos-arm64</code>)</td><td><strong>Multi-target, multi-architecture bundle</strong> in a single file</td></tr>
 <tr><td><strong>Cross-Platform Linking</strong></td><td>Requires custom build scripts to branch per OS/Arch</td><td><strong>Compiler automatically selects and extracts matching slice</strong> based on <code>--target</code></td></tr>
-<tr><td><strong>Type Safety</strong></td><td>Stripped symbol table without parameter/return types</td><td><strong>Embedded JSON Manifest & XUOBJ metadata</strong> for compile-time checking</td></tr>
+<tr><td><strong>Type Safety</strong></td><td>Archives built by <code>xu native compile</code>/<code>archive</code> include XUOBJ export signatures</td><td><strong>Embedded JSON Manifest & XUOBJ metadata</strong> for compile-time checking</td></tr>
 <tr><td><strong>Tamper Proofing</strong></td><td>No built-in cryptographic validation</td><td>Every target slice records an embedded SHA-256 digest</td></tr>
 </tbody></table></div>
 
@@ -80,7 +81,7 @@
       <div class="binary-frame-cell full-width accent-cell">
         <div class="cell-offset"><i class="xi xi-hash"></i> 0x0F..0x0F+N (N Bytes UTF-8)</div>
         <div class="cell-title">JSON Manifest (Interface Contract &amp; Hash Manifest)</div>
-        <div class="cell-desc">Contains <code>module</code> identifier, <code>abi: "xu-c-1"</code>, <code>exports</code> typed signatures, and <code>slices</code> target SHA-256 digests</div>
+        <div class="cell-desc">Contains <code>module</code> identifier, <code>abi: "xu-c-1"</code>, <code>format: "xulib-1"</code>, and <code>slices</code> target SHA-256 digests; export signatures reside in each slice’s XUOBJ metadata</div>
       </div>
     </div>
 
@@ -168,10 +169,10 @@
         <td><strong>JSON Manifest</strong></td>
         <td>UTF-8 Compact Text</td>
         <td>
-          Self-describing contract metadata containing four key properties:<br>
+          Top-level container metadata written by <code>xu native pack</code>:<br>
           • <code>module</code>: globally unique module namespace identifier (e.g. <code>"native_add"</code>)<br>
           • <code>abi</code>: native interface protocol specification (e.g. <code>"xu-c-1"</code>)<br>
-          • <code>exports</code>: exported function names, parameter types, and return values<br>
+          • <code>format</code>: container format identifier (<code>"xulib-1"</code>)<br>
           • <code>slices</code>: target platform slice names and corresponding SHA-256 digests
         </td>
       </tr>
@@ -224,6 +225,8 @@
 </div>
 
 <p class="note"><strong>Clever Dual Compatibility Design</strong>: Each platform slice is fundamentally a standard <code>.a</code> static archive. It bundles <strong>native business logic objects (e.g. <code>sqlite3.o</code>, <code>bridge.o</code>) compiled by external toolchains (such as C, C++, Rust, or assembly)</strong> together with a <strong>fully compliant native metadata object member (<code>xu.o</code>)</strong>. The host platform linker directly links the native machine code symbols, while the Xu compiler inspects the <code>XUOBJ</code> type contract embedded in the dedicated <code>.xumeta</code> section (in Mach-O: <code>__DATA,__xumeta</code>) for compile-time type verification, achieving seamless zero-conflict coexistence.</p>
+
+<p>The input <code>native.json</code> defines <code>exports</code>; their typed interface is embedded in each archive’s <code>xu.o</code> XUOBJ metadata. The product <code>xu native pack</code> does not copy <code>exports</code> into the top-level manifest. The source-tree Python helper <code>scripts/xunative.py</code> copies the input manifest, so its output also retains <code>exports</code>. Consumers must read slice metadata rather than require top-level exports.</p>
 
 <h2>4. The Complete 7 Development Actions</h2>
 
@@ -363,7 +366,9 @@ xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</
 }</code></pre>
 
 <h3 id="action-3">Action 3: Compile Target Slices (<code>xu native compile</code>)</h3>
-<pre><code class="language-shell"># macOS Apple Silicon (ARM64)
+<pre><code class="language-shell">mkdir -p native
+
+# macOS Apple Silicon (ARM64)
 xu native compile \
   --manifest native.json --target macos-arm64 bridge.c \
   -o native/native_add-arm64.a
@@ -431,7 +436,7 @@ fn main() int {
     &lt;&lt; 0
 }</code></pre>
 
-<h3 id="action-7">Action 7: Compile & Verify Execution</h3>
+<h3 id="action-7">Action 7: Compile & Verify Execution (macOS)</h3>
 <pre><code class="language-shell">xu run .</code></pre>
 
 <p>The console prints the verified results:</p>
@@ -445,9 +450,17 @@ fn main() int {
 7. void state counter = 100
 === All Native Type Assertions Passed ===</code></pre>
 
+<h3>External linking on Linux x64</h3>
+<p>With Clang and an archive tool installed, prepare a <code>linux-x64</code> archive using <code>xu native compile --manifest native.json --target linux-x64 bridge.c -o native_add-linux.a</code>. Using the <code>main.xu</code> above and that archive, emit XUOBJ, convert it with the matching SDK’s internal <code>_elf_o</code> helper, then link externally:</p>
+<pre><code class="language-shell">xu build main.xu native_add-linux.a --target linux-x64 --emit-obj -o main.xuobj
+xu _elf_o main.xuobj main.o
+cc -nostartfiles -no-pie main.o native_add-linux.a -o app
+./app</code></pre>
+<p>Xu supplies its own entry point, so this Linux link omits the C startup files. Windows and other targets need their own object conversion and linker entry-point/runtime options; the Linux command is specific to Linux x64.</p>
+
 <h2>5. Frequently Asked Questions (FAQ)</h2>
 <p><strong>Q: Can I use single-platform <code>.a</code> directly without creating a <code>.xulib</code>?</strong><br>
-A: Yes! You can point directly to <code>native_add: file:./native/native_add-arm64.a</code> in <code>xu.xun</code> or pass it on the command line: <code>xu build main.xu ./native/native_add-arm64.a</code>. Ensure the archive contains the <code>xu.o</code> metadata member produced by <code>xu native compile</code> or <code>xu native archive</code>.</p>
+A: Yes, on the supported macOS targets. You can point directly to <code>native_add: file:./native/native_add-arm64.a</code> in <code>xu.xun</code> or pass it on the command line: <code>xu build main.xu ./native/native_add-arm64.a</code>. Ensure the archive contains the <code>xu.o</code> metadata member produced by <code>xu native compile</code> or <code>xu native archive</code>.</p>
 
 <p><strong>Q: Does <code>.xulib</code> introduce any runtime overhead?</strong><br>
 A: <strong>Zero runtime overhead</strong>. <code>.xulib</code> operates purely at compile time. The selected slice is directly fed to the native platform linker, producing an identical static binary with zero runtime wrappers.</p>

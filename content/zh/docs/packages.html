@@ -1,7 +1,7 @@
 <!--title: 官方扩展包 (Packages)-->
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>官方扩展包 (Packages)</h1>
-<p class="banner">官方模块：<code>github.com/xulang-org/packages</code> · SDK 内模块版本 0.2.0 · 29 个服务集成包及共享 transport 包</p>
+<p class="banner">官方模块：<code>github.com/xulang-org/packages</code> · SDK 内模块版本 1.0.0 · 29 个服务集成包及共享 transport 包</p>
 <p>Xu {{xu_version}} SDK 包含外部驱动及原生源码资源，官网 API 从该安装包提取。驱动涵盖数据库、缓存、消息、对象存储与服务发现；协议和平台边界见各包说明。</p>
 <h2>1. 选择 SDK 内置包或固定源码提交</h2>
 <p>将项目放在解压后的 SDK 旁，通过本地来源声明内置 packages；安装位置不同时调整相对路径：</p>
@@ -12,12 +12,12 @@ require:
   "github.com/xulang-org/packages": file:../xu-v{{xu_version}}/packages</code></pre>
 <p>也可以指定该 SDK 使用的完整不可变提交来获取源码：</p>
 <pre><code class="language-xun">require:
-  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@0122e87a5f87b52d3ead9390ad01165e7d7645ad</code></pre>
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@96693e6cce8d51eba45e4f68dc12ce06f7a2336b</code></pre>
 <p>在项目目录中解析并锁定依赖，再检查和构建：</p>
 <pre><code class="language-shell">xu install
 xu check main.xu --offline
 xu build main.xu -o my_app</code></pre>
-<p>模块版本与 Git 标签分别管理：本安装包声明模块版本 0.2.0，以上固定源码地址直接选择准确提交。请将 <code>xu.lock</code> 与应用一同维护；冻结构建、vendor 和代理用法见<a href="/docs/modules">模块与依赖</a>。</p>
+<p>模块版本与 Git 标签分别管理：本安装包声明模块版本 1.0.0，以上固定源码地址直接选择准确提交。请将 <code>xu.lock</code> 与应用一同维护；冻结构建、vendor 和代理用法见<a href="/docs/modules">模块与依赖</a>。</p>
 <h2>2. 在代码中引用扩展包</h2>
 <p>Xu 对所有外部扩展包采用<strong>明确的命名空间别名机制</strong>，语法格式为：<code>别名 #完整包路径</code>。这不仅避免了全局命名污染，也保证了所有代码依赖关系透明可见。</p>
 
@@ -25,7 +25,6 @@ xu build main.xu -o my_app</code></pre>
 
 // 1. 标准库无需别名，以 # 开头
 #database/sql
-#fmt
 
 // 2. 外部 packages 扩展包声明别名与完整路径（别名即代码中的调用命名空间）
 mysql    #github.com/xulang-org/packages/mysql
@@ -34,62 +33,59 @@ postgres #github.com/xulang-org/packages/postgres
 
 fn main() int {
     // 使用别名进行调用
-    fmt.println("Drivers loaded successfully")
+    println("Drivers loaded successfully")
     << 0
 }</code></pre>
 
-<p class="note"><strong>注意：</strong>不能写 <code>#mysql</code> 或 <code>#redis</code>。<code>#</code> 仅用于官方标准库；所有外部扩展包均属于 <code>github.com/xulang-org/packages</code> 根模块，必须带有完整的仓库命名空间。</p>
+<p class="note"><strong>注意：</strong>不能写 <code>#mysql</code> 或 <code>#redis</code>。外部模块必须使用显式别名与完整模块路径。标准库与本地包（如 <code>#util</code>）各有解析规则。本文所列集成包属于 <code>github.com/xulang-org/packages</code>，其他外部模块使用各自的模块标识。</p>
 
 <h2>3. 快速上手实战示例</h2>
 
 <h3>实战 1：配合 <code>database/sql</code> 使用 MySQL 驱动</h3>
 <p>标准库 <code>database/sql</code> 提供连接池、事务与结果集抽象，具体的驱动实现由 packages 的 <code>mysql</code> 包提供：</p>
-<pre><code>@main
+<pre><code class="language-xu">@main
 #database/sql
-#fmt
 mysql #github.com/xulang-org/packages/mysql
 
 fn main() int {
     dsn := "root:123456@tcp(127.0.0.1:3306)/test_db?tls=false"
     mut db := sql.open(mysql.driver(), dsn)
     db.ping() or (err) {
-        fmt.println("Database ping failed:", err.msg())
+        println("Database ping failed: " + err.msg())
         << 1
     }
-    fmt.println("Connected to MySQL successfully!")
+    println("Connected to MySQL successfully!")
     db.close() or (err) { << 1 }
     << 0
 }</code></pre>
 
 <h3>实战 2：连接与操作 Redis 缓存</h3>
-<pre><code>@main
-#fmt
+<pre><code class="language-xu">@main
 redis #github.com/xulang-org/packages/redis
 
 fn main() int {
-    mut client := redis.connect("127.0.0.1:6379") or (err) {
-        fmt.println("Redis connect error:", err.msg())
+    mut client := redis.open("127.0.0.1:6379") or (err) {
+        println("Redis connect error: " + err.msg())
         << 1
     }
-    client.set("app_version", "v0.8.12") or (err) { << 1 }
+    client.set("app_version", "demo") or (err) { << 1 }
     val := client.get("app_version") or (err) { << 1 }
-    fmt.println("Key 'app_version':", val)
+    println("Key 'app_version': " + val)
     client.close()
     << 0
 }</code></pre>
 
 <h3>实战 3：使用 S3 / MinIO 进行对象存储</h3>
-<pre><code>@main
-#fmt
+<pre><code class="language-xu">@main
 s3 #github.com/xulang-org/packages/s3
 
 fn main() int {
-    mut client := s3.new("endpoint.example.com", "access_key", "secret_key", "my-bucket")
-    client.put_object("welcome.txt", "Hello from Xu!") or (err) {
-        fmt.println("S3 upload failed:", err.msg())
+    mut client := s3.open("http://127.0.0.1:9000", "access_key", "secret_key", "us-east-1")
+    client.put_object("my-bucket", "welcome.txt", "Hello from Xu!", "text/plain") or (err) {
+        println("S3 upload failed: " + err.msg())
         << 1
     }
-    fmt.println("Object uploaded successfully")
+    println("Object uploaded successfully")
     << 0
 }</code></pre>
 
@@ -150,7 +146,7 @@ fn main() int {
 <p>更多模块图解析细节与原生模块规范，请参考：<a href="/docs/modules">模块与依赖规范 (Modules &amp; Dependencies)</a> 与 <a href="/docs/native">原生模块与 .xulib 规范</a>。</p>
 
 <h2 id="sqlite-native">构建 SQLite 原生桥接</h2>
-<p>SQLite 示例须先从内置 C 源码构建原生桥接。以下命令已在 macOS ARM64 验证，请在 SDK 的 packages 目录执行，并安装匹配的 C 工具链。其他目标需要对应工具链与目标切片。</p>
+<p>SQLite 示例须先从内置 C 源码构建原生桥接。以下命令面向 macOS ARM64，请在 SDK 的 packages 目录执行，并安装匹配的 C 工具链。完整的一步构建与运行路径支持 <code>macos-arm64</code> 和 <code>macos-x64</code>。其他目标须准备对应工具链和切片，输出并转换 XUOBJ 后外部链接；详见<a href="/docs/native">原生模块</a>。</p>
 <pre><code class="language-shell">cd xu-v{{xu_version}}/packages
 xu native compile --manifest sqlite/native/native.json --target macos-arm64 -O2 -DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 sqlite/native/bridge.c sqlite/vendor/sqlite3.c -o sqlite/native/sqlite-macos-arm64.a
 xu native pack --manifest sqlite/native/native.json --slice macos-arm64=sqlite/native/sqlite-macos-arm64.a -o sqlite/native/sqlite.xulib</code></pre>

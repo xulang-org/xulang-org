@@ -108,7 +108,7 @@ Read the [contribution guide](CONTRIBUTING.md) and [shared repository rules](.gi
 <details>
 <summary><strong>Working on xulang.org</strong> — website build, playground, and deployment</summary>
 
-This profile repository also contains the source for the official website. The site selects the published **XU 0.10.2 SDK**; development builds remain separate.
+This profile repository also contains the source for the official website. The site selects the published **XU SDK** identified by `VERSION`; development builds remain separate.
 
 ### Local build
 
@@ -137,12 +137,14 @@ Generated output goes to the ignored `dist/` and `build/` directories. Content f
 
 ### API content and examples
 
+LLM guides use `templates/llms/*.md`, shared site examples, `VERSION`, and `www/benchmarks.json`. The static build renders them with the selected SDK identity; run `python3 scripts/gen_llms.py` to refresh the checked-in `www/llms*.txt` copies.
+
 Curated prose lives in `templates/api-guides/{en,zh}/`. API generation combines it with declarations from the selected SDK. Examples are imported from the official examples repository at an immutable commit; bundled snapshots in `www/api-examples/` preserve independent local and CI builds.
 
 To refresh declarations and examples, select compatible sources in `templates/api-examples.json`, check them with the selected SDK, and supply the examples checkout and its full commit SHA:
 
 ```sh
-make api XU_ROOT=/path/to/xu-v0.10.2 XU_PACKAGES_ROOT=/path/to/xu-v0.10.2/packages \
+make api XU_ROOT=/path/to/selected-sdk XU_PACKAGES_ROOT=/path/to/selected-sdk/packages \
   XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
 ```
 
@@ -178,7 +180,7 @@ Import verifies compiler identities, source closure, fixed point, workload compl
 
 ### UI API and examples
 
-The [UI guide](content/en/docs/ui.html) and [Chinese guide](content/zh/docs/ui.html) document the official Xu 0.10.2 SDK. All five packages — `ui`, `ui/draw`, `ui/layout`, `ui/widgets` and `ui/webview` — appear in the released API navigation. Former UI preview URLs redirect to the corresponding released pages while preserving declaration anchors.
+The [UI guide](content/en/docs/ui.html) and [Chinese guide](content/zh/docs/ui.html) document the official Xu SDK selected in `VERSION`. All five packages — `ui`, `ui/draw`, `ui/layout`, `ui/widgets` and `ui/webview` — appear in the released API navigation. Former UI preview URLs redirect to the corresponding released pages while preserving declaration anchors.
 
 Handwritten release guides live in `templates/api-guides/{en,zh}/ui*`; semantic contracts and field descriptions live in `templates/api-contracts.json`. Run `make api` with the selected release SDK to regenerate declarations. The curated source catalog includes drawing, layout, editors, desktop services, windows, WebView requests, styles and the extended controls gallery. Each example links to its immutable complete project and a checksum-verified source download.
 

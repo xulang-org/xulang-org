@@ -11,6 +11,7 @@
 <tbody>
 <tr><td><code>build</code></td><td><code>xu build [options] &lt;input.xu...&gt; [native.a/.xulib...]</code></td><td>AOT 编译为原生机器码可执行文件、中间对象文件或跨平台桌面应用</td></tr>
 <tr><td><code>run</code></td><td><code>xu run [options] &lt;input.xu...&gt; [-- args]</code></td><td>编译并立即在宿主平台运行；默认自动清理临时产物，指定 <code>-o</code> 可持久化保留</td></tr>
+<tr><td><code>debug</code></td><td><code>xu debug [options] &lt;input.xu...&gt; [-- args]</code></td><td>构建带 DWARF 的程序并启动 LLDB，找不到 LLDB 时尝试 GDB；需安装调试器。这是源码调试，<code>xu xacp debug</code> 仅发现并启动程序。</td></tr>
 <tr><td><code>test</code></td><td><code>xu test [options] &lt;file.xu...&gt;</code></td><td>构建测试脚手架并批量执行 <code>fn test_*</code> 单元测试用例与 <code>fn bench_*</code> 基准测试</td></tr>
 <tr><td><code>check</code></td><td><code>xu check [options] &lt;file.xu...&gt;</code></td><td>执行词法、语法解析与类型/所有权借用检查，不发射目标机器码</td></tr>
 <tr><td><code>parse</code></td><td><code>xu parse [options] &lt;file.xu...&gt;</code></td><td>词法与语法解析，输出源码 AST 行、函数与声明统计信息</td></tr>
@@ -66,7 +67,7 @@
 <tr><td><code>-o, --output &lt;path&gt;</code></td><td>指定输出文件路径。Windows 平台自动附加 <code>.exe</code> 扩展名。</td></tr>
 <tr><td><code>--no-opt</code></td><td>关闭全部 MIR 优化与默认寄存器分配（禁用函数内联与激进折减），极速构建。</td></tr>
 <tr><td><code>--debug-build</code></td><td>无优化构建，同时生成标准 DWARF 行号表与调试信息。</td></tr>
-<tr><td><code>--debug</code></td><td>在保留高优化（O2 级别）的前提下生成 DWARF 行号表。</td></tr>
+<tr><td><code>--debug</code></td><td>生成 DWARF 行号表，保留当前选择的优化策略。默认优化等级为 1；等级 2 须显式指定 <code>-O2</code>。</td></tr>
 <tr><td><code>--timings</code></td><td>在标准错误 stderr 输出解析、MIR 优化、寄存器分配与代码生成的阶段耗时，以及 <code>pattern-hits:</code> 模式命中统计和每个函数的寄存器分配模式。</td></tr>
 <tr><td><code>--offline</code></td><td>离线构建模式：仅从本地 <code>vendor/</code> 或缓存目录读取依赖，绝不触发网络请求。</td></tr>
 <tr><td><code>--frozen</code></td><td>冻结构建模式：离线且严格匹配现有的 <code>xu.lock</code>；若依赖缺失或摘要不符则强制失败。</td></tr>
@@ -112,7 +113,7 @@ XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
 <p>PowerShell 中先设置变量，例如 <code>$env:XU_VERIFY = '1'</code>，再运行相同的 <code>xu build</code> 命令；诊断完成后用 <code>Remove-Item Env:XU_VERIFY</code> 清除。</p>
 
 <h2 id="xacp">XACP 控制通道（<code>xu xacp</code> / <code>xu-xacp</code>）</h2>
-<p>依据语言仓库 0.10.10-dev.1（<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>）编写。<code>xu xacp</code> 执行伴生二进制 <code>xu-xacp</code>（工具模块 0.1.1）。源码树用 <code>make xu-xacp</code> 构建该二进制。已发布的 {{xu_version}} 下载包是另一份快照。安全核心是 <a href="/api/xacp"><code>#xacp</code></a>。导入该包不会嵌入发现信息或控制循环。可运行样例在语言仓库的 <a href="https://github.com/xulang-org/xu/blob/cursor/xacp-usability-smoke/examples/xacp/README.md"><code>examples/xacp</code></a>。<code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> 是较早的说明，其中「本阶段不做 TCP」已被后续实现取代。</p>
+<p>依据语言仓库 0.10.10-dev.1（<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>）编写。<code>xu xacp</code> 执行伴生二进制 <code>xu-xacp</code>（工具模块 0.1.1）。源码树用 <code>make xu-xacp</code> 构建该二进制。已发布的 {{xu_version}} 下载包是另一份快照。安全核心是 <a href="/api/xacp"><code>#xacp</code></a>。导入该包不会嵌入发现信息或控制循环。可运行样例在语言仓库的 <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md"><code>examples/xacp</code></a>。<code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> 是较早的说明，其中「本阶段不做 TCP」已被后续实现取代。</p>
 <p><code>xu --help</code> 把该工具概括为 “inspect, run, and debug”。<code>xu xacp --help</code> 才是完整模式：<code>inspect</code>、<code>run</code>、<code>debug</code>、<code>record</code>、<code>control</code>，以及 <code>connect PORT</code>。</p>
 
 <h3>构建与发现</h3>
@@ -147,13 +148,19 @@ xu xacp connect 4321 &lt; control.xun</code></pre>
 <p>合法 hello 之后，<code>proc.status</code> 返回真实 pid。<code>proc.output</code> 以及 <code>ui.tree</code>、<code>ui.screenshot</code>、<code>ui.input</code>、<code>ui.act</code>、<code>ui.record</code> 会先校验，在程序注册 Screen 或输出适配器之前返回 <code>not_implemented</code>。目标持续无输出或不退出时，宿主没有超时。</p>
 
 <h2>2. 自动化测试 (test)</h2>
-<p><code>xu test</code> 自动识别并编译测试用例。任何包含 <code>fn test_*</code> 的源文件（或 <code>test.*.xu</code>）均可被直接执行：</p>
+<p><code>xu test</code> 自动识别并编译测试用例。测试和基准函数必须位于 <code>test.&lt;name&gt;.xu</code> 文件中，属于 <code>@main</code> 包，且不带参数和返回类型。普通源文件不能声明 <code>fn test_*</code> 或 <code>fn bench_*</code>。将以下示例保存为 <code>test.example.xu</code>：</p>
+<pre><code class="language-xu">@main
+
+fn test_add() {
+    assert(1 + 1 == 2)
+}</code></pre>
+<pre><code class="language-shell">xu test test.example.xu -v</code></pre>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>测试选项</th><th>说明</th></tr></thead>
 <tbody>
 <tr><td><code>-run &lt;REGEXP&gt;</code></td><td>正则过滤：仅运行函数名匹配该正则表达式的测试用例。</td></tr>
 <tr><td><code>-v</code></td><td>详细模式：打印每个独立用例的执行状态（<code>PASS</code>/<code>FAIL</code>）与物理耗时。</td></tr>
-<tr><td><code>-count &lt;N&gt;</code></td><td>重复执行测试套件 N 次（最大支持 100 次，用于复现偶发并发问题）。</td></tr>
+<tr><td><code>-count &lt;N&gt;</code></td><td>重复执行测试套件 N 次（当前解析器接受 1–1000；CLI 帮助仍写 1–100）。</td></tr>
 <tr><td><code>-failfast</code></td><td>一旦发生第一个断言失败立即停止后续测试。</td></tr>
 <tr><td><code>-list</code></td><td>列出所有符合匹配规则的用例名称并正常退出，不实际执行测试。</td></tr>
 <tr><td><code>-short</code></td><td>快速测试模式：在代码中 <code>testing.short()</code> 将判定为 true，用例可主动跳过耗时场景。</td></tr>
@@ -189,9 +196,10 @@ xu init myapp</code></pre>
 
 <h3><code>xu get &lt;module&gt;@&lt;version&gt;</code> (0.8.12 核心新增)</h3>
 <p>在当前项目根目录下显式添加或更新单个依赖模块：</p>
-<pre><code>xu get github.com/xulang-org/packages@v0.1.1</code></pre>
+<pre><code>xu get &lt;module&gt;@&lt;version&gt;</code></pre>
+<p>上述命令为语法模板，请将占位符替换为真实模块及其发布标签。本站官方扩展包请使用<a href="/docs/packages">SDK 内置包或对应固定源码提交</a>，再执行 <code>xu install</code>。</p>
 <ul>
-  <li><strong>显式版本约束</strong>：必须提供精确的 SemVer 版本（如 <code>@v0.1.1</code>）；拒绝使用 <code>@latest</code> 或通配符，从根源确保构建绝对确定性。</li>
+  <li><strong>显式版本约束</strong>：必须提供精确的 SemVer 版本（选择的模块已发布且确认存在的标签）；拒绝使用 <code>@latest</code> 或通配符，从根源确保构建绝对确定性。</li>
   <li><strong>事务原子保障</strong>：自动解析依赖图、下载源码到本地 <code>vendor/</code>、校验 SHA-256 完整性并更新 <code>xu.xun</code> 和 <code>xu.lock</code>。若过程中断或网络失败，<strong>自动原子回滚</strong>，不破坏现有工程。</li>
   <li><strong>离线更新</strong>：支持 <code>xu get &lt;module&gt;@&lt;version&gt; --offline</code>，仅使用本地已有的包缓存完成添加。</li>
 </ul>

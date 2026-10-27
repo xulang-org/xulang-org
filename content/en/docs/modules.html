@@ -6,28 +6,21 @@
 <p>A directory-based project uses <code>xu.xun</code> in the root directory as its module manifest. In this file: <code>module:</code> declares the module's identity and namespace, <code>version:</code> defines its project version, and <code>xu:</code> declares the targeted Xu compiler version. External imports require an explicit alias and a corresponding root module under <code>require:</code>.</p>
 
 <h2>1. Declare &amp; Install Dependencies (<code>xu get</code> / <code>xu install</code>)</h2>
-<p>Adding external dependencies to your project is straightforward. Standard projects should reference official SemVer releases without manual clones or manual compiler flags:</p>
-
-<h3>Method A: Use <code>xu get</code> for Instant Addition (Recommended)</h3>
-<p>Run a single command in your terminal. The compiler automatically edits <code>xu.xun</code>, downloads sources into <code>vendor/</code>, and creates or updates <code>xu.lock</code>:</p>
-
-<pre><code class="language-shell"># Fetch a specific SemVer release of the official packages monorepo
-xu get github.com/xulang-org/packages@v0.1.1</code></pre>
-
-<h3>Method B: Declare in <code>xu.xun</code> &amp; Run <code>xu install</code></h3>
-<p>Alternatively, edit <code>xu.xun</code> directly in the project root directory:</p>
-
+<p>For the API documented on this site, use the packages bundled with the selected SDK or the matching immutable source commit. A module version in <code>xu.xun</code> does not imply that a Git tag with that version exists.</p>
+<h3>Method A: Use the SDK bundle</h3>
+<p>With your project beside the extracted SDK, add this to <code>xu.xun</code>. Adjust the local path for your installation:</p>
 <pre><code class="language-xun">module: app
 version: !ver 0.1.0
 xu: !ver {{xu_version}}
-
 require:
-  "github.com/xulang-org/packages": v0.1.1</code></pre>
-
-<p>Then run <code>xu install</code> in your project root to resolve and download dependencies:</p>
-
-<pre><code class="language-shell"># Resolve dependency graph, write vendor/ directory, and generate xu.lock
-xu install</code></pre>
+  "github.com/xulang-org/packages": file:../xu-v{{xu_version}}/packages</code></pre>
+<h3>Method B: Fetch the matching source commit</h3>
+<p>Replace the local locator above with this SDK source snapshot:</p>
+<pre><code class="language-xun">require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@96693e6cce8d51eba45e4f68dc12ce06f7a2336b</code></pre>
+<p>Then run from your project directory:</p>
+<pre><code class="language-shell">xu install</code></pre>
+<p>For modules with a verified published SemVer tag, <code>xu get &lt;module&gt;@&lt;version&gt;</code> adds or updates the dependency, installs sources, and updates <code>xu.lock</code>. Replace both placeholders with that module's actual identity and release tag. See <a href="/docs/packages">official packages</a> for SDK compatibility and native bridge preparation.</p>
 
 <h3>Importing Packages in Source Code with Explicit Aliases</h3>
 <p>Import sub-packages in your <code>.xu</code> source files using explicit namespace aliases:</p>
