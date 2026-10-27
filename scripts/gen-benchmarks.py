@@ -897,7 +897,7 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
     <div class="bench-radar-cards">
       <div class="bench-radar-scorecard">
         <div class="bench-radar-scorecard-header">
-          <span style="color: #0ea5e9;">🔵 C (Clang / GCC -O3)</span>
+          <span style="color: #0ea5e9;">🔵 C (Clang)</span>
           <span class="bench-radar-tag" style="color: #0ea5e9; border-color: rgba(14, 165, 233, 0.35); background: rgba(14, 165, 233, 0.08);">
             {'Direct Hardware Mapping · Zero Runtime' if en else '直接硬件映射 · 零语言运行时'}
           </span>
@@ -909,7 +909,7 @@ def render_radar_overview_section(platforms: dict, en: bool) -> str:
 
       <div class="bench-radar-scorecard">
         <div class="bench-radar-scorecard-header">
-          <span style="color: #f97316;">🟠 Rust (rustc -O3)</span>
+          <span style="color: #f97316;">🟠 Rust (rustc)</span>
           <span class="bench-radar-tag" style="color: #f97316; border-color: rgba(249, 115, 22, 0.35); background: rgba(249, 115, 22, 0.08);">
             {'Ownership Model · Zero-Cost Abstractions' if en else '所有权模型 · 零成本抽象'}
           </span>
