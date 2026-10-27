@@ -1,0 +1,97 @@
+<p class="lead"><code>#xacp</code> 是与传输无关的安全核心：帧上限、XUN 校验、权限和会话生命周期。导入它不会打开控制通道。stdio 与本机回环 TCP 是运行时钩子，只有 <code>xu build --xacp</code> 或 <code>--xacp-port</code> 才会插入。</p>
+<p><a href="/docs/cli#xacp">命令行：<code>xu xacp</code></a> · <a href="/docs/faq">常见问题</a> · <a href="https://github.com/xulang-org/xu/blob/cursor/xacp-usability-smoke/examples/xacp/README.md">可运行样例</a></p>
+
+<h2>会话</h2>
+<p><code>open_session()</code> 返回 <code>STATE_NEW</code>（<code>0</code>）会话，权限为 <code>PERM_NONE</code>，代数为 <code>1</code>，下一个请求 id 为 <code>1</code>。<code>close_session</code> 将其改为 <code>STATE_CLOSED</code>（<code>2</code>），增加代数，清掉活动请求并收回权限。<code>STATE_OPEN</code> 为 <code>1</code>。</p>
+<p>同一时刻只能有一个活动请求。<code>begin_request</code> 只接受正数且等于 <code>next_id</code> 的 id，然后预约它。<code>finish_request</code> 释放该 id。完成 id <code>1</code> 时，会话从 <code>STATE_NEW</code> 进入 <code>STATE_OPEN</code>。id 或代数不匹配返回 <code>stale_request</code>。已有活动请求时再次 begin 返回 <code>request_in_flight</code>。已关闭会话返回 <code>session_closed</code>。</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>函数</th><th>作用</th></tr></thead>
+<tbody>
+<tr><td><code>open_session() Session</code></td><td>新建无权限会话。</td></tr>
+<tr><td><code>close_session(s &amp;mut Session)</code></td><td>关闭并清空权限。</td></tr>
+<tr><td><code>cancel_request(s &amp;mut Session)</code></td><td>丢弃活动请求，不把会话打开。</td></tr>
+<tr><td><code>begin_request(s &amp;mut Session, r &amp;Request) Outcome</code></td><td>在 <code>authorized</code> 允许时预约下一个单调 id。</td></tr>
+<tr><td><code>finish_request(s &amp;mut Session, id int) Outcome</code></td><td>释放活动 id。id <code>1</code> 会打开会话。</td></tr>
+<tr><td><code>authorized(s &amp;mut Session, r &amp;Request) bool</code></td><td><code>xacp.hello</code> 仅在 <code>STATE_NEW</code>。其后的操作需要对应权限位。</td></tr>
+<tr><td><code>dispatch(s &amp;mut Session, d &amp;xun.Doc, l &amp;Limits) Outcome</code></td><td>只做核心生命周期。完成 <code>xacp.hello</code>，不授予 development 权限。其他已知操作在 begin 成功后返回 <code>not_implemented</code>；未授权时返回 <code>permission_denied</code>。</td></tr>
+</tbody></table></div>
+
+<h2>Hello 与权限</h2>
+<p>权限变更是宿主策略。<code>set_permissions</code> 只在会话仍为 <code>STATE_NEW</code> 时成功，并且只接受 <code>0..15</code> 内的位。未知位会被拒绝。请求一旦 finish，权限不再改变。</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>常量</th><th>值</th><th>操作</th></tr></thead>
+<tbody>
+<tr><td><code>PERM_NONE</code></td><td><code>0</code></td><td><code>xacp.hello</code>，且仅来自 <code>STATE_NEW</code></td></tr>
+<tr><td><code>PERM_INFO</code></td><td><code>1</code></td><td><code>proc.status</code></td></tr>
+<tr><td><code>PERM_PROCESS</code></td><td><code>2</code></td><td><code>proc.output</code></td></tr>
+<tr><td><code>PERM_UI_READ</code></td><td><code>4</code></td><td><code>ui.tree</code>、<code>ui.screenshot</code>、<code>ui.record</code></td></tr>
+<tr><td><code>PERM_UI_MUTATE</code></td><td><code>8</code></td><td><code>ui.input</code>、<code>ui.act</code></td></tr>
+<tr><td><code>PERM_ALL</code></td><td><code>15</code></td><td><code>development_permissions()</code> 与 <code>enable_development()</code></td></tr>
+</tbody></table></div>
+<p><code>enable_development(s)</code> 即 <code>set_permissions(s, PERM_ALL)</code>。它不会关闭 schema 校验、会话生命周期、原生资源释放或内存上限。hello 已经结束后再调用会返回 false，因为会话已经是 <code>STATE_OPEN</code>。启动期的 stdio 与 TCP 适配器在合法 hello 已经 begin、尚未 <code>finish_request</code> 时调用它，此时状态仍是 <code>STATE_NEW</code>。这条路径才会回答 <code>permissions: development</code>。库函数 <code>dispatch</code> 不会。</p>
+<p>hello 的 schema 接受可选的非空 <code>token</code> 字符串。启动适配器不把该字段当作访问口令。</p>
+
+<h2>帧与上限</h2>
+<p><code>parse_frame</code> 接受以 <code>--- !xacp</code> 加换行开头、以换行加 <code>===</code> 结尾的文档。空正文、尾随数据和超过 <code>MAX_FRAME_BYTES</code> 的帧都会被拒绝。正文是 XUN。<code>validate_request</code> 要求根字典恰好包含 <code>id</code>、<code>op</code>、<code>args</code>。<code>id</code> 为 <code>!i</code> 且必须为正。hello 的 <code>ver</code> 必须是 <code>!ver 1.0.0</code>。</p>
+<p><code>default_limits()</code> 使用下列硬上限。自定义 <code>Limits</code> 只能更小。</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>常量</th><th>值</th></tr></thead>
+<tbody>
+<tr><td><code>MAX_FRAME_BYTES</code></td><td><code>1048576</code>（1 MiB）</td></tr>
+<tr><td><code>MAX_STRING_BYTES</code></td><td><code>65536</code></td></tr>
+<tr><td><code>MAX_FIELDS</code></td><td><code>64</code></td></tr>
+<tr><td><code>MAX_TABLE_ROWS</code></td><td><code>10000</code></td></tr>
+<tr><td><code>MAX_NODE_ID</code></td><td><code>16777215</code></td></tr>
+</tbody></table></div>
+<p><code>consume_input</code> 与 <code>consume_output</code> 会拒绝负数、单次超过帧上限、或使会话累计超过帧上限的计数。启动期读取器自己执行逐帧上限：超限返回 <code>frame_too_large</code> 并关闭该会话。EOF 时的半帧返回 <code>truncated_frame</code>。完整 EOF 关闭会话。非法帧和 schema 失败的请求 id 为 <code>0</code>，代码为 <code>frame_error</code> 或 <code>schema_error</code>。</p>
+<p>启动期响应沿用同一帧壳。形状是 <code>id</code>、<code>ok</code>，以及 <code>data</code> 或 <code>error.code</code>：</p>
+<pre><code>--- !xacp
+id: !i 1
+op: xacp.hello
+args:
+  ver: !ver 1.0.0
+===
+--- !xacp
+id: !i 1
+ok: !b true
+data:
+  state: OPEN
+  permissions: development
+===</code></pre>
+
+<h2>已知操作</h2>
+<p>schema 只允许下列操作。其余都是未知操作。</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>操作</th><th>权限</th><th>启动期控制通道</th></tr></thead>
+<tbody>
+<tr><td><code>xacp.hello</code></td><td><code>PERM_NONE</code>，且仅 <code>STATE_NEW</code></td><td>校验通过后，在 finish 之前调用 <code>enable_development()</code>。数据为 <code>state: OPEN</code> 与 <code>permissions: development</code>。</td></tr>
+<tr><td><code>proc.status</code></td><td><code>PERM_INFO</code></td><td><code>args</code> 必须为空。返回真实的 <code>os.getpid()</code> 与 <code>state: OPEN</code>。</td></tr>
+<tr><td><code>proc.output</code></td><td><code>PERM_PROCESS</code></td><td>做 schema 校验（<code>stream</code> 为 <code>stdout</code> 或 <code>stderr</code>）。没有输出适配器时返回 <code>not_implemented</code>。</td></tr>
+<tr><td><code>ui.tree</code></td><td><code>PERM_UI_READ</code></td><td>做 schema 校验。没有 <code>Screen</code> 适配器时返回 <code>not_implemented</code>。</td></tr>
+<tr><td><code>ui.screenshot</code></td><td><code>PERM_UI_READ</code></td><td>同上。这条通道不返回真实像素。</td></tr>
+<tr><td><code>ui.input</code></td><td><code>PERM_UI_MUTATE</code></td><td>同上，包括步进校验之后。</td></tr>
+<tr><td><code>ui.act</code></td><td><code>PERM_UI_MUTATE</code></td><td>同上。schema 允许的动作名是 <code>focus</code>、<code>click</code>、<code>set_text</code>、<code>set_checked</code>。</td></tr>
+<tr><td><code>ui.record</code></td><td><code>PERM_UI_READ</code></td><td>同上。schema 模式为 <code>events</code> 与 <code>frames</code>。这不是启动器的 stdout <code>record</code> 模式。</td></tr>
+</tbody></table></div>
+<p>在启动通道上，<code>not_implemented</code> 发生在 <code>begin_request</code> 之后，因此该 id 已被消耗，下一帧必须使用随后的 id。<code>permission_denied</code> 在 id 前进之前返回。</p>
+<p>本阶段没有事件推送。宿主如果持有真实的 <code>ui/widgets.Screen</code>，可以调用带类型的入口（<code>ui_tree</code>、<code>ui_screenshot</code>、<code>ui_screenshot_node</code>、<code>ui_input</code>、<code>ui_input_request</code>、<code>ui_act</code>、<code>start_recorder</code>、<code>finish_recorder</code>、<code>abort_recorder</code>、<code>dispatch_screen</code>）。这些调用仍要求会话拥有对应权限位，并在进入 widget 之前检查窗口 id、节点 id、缩放（<code>0.1</code> 到 <code>4.0</code>）、文本长度以及行数或事件预算。截图返回拥有所有权的 <code>draw.Surface</code>，调用方负责 dispose。<code>dispatch_screen</code> 对 <code>ui.record</code> 返回 <code>stream_required</code>，并指向 <code>start_recorder</code>。启动适配器没有注册 Screen，因此 <code>--xacp-stdio</code> 与 <code>--xacp-tcp</code> 目前都不会产出这些数据。</p>
+
+<h2>传输钩子</h2>
+<p><code>src/xacp/stdio.xu</code> 位于同一个包。<code>--xacp</code> 构建会在 <code>main</code> 开头插入 <code>stdio_preflight(port)</code>。那才是控制入口。普通 <code>#xacp</code> 导入不会发出这段启动代码。</p>
+<ul>
+  <li><code>stdio_preflight(port)</code> 扫描参数直到 <code>--</code>。先遇到的 <code>--xacp-tcp</code> 或 <code>--xacp-stdio</code> 生效，并在不运行 <code>main</code> 其余部分的情况下退出。其他启动方式直接返回，业务 <code>main</code> 照常运行。它们不监听，也不读取控制 stdin。</li>
+  <li><code>serve_stdio()</code> 读写进程的标准流。帧为 <code>--- !xacp</code> … <code>===</code> 再加换行。会话独占标准流。EOF 结束进程。</li>
+  <li><code>serve_tcp(port)</code> 只在 <code>127.0.0.1:port</code> 监听。构建端口必须是 <code>1..65535</code>；端口 <code>0</code> 关闭 TCP，此时该函数失败。每个已接受的连接有自己的会话。连接按顺序处理。失败的对端只结束自己的会话，监听继续接受后续连接。没有 TLS，也不能绑定其他地址。</li>
+</ul>
+<p><code>--xacp-help</code> 是单独的启动期打印，不是控制会话。它的 <code>capabilities</code> 行是 <code>stdio</code>。构建端口为 <code>0</code> 时还会打印 <code>tcp: disabled (port 0)</code>。正端口会打印 <code>tcp: enabled</code> 和 <code>bind: 127.0.0.1:PORT</code>。启动器模式见<a href="/docs/cli#xacp">命令行参考</a>。</p>
+
+<h2>尚未覆盖</h2>
+<ul>
+  <li>没有 TLS。</li>
+  <li>不能绑定 <code>127.0.0.1</code> 以外的地址。</li>
+  <li>启动通道上还没有真实的 UI <code>Screen</code> 适配器。<code>proc.output</code> 与各项 UI 操作会先校验，再返回 <code>not_implemented</code>。</li>
+  <li>目标持续无输出或不退出时，宿主没有超时或强制终止。调用方需要自行设置进程超时。</li>
+  <li>生成器只接受 hosted native 可执行程序。库、共享对象、测试脚手架、嵌入式目标以及 <code>--desktop</code> 都会被拒绝。</li>
+  <li>启动器的 <code>record</code> 在 Windows 上仍不可用。该模式录制的是 stdout，不是 <code>ui.record</code>。</li>
+</ul>
+<p class="note"><code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> 是较早的说明。其中「本阶段不做 TCP」已被后续实现取代。当前行为以 <a href="https://github.com/xulang-org/xu/blob/cursor/xacp-usability-smoke/examples/xacp/README.md"><code>examples/xacp/README.md</code></a> 和上述源码为准。独立的 <code>xulang-org/examples</code> 仓库尚未收录该样例。</p>

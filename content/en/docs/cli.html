@@ -22,6 +22,7 @@
 <tr><td><code>map</code></td><td><code>xu map [options] [path...]</code></td><td>Analyze code control flows and call graphs to emit Mermaid flowcharts or raw canvas lines</td></tr>
 <tr><td><code>doctor</code></td><td><code>xu doctor [options]</code></td><td>Verify host toolchain health, native linkers, C headers, and desktop packaging prerequisites</td></tr>
 <tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>Native C module compilation, <code>xu.o</code> metadata injection, <code>.xulib</code> multi-target packaging &amp; inspection</td></tr>
+<tr><td><code>xacp</code></td><td><code>xu xacp &lt;inspect|run|debug|record|control|connect&gt; ...</code></td><td>Launcher for an XACP-enabled hosted native program. Runs the sibling <code>xu-xacp</code> tool. See <a href="#xacp">XACP control</a>.</td></tr>
 <tr><td><code>setup</code></td><td><code>xu setup [options]</code></td><td>Launch the native GUI installer wizard or run silent global environment configuration</td></tr>
 <tr><td><code>lsp</code></td><td><code>xu lsp [options]</code></td><td>Start Language Server Protocol (JSON-RPC 2.0) daemon for VS Code, Cursor, Neovim, etc.</td></tr>
 <tr><td><code>up / update</code></td><td><code>xu update [options]</code> (or <code>xu up</code>)</td><td>Check and download official GitHub releases to atomically update the local compiler and standard library</td></tr>
@@ -69,7 +70,9 @@
 <tr><td><code>--timings</code></td><td>Print phase timings across parsing, MIR optimization, register allocation, and codegen to stderr, plus <code>pattern-hits:</code> counters and each function's register-allocation mode.</td></tr>
 <tr><td><code>--offline</code></td><td>Offline build: strictly resolves dependencies from local <code>vendor/</code> or cache without network requests.</td></tr>
 <tr><td><code>--frozen</code></td><td>Frozen build: offline and requires exact matches with <code>xu.lock</code>; rejects any missing dependencies.</td></tr>
-<tr><td><code>--desktop</code></td><td>Desktop packaging mode: invokes <code>xu-desktop</code> to produce macOS <code>.app</code>, Windows <code>.exe</code>, or Linux ELF bundles.</td></tr>
+<tr><td><code>--xacp</code></td><td>Embed XACP startup discovery and the stdio control hook. <code>./app --xacp-help</code> prints the machine-readable summary (<code>capabilities: stdio</code>). Hosted native executables only.</td></tr>
+<tr><td><code>--xacp-port &lt;PORT&gt;</code></td><td>Also enables XACP. <code>PORT</code> is an integer from 0 through 65535 (<code>--xacp-port=PORT</code> is accepted). <code>0</code> disables TCP. A positive port is what <code>&lt;app&gt; --xacp-tcp</code> binds on <code>127.0.0.1</code>.</td></tr>
+<tr><td><code>--desktop</code></td><td>Desktop packaging mode: invokes <code>xu-desktop</code> to produce macOS <code>.app</code>, Windows <code>.exe</code>, or Linux ELF bundles. Not combinable with <code>--xacp</code>.</td></tr>
 <tr><td><code>--www &lt;dir&gt;</code></td><td>Desktop packaging: specify an alternate static web asset directory to embed (overrides <code>www/</code>).</td></tr>
 <tr><td><code>--emit-obj</code></td><td>Emit native <code>XUOBJ</code> object files for external system linkers instead of final executables.</td></tr>
 <tr><td><code>--cover</code></td><td>Instrument basic blocks with execution coverage counters.</td></tr>
@@ -107,6 +110,41 @@ XU_DUMP_MIR=main xu build main.xu -o myapp
 # Build a reference executable with backend patterns disabled
 XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
 <p>In PowerShell, set the variable first, for example <code>$env:XU_VERIFY = '1'</code>, then run the same <code>xu build</code> command. Clear it afterward with <code>Remove-Item Env:XU_VERIFY</code>.</p>
+
+<h2 id="xacp">XACP control (<code>xu xacp</code> / <code>xu-xacp</code>)</h2>
+<p>Documented from the language repository at 0.10.10-dev.1 (<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>). <code>xu xacp</code> executes the sibling binary <code>xu-xacp</code> (tool module 0.1.1). A source tree builds that binary with <code>make xu-xacp</code>. The published {{xu_version}} download is a separate snapshot. The safety core is <a href="/api/xacp"><code>#xacp</code></a>. Importing that package does not embed discovery or a control loop. The runnable sample is <a href="https://github.com/xulang-org/xu/blob/cursor/xacp-usability-smoke/examples/xacp/README.md"><code>examples/xacp</code></a> in the language repository. <code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> is an earlier note; its “no TCP in this phase” line is superseded.</p>
+<p><code>xu --help</code> summarizes the tool as “inspect, run, and debug”. <code>xu xacp --help</code> is the full mode list: <code>inspect</code>, <code>run</code>, <code>debug</code>, <code>record</code>, <code>control</code>, and <code>connect PORT</code>.</p>
+
+<h3>Build and discovery</h3>
+<pre><code>xu build --xacp examples/xacp/main.xu -o app
+xu build --xacp-port 4321 examples/xacp/main.xu -o app
+./app --xacp-help</code></pre>
+<p><code>--xacp-port</code> implies <code>--xacp</code>. The generator accepts a hosted native executable only. Libraries, shared objects, test harnesses, embedded targets, and <code>--desktop</code> are rejected. <code>--xacp-help</code> prints and exits. It is not a control session. For port 0 the summary ends with <code>tcp: disabled (port 0)</code>. A positive port prints <code>tcp: enabled</code> and <code>bind: 127.0.0.1:PORT</code>. <code>capabilities</code> stays <code>stdio</code> in both cases. Scanning stops at <code>--</code>, so a business argument <code>--xacp-help</code> after that mark does not print discovery.</p>
+
+<h3>Launcher modes</h3>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Mode</th><th>What it does</th></tr></thead>
+<tbody>
+<tr><td><code>xu xacp inspect &lt;program&gt;</code></td><td>Runs <code>&lt;program&gt; --xacp-help</code> and prints the discovery text. No business arguments. The target is executed.</td></tr>
+<tr><td><code>xu xacp run &lt;program&gt; -- args...</code></td><td>Runs business main. Inserts an extra <code>--</code> before the forwarded arguments. Does not read control stdin.</td></tr>
+<tr><td><code>xu xacp debug &lt;program&gt; -- args...</code></td><td>Inspects first, then runs with the same boundary. Not a breakpoint debugger. A failed inspect does not continue to run.</td></tr>
+<tr><td><code>xu xacp record &lt;program&gt; -- args...</code></td><td>Streams at most 1 MiB of stdout. Redirect it yourself. Stderr stays on the terminal. Unix only; Windows prints <code>record is not available on Windows yet</code> and exits 1. This is not an XACP UI frame file.</td></tr>
+<tr><td><code>xu xacp control &lt;program&gt;</code></td><td>Spawns <code>&lt;program&gt; --xacp-stdio</code> and inherits the caller's stdin and stdout. No business arguments. Business main does not run. A validated <code>xacp.hello</code> calls <code>enable_development()</code> before the request is finished.</td></tr>
+<tr><td><code>xu xacp connect PORT</code></td><td>Relays framed stdin/stdout to <code>127.0.0.1:PORT</code>. One request, then its response. The target must already be listening with <code>--xacp-tcp</code>. <code>PORT</code> is 1..65535. Input frames end with <code>===</code> and a newline. EOF at a frame boundary disconnects.</td></tr>
+</tbody></table></div>
+<p>Arguments for <code>run</code>, <code>debug</code>, and <code>record</code> must follow the tool's <code>--</code>. <code>inspect</code> and <code>control</code> reject extra arguments. A failing child returns its exit status when the tool can read one.</p>
+
+<h3>Stdio and loopback TCP</h3>
+<pre><code># stdio: pipe frames; business main is skipped
+xu xacp control ./app &lt; control.xun
+
+# TCP: build a positive port, listen, then connect from another terminal
+xu build --xacp-port 4321 main.xu -o app
+./app --xacp-tcp
+xu xacp connect 4321 &lt; control.xun</code></pre>
+<p>Both control modes use the same frame, session, and operations. The frame is a XUN document between <code>--- !xacp</code> and <code>===</code>. The startup reader also requires the newline after <code>===</code>. The first of <code>--xacp-stdio</code> and <code>--xacp-tcp</code> before <code>--</code> wins. A normal start does not listen and does not read control stdin.</p>
+<p>TCP listens on <code>127.0.0.1</code> only. There is no TLS and no other bind address. Each connection is its own session. Connections are handled one at a time. A bad peer ends that session; the listener keeps accepting. Stdio exits when its session ends. A half frame at EOF returns <code>truncated_frame</code>. A frame over 1 MiB returns <code>frame_too_large</code> and closes that session. Invalid frames and schema errors use id <code>0</code>.</p>
+<p>After a validated hello, <code>proc.status</code> returns the real pid. <code>proc.output</code> and <code>ui.tree</code>, <code>ui.screenshot</code>, <code>ui.input</code>, <code>ui.act</code>, and <code>ui.record</code> are validated and return <code>not_implemented</code> until the program registers a Screen or output adapter. There is no host timeout if the target produces no output or does not exit.</p>
 
 <h2>2. Automated Testing (test)</h2>
 <p><code>xu test</code> discovers and builds automated test runners. Any source file containing <code>fn test_*</code> (or named <code>test.*.xu</code>) runs natively:</p>
@@ -278,6 +316,7 @@ Development and diagnostic tools:
   map            visualize source architecture flowchart via sibling xu-map
   doctor         check host tools and dependencies via sibling xu-doctor
   native         compile, archive, pack, and inspect native C modules
+  xacp           inspect, run, and debug XACP-enabled programs
   lsp            Language Server Protocol daemon via sibling xu-lsp
   setup          launch native installer via sibling xu-setup
 
@@ -289,6 +328,8 @@ Toolchain management:
 Common build options:
   -o, --output OUT  output binary path (default &lt;stem&gt;; Windows &lt;stem&gt;.exe)
   --target TARGET   target platform (default: host platform)
+  --xacp            enable XACP stdio control and --xacp-help
+  --xacp-port PORT  loopback TCP control port (0 disables TCP)
   --offline         resolve dependencies from local cache/vendor; never download
   --frozen          require offline build with existing lockfile
   --cover           instrument block coverage (hosted targets only)

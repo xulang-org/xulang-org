@@ -2624,6 +2624,23 @@ def render_index(packages: list[Package], lang: str, xu_version: str, examples: 
                         + ("项公开声明" if lang == "zh" else "public declarations")
                         + (f' · <a href="{prefix}/api/{esc(pkg.path)}#examples">' + ('示例' if lang == 'zh' else 'Examples') + '</a>' if examples.get(pkg.path) else '') + "</li>")
         body.append("</ul>")
+    if not preview_digest and not any(pkg.path == "xacp" for pkg in packages):
+        if lang == "zh":
+            body.extend([
+                "<h2>xacp</h2>",
+                '<p>由语言仓库 0.10.10-dev.1（<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>）维护，不计入上方已生成的 {{xu_version}} 包数量。</p>',
+                "<ul>",
+                f'<li><a href="{prefix}/api/xacp"><code>#xacp</code></a> — 与传输无关的安全核心；stdio 与本机回环 TCP 是运行时钩子</li>',
+                "</ul>",
+            ])
+        else:
+            body.extend([
+                "<h2>xacp</h2>",
+                '<p>Maintained from the language repository at 0.10.10-dev.1 (<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>), outside the generated {{xu_version}} package count above.</p>',
+                "<ul>",
+                f'<li><a href="{prefix}/api/xacp"><code>#xacp</code></a> — transport-neutral safety core; stdio and loopback TCP are runtime hooks</li>',
+                "</ul>",
+            ])
     return "\n".join(body) + "\n"
 
 
