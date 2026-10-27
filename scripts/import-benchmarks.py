@@ -43,6 +43,20 @@ def load(artifacts, version, commit, run_id, measured_date):
         meta = data['metadata']
         if meta['xu_version'] != version or meta['platform_id'] != target:
             raise ValueError(f'{target}: result identity mismatch')
+        raw = (folder / 'crosslang.txt').read_text()
+        toolchains = meta.get('toolchains')
+        if not isinstance(toolchains, dict):
+            raise ValueError(f'{target}: missing measured toolchain versions')
+        for name in ('clang', 'rustc', 'go', 'swiftc'):
+            match = re.search(r'^# ' + name + r': (.+)$', raw, re.M)
+            actual = match.group(1).strip() if match else None
+            if toolchains.get(name) != actual:
+                raise ValueError(f'{target}: {name} version differs from measurement log')
+            if actual is None:
+                labels = {'clang': 'clang ', 'rustc': 'rustc ', 'go': 'go build', 'swiftc': 'swiftc '}
+                if any(any(impl.startswith(labels[name]) for impl in item['implementations'])
+                       for item in data['benches']):
+                    raise ValueError(f'{target}: measured {name} without a version')
         current = [item['name'] for item in data['benches']]
         names = names or current
         if current != names or len(set(current)) != len(current) or len(current) != meta['total_benches']:
