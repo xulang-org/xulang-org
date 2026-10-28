@@ -1,0 +1,94 @@
+@main
+
+#xu/types
+
+// Browser ABI, separate from stdout/stderr. See playground/README.md.
+// These two site-owned shim functions are VM intrinsics, never JS evaluation.
+fn vm_ui_call(e &mut Eval, m &types.Mir, fp int, ii int) bool {
+    fi := wasm_mem_load(fp)
+    label := types.mir_isval(m, fi, ii)
+    dest := types.mir_ia(m, fi, ii)
+    if label == "_xu_ui_draw_retain" {
+        arg := types.mir_ic(m, fi, ii)
+        descriptor := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
+        value := vm_text(&*e,wasm_mem_load(descriptor))
+        e.strings.push(value)
+        vm_put(m, fp, dest, 0, e.strings.len)
+        << true
+    }
+    if label == "_xu_ui_draw_lookup" {
+        arg := types.mir_ic(m, fi, ii)
+        id := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
+        value := vm_text(&*e,id - 1)
+        vm_string(e, m, fp, dest, value)
+        << true
+    }
+    if label == "_xu_ui_draw_scalar" {
+        arg := types.mir_ic(m, fi, ii)
+        bits := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
+        vm_string(e, m, fp, dest, vm_float_text(bits))
+        << true
+    }
+    if label == "_xu_ui_draw_emit" {
+        arg := types.mir_ic(m, fi, ii)
+        // By-value strings use the Xu pointer ABI, pointing at the descriptor.
+        descriptor := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
+        line := vm_text(&*e, wasm_mem_load(descriptor))
+        n := wasm_mem_load(1056)
+        if n + line.len + 1 > 262144 {
+            vm_error(e, "UI command buffer limit exceeded")
+            << true
+        }
+        for i in 0:line.len { wasm_mem_store8(720000 + n + i, line[i]) }
+        wasm_mem_store8(720000 + n + line.len, 10)
+        wasm_mem_store(1056, n + line.len + 1)
+        if dest >= 0 { vm_put(m, fp, dest, 0, 0) }
+        << true
+    }
+    if label == "_xu_playground_next_input" {
+        wasm_mem_store(1080, 1)
+        wasm_mem_store(1088, 1)
+        index := wasm_mem_load(1072)
+        if dest >= 0 {
+            for s in 0:16 { vm_put(m, fp, dest, s, 0) }
+            if index < wasm_mem_load(1064) {
+                base := 1000000 + index * 80
+                vm_put(m, fp, dest, 0, wasm_mem_load(base))
+                vm_put(m, fp, dest, 1, 1)
+                vm_put(m, fp, dest, 2, 1)
+                vm_put(m, fp, dest, 3, 1)
+                vm_put(m, fp, dest, 4, vm_fp_from_int(wasm_mem_load(base + 8)))
+                vm_put(m, fp, dest, 5, vm_fp_from_int(wasm_mem_load(base + 16)))
+                vm_put(m, fp, dest, 6, wasm_mem_load(base + 64))
+                vm_put(m, fp, dest, 7, wasm_mem_load(base + 72))
+                vm_put(m, fp, dest, 11, wasm_mem_load(base + 24))
+                vm_put(m, fp, dest, 10, wasm_mem_load(base + 32))
+                vm_put(m, fp, dest, 13, wasm_mem_load(base + 40))
+                vm_put(m, fp, dest, 8, wasm_mem_load(base + 48))
+                vm_put(m, fp, dest, 9, wasm_mem_load(base + 56))
+                wasm_mem_store(1072, index + 1)
+            }
+        }
+        << true
+    }
+    if label == "_xu_playground_next_click" {
+        wasm_mem_store(1080, 1)
+        index := wasm_mem_load(1072)
+        mut x := 0
+        mut y := 0
+        mut ok := 0
+        if index < wasm_mem_load(1064) {
+            x = wasm_mem_load(1000008 + index * 80)
+            y = wasm_mem_load(1000016 + index * 80)
+            ok = 1
+            wasm_mem_store(1072, index + 1)
+        }
+        if dest >= 0 {
+            vm_put(m, fp, dest, 0, x)
+            vm_put(m, fp, dest, 1, y)
+            vm_put(m, fp, dest, 2, ok)
+        }
+        << true
+    }
+    << false
+}

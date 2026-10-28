@@ -24,7 +24,7 @@ self.onmessage = async function (event) {
       self.postMessage({type: 'ready'});
     } else if (event.data.type === 'run') {
       if (!runtime) throw new Error('Xu playground is not ready');
-      self.postMessage({type: 'result', ...runtime.run(event.data.source)});
+      self.postMessage({type: 'result', ...runtime.run(event.data.source, {events: event.data.events})});
     }
   } catch (error) {
     self.postMessage({type: 'error', message: error.message || String(error)});

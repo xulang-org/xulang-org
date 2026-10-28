@@ -187,3 +187,8 @@ make check
 ```
 
 `--package ui` 同时包含 ui、ui/draw、ui/layout、ui/widgets、ui/webview。用法说明维护在 `templates/api-guides/{en,zh}/preview/ui*`，中英文语义契约和字段解释维护在 `templates/api-preview-contracts.json`。生成器从源码提取签名和公开字段后合并说明，排除私有字段及内部包。UI API 变化后重新执行生成命令；开发示例取得不可变的发布提交前，在对应 examples 工作树运行。
+
+浏览器演练场新增[三页控件画廊](https://xulang.org/zh/playground?example=ui-gallery)：
+基础控件、Radio、ListBox、Scroll、Tabs、StyledLabel、Card、Badge、Progress 与只展示的只读 Editor
+在 WASM 中运行同步自桌面的 Xu 控件逻辑，Canvas 呈现绘图命令；编辑与 IME 尚未接入。原有形状与文字、点击计数器示例继续保留。
+[浏览器 UI 架构与构建说明](playground/README.md)列出了源码同步、支持接口、键盘操作与重放限制。

@@ -6,6 +6,7 @@ import os
 from pathlib import Path
 import shutil
 import subprocess
+import sys
 import tempfile
 import re
 
@@ -14,12 +15,19 @@ def build(root: Path, xu: Path, compiler: Path):
     version = (xu / 'VERSION').read_text().strip()
     expected = os.environ.get('XU_RELEASE_VERSION', version)
     site_version = (root / 'VERSION').read_text().strip()
+    allow_dev = os.environ.get('XU_ALLOW_DEV') == '1'
+    version_pattern = r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)'
+    if allow_dev:
+        prerelease = r'(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)'
+        version_pattern += rf'(?:-{prerelease}(?:\.{prerelease})*)?'
     banner = subprocess.check_output([str(compiler), '--version'], cwd=xu, text=True)
     identity = re.search(r'Xu Compiler Toolchain v([0-9A-Za-z.-]+)(?:\s|$)', banner)
-    if (version != expected or site_version != version or
-            not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', version) or
+    if (version != expected or (not allow_dev and site_version != version) or
+            not re.fullmatch(version_pattern, version) or
             not identity or identity[1] != version):
         raise RuntimeError('Xu compiler, SDK sources and selected final release versions must match')
+    if allow_dev:
+        print('WARNING: XU_ALLOW_DEV=1: this is a dev build, not for release.', file=sys.stderr)
     help_text = subprocess.check_output([str(compiler), '--help'], cwd=xu, text=True)
     if 'wasm32' not in help_text:
         raise RuntimeError('Xu compiler lacks wasm32 support; rebuild Xu or install a WASM-capable SDK')
@@ -35,6 +43,9 @@ def build(root: Path, xu: Path, compiler: Path):
     embedded = '@main\n\n'
     for name, source in [('runtime', 'src/runtime/str_algo.xu'), ('errors', 'src/errors/mod.xu')]:
         embedded += f'fn playground_std_{name}() string {{\n    << ' + json.dumps((xu / source).read_text(), ensure_ascii=False) + '\n}\n\n'
+    for name in ('draw', 'browser', 'frame', 'text_input', 'desktop_draw_types', 'desktop_ui', 'desktop_math', 'desktop_time', 'desktop_layout', 'desktop_utf8', 'desktop_codec', 'desktop_widgets'):
+        source = root / 'playground/stdlib' / (name + '.xu')
+        embedded += f'fn playground_std_{name}() string {{\n    << ' + json.dumps(source.read_text(), ensure_ascii=False) + '\n}\n\n'
     (runtime / 'stdlib.xu').write_text(embedded)
     wasm = root / 'build/playground/xu-play.wasm'
     with tempfile.TemporaryDirectory(prefix='xu-play-build-') as temporary:
@@ -43,12 +54,16 @@ def build(root: Path, xu: Path, compiler: Path):
         for name in ('XUOS', 'XUARCH', 'XU_BOOT_EXTRA', 'XU_SEED', 'XU_ALLOW_ORACLE_SEED'):
             env.pop(name, None)
         subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-O0', '-o', str(wasm)], cwd=xu, env=env, check=True)
+    subprocess.run(['python3', str(root / 'scripts/link-playground-float.py'), str(wasm)], check=True)
     if (xu / 'VERSION').read_text().strip() != version:
         raise RuntimeError('Xu SDK version changed during the build; rebuild from a fixed SDK')
     (wasm.parent / 'build.json').write_text(json.dumps({
+        'memory_limit_bytes': 128 * 1024 * 1024,
+        'widget_sources_sha256': hashlib.sha256((root / 'playground/stdlib/desktop-sources.json').read_bytes()).hexdigest(),
         'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest(),
+        **({'dev_build': True} if allow_dev else {}),
     }, indent=2) + '\n')
-    print(f'Pure Xu playground built: {wasm}')
+    print(f'Xu playground built (with scalar WASM helpers): {wasm}')
 
 
 if __name__ == '__main__':

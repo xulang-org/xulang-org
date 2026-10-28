@@ -1,0 +1,90 @@
+@main
+#ui
+#ui/layout
+#ui/widgets
+
+fn contract() int {
+    identity := ui.CanvasEvent{window_id: 1,canvas_id: 1,generation: 1}
+    bounds := layout.Rect{x: 10.5,y: 20.25,width: 100.0,height: 40.0}
+    mut button := widgets.button(&identity,1,&bounds) or >>
+    mut input := ui.InputEvent{kind: ui.EV_POINTER_UP,window_id: 1,canvas_id: 1,generation: 1,x: 40.0,y: 30.0,dx: 0.0,dy: 0.0,button: ui.BUTTON_LEFT,buttons: 0,modifiers: 0,key: 0,scan: 0,repeat: 0,click_count: 0,time_ns: 0}
+    assert(button.input(&input).kind == widgets.ACTION_NONE)
+    input.kind = ui.EV_POINTER_DOWN
+    assert(button.input(&input).request_focus)
+    assert(button.is_pressed())
+    input.kind = ui.EV_POINTER_UP
+    input.x = 110.5
+    assert(button.input(&input).kind == widgets.ACTION_NONE)
+    input.x = 40.0
+    input.kind = ui.EV_POINTER_DOWN
+    _ := button.input(&input)
+    input.kind = ui.EV_POINTER_CANCEL
+    _ := button.input(&input)
+    input.kind = ui.EV_POINTER_UP
+    assert(button.input(&input).kind == widgets.ACTION_NONE)
+    input.kind = ui.EV_POINTER_DOWN
+    input.generation = 2
+    assert(!button.input(&input).consumed)
+    input.generation = 1
+    _ := button.input(&input)
+    input.kind = ui.EV_POINTER_UP
+    assert(button.input(&input).kind == widgets.ACTION_ACTIVATE)
+    button.set_focus(true)
+    input.kind = ui.EV_KEY_DOWN
+    input.key = ui.KEY_ENTER
+    input.repeat = 1
+    assert(!button.input(&input).consumed)
+    input.repeat = 0
+    _ := button.input(&input)
+    assert(button.is_pressed())
+    input.kind = ui.EV_KEY_UP
+    assert(button.input(&input).kind == widgets.ACTION_ACTIVATE)
+    assert(!button.is_pressed())
+    button.set_enabled(false)
+    assert(!button.is_focused())
+    input.kind = ui.EV_POINTER_DOWN
+    assert(!button.input(&input).request_focus)
+    mut check := widgets.checkbox(&identity,2,&bounds,false) or >>
+    check.set_focus(true)
+    input.kind = ui.EV_KEY_DOWN
+    input.key = 32
+    _ := check.input(&input)
+    input.kind = ui.EV_KEY_UP
+    assert(check.input(&input).kind == widgets.ACTION_CHANGE)
+    assert(check.value())
+    check.set_indeterminate(true)
+    input.kind = ui.EV_KEY_DOWN
+    _ := check.input(&input)
+    input.kind = ui.EV_KEY_UP
+    _ := check.input(&input)
+    assert(check.value() && !check.is_indeterminate())
+    mut toggle := widgets.switch_control(&identity,3,&bounds,false) or >>
+    toggle.set_focus(true)
+    input.kind = ui.EV_KEY_DOWN
+    _ := toggle.input(&input)
+    input.kind = ui.EV_KEY_UP
+    assert(toggle.input(&input).kind == widgets.ACTION_CHANGE)
+    assert(toggle.value())
+    mut slider := widgets.slider(&identity,4,&bounds,0.0,100.0,40.0) or >>
+    slider.set_step(5.0) or >>
+    slider.set_focus(true)
+    input.kind = ui.EV_KEY_DOWN
+    input.key = ui.KEY_RIGHT
+    assert(slider.input(&input).kind == widgets.ACTION_CHANGE)
+    assert(slider.value() == 45.0)
+    input.kind = ui.EV_KEY_UP
+    assert(slider.input(&input).kind == widgets.ACTION_COMMIT)
+    slider.set_read_only(true)
+    input.kind = ui.EV_KEY_DOWN
+    assert(!slider.input(&input).consumed)
+    slider.set_read_only(false)
+    input.key = ui.KEY_END
+    _ := slider.input(&input)
+    assert(slider.value() == 100.0)
+    println("widgets contract passed")
+    << 0
+}
+fn main() int {
+    << contract() or (err) { eprintln(err.msg())
+        << 1 }
+}

@@ -1,0 +1,159 @@
+@ui/draw
+
+// Browser drawing subset of the SDK API; coordinates are integer canvas pixels.
+// The desktop window/event loop is intentionally supplied by a browser driver.
+pub struct Click {
+    pub x int
+    pub y int
+    pub ok int
+}
+
+// Site VM intrinsic. Native execution of this shim is unsupported.
+fn emit(line string) int { <<< 1 }
+fn cmd(line string) int { << emit(line) }
+
+fn clean(s string) string {
+    mut out := ""
+    for i in 0:s.len {
+        c := s[i] & 255
+        if c == 9 || c == 10 || c == 13 {
+            out = out + " "
+        } else {
+            out = out + string_from_byte(c)
+        }
+    }
+    << out
+}
+
+fn hex_or_dash(s string) string {
+    if s.len == 0 {
+        << "-"
+    }
+    << s + ""
+}
+
+pub fn begin() int {
+    << cmd("begin")
+}
+
+pub fn present() int {
+    << cmd("present")
+}
+
+pub fn cancel() int {
+    << cmd("cancel")
+}
+
+pub fn set_bg(hex string) int {
+    << cmd("bgcolor\t" + hex_or_dash(hex))
+}
+
+pub fn set_color(hex string) int {
+    << cmd("color\t" + hex_or_dash(hex))
+}
+
+pub fn set_fill(hex string) int {
+    << cmd("fill\t" + hex_or_dash(hex))
+}
+
+pub fn set_stroke(hex string) int {
+    << cmd("stroke\t" + hex_or_dash(hex))
+}
+
+pub fn set_width(w int) int {
+    << cmd("width\t" + str(w))
+}
+
+pub fn push() int {
+    << cmd("push")
+}
+
+pub fn pop() int {
+    << cmd("pop")
+}
+
+pub fn origin() int {
+    << cmd("origin")
+}
+
+pub fn translate(dx int, dy int) int {
+    << cmd("translate\t" + str(dx) + "\t" + str(dy))
+}
+
+pub fn rotate(deg int) int {
+    << cmd("rotate\t" + str(deg))
+}
+
+pub fn scale(sx int, sy int) int {
+    << cmd("scale\t" + str(sx) + "\t" + str(sy))
+}
+
+pub fn clip_rect(x int, y int, w int, h int) int {
+    if w < 0 || h < 0 { << 0 - 1 }
+    << cmd("clip_rect\t" + str(x) + "\t" + str(y) + "\t" + str(w) + "\t" + str(h))
+}
+
+pub fn fill_rect(x int, y int, w int, h int, hex string) int {
+    << cmd("fill_rect\t" + str(x) + "\t" + str(y) + "\t" + str(w) + "\t" + str(h) + "\t" + hex_or_dash(hex))
+}
+
+pub fn stroke_rect(x int, y int, w int, h int, hex string, width int) int {
+    << cmd("stroke_rect\t" + str(x) + "\t" + str(y) + "\t" + str(w) + "\t" + str(h) + "\t" + hex_or_dash(hex) + "\t" + str(width))
+}
+
+pub fn round_rect(x int, y int, w int, h int, radius int, fill string, stroke string, width int) int {
+    << cmd("round_rect\t" + str(x) + "\t" + str(y) + "\t" + str(w) + "\t" + str(h) + "\t" + str(radius) + "\t" + hex_or_dash(fill) + "\t" + hex_or_dash(stroke) + "\t" + str(width))
+}
+
+pub fn line(x1 int, y1 int, x2 int, y2 int, hex string, width int) int {
+    << cmd("line\t" + str(x1) + "\t" + str(y1) + "\t" + str(x2) + "\t" + str(y2) + "\t" + hex_or_dash(hex) + "\t" + str(width))
+}
+
+pub fn text(x int, y int, size int, hex string, s string) int {
+    << cmd("text\t" + str(x) + "\t" + str(y) + "\t" + str(size) + "\t" + hex_or_dash(hex) + "\t" + clean(s))
+}
+
+pub fn rect(x int, y int, w int, h int) int {
+    << cmd("rect\t" + str(x) + "\t" + str(y) + "\t" + str(w) + "\t" + str(h))
+}
+
+pub fn circle(cx int, cy int, r int) int {
+    << cmd("circle\t" + str(cx) + "\t" + str(cy) + "\t" + str(r))
+}
+
+pub fn fill_circle(cx int, cy int, r int, hex string) int {
+    << cmd("circle\t" + str(cx) + "\t" + str(cy) + "\t" + str(r) + "\t" + hex_or_dash(hex) + "\t-\t1")
+}
+
+pub fn stroke_circle(cx int, cy int, r int, hex string, width int) int {
+    << cmd("circle\t" + str(cx) + "\t" + str(cy) + "\t" + str(r) + "\t-\t" + hex_or_dash(hex) + "\t" + str(width))
+}
+
+pub fn in_rect(c Click, x int, y int, w int, h int) bool {
+    if c.ok == 0 {
+        << false
+    }
+    if c.x < x {
+        << false
+    }
+    if c.y < y {
+        << false
+    }
+    if c.x >= x + w {
+        << false
+    }
+    if c.y >= y + h {
+        << false
+    }
+    << true
+}
+
+pub fn in_circle(c Click, cx int, cy int, r int) bool {
+    if c.ok == 0 {
+        << false
+    }
+    dx := c.x - cx
+    dy := c.y - cy
+    << dx * dx + dy * dy <= r * r
+}
+

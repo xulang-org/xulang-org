@@ -1,0 +1,51 @@
+@main
+
+// Fixed scalar instructions linked by scripts/link-playground-float.py.
+// Stubs fail closed if the required link step was omitted. Arguments/results
+// carry IEEE binary64 bits in the VM's i64 slots; no browser imports.
+pub fn vm_fp_add(x int,y int) int { <<< 1 }
+pub fn vm_fp_sub(x int,y int) int { <<< 1 }
+pub fn vm_fp_mul(x int,y int) int { <<< 1 }
+pub fn vm_fp_div(x int,y int) int { <<< 1 }
+pub fn vm_fp_eq(x int,y int) int { <<< 1 }
+pub fn vm_fp_ne(x int,y int) int { <<< 1 }
+pub fn vm_fp_lt(x int,y int) int { <<< 1 }
+pub fn vm_fp_gt(x int,y int) int { <<< 1 }
+pub fn vm_fp_le(x int,y int) int { <<< 1 }
+pub fn vm_fp_ge(x int,y int) int { <<< 1 }
+pub fn vm_fp_neg(x int) int { <<< 1 }
+pub fn vm_fp_from_int(x int) int { <<< 1 }
+pub fn vm_fp_to_int(x int) int { <<< 1 }
+
+fn vm_float_binary(op int,x int,y int) int {
+    if op == 1 { << vm_fp_add(x,y) }
+    if op == 2 { << vm_fp_sub(x,y) }
+    if op == 3 { << vm_fp_mul(x,y) }
+    if op == 4 { << vm_fp_div(x,y) }
+    if op == 6 { << vm_fp_eq(x,y) }
+    if op == 7 { << vm_fp_ne(x,y) }
+    if op == 8 { << vm_fp_lt(x,y) }
+    if op == 9 { << vm_fp_le(x,y) }
+    if op == 10 { << vm_fp_gt(x,y) }
+    if op == 11 { << vm_fp_ge(x,y) }
+    << 0
+}
+
+// Bounded decimal coordinates for Canvas; full precision stays in Xu state.
+// This transport uses six fractional digits, separate from stdout formatting.
+fn vm_float_text(bits int) string {
+    if ((bits >> 52) & 2047) == 2047 { << "nan" }
+    mut value := bits
+    mut sign := ""
+    if bits < 0 { sign = "-"
+        value = vm_fp_neg(bits) }
+    if vm_fp_gt(value,vm_fp_from_int(1000000000)) != 0 { << "overflow" }
+    scaled := vm_fp_to_int(vm_fp_add(vm_fp_mul(value,vm_fp_from_int(1000000)),4602678819172646912))
+    whole := scaled / 1000000
+    frac := scaled % 1000000
+    if frac == 0 { << sign + str(whole) }
+    mut digits := str(frac + 1000000)
+    mut end := digits.len
+    while end > 1 && digits[end - 1] == 48 { end -= 1 }
+    << sign + str(whole) + "." + digits[1:end]
+}

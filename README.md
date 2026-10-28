@@ -191,3 +191,10 @@ make check
 ```
 
 Preview guides and contracts use `templates/api-guides/{en,zh}/preview/ui*` and `templates/api-preview-contracts.json`. An explicitly generated preview carries its development SDK version and source SHA-256 and takes precedence over legacy redirects. Release builds continue to use the selected official SDK and bundled example snapshots.
+
+The browser playground includes a [three-page control gallery](https://xulang.org/playground?example=ui-gallery):
+shared desktop Xu logic covers basic controls, Radio, ListBox, Scroll, Tabs,
+StyledLabel, Card, Badge, Progress and a display-only Editor in WASM. Canvas
+renders their paint commands. Editable text and IME remain unavailable. The shapes and click-counter demos
+remain available. See [the browser UI build guide](playground/README.md) for
+source synchronization, supported APIs, keyboard controls, and replay limits.
