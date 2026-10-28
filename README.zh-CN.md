@@ -193,3 +193,8 @@ make check
 ```
 
 预览指南与契约位于 `templates/api-guides/{en,zh}/preview/ui*` 和 `templates/api-preview-contracts.json`。显式生成的预览标明开发 SDK 版本与源码 SHA-256，并优先于旧 URL 重定向。正式构建继续使用选定的正式 SDK 与已有示例快照。
+
+浏览器演练场新增[三页控件画廊](https://xulang.org/zh/playground?example=ui-gallery)：
+基础控件、Radio、ListBox、Scroll、Tabs、StyledLabel、Card、Badge、Progress 与只展示的只读 Editor
+在 WASM 中运行同步自桌面的 Xu 控件逻辑，Canvas 呈现绘图命令；编辑与 IME 尚未接入。原有形状与文字、点击计数器示例继续保留。
+[浏览器 UI 架构与构建说明](playground/README.md)列出了源码同步、支持接口、键盘操作与重放限制。

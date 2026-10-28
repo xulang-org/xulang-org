@@ -48,6 +48,7 @@ def playground_options(root: Path, body: str, lang: str) -> str:
         'checks': ('断言与编译诊断', 'Assertions & diagnostics'),
         'concurrency': ('协程与 chan', 'Coroutines & chan'),
         'combined': ('综合示例', 'Combined example'),
+        'ui': ('UI · 浏览器画布', 'UI · Browser canvas'),
     }
     options = []
     for group, titles in groups.items():
@@ -123,6 +124,8 @@ class RewriteHTML(HTMLParser):
                 return
             if self.asset_key:
                 raw = raw.replace("xu-play.wasm", "xu-play.wasm?v=" + self.asset_key)
+        if tag == 'script' and re.search(r'''src\s*=\s*["'][^"']*/xu-play-canvas\.js["']''', raw) and self.asset_key:
+            raw = raw.replace("xu-play-canvas.js", "xu-play-canvas.js?v=" + self.asset_key)
         if tag == 'script' and re.search(r'''src\s*=\s*["'][^"']*/xu-play\.js["']''', raw):
             if self.asset_key:
                 raw = raw.replace("xu-play.js", "xu-play.js?v=" + self.asset_key)
@@ -256,7 +259,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         if labels != [measured]:
             raise ValueError(f'Benchmark measurement label does not match {measured}: {lang}')
     digest = hashlib.sha256()
-    for name in ('xu-play.js', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
+    for name in ('xu-play.js', 'xu-play-canvas.js', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
         asset = wasm if name == 'xu-play.wasm' else root / 'www' / name
         if asset.exists():
             digest.update(name.encode())

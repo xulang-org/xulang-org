@@ -449,6 +449,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
     playground_assets = '' if route in ('/', '/zh') else (
         '<link rel="preload" href="/xu-play.wasm" as="fetch" type="application/wasm" crossorigin>\n'
+        '  <script src="/xu-play-canvas.js" defer></script>\n'
         '  <script src="/xu-play.js" defer></script>'
     )
     return template.substitute(
