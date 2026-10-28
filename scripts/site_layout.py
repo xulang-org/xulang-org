@@ -524,6 +524,10 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         lang='en' if en else 'zh-CN', title=escape(title), home=home,
         home_title='Xu Home' if en else 'Xu 官网首页',
         xu_version=escape(xu_version), nav=''.join(nav), main=main,
+        page_assets=('<link rel="stylesheet" href="/playground.css">'
+                     '<script src="/xu-play-workspace.js" defer></script>'
+                     '<script src="/xu-play-library.js" defer></script>'
+                     if route in ('/playground', '/zh/playground') else ''),
         other_lang=other, other_lang_code='zh-CN' if en else 'en',
         lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',
         theme_label='Switch theme' if en else '切换主题', ui_href=prefix + '/docs/ui',

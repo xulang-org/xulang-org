@@ -153,6 +153,22 @@ test('Timeout terminates execution and late results cannot overwrite the next ru
   assert.equal(elements['xu-play-out'].textContent, 'fresh result\n');
 });
 
+test('opening a different project stops old execution and ignores its late result', async () => {
+  const {elements, workers} = await mount();
+  elements['xu-play-src'].value = 'busy program';
+  elements['xu-play-run'].click();
+  elements['xu-play-ex'].value = 'hello';
+  elements['xu-play-ex'].listeners.change();
+  await new Promise(setImmediate);
+  assert.equal(workers[0].terminated, true);
+  assert.equal(elements['xu-play-src'].value, '@main');
+  workers[0].respond({type: 'result', exit: 0, stdout: 'stale output', stderr: ''});
+  assert.doesNotMatch(elements['xu-play-out'].textContent, /stale output/);
+  elements['xu-play-run'].click();
+  workers[1].respond({type: 'result', exit: 0, stdout: 'new project', stderr: ''});
+  assert.equal(elements['xu-play-out'].textContent, 'new project');
+});
+
 test('Local SDK examples can be copied without offering browser execution', async () => {
   const source = '@main\n#net/http\nfn main() { http.listen_and_serve("127.0.0.1:8080", ".") }';
   const {pres, copied, workers} = await mount({blocks: [{source, api: true, local: true}]});
