@@ -15,6 +15,7 @@ import shutil
 from urllib.parse import unquote, urlsplit
 
 from site_layout import render
+from gen_llms import render_corpora
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASES_URL = 'https://github.com/xulang-org/xu/releases'
@@ -272,6 +273,8 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         target = output / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, target)
+    for name, source in render_corpora(root, xu_version).items():
+        (output / name).write_text(source, encoding='utf-8')
     if wasm.is_file():
         shutil.copyfile(wasm, output / 'xu-play.wasm')
     playground = (output / 'xu-play.wasm').is_file()

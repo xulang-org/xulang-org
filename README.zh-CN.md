@@ -108,7 +108,7 @@ XU 正在 **0.x 阶段**持续演进。已发布 SDK 见 [Releases](https://gith
 <details>
 <summary><strong>参与 xulang.org 开发</strong> — 网站构建、演练场与部署</summary>
 
-这个主页仓库也保存了官网源码。站点选用已发布的 **XU 0.10.2 SDK**，开发版另行迭代。
+这个主页仓库也保存了官网源码。站点使用 `VERSION` 指定的已发布 **XU SDK**，开发版另行迭代。
 
 ### 本地构建
 
@@ -139,10 +139,12 @@ make clean                       # 清理 dist/ 与 build/playground/
 
 手写说明保存在 `templates/api-guides/{en,zh}/`，生成时与所选 SDK 的公开声明合并。示例从官方 examples 仓库的固定提交导入；`www/api-examples/` 中的快照支持本地与 CI 独立构建。
 
+LLM 文档使用 `templates/llms/*.md`、站点共享示例、`VERSION` 与 `www/benchmarks.json`。静态构建按选定 SDK 身份生成文档；运行 `python3 scripts/gen_llms.py` 更新已跟踪的 `www/llms*.txt` 副本。
+
 刷新声明与示例时，在 `templates/api-examples.json` 中选择兼容源码，用所选 SDK 检查，再指定示例仓库及完整提交 SHA：
 
 ```sh
-make api XU_ROOT=/path/to/xu-v0.10.2 XU_PACKAGES_ROOT=/path/to/xu-v0.10.2/packages \
+make api XU_ROOT=/path/to/selected-sdk XU_PACKAGES_ROOT=/path/to/selected-sdk/packages \
   XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
 ```
 
@@ -176,14 +178,18 @@ python3 scripts/gen-benchmarks.py
 
 </details>
 
-### UI 开发文档
+### UI API 与示例
 
-[中文 UI 指南](content/zh/docs/ui.html) 与 [英文指南](content/en/docs/ui.html) 覆盖 UI 分支至 Xu 0.10.2。开发 API 单独放在 `/zh/api/preview/` 与 `/api/preview/`，横幅和源码 SHA-256 标明开发输入，可能包含尚未提交的修改；不会修改官网所选正式 SDK、下载入口或正式版示例快照。
+[中文 UI 指南](content/zh/docs/ui.html) 与 [英文指南](content/en/docs/ui.html) 对应 `VERSION` 中选定的正式 Xu SDK。`ui`、`ui/draw`、`ui/layout`、`ui/widgets`、`ui/webview` 五个包均已进入正式 API 导航。旧 UI preview URL 重定向到对应正式页面，并保留声明锚点。
+
+正式版手写指南位于 `templates/api-guides/{en,zh}/ui*`，语义契约和字段说明位于 `templates/api-contracts.json`。使用选定的正式 SDK 运行 `make api` 重新生成声明。示例目录涵盖绘图、布局、编辑器、桌面服务、窗口、WebView 请求、样式与扩展控件；每项链接到不可变的完整项目和校验摘要验证的源码下载。
+
+未来尚未发布的 API 仍可显式生成开发预览：
 
 ```sh
-python3 scripts/gen-api.py --src /path/to/xu-ui/src --preview --package ui
+python3 scripts/gen-api.py --src /path/to/development-sdk/src --preview --package ui
 make build
 make check
 ```
 
-`--package ui` 同时包含 ui、ui/draw、ui/layout、ui/widgets、ui/webview。用法说明维护在 `templates/api-guides/{en,zh}/preview/ui*`，中英文语义契约和字段解释维护在 `templates/api-preview-contracts.json`。生成器从源码提取签名和公开字段后合并说明，排除私有字段及内部包。UI API 变化后重新执行生成命令；开发示例取得不可变的发布提交前，在对应 examples 工作树运行。
+预览指南与契约位于 `templates/api-guides/{en,zh}/preview/ui*` 和 `templates/api-preview-contracts.json`。显式生成的预览标明开发 SDK 版本与源码 SHA-256，并优先于旧 URL 重定向。正式构建继续使用选定的正式 SDK 与已有示例快照。

@@ -1115,7 +1115,7 @@ NAME_HINTS = {
     "checksum_iso": ("使用 ISO 3309 标准多项式计算数据的 CRC-64 校验和。", "Compute CRC-64 checksum using ISO polynomial."),
     "checksum_ecma": ("使用 ECMA-182 标准多项式计算数据的 CRC-64 校验和。", "Compute CRC-64 checksum using ECMA polynomial."),
     "execute_str": ("将数据上下文应用到模板并渲染输出为字符串。", "Apply data to template and render output as string."),
-    "execute_list": ("执行模板渲染并将结果切分为字符串切片列表。", "Execute template rendering and yield list of strings."),
+    "execute_list": ("以字符串列表作为数据上下文渲染模板，返回单个字符串。", "Render the template with a list of strings as its data context; return one string."),
     "ulid_time_ms": ("从 ULID 标识符中提取毫秒级 Unix 时间戳。", "Extract millisecond Unix timestamp from ULID."),
     "uuid_v7_time_ms": ("从 UUID v7 标识符中提取毫秒级 Unix 时间戳。", "Extract millisecond Unix timestamp from UUID v7."),
     "detect_content_type": ("通过嗅探输入数据的前 512 字节推断并返回 MIME Content-Type。", "Detect MIME Content-Type by sniffing the first 512 bytes."),

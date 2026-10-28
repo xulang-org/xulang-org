@@ -11,6 +11,7 @@
 <tbody>
 <tr><td><code>build</code></td><td><code>xu build [options] &lt;input.xu...&gt; [native.a/.xulib...]</code></td><td>AOT compile into native machine executables, intermediate object files, or desktop apps</td></tr>
 <tr><td><code>run</code></td><td><code>xu run [options] &lt;input.xu...&gt; [-- args]</code></td><td>Compile and immediately execute on the host machine; cleans up temp artifacts unless <code>-o</code> is provided</td></tr>
+<tr><td><code>debug</code></td><td><code>xu debug [options] &lt;input.xu...&gt; [-- args]</code></td><td>Build a DWARF-enabled binary and start LLDB, or GDB if LLDB is unavailable. Requires an installed debugger. This is source debugging; <code>xu xacp debug</code> only inspects and launches a program.</td></tr>
 <tr><td><code>test</code></td><td><code>xu test [options] &lt;file.xu...&gt;</code></td><td>Build a test harness and execute <code>fn test_*</code> assertion suites and <code>fn bench_*</code> benchmarks</td></tr>
 <tr><td><code>check</code></td><td><code>xu check [options] &lt;file.xu...&gt;</code></td><td>Perform lexical, parser, type, and ownership/borrow checking without emitting machine code</td></tr>
 <tr><td><code>parse</code></td><td><code>xu parse [options] &lt;file.xu...&gt;</code></td><td>Lex and parse source files, printing one statistics line per file</td></tr>
@@ -37,7 +38,7 @@
 <ul>
   <li><strong>File input</strong>: <code>xu build main.xu</code>. Single or multiple <code>.xu</code> files are compiled directly.</li>
   <li><strong>Directory input</strong>: <code>xu build app/</code>. The target directory <strong>must contain a <code>xu.xun</code> manifest</strong>; compiles every <code>*.xu</code> in that directory as one unified package (non-recursive).</li>
-  <li><strong>Native archives</strong>: Supports passing <code>module.a</code> or <code>module.xulib</code> directly on the CLI to link native module archives.</li>
+  <li><strong>Native archives</strong>: Pass <code>module.a</code> or <code>module.xulib</code> for one-step native linking on <code>macos-arm64</code> and <code>macos-x64</code>. Other targets require <code>--emit-obj</code>, object conversion, and external linking; see <a href="/docs/native">native modules</a>.</li>
 </ul>
 
 <h3>Cross-Compilation Targets (--target)</h3>
@@ -66,7 +67,7 @@
 <tr><td><code>-o, --output &lt;path&gt;</code></td><td>Specify destination binary path. Windows automatically appends <code>.exe</code>.</td></tr>
 <tr><td><code>--no-opt</code></td><td>Disable all MIR optimizations and default register allocation (disables inlining and reduction) for fastest compile speeds.</td></tr>
 <tr><td><code>--debug-build</code></td><td>Unoptimized source build with full DWARF line tables and debug symbols.</td></tr>
-<tr><td><code>--debug</code></td><td>Emit DWARF line tables while preserving full O2-level compiler optimizations.</td></tr>
+<tr><td><code>--debug</code></td><td>Emit DWARF line tables while preserving the selected optimization policy. The default level is 1; request <code>-O2</code> explicitly for level 2.</td></tr>
 <tr><td><code>--timings</code></td><td>Print phase timings across parsing, MIR optimization, register allocation, and codegen to stderr, plus <code>pattern-hits:</code> counters and each function's register-allocation mode.</td></tr>
 <tr><td><code>--offline</code></td><td>Offline build: strictly resolves dependencies from local <code>vendor/</code> or cache without network requests.</td></tr>
 <tr><td><code>--frozen</code></td><td>Frozen build: offline and requires exact matches with <code>xu.lock</code>; rejects any missing dependencies.</td></tr>
@@ -92,7 +93,7 @@ xu build . --frozen -o release/server
 # 4. View compiler phase breakdown and register allocation metrics
 xu build main.xu --timings -o server</code></pre>
 
-<h3>Compiler Diagnostics in 0.9.4</h3>
+<h3>Compiler Diagnostics</h3>
 <p>Use these environment variables to investigate compilation or optimization problems.</p>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Environment variable</th><th>Behavior</th></tr></thead>
@@ -112,7 +113,7 @@ XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
 <p>In PowerShell, set the variable first, for example <code>$env:XU_VERIFY = '1'</code>, then run the same <code>xu build</code> command. Clear it afterward with <code>Remove-Item Env:XU_VERIFY</code>.</p>
 
 <h2 id="xacp">XACP control (<code>xu xacp</code> / <code>xu-xacp</code>)</h2>
-<p>Documented from the language repository at 0.10.10-dev.1 (<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>). <code>xu xacp</code> executes the sibling binary <code>xu-xacp</code> (tool module 0.1.1). A source tree builds that binary with <code>make xu-xacp</code>. The published {{xu_version}} download is a separate snapshot. The safety core is <a href="/api/xacp"><code>#xacp</code></a>. Importing that package does not embed discovery or a control loop. The runnable sample is <a href="https://github.com/xulang-org/xu/blob/cursor/xacp-usability-smoke/examples/xacp/README.md"><code>examples/xacp</code></a> in the language repository. <code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> is an earlier note; its “no TCP in this phase” line is superseded.</p>
+<p>Documented from the language repository at 0.10.10-dev.1 (<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>). <code>xu xacp</code> executes the sibling binary <code>xu-xacp</code> (tool module 0.1.1). A source tree builds that binary with <code>make xu-xacp</code>. The published {{xu_version}} download is a separate snapshot. The safety core is <a href="/api/xacp"><code>#xacp</code></a>. Importing that package does not embed discovery or a control loop. The runnable sample is <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md"><code>examples/xacp</code></a> in the language repository. <code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> is an earlier note; its “no TCP in this phase” line is superseded.</p>
 <p><code>xu --help</code> summarizes the tool as “inspect, run, and debug”. <code>xu xacp --help</code> is the full mode list: <code>inspect</code>, <code>run</code>, <code>debug</code>, <code>record</code>, <code>control</code>, and <code>connect PORT</code>.</p>
 
 <h3>Build and discovery</h3>
@@ -147,13 +148,19 @@ xu xacp connect 4321 &lt; control.xun</code></pre>
 <p>After a validated hello, <code>proc.status</code> returns the real pid. <code>proc.output</code> and <code>ui.tree</code>, <code>ui.screenshot</code>, <code>ui.input</code>, <code>ui.act</code>, and <code>ui.record</code> are validated and return <code>not_implemented</code> until the program registers a Screen or output adapter. There is no host timeout if the target produces no output or does not exit.</p>
 
 <h2>2. Automated Testing (test)</h2>
-<p><code>xu test</code> discovers and builds automated test runners. Any source file containing <code>fn test_*</code> (or named <code>test.*.xu</code>) runs natively:</p>
+<p><code>xu test</code> discovers and builds automated test runners. Test and benchmark functions must be in a file named <code>test.&lt;name&gt;.xu</code>, in package <code>@main</code>, with no parameters or return type. Ordinary source files cannot declare <code>fn test_*</code> or <code>fn bench_*</code>. Save this example as <code>test.example.xu</code>:</p>
+<pre><code class="language-xu">@main
+
+fn test_add() {
+    assert(1 + 1 == 2)
+}</code></pre>
+<pre><code class="language-shell">xu test test.example.xu -v</code></pre>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Option</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>-run &lt;REGEXP&gt;</code></td><td>Filter: only run test functions matching the regular expression.</td></tr>
 <tr><td><code>-v</code></td><td>Verbose: output execution status and elapsed time for each test function.</td></tr>
-<tr><td><code>-count &lt;N&gt;</code></td><td>Repeat the test suite N times (up to 100 times) to diagnose flaky concurrency bugs.</td></tr>
+<tr><td><code>-count &lt;N&gt;</code></td><td>Repeat the test suite N times (1–1000 in the current parser; CLI help still says 1–100) to diagnose flaky concurrency bugs.</td></tr>
 <tr><td><code>-failfast</code></td><td>Immediately stop after the first assertion failure.</td></tr>
 <tr><td><code>-list</code></td><td>List matching test names and exit 0 without executing tests.</td></tr>
 <tr><td><code>-short</code></td><td>Short run: sets <code>testing.short()</code> to true to skip expensive integration scenarios.</td></tr>
@@ -189,9 +196,10 @@ xu init myapp</code></pre>
 
 <h3><code>xu get &lt;module&gt;@&lt;version&gt;</code> (New in 0.8.12)</h3>
 <p>Explicitly add or update a dependency root in the current project:</p>
-<pre><code>xu get github.com/xulang-org/packages@v0.1.1</code></pre>
+<pre><code>xu get &lt;module&gt;@&lt;version&gt;</code></pre>
+<p>The command above is a syntax template: replace the placeholders with a real module and its published tag. For the official packages documented here, use the <a href="/docs/packages">SDK bundle or matching fixed source commit</a> with <code>xu install</code>.</p>
 <ul>
-  <li><strong>Explicit versions required</strong>: Must specify a strict SemVer tag (e.g. <code>@v0.1.1</code>); rejects <code>@latest</code> or open ranges to ensure reproducibility.</li>
+  <li><strong>Explicit versions required</strong>: Must specify a strict SemVer tag (a verified release tag of the chosen module); rejects <code>@latest</code> or open ranges to ensure reproducibility.</li>
   <li><strong>Transactional safety</strong>: Updates <code>require:</code> in <code>xu.xun</code>, resolves dependencies, downloads sources to <code>vendor/</code>, verifies SHA-256 digests, and writes <code>xu.lock</code>. If network or checksum validation fails, it <strong>automatically rolls back</strong> with zero project corruption.</li>
   <li><strong>Offline resolution</strong>: Supports <code>xu get &lt;module&gt;@&lt;version&gt; --offline</code> using existing local caches.</li>
 </ul>

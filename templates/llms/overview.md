@@ -1,0 +1,79 @@
+# Xu Programming Language
+
+> Xu is a systems language with custom native AOT backends, zero GC, inferred ownership, and Go-like concurrency.
+
+Official website: https://xulang.org
+Language repository: https://github.com/xulang-org/xu
+Selected released SDK: {{xu_version}}
+License: MIT (see the repository LICENSE; preserve third-party notices).
+
+## Language and safety model
+
+Xu uses static typing, ownership inference, borrow checking, and deterministic resource cleanup. It uses custom AOT backends rather than LLVM. Coroutines start with `xu f()` and communicate through typed channels. There is no garbage collector.
+
+Ownership and borrow diagnostics constrain value use and mutable access. Shared mutable state in concurrent code still requires appropriate synchronization. Native code, FFI, and concurrent libraries have their own safety requirements; this is not a blanket guarantee against every data race or undefined behavior. See https://xulang.org/docs/lang/memory/ and https://xulang.org/docs/lang/concurrency/.
+
+Parameters, fields, and receivers use `name Type`, without a colon. Bindings use `name := value`, with `mut` for reassignment. `<<` returns, `>>` throws, and `or (err) { ... }` handles errors. Error text is obtained with `err.msg()`.
+
+## Complete examples
+
+Save each block in its own `main.xu`, then run `xu check main.xu` and `xu run main.xu`. These examples share their sources with the site playground and the bundled official error-handling example.
+
+### Hello world
+
+{{example:hello}}
+
+### Coroutines and channels
+
+Use `chan int{cap: N}`, `ch <- value` to send, and `<-ch` to receive. The example collects three results before exiting.
+
+{{example:chan-workers}}
+
+### Error handling
+
+{{example:errors}}
+
+## Tools and package installation
+
+- `xu build main.xu -o app`: compile a native executable.
+- `xu run main.xu`: compile and execute.
+- `xu check main.xu`: check syntax, types, and ownership.
+- `xu debug main.xu`: build with debug information and launch LLDB, with GDB as fallback; an installed debugger is required.
+- `xu test test.example.xu -v`: execute tests. Test and benchmark functions belong in `test.<name>.xu`, in `@main`, without parameters or return types.
+- `xu fmt main.xu`: format source.
+- `xu lsp`: serve LSP over stdin/stdout. Completion mainly covers keywords, built-ins, and current-file declarations. References use identifier text matching in the current file and same-directory Xu files; rename edits only the current file. Review edits for unrelated identifiers with the same spelling.
+- `xu install`: resolve dependencies already declared in `xu.xun`, populate `vendor/`, and write `xu.lock`.
+- `xu get <module>@<version>`: syntax template for adding a dependency with a verified published SemVer tag. Replace both placeholders. A module's declared version does not establish that a matching Git tag exists.
+- `xu native`: compile/archive native modules, pack `.xulib` slices, and inspect/extract them. One-step static linking with `xu build`/`xu run` currently supports `macos-arm64` and `macos-x64` only. Other targets require object emission, conversion, and external linking.
+
+Use the official packages bundled with the selected SDK, or the matching immutable source commit documented at https://xulang.org/docs/packages/. External imports use an explicit alias and full module path, for example `redis #github.com/xulang-org/packages/redis`. Standard-library and local-package imports have separate resolution rules (`#fmt`, `#util`). Redis connections use `redis.open`, `open_auth`, or `open_url`; consult the API for exact signatures. SQLite requires a prepared native bridge and the target's native toolchain.
+
+## SDK, playground, and development scope
+
+The browser playground implements a language subset with cooperative channel scheduling. Real multithreading, networking, C FFI, and desktop UI require the native SDK. See https://xulang.org/playground/ for the current sandbox limits.
+
+XACP documentation describes the language repository's development branch after PR #23, separately from the selected released SDK. The implementation includes stdio and loopback TCP control. See https://xulang.org/api/xacp/ and https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md. `xu xacp debug` inspects and launches a program; source debugging uses `xu debug`.
+
+## Benchmark evidence
+
+The published dashboard contains {{benchmark_count}} workloads across {{benchmark_platforms}} platforms, measured with Xu {{benchmark_version}} on {{benchmark_date}}. The measurement identity is independent of the selected SDK. See https://xulang.org/benchmarks/ and the source CI run: {{benchmark_run}}. Consult the dashboard's per-platform results and methodology rather than infer a universal speedup.
+
+## Documentation index
+
+- Getting started: https://xulang.org/docs/start/
+- Installation: https://xulang.org/docs/install/
+- Language syntax: https://xulang.org/docs/lang/syntax/
+- Ownership and memory: https://xulang.org/docs/lang/memory/
+- Concurrency: https://xulang.org/docs/lang/concurrency/
+- Types: https://xulang.org/docs/lang/types/
+- Grammar: https://xulang.org/docs/lang/ebnf/
+- CLI: https://xulang.org/docs/cli/
+- Modules: https://xulang.org/docs/modules/
+- External packages: https://xulang.org/docs/packages/
+- Native modules: https://xulang.org/docs/native/
+- VS Code / Cursor: https://xulang.org/docs/vscode/
+- Tutorials (run commands from the separate examples repository root): https://xulang.org/docs/tutorial/01/
+- Standard library and package API: https://xulang.org/api/
+- FAQ: https://xulang.org/docs/faq/
+- Release notes: https://xulang.org/blog/
+- Expanded LLM reference: https://xulang.org/llms-full.txt

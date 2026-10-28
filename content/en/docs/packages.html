@@ -1,7 +1,7 @@
 <!--title: Official External Packages-->
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
 <h1>Official External Packages</h1>
-<p class="banner">Official module: <code>github.com/xulang-org/packages</code> · SDK module version 0.2.0 · 29 service integrations and the shared transport package</p>
+<p class="banner">Official module: <code>github.com/xulang-org/packages</code> · SDK module version 1.0.0 · 29 service integrations and the shared transport package</p>
 <p>The Xu {{xu_version}} SDK bundles the external drivers and their native source resources. The API is generated from that bundle. Drivers cover databases, caches, messaging, object storage and service discovery; check each package for protocol and platform limits.</p>
 <h2>1. Select the SDK bundle or a fixed source commit</h2>
 <p>Place your project beside the extracted SDK and declare its bundled packages using a local source locator. Adjust the relative path if you installed the SDK elsewhere:</p>
@@ -12,12 +12,12 @@ require:
   "github.com/xulang-org/packages": file:../xu-v{{xu_version}}/packages</code></pre>
 <p>To fetch the source used by this SDK instead, select its full immutable commit:</p>
 <pre><code class="language-xun">require:
-  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@0122e87a5f87b52d3ead9390ad01165e7d7645ad</code></pre>
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@96693e6cce8d51eba45e4f68dc12ce06f7a2336b</code></pre>
 <p>From your project directory, resolve and lock dependencies, then check and build:</p>
 <pre><code class="language-shell">xu install
 xu check main.xu --offline
 xu build main.xu -o my_app</code></pre>
-<p>Module versions and Git tags have separate roles: this bundle declares module version 0.2.0. The fixed source locator above selects the exact source independently of tag availability. Keep <code>xu.lock</code> with your application and consult <a href="/docs/modules">modules and dependencies</a> for frozen, vendor and proxy workflows.</p>
+<p>Module versions and Git tags have separate roles: this bundle declares module version 1.0.0. The fixed source locator above selects the exact source independently of tag availability. Keep <code>xu.lock</code> with your application and consult <a href="/docs/modules">modules and dependencies</a> for frozen, vendor and proxy workflows.</p>
 <h2>2. Importing Packages in Source Code</h2>
 <p>Xu enforces an <strong>explicit namespace alias convention</strong> for all external packages: <code>alias #full/module/path/pkg</code>. This eliminates global namespace pollution and makes all external dependencies visible directly at the top of the file.</p>
 
@@ -25,7 +25,6 @@ xu build main.xu -o my_app</code></pre>
 
 // 1. Standard library modules have no alias; prefixed with #
 #database/sql
-#fmt
 
 // 2. External packages declare an alias and full repository path
 mysql    #github.com/xulang-org/packages/mysql
@@ -34,62 +33,59 @@ postgres #github.com/xulang-org/packages/postgres
 
 fn main() int {
     // Access APIs directly through the declared alias
-    fmt.println("Drivers loaded successfully")
+    println("Drivers loaded successfully")
     << 0
 }</code></pre>
 
-<p class="note"><strong>Important:</strong> Do not write <code>#mysql</code> or <code>#redis</code>. The bare <code>#</code> is reserved exclusively for standard library modules. All external packages belong to the <code>github.com/xulang-org/packages</code> monorepo and require their full path identity.</p>
+<p class="note"><strong>Important:</strong> Do not write <code>#mysql</code> or <code>#redis</code>. External module imports require an explicit alias and full module path. Standard library imports and local package imports (such as <code>#util</code>) follow their own resolution rules. The integrations listed here belong to <code>github.com/xulang-org/packages</code>; other external modules have their own identities.</p>
 
 <h2>3. Hands-on Quickstart Examples</h2>
 
 <h3>Example 1: Using the MySQL Driver with <code>database/sql</code></h3>
 <p>The standard library <code>database/sql</code> provides connection pooling, transactions, and result row abstractions; the concrete MySQL driver is implemented by <code>packages/mysql</code>:</p>
-<pre><code>@main
+<pre><code class="language-xu">@main
 #database/sql
-#fmt
 mysql #github.com/xulang-org/packages/mysql
 
 fn main() int {
     dsn := "root:123456@tcp(127.0.0.1:3306)/test_db?tls=false"
     mut db := sql.open(mysql.driver(), dsn)
     db.ping() or (err) {
-        fmt.println("Database ping failed:", err.msg())
+        println("Database ping failed: " + err.msg())
         << 1
     }
-    fmt.println("Connected to MySQL successfully!")
+    println("Connected to MySQL successfully!")
     db.close() or (err) { << 1 }
     << 0
 }</code></pre>
 
 <h3>Example 2: Redis Client Operations</h3>
-<pre><code>@main
-#fmt
+<pre><code class="language-xu">@main
 redis #github.com/xulang-org/packages/redis
 
 fn main() int {
-    mut client := redis.connect("127.0.0.1:6379") or (err) {
-        fmt.println("Redis connect error:", err.msg())
+    mut client := redis.open("127.0.0.1:6379") or (err) {
+        println("Redis connect error: " + err.msg())
         << 1
     }
-    client.set("app_version", "v0.8.12") or (err) { << 1 }
+    client.set("app_version", "demo") or (err) { << 1 }
     val := client.get("app_version") or (err) { << 1 }
-    fmt.println("Key 'app_version':", val)
+    println("Key 'app_version': " + val)
     client.close()
     << 0
 }</code></pre>
 
 <h3>Example 3: Object Storage with S3 / MinIO</h3>
-<pre><code>@main
-#fmt
+<pre><code class="language-xu">@main
 s3 #github.com/xulang-org/packages/s3
 
 fn main() int {
-    mut client := s3.new("endpoint.example.com", "access_key", "secret_key", "my-bucket")
-    client.put_object("welcome.txt", "Hello from Xu!") or (err) {
-        fmt.println("S3 upload failed:", err.msg())
+    mut client := s3.open("http://127.0.0.1:9000", "access_key", "secret_key", "us-east-1")
+    client.put_object("my-bucket", "welcome.txt", "Hello from Xu!", "text/plain") or (err) {
+        println("S3 upload failed: " + err.msg())
         << 1
     }
-    fmt.println("Object uploaded successfully")
+    println("Object uploaded successfully")
     << 0
 }</code></pre>
 
@@ -150,7 +146,7 @@ fn main() int {
 <p>For more details on MVS resolution, checksum verification, and private proxies, see: <a href="/docs/modules">Modules and Dependencies Specification</a> and <a href="/docs/native">Native Modules &amp; .xulib Specification</a>.</p>
 
 <h2 id="sqlite-native">Build the SQLite native bridge</h2>
-<p>SQLite examples require a native bridge built from the bundled C sources. On macOS ARM64, run these commands from the SDK packages directory with the matching C toolchain. Other targets require a matching native toolchain and target slice.</p>
+<p>SQLite examples require a native bridge built from the bundled C sources. On macOS ARM64, run these commands from the SDK packages directory with the matching C toolchain. The complete one-step build and run path supports <code>macos-arm64</code> and <code>macos-x64</code>. Other targets require a matching toolchain and slice, XUOBJ emission and conversion, and external linking; see <a href="/docs/native">native modules</a>.</p>
 <pre><code class="language-shell">cd xu-v{{xu_version}}/packages
 xu native compile --manifest sqlite/native/native.json --target macos-arm64 -O2 -DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 sqlite/native/bridge.c sqlite/vendor/sqlite3.c -o sqlite/native/sqlite-macos-arm64.a
 xu native pack --manifest sqlite/native/native.json --slice macos-arm64=sqlite/native/sqlite-macos-arm64.a -o sqlite/native/sqlite.xulib</code></pre>

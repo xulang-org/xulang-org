@@ -1,237 +1,286 @@
-# Xu Programming Language — Full Documentation & Language Specification
+# Xu Programming Language
 
-Official Website: https://xulang.org
-Repository: https://github.com/xulang-org/xu
-Version: Stable 0.9.4
-License: MIT License
+> Xu is a systems language with custom native AOT backends, zero GC, inferred ownership, and Go-like concurrency.
 
----
+Official website: https://xulang.org
+Language repository: https://github.com/xulang-org/xu
+Selected released SDK: 0.10.7
+License: MIT (see the repository LICENSE; preserve third-party notices).
 
-## 1. Executive Overview & Positioning
+## Language and safety model
 
-Xu is a modern systems programming language compiled Ahead-Of-Time (AOT) to native machine code (ARM64, x86-64) and WebAssembly (WASM).
-It combines:
-- Deterministic memory safety with zero garbage collection (zero GC / RAII)
-- High-throughput language-level concurrency with coroutines (`xu f()`) and typed channels (`chan T`)
-- Clean, ergonomic, semicolon-free syntax ("Thin Syntax")
-- Unified `xu` toolchain for builds, tests (`xu test -bench` for benchmarks), dependencies (`xu get` / `xu install`), editor services (`xu lsp`), native C modules (`xu native`), and formatting (`xu fmt`)
-- Rich standard library covering async networking, TLS/GMTLS (SM2, SM3, SM4), SQL, and native WebView desktop UI.
+Xu uses static typing, ownership inference, borrow checking, and deterministic resource cleanup. It uses custom AOT backends rather than LLVM. Coroutines start with `xu f()` and communicate through typed channels. There is no garbage collector.
 
-### Architectural Comparison
-- **Xu vs. C/C++**: Xu guarantees complete compile-time memory safety without data races, null pointer dereferences, or undefined behavior (UB), while delivering identical zero-runtime overhead and pure native machine speed.
-- **Xu vs. Rust**: Xu provides static borrow checking and deterministic RAII destruction without the mental overhead of explicit lifetime annotations (`'a`). Concurrency is built into the language via user-space coroutines and channels rather than external async runtimes.
-- **Xu vs. Go**: Xu provides Go-like joyful concurrency (`xu` instead of `go`, `chan` pipelines) but compiles to zero-GC native binaries. It has zero Stop-The-World (STW) pauses, sub-millisecond cold start times, and minimal memory footprints.
+Ownership and borrow diagnostics constrain value use and mutable access. Shared mutable state in concurrent code still requires appropriate synchronization. Native code, FFI, and concurrent libraries have their own safety requirements; this is not a blanket guarantee against every data race or undefined behavior. See https://xulang.org/docs/lang/memory/ and https://xulang.org/docs/lang/concurrency/.
 
----
+Parameters, fields, and receivers use `name Type`, without a colon. Bindings use `name := value`, with `mut` for reassignment. `<<` returns, `>>` throws, and `or (err) { ... }` handles errors. Error text is obtained with `err.msg()`.
 
-## 2. Language Syntax & Mental Model
+## Complete examples
 
-### Declarations & Mutability
-Bindings are immutable by default:
+Save each block in its own `main.xu`, then run `xu check main.xu` and `xu run main.xu`. These examples share their sources with the site playground and the bundled official error-handling example.
+
+### Hello world
+
 ```xu
-a := 10             // int
-msg := "hello"      // string
-pi := 3.1415926     // float64
-flag := true        // bool
-```
-Mutable bindings require the `mut` keyword:
-```xu
-mut count := 0
-count = count + 1
-```
+@main
 
-### Control Flow
-Xu avoids parentheses around conditions and does not use semicolons:
-```xu
-if x > 0 {
-    // then branch
-} else if x == 0 {
-    // zero branch
-} else {
-    // else branch
+fn main() int {
+    println("Hello from XU Programming Language!")
+    << 0
 }
 ```
 
-Loops:
+### Coroutines and channels
+
+Use `chan int{cap: N}`, `ch <- value` to send, and `<-ch` to receive. The example collects three results before exiting.
+
 ```xu
-// Infinite loop
-for {
-    if done {
-        <- // break
+@main
+
+fn worker(id int, results chan int) {
+    results <- id * 10
+}
+
+fn main() int {
+    results := chan int{cap: 3}
+    xu worker(1, results)
+    xu worker(2, results)
+    xu worker(3, results)
+
+    mut total := 0
+    for i in 0:3 {
+        value := <-results
+        total += value
     }
-    -> // continue
-}
-
-// Conditional loop
-for condition {
-    // loop body
-}
-
-// Iteration
-for item in collection {
-    // process item
+    println(total)
+    << 0
 }
 ```
 
-### Flow Operators
-- `<< expr`: return from function with expression
-- `<<`: return void
-- `>> expr`: throw / propagate an error (`errors.Error`)
-- `or (err) { ... }`: catch error from an expression
-- `<<< expr`: exit process immediately with status code
-- `<-`: break from current loop
-- `->`: continue to next loop iteration
+### Error handling
 
-### Error Handling Pattern
-Errors in Xu are concrete values that implement the error interface. Functions return errors explicitly or throw them with `>>`:
 ```xu
-fn parse_number(s: string) int {
-    if s.is_empty() {
-        >> errors.new("empty string")
+@main
+
+#errors
+
+fn read_name(ok bool) string {
+    if !ok {
+        >> errors.new("empty name")
     }
-    << strconv.parse_int(s) or (err) {
-        >> err
+    << "ada"
+}
+
+fn load_or_fallback(ok bool) string {
+    << read_name(ok) or (err) {
+        println(err.msg())
+        << "fallback"
     }
 }
+
+fn main() int {
+    s := load_or_fallback(false)
+    println(s)
+
+    t := read_name(true) or (err) {
+        println(err.msg())
+        << 1
+    }
+    println(t)
+    << 0
+}
 ```
 
-### Functions, Structs, and Methods
+## Tools and package installation
+
+- `xu build main.xu -o app`: compile a native executable.
+- `xu run main.xu`: compile and execute.
+- `xu check main.xu`: check syntax, types, and ownership.
+- `xu debug main.xu`: build with debug information and launch LLDB, with GDB as fallback; an installed debugger is required.
+- `xu test test.example.xu -v`: execute tests. Test and benchmark functions belong in `test.<name>.xu`, in `@main`, without parameters or return types.
+- `xu fmt main.xu`: format source.
+- `xu lsp`: serve LSP over stdin/stdout. Completion mainly covers keywords, built-ins, and current-file declarations. References use identifier text matching in the current file and same-directory Xu files; rename edits only the current file. Review edits for unrelated identifiers with the same spelling.
+- `xu install`: resolve dependencies already declared in `xu.xun`, populate `vendor/`, and write `xu.lock`.
+- `xu get <module>@<version>`: syntax template for adding a dependency with a verified published SemVer tag. Replace both placeholders. A module's declared version does not establish that a matching Git tag exists.
+- `xu native`: compile/archive native modules, pack `.xulib` slices, and inspect/extract them. One-step static linking with `xu build`/`xu run` currently supports `macos-arm64` and `macos-x64` only. Other targets require object emission, conversion, and external linking.
+
+Use the official packages bundled with the selected SDK, or the matching immutable source commit documented at https://xulang.org/docs/packages/. External imports use an explicit alias and full module path, for example `redis #github.com/xulang-org/packages/redis`. Standard-library and local-package imports have separate resolution rules (`#fmt`, `#util`). Redis connections use `redis.open`, `open_auth`, or `open_url`; consult the API for exact signatures. SQLite requires a prepared native bridge and the target's native toolchain.
+
+## SDK, playground, and development scope
+
+The browser playground implements a language subset with cooperative channel scheduling. Real multithreading, networking, C FFI, and desktop UI require the native SDK. See https://xulang.org/playground/ for the current sandbox limits.
+
+XACP documentation describes the language repository's development branch after PR #23, separately from the selected released SDK. The implementation includes stdio and loopback TCP control. See https://xulang.org/api/xacp/ and https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md. `xu xacp debug` inspects and launches a program; source debugging uses `xu debug`.
+
+## Benchmark evidence
+
+The published dashboard contains 47 workloads across 6 platforms, measured with Xu 0.10.7 on 2026-10-26. The measurement identity is independent of the selected SDK. See https://xulang.org/benchmarks/ and the source CI run: https://github.com/xulang-org/bench/actions/runs/40298620461. Consult the dashboard's per-platform results and methodology rather than infer a universal speedup.
+
+## Documentation index
+
+- Getting started: https://xulang.org/docs/start/
+- Installation: https://xulang.org/docs/install/
+- Language syntax: https://xulang.org/docs/lang/syntax/
+- Ownership and memory: https://xulang.org/docs/lang/memory/
+- Concurrency: https://xulang.org/docs/lang/concurrency/
+- Types: https://xulang.org/docs/lang/types/
+- Grammar: https://xulang.org/docs/lang/ebnf/
+- CLI: https://xulang.org/docs/cli/
+- Modules: https://xulang.org/docs/modules/
+- External packages: https://xulang.org/docs/packages/
+- Native modules: https://xulang.org/docs/native/
+- VS Code / Cursor: https://xulang.org/docs/vscode/
+- Tutorials (run commands from the separate examples repository root): https://xulang.org/docs/tutorial/01/
+- Standard library and package API: https://xulang.org/api/
+- FAQ: https://xulang.org/docs/faq/
+- Release notes: https://xulang.org/blog/
+- Expanded LLM reference: https://xulang.org/llms-full.txt
+
+## Additional syntax examples
+
+Each block is a complete independent program from the site's playground examples or ownership tutorial. Save one at a time as `main.xu`.
+
+### Bindings and mutability
+
 ```xu
-struct Point {
-    x: int
-    y: int
-}
+@main
 
-fn (p: &Point) distance_squared() int {
-    << p.x * p.x + p.y * p.y
-}
+const MAX = 100
 
-fn (p: &mut Point) translate(dx: int, dy: int) {
-    p.x = p.x + dx
-    p.y = p.y + dy
-    <<
+fn main() int {
+    name := "Xu"
+    mut age := 20
+    age += 1
+    println(name)
+    println(age)
+    println(MAX)
+    << 0
 }
 ```
 
----
+### Structs and methods
 
-## 3. Memory Model & Ownership
+```xu
+@main
 
-Xu's memory management is fully static and deterministic:
-1. **Single Owner**: Every value has exactly one owning binding at any time. When the owner goes out of scope, the value's destructor is automatically and deterministically invoked (RAII).
-2. **Move Semantics**: Assigning or passing an owned value transfers ownership. Using a moved-from value causes a compile-time error.
-3. **Borrowing**:
-   - `&T`: Shared (immutable) borrow. Any number of active shared borrows may coexist.
-   - `&mut T`: Exclusive (mutable) borrow. Only one active exclusive borrow is permitted at any given time, preventing data races and iterator invalidation statically.
-4. **Zero GC**: No memory tracking at runtime, no reference counting headers by default, no garbage collection pause times.
+struct Counter {
+    n int
+}
 
----
+fn (c Counter) get() int {
+    << c.n
+}
 
-## 4. Concurrency Model (CSP)
+fn (c &mut Counter) inc() {
+    c.n += 1
+}
 
-Xu adopts Communicating Sequential Processes (CSP):
-- **Coroutines**: Spawned with the `xu` keyword:
-  ```xu
-  xu worker_function(arg1, arg2)
-  ```
-  Coroutines are lightweight, scheduled in user space, and scale to hundreds of thousands of concurrent tasks.
-- **Channels**: First-class typed communication pipes:
-  ```xu
-  // Unbuffered synchronous channel
-  sync_ch := chan[string]()
+fn main() int {
+    mut counter := Counter{n: 10}
+    println(counter.get())
+    counter.inc()
+    println(counter.get())
+    << 0
+}
+```
 
-  // Buffered channel with capacity 100
-  buf_ch := chan[int](100)
+### Borrowing
 
-  // Send
-  buf_ch.send(42)
+`&T` denotes a shared borrow; `&mut T` denotes an exclusive mutable borrow. Follow compiler diagnostics for inferred ownership and borrow lifetimes.
 
-  // Receive
-  val := buf_ch.recv() or (err) {
-      // Channel closed
-  }
-  ```
+```xu
+@main
 
----
+fn take(s string) {
+    println(s)
+}
 
-## 5. Toolchain & Project Configuration
+fn len_of(s &string) int {
+    << s.len
+}
 
-The compiler is invoked via the `xu` CLI:
-- `xu init`: Create a project with a `xu.xun` manifest.
-- `xu get <module>@<version>`: Add/update a pinned dependency, install sources, and update `xu.lock`.
-- `xu install`: Install dependencies already declared in `xu.xun`.
-- `xu build [flags]`: Compile project into native machine binary.
-- `xu run <entry.xu>`: Instantly compile and run.
-- `xu test [flags]`: Run `fn test_*` test functions.
-- `xu test -bench`: Run `fn bench_*` benchmark functions.
-- `xu fmt`: Auto-format all `.xu` source files according to official style rules.
-- `xu lsp`: Launch the SDK's language server over stdin/stdout using JSON-RPC 2.0.
-- `xu native`: Compile/archive C modules, pack `.xulib` target slices, and inspect/extract slices.
+fn append_bang(s &mut string) {
+    s.push_str("!")
+}
 
-Project Manifest: `xu.xun`
+fn main() int {
+    msg := "hello"
+    println(len_of(&msg))
+    println(msg)
+
+    mut owned := "hi"
+    append_bang(mut &owned)
+    println(owned)
+
+    take(owned)
+    // owned 已 move，不可再使用
+    << 0
+}
+```
+
+### Loops and control flow
+
+`<-` breaks a loop and `->` continues it. `<<` returns from a function; `<<<` exits the process.
+
+```xu
+@main
+
+fn main() int {
+    for i in 0:10 {
+        if i >= 7 { <- }
+        if i % 2 == 0 { -> }
+        println(i)
+    }
+    << 0
+}
+```
+
+## Project manifest and dependency workflow
+
+Place the project beside the extracted SDK directory named `xu-v0.10.7`, or adjust the local path below to the installed SDK's packages directory:
+
 ```xun
 module: myapp
 version: !ver 0.1.0
-xu: !ver 0.9.4
-
+xu: !ver 0.10.7
 require:
-  "github.com/xulang-org/packages": v0.1.1
+  "github.com/xulang-org/packages": file:../xu-v0.10.7/packages
 ```
-Add a pinned dependency to an existing project, or install already-declared dependencies:
-```bash
-xu get github.com/xulang-org/packages@v0.1.1
+
+From the project root, run:
+
+```sh
 xu install
+xu check main.xu --offline
+xu build main.xu --frozen -o app
 ```
-`xu get` also updates `require:` in `xu.xun` and requires an explicit exact version (`@latest` is not accepted). Dependencies are downloaded to `vendor/` and locked with cryptographic hashes in `xu.lock`. Both installation commands support `--offline`; use `xu build . --frozen` to build strictly against the existing lockfile.
 
----
+Commit the application manifest and lockfile for reproducibility. For fetching the SDK's exact source commit instead of using a local bundle, follow https://xulang.org/docs/packages/. Native bridge artifacts may require separate preparation; installing Xu source dependencies does not build those artifacts.
 
-## 6. Standard Library Overview
+## Tests
 
-- **Core**: `errors`, `fmt`, `flag`, `cmp`, `context`, `sync`, `time`, `runtime`, `maps`, `slices`, `sort`, `testing`
-- **Text & Binary**: `strings`, `bytes`, `strconv`, `unicode`, `regexp`, `html`, `encoding/json`, `encoding/hex`, `encoding/base64`, `encoding/binary`
-- **IO & OS**: `io`, `io/fs`, `os`, `os/exec`, `os/signal`, `os/user`, `bufio`, `path`, `log`
-- **Networking**: `net`, `net/http`, `net/http/cookiejar`, `net/http/httptest`, `net/netip`, `net/url`, `net/smtp`
-- **Cryptography & Security**: `crypto/aes`, `crypto/cipher`, `crypto/sm2`, `crypto/sm3`, `crypto/sm4`, `crypto/sm9`, `crypto/zuc`, `crypto/gmtls`, `crypto/tls`, `crypto/rand`, `crypto/rsa`, `crypto/sha256`
-- **Database & Ecosystem**: `database/sql`, `database/sql/driver`, and 29 extended packages (Redis, Postgres, MySQL, Kafka, ClickHouse, SQLite, Etcd, Elasticsearch, NATS, Qdrant, Milvus, Chroma, S3, etc.)
-- **GUI & Desktop**: `ui`, `ui/webview`, `ui/draw`
+Save this as `test.example.xu`:
 
----
+```xu
+@main
 
-## 7. Performance Benchmarks Summary
+fn test_add() {
+    assert(1 + 1 == 2)
+}
+```
 
-Stable Xu 0.9.4 was measured on 2026-10-20 across 47 workloads on six Linux, macOS and Windows platforms covering ARM64 and x86-64:
-- **Runtime**: Seven whole-program samples with verified stdout; the dashboard reports the median. C and Rust use the lowest measured O1–O3 median for each workload on the same platform.
-- **Resources**: CPU time, peak RSS and binary size are reported per platform. Missing reference implementations remain unranked; performance varies by workload and platform.
-- **Compilation**: Compilation timings and compiler identities are available in the [source CI reports](https://github.com/xulang-org/bench/actions/runs/39537154539).
+Run `xu test test.example.xu -v`. Benchmark functions follow the same filename and signature restrictions, use the `bench_` prefix, and are selected with `-bench REGEXP`.
 
-For detailed numbers, charts, and reproduction suites, visit: https://xulang.org/benchmarks/
+## Native container metadata
 
----
+The product `xu native pack` writes top-level `abi`, `format`, `module`, and `slices` metadata. Export signatures are stored in each slice's XUOBJ metadata. The source-tree Python helper `scripts/xunative.py` also retains fields copied from its input manifest, including `exports`; consumers must not assume every product-generated container has top-level `exports`.
 
-## 8. Compiler Architecture & Frequently Asked Questions (FAQ)
+Packing multiple target slices and linking a native executable are separate capabilities. The one-step macOS link path needs the macOS C toolchain. For other targets, emit XUOBJ with `--emit-obj`, convert to a platform object, and use the target's external linker. See https://xulang.org/docs/native/ for platform scope.
 
-### Does the Xu compiler use LLVM? Why a custom native backend?
-**No, the Xu compiler does not use LLVM**.
-The compiler (`src/cmd/compile/`) implements an entirely self-hosted, lightweight Mid-level Intermediate Representation (MIR), linear scan register allocators, and direct machine code emitters. It outputs native Mach-O, ELF, PE, and WebAssembly binaries directly.
-- **Sub-Second Compilation Speed**: LLVM's enormous pass pipeline is the primary reason C++ and Rust suffer from slow compilation. Xu targets Go-like compilation speeds (hundreds of milliseconds for tens of thousands of lines).
-- **Single Compact Binary (~15MB)**: Completely eliminates external C++ runtime libraries (`libLLVM`, `libc++`). The compiler is an autonomous single binary.
-- **Zero-Dependency Native Cross-Compilation**: Built-in instruction encoders (ARM64, x86-64, LoongArch64, RISC-V, WASM) allow cross-compiling with a single flag (`--target linux-arm64`) without host cross-compilers or sysroots.
-- **Direct Semantic Synergy**: High-level ownership and borrow liveness ranges are maintained in MIR, avoiding the abstraction penalty of lowering through generic LLVM IR.
+## Standard library and integrations
 
-### Does Xu use a garbage collector (GC)?
-**No**. Memory is deterministically reclaimed through compile-time single-ownership tracking and RAII scoping drops, verified by static borrow checking (`&T` and `&mut T`). There are zero Stop-The-World (STW) pauses.
+The API catalog at https://xulang.org/api/ is generated from the selected released SDK. It covers formatting, errors, collections, text and encodings, files and processes, networking, cryptography, SQL, and the `ui`, `ui/draw`, `ui/layout`, `ui/widgets`, and `ui/webview` packages. Consult each package's documented target limits.
 
-### How does Xu compare to Rust and Go?
-- **Vs. Rust**: Zero runtime overhead and memory safety **without manual lifetime annotations (`<'a>`)**, with first-class language coroutines and channels without external async frameworks.
-- **Vs. Go**: Zero-GC native machine code without runtime STW latency, baseline memory footprint bloat, or background GC threads.
+Official service integrations live in the independent https://github.com/xulang-org/packages repository. The website documents the SDK's pinned package snapshot, which can differ from that repository's current branch. Read the relevant API and example before assuming a protocol feature or native target is supported.
 
-### Which editors support Xu, and how do I enable LSP?
-The official [vscode-xu extension](https://xulang.org/docs/vscode/) supports VS Code and Cursor. It runs `xu lsp` to launch the SDK's `xu-lsp` server for diagnostics, completion, go-to-definition, hover documentation, symbols, references, rename, and formatting. Other LSP-compatible editors can configure the same command over stdin/stdout using JSON-RPC 2.0. The editor normally starts the server automatically; run `xu lsp --help` for help.
-
-### What is the difference between xu get and xu install?
-In a project containing `xu.xun`, run `xu get github.com/xulang-org/packages@v0.1.1` to add or update a pinned dependency. It edits `require:`, installs sources into `vendor/`, and updates `xu.lock`. An explicit exact version is required; `@latest` is not accepted. `xu install` installs dependencies already declared in the manifest. Both commands support `--offline`; use `xu build . --frozen` for strict lockfile builds. The official `packages` repository provides 29 extension packages. See [Modules & Dependencies](https://xulang.org/docs/modules/).
-
-### How do I use xu native to integrate C code?
-`xu native compile` compiles C sources with interface metadata into `.a`; `xu native archive` wraps existing object files with metadata; `xu native pack` bundles target slices into `.xulib`; `xu native inspect` and `xu native extract` inspect and extract slices. Use `.a` for a single target and `.xulib` to distribute interface contracts with multiple target slices. Pass the library to the build, for example `xu build main.xu native/mylib.xulib -o app`. Compiling C sources requires the corresponding C toolchain. See [Native Modules & .xulib](https://xulang.org/docs/native/) for full examples, or run `xu native compile --help`.
-
+<!-- Generated by scripts/gen_llms.py; edit templates/llms/*.md and shared example sources. -->
