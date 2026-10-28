@@ -38,10 +38,10 @@ fn main() int {
     styles.text_scale = 1.4
     styles.density = 0.85
     styles.button.radius = 10.0
-    styles.button.icon_placement = widgets.icon_trailing
-    mut rule := widgets.state_paint(widgets.state_focused | widgets.state_invalid)
-    rule.unless = widgets.state_disabled
-    rule.fields = widgets.paint_border | widgets.paint_focus
+    styles.button.icon_placement = widgets.ICON_TRAILING
+    mut rule := widgets.state_paint(widgets.STATE_FOCUSED | widgets.STATE_INVALID)
+    rule.unless = widgets.STATE_DISABLED
+    rule.fields = widgets.PAINT_BORDER | widgets.PAINT_FOCUS
     rule.border = draw.rgb(220, 38, 38)
     rule.focus = draw.rgb(251, 113, 133)
     styles.button.states.push(rule)
@@ -90,7 +90,7 @@ fn configure_menu(window &amp;ui.Window) int {
     entries.push(ui.submenu(&quot;document&quot;, &quot;Document&quot;, -1))
     mut reset := ui.menu_action(&quot;reset&quot;, &quot;Reset&quot;, 0)
     reset.key = 82
-    reset.modifiers = ui.menu_primary | ui.mod_shift
+    reset.modifiers = ui.MENU_PRIMARY | ui.MOD_SHIFT
     entries.push(reset)
     entries.push(ui.menu_separator(0))
     entries.push(ui.menu_check(&quot;readonly&quot;, &quot;Read only&quot;, 0, false))
@@ -107,10 +107,10 @@ fn main() int { &lt;&lt; 0 }</code></pre></div>
 #ui
 
 fn handle_result(event &amp;ui.Event, pending &amp;ui.Request) int {
-    if event.kind != ui.ev_request { &lt;&lt; 0 }
+    if event.kind != ui.EV_REQUEST { &lt;&lt; 0 }
     result := ui.request_of(event) or &gt;&gt;
     if !result.matches(pending) { &lt;&lt; 0 }
-    if result.status == ui.request_completed { println(result.value) }
+    if result.status == ui.REQUEST_COMPLETED { println(result.value) }
     &lt;&lt; 0
 }
 fn main() int { &lt;&lt; 0 }</code></pre></div>
@@ -128,3 +128,6 @@ pending.then(value =&gt; console.log(pending.id, value))
 <p>单个 invoke 请求（含协议头）及返回值最多 1 MiB；最多 64 个活跃派发额度，排队请求体 / 结果共用 8 MiB。请求名最多 256 个 UTF-8 字节。取消、导航和关闭会丢弃迟到结果；取消不能强制中断正在运行的用户回调，额度待回调返回后释放。并发请求可乱序完成。</p>
 <p><code>WebView.eval_async</code>、<code>find_async</code>、<code>cookies_async</code>、<code>set_cookie_async</code>、<code>clear_cookies_async</code> 使用相同 ui.Request / ev_request 生命周期，原生结果最多 64 KiB。原生完成回调在 UI 线程；应用派发在 Xu worker。兼容等待接口不消费 App 的公开事件队列。每窗 / 文档身份隔离，导航后不能把旧结果应用到新页面。</p>
 <p><a href="/docs/tutorial/16">桌面教程</a> · <a href="/api">正式版 API 索引</a></p>
+
+<h2 id="game-engine-boundary">绘图与游戏引擎边界</h2>
+<p>这是面向桌面工具、编辑器和小型原型的二维绘图层。平台后端使用 CoreGraphics、Cairo 和 GDI+；公共 API 没有提供游戏引擎所需的 GPU 渲染管线、着色器、绘制批处理和显示同步的帧调度契约。DisplayList 与 Surface 缓存可复用工作，但不能据此宣称达到游戏帧耗时预算；应按实际负载在目标平台测量。</p>

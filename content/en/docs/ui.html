@@ -38,10 +38,10 @@ fn main() int {
     styles.text_scale = 1.4
     styles.density = 0.85
     styles.button.radius = 10.0
-    styles.button.icon_placement = widgets.icon_trailing
-    mut rule := widgets.state_paint(widgets.state_focused | widgets.state_invalid)
-    rule.unless = widgets.state_disabled
-    rule.fields = widgets.paint_border | widgets.paint_focus
+    styles.button.icon_placement = widgets.ICON_TRAILING
+    mut rule := widgets.state_paint(widgets.STATE_FOCUSED | widgets.STATE_INVALID)
+    rule.unless = widgets.STATE_DISABLED
+    rule.fields = widgets.PAINT_BORDER | widgets.PAINT_FOCUS
     rule.border = draw.rgb(220, 38, 38)
     rule.focus = draw.rgb(251, 113, 133)
     styles.button.states.push(rule)
@@ -90,7 +90,7 @@ fn configure_menu(window &amp;ui.Window) int {
     entries.push(ui.submenu(&quot;document&quot;, &quot;Document&quot;, -1))
     mut reset := ui.menu_action(&quot;reset&quot;, &quot;Reset&quot;, 0)
     reset.key = 82
-    reset.modifiers = ui.menu_primary | ui.mod_shift
+    reset.modifiers = ui.MENU_PRIMARY | ui.MOD_SHIFT
     entries.push(reset)
     entries.push(ui.menu_separator(0))
     entries.push(ui.menu_check(&quot;readonly&quot;, &quot;Read only&quot;, 0, false))
@@ -107,10 +107,10 @@ fn main() int { &lt;&lt; 0 }</code></pre></div>
 #ui
 
 fn handle_result(event &amp;ui.Event, pending &amp;ui.Request) int {
-    if event.kind != ui.ev_request { &lt;&lt; 0 }
+    if event.kind != ui.EV_REQUEST { &lt;&lt; 0 }
     result := ui.request_of(event) or &gt;&gt;
     if !result.matches(pending) { &lt;&lt; 0 }
-    if result.status == ui.request_completed { println(result.value) }
+    if result.status == ui.REQUEST_COMPLETED { println(result.value) }
     &lt;&lt; 0
 }
 fn main() int { &lt;&lt; 0 }</code></pre></div>
@@ -128,3 +128,6 @@ pending.then(value =&gt; console.log(pending.id, value))
 <p>An invoke request including its header, or a response, is at most 1 MiB. There are at most 64 active dispatch leases and an 8 MiB shared queued body / result budget. Names are at most 256 UTF-8 bytes. Cancellation, navigation and closure discard late results. Cancellation does not interrupt running user code; its lease remains occupied until the callback returns. Concurrent requests may complete out of order.</p>
 <p><code>WebView.eval_async</code>, <code>find_async</code>, <code>cookies_async</code>, <code>set_cookie_async</code> and <code>clear_cookies_async</code> share the ui.Request / ev_request lifecycle with results bounded to 64 KiB. Native completion callbacks run on the UI thread; application dispatch runs on Xu workers. Compatibility wait APIs do not drain the public App event queue. Window and document ownership prevent old results from reaching a newly navigated page.</p>
 <p><a href="/docs/tutorial/16">Desktop tutorial</a> · <a href="/api">Release API index</a></p>
+
+<h2 id="game-engine-boundary">Drawing and game engines</h2>
+<p>This is a desktop 2D drawing layer suitable for tools, editors and modest prototypes. Its platform backends use CoreGraphics, Cairo and GDI+. The public API does not provide a game-engine GPU pipeline, shaders, draw batching or a display-synchronized frame-pacing contract. DisplayList and surface caches help reuse work, but are not evidence of a game frame-time budget; measure the intended workload on each target before committing to it.</p>

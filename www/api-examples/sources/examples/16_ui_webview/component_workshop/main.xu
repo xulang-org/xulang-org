@@ -1,0 +1,1439 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#ui/webview
+#time
+#math
+#errors
+#strconv
+demo #"github.com/xulang-org/examples/ui_demo"
+
+struct Page { group int
+    ids []int }
+// A state transition may reconfigure Workshop while these control IDs are in
+// use. Copy the IDs; Screen keeps ownership of the actual controls.
+fn (m &Workshop) page_snapshot(index int) Page {
+    group := m.pages[index].group
+    mut ids := []int{}
+    for id in m.pages[index].ids { ids.push(id) }
+    << Page{group: group,ids: ids}
+}
+struct Workshop {
+    tooltip_side int
+    range_push bool
+    range_vertical bool
+    range_commit bool
+    split_vertical bool
+    split_collapsed bool
+    menu_stays_open bool
+    menu_export_disabled bool
+    chart_kind int
+    chart_paused bool
+    group_vertical bool
+    group_joined bool
+    group_disabled bool
+    pages []Page
+    names []string
+    navigation int
+    language int
+    preview int
+    title int
+    caption int
+    status int
+    theme int
+    density int
+    scale int
+    state int
+    custom int
+    reduced int
+    motion int
+    focus int
+    tools []int
+    selected int
+    customized bool
+    guided bool
+    slow bool
+    variant int
+    revision int
+    completed int
+    running bool
+    failure bool
+    pending_before bool
+    pagination_error bool
+    preferences_name string
+    preferences_history bool
+    unread int
+    online bool
+    checksum int
+    deadline time.Instant
+}
+fn names() []string { << ["StyledLabel","Button","IconButton","Input","TextArea","Field","FieldArea","TreeView","TaskButton","Checkbox","Switch","Radio","RadioGroup","Slider","Stepper","Select","ComboBox","MultiSelect","DatePicker","TimePicker","ColorPicker","Tabs","Segmented","ListBox","Table","Pagination","Breadcrumbs","Progress","Spinner","Divider","Badge","Card","Scroll","Popover","Tooltip","ToastHost","Modal","WebView","ButtonGroup","Chart","RangeSlider","SplitView","Menu","ContextMenu","SplitButton","PasswordInput"] }
+fn new_page(s &mut widgets.Screen,index int) Page {
+    group := s.group() or >>
+    mut ids := []int{}
+    choices := ["Workspace 工作区","History 历史","Output 输出"]
+    if index == 0 { ids.push(s.label("清晰的层级，让每个细节都服务于使用。\n中文、English 与 emoji 👩🏽‍💻 都使用原生排版。",20.0,false) or >>)
+        s.set_label_wrapped(ids[0],true) or >>
+        ids.push(s.label("很长的完整内容：Cluster-safe truncation · 👨‍👩‍👧‍👦 family · workspace / widgets / component.xu",16.0,false) or >>)
+        s.set_label_ellipsis(ids[1],true) or >>
+        anchor := ids[1]
+        ids.push(s.tooltip(anchor,"很长的完整内容：Cluster-safe truncation · 👨‍👩‍👧‍👦 family · workspace / widgets / component.xu") or >>) }
+    if index == 1 {
+        mut sizes := []int{}
+        mut labels := []int{}
+        for text in ["Build project","Open workspace · trailing","Save changes · above","Download SDK · below"] {
+            // Each inspector precedes its own button in both layout and Tab order.
+            inspector := s.stepper(12.0,64.0,4.0,24.0) or >>
+            sizes.push(inspector)
+            _ := s.tooltip(inspector,text + " · Icon size 图标尺寸 (px)") or >>
+            labels.push(s.label("Icon 图标 · 24 px",14.0,true) or >>)
+            ids.push(s.button_with_icon("logo.png",text) or >>) }
+        for text in ["Secondary","Outline","Ghost","Danger","Subtle"] { ids.push(s.button(text) or >>) }
+        s.set_button_variant(ids[0],widgets.BUTTON_PRIMARY) or >>
+        for variant in 1:6 { s.set_button_variant(ids[variant + 3],variant) or >> }
+        for id in sizes { ids.push(id) }
+        for id in labels { ids.push(id) } }
+    if index == 2 { ids.push(s.icon_button("logo.png","Open XU workspace") or >>)
+        anchor := ids[0]
+        ids.push(s.tooltip(anchor,"Open XU workspace · Enter") or >>) }
+    if index == 3 { ids.push(s.input("中文 / English / 🙂") or >>) }
+    if index == 4 { ids.push(s.text_area("Native text editing\n选择文字、复制、粘贴，保留输入法会话。\n👩🏽‍💻 family 👨‍👩‍👧‍👦") or >>) }
+    if index == 5 || index == 6 {
+        mut decoration := widgets.field_decoration(&"Project name 项目名称")
+        decoration.helper = "Enter a name · Native IME / selection / clipboard"
+        decoration.error = "名称不能为空。Please enter a project name."
+        decoration.clearable = true
+        if index == 5 { decoration.prefix = "xu /"
+            ids.push(s.field("",&decoration) or >>) }
+        else { ids.push(s.text_field_area("Build notes\n中文与 emoji 🙂",&decoration) or >>) }
+        mut options := widgets.field_text_options()
+        options.counter = true
+        options.character_limit = 32
+        if index == 6 { options.min_rows = 3
+            options.max_rows = 6 }
+        s.set_field_text_options(ids[0],&options) or >>
+    }
+    if index == 7 {
+        ids.push(s.tree() or >>)
+        root := s.tree_add(ids[0],-1,"XU workspace") or >>
+        src := s.tree_add(ids[0],root,"src") or >>
+        widgets_node := s.tree_add(ids[0],src,"widgets") or >>
+        for name in ["tree_view.xu","task_button.xu","field.xu","screen.xu"] { leaf := s.tree_add(ids[0],widgets_node,name) or >>
+            s.set_tree_metadata(ids[0],leaf,"Xu") or >>
+            s.set_tree_action(ids[0],leaf,true) or >> }
+        _ := s.tree_add(ids[0],root,"xu.xun") or >>
+        for node in [root,src,widgets_node] { s.set_expanded(ids[0],node,true) or >> }
+        mut appearance := widgets.tree_appearance()
+        appearance.guides = true
+        s.set_tree_appearance(ids[0],&appearance) or >>
+        mut decoration := widgets.field_decoration(&"Find a node")
+        decoration.clearable = true
+        ids.push(s.field("",&decoration) or >>)
+    }
+    if index == 8 { ids.push(s.task_button("Build project") or >>)
+        s.set_task_labels(ids[0],"Building","Built · run again","Retry build","Build again") or >> }
+    if index == 9 { ids.push(s.checkbox("Keep generated files 保留产物",true) or >>) }
+    if index == 10 { ids.push(s.switch_control("Live preview 实时预览",true) or >>) }
+    if index == 11 { ids.push(s.radio("Use workspace settings",1,true) or >>) }
+    if index == 12 { ids.push(s.radio_group(&choices,0) or >>) }
+    if index == 13 { ids.push(s.slider(0.0,100.0,40.0) or >>)
+        mut appearance := widgets.slider_appearance()
+        appearance.ticks = 11
+        appearance.show_value = true
+        s.set_slider_appearance(ids[0],&appearance,10.0) or >>
+        s.set_slider_commit_only(ids[0],true) or >>
+        mut decoration := widgets.field_decoration(&"Exact value / 精确数值")
+        decoration.helper = "0–100 · step 10 · Apply input"
+        decoration.error = "Enter a number between 0 and 100."
+        ids.push(s.field("40",&decoration) or >>) }
+    if index == 14 { ids.push(s.stepper(0.0,100.0,1.0,24.0) or >>)
+        s.set_stepper_repeat(ids[0],true,time.milliseconds(400) or >>,time.milliseconds(80) or >>) or >> }
+    if index == 15 { mut unavailable := widgets.select_option("Remote (unavailable)")
+        unavailable.enabled = false
+        options := [widgets.select_group("LOCAL"),widgets.select_option("Workspace 工作区"),widgets.select_option("History 历史"),widgets.select_group("REMOTE"),unavailable]
+        ids.push(s.select_options(&options,1) or >>) }
+    if index == 16 { ids.push(s.combo_box(&choices,"") or >>)
+        s.set_combo_custom_values(ids[0],false) or >> }
+    if index == 17 { ids.push(s.multi_select(&choices) or >>)
+        mut decoration := widgets.field_decoration(&"Filter options")
+        decoration.clearable = true
+        ids.push(s.field("",&decoration) or >>) }
+    if index == 18 || index == 19 { value := time.date(2026,10,25,14,30,0,0)
+        if index == 18 { ids.push(s.date_picker(value) or >>)
+            s.set_date_options(ids[0],value,true) or >> }
+        else { ids.push(s.time_picker(value) or >>)
+            s.set_clock_format(ids[0],true,true) or >> } }
+    if index == 20 { ids.push(s.color_picker(draw.rgb(180,57,45)) or >>)
+        s.set_color_swatches(ids[0],&[draw.rgb(180,57,45),draw.rgb(50,121,160),draw.rgb(72,130,90)]) or >>
+        mut decoration := widgets.field_decoration(&"HEX / RGBA")
+        decoration.helper = "#RGB, #RGBA, #RRGGBB, #RRGGBBAA"
+        decoration.error = "Use a valid HEX value."
+        ids.push(s.field("#B4392DFF",&decoration) or >>) }
+    if index == 21 { ids.push(s.tabs(&choices,0) or >>)
+        s.set_tab_behavior(ids[0],&[180.0,144.0,160.0],false) or >> }
+    if index == 22 { ids.push(s.segmented(&["Day","Week","Month"],0) or >>) }
+    if index == 23 { ids.push(s.list_box(&["TreeView","TaskButton","Field","Table","WebView","Scroll","Tabs","Select","ToastHost"],0) or >>)
+        for row in 0:9 { mut detail := widgets.list_row(["TreeView","TaskButton","Field","Table","WebView","Scroll","Tabs","Select","ToastHost"][row])
+            detail.description = "Native component · 原生交互"
+            detail.detail = "Ready"
+            detail.icon = widgets.TREE_ICON_FILE
+            s.set_list_row(ids[0],row,&detail) or >> } }
+    if index == 24 { ids.push(s.table(&["Component","Build ms","Status"],12,0) or >>)
+        components := ["Button","TreeView","Field","Input","Tabs","Checkbox","Switch","Menu","WebView","Chart","Table","Badge"]
+        durations := [14,7,120,3,21,7,45,9,210,32,18,2]
+        for row in 0:12 { s.set_cell(ids[0],row,0,components[row]) or >>
+            s.set_cell(ids[0],row,1,str(durations[row])) or >>
+            s.set_cell(ids[0],row,2,["Ready","Review","Draft"][row%3]) or >> }
+        s.set_table_sort_kind(ids[0],1,widgets.TABLE_SORT_NUMBER) or >>
+        s.set_table_column_min_width(ids[0],0,160.0) or >>
+        s.set_table_column(ids[0],0,280.0,0.0) or >>
+        s.set_table_column(ids[0],1,160.0,1.0) or >>
+        s.set_table_column(ids[0],2,200.0,0.0) or >> }
+    if index == 25 { ids.push(s.pagination(1000,122) or >>)
+        s.set_pagination_data(ids[0],20000,20) or >>
+        mut decoration := widgets.field_decoration(&"Page 页码")
+        decoration.helper = ""
+        decoration.error = ""
+        decoration.reserve_helper = false
+        decoration.floating = widgets.LABEL_ALWAYS
+        ids.push(s.field("123",&decoration) or >>)
+        ids.push(s.select_box(&["10 / page","20 / page","50 / page","100 / page"],1) or >>)
+        ids.push(s.label("",14.0,true) or >>)
+        s.set_label_wrapped(ids[3],true) or >>
+        ids.push(s.button("Go 跳转") or >>)
+        ids.push(s.label("",13.0,true) or >>)
+        s.set_label_wrapped(ids[5],true) or >> }
+    if index == 26 { ids.push(s.breadcrumbs(&["Home","XU workspace","src","ui","widgets","A long Chinese path 中文路径","field.xu"]) or >>) }
+    if index == 27 { ids.push(s.progress(0.42) or >>)
+        s.set_progress_buffer(ids[0],0.72) or >> }
+    if index == 28 { ids.push(s.spinner() or >>)
+        s.set_spinner_appearance(ids[0],32.0,3.0,time.milliseconds(900) or >>) or >>
+        s.set_running(ids[0],true) or >>
+        ids.push(s.label("Loading assets… 正在加载",14.0,true) or >>) }
+    if index == 29 { ids.push(s.divider(widgets.AXIS_HORIZONTAL) or >>)
+        ids.push(s.label("SECTION / 章节",12.0,true) or >>) }
+    if index == 30 {
+        inbox := s.button("Inbox 收件箱") or >>
+        count := s.badge_on(inbox,"12",widgets.BADGE_COUNT) or >>
+        s.set_badge_tone(count,widgets.BADGE_ERROR) or >>
+        avatar := s.button("LW") or >>
+        s.set_button_variant(avatar,widgets.BUTTON_SUBTLE) or >>
+        dot := s.badge_on(avatar,"",widgets.BADGE_DOT) or >>
+        s.set_badge_anchor(dot,avatar,0.86,0.86) or >>
+        s.set_badge_tone(dot,widgets.BADGE_SUCCESS) or >>
+        synced := s.badge("Synced 已同步") or >>
+        s.set_badge_tone(synced,widgets.BADGE_SUCCESS) or >>
+        beta := s.badge("BETA") or >>
+        s.set_badge_tone(beta,widgets.BADGE_INFO) or >>
+        ids = [count,inbox,avatar,dot,synced,beta,
+            s.label("12 unread · 点击收件箱清零，徽标随数字收紧。",14.0,true) or >>,
+            s.label("林文 · Available 在线",16.0,false) or >>,
+            s.label("点击头像切换在线状态；状态点不单独承担文字含义。",13.0,true) or >>,
+            s.label("Workspace 工作区",16.0,false) or >>]
+    }
+    if index == 31 {
+        ids.push(s.card() or >>)
+        sections := s.card_sections(ids[0],36.0,44.0) or >>
+        for parent in [sections.header,sections.body,sections.footer] { ids.push(parent) }
+        ids.push(s.label("Workspace configuration",18.0,false) or >>)
+        ids.push(s.label("Header, body and footer keep distinct spacing.\n正文区域随密度与字号调整。",14.0,true) or >>)
+        s.set_label_wrapped(ids[5],true) or >>
+        ids.push(s.button("Open workspace") or >>)
+        s.set_parent(ids[4],sections.header) or >>
+        s.set_parent(ids[5],sections.body) or >>
+        s.set_parent(ids[6],sections.footer) or >>
+    }
+    if index == 32 { ids.push(s.scroll_area(widgets.AXIS_VERTICAL,1100.0) or >>)
+        for row in 0:14 { id := s.button("Focusable row " + str(row + 1) + " · 滚动内容") or >>
+            s.set_parent(id,ids[0]) or >>
+            ids.push(id) } }
+    if index >= 33 && index <= 36 { ids.push(s.button(["Open popover","Focus or hover for help","Enqueue notification","Open confirmation"][index - 33]) or >>)
+        anchor := ids[0]
+        if index == 33 {
+            ids.push(s.popover(anchor,"") or >>)
+            ids.push(s.label("Workspace preferences",18.0,false) or >>)
+            ids.push(s.label("Edit a draft, then apply. Escape or clicking outside dismisses.\n编辑草稿后应用；关闭不会提交。",13.0,true) or >>)
+            s.set_label_wrapped(ids[3],true) or >>
+            mut decoration := widgets.field_decoration(&"Workspace name 工作区名称")
+            decoration.clearable = true
+            decoration.error = "名称不能为空 / Enter a name"
+            ids.push(s.field("XU workspace",&decoration) or >>)
+            ids.push(s.checkbox("Keep history 保留历史",true) or >>)
+            ids.push(s.button("Cancel 取消") or >>)
+            ids.push(s.button("Apply 应用") or >>)
+            s.set_button_variant(ids[7],widgets.BUTTON_PRIMARY) or >>
+            ids.push(s.label("Current: XU workspace · history on",14.0,true) or >>)
+            for i in 2:8 { s.set_parent(ids[i],ids[1]) or >> }
+        }
+        if index == 34 { ids.push(s.tooltip(anchor,"Hover waits 500 ms; keyboard focus shows help immediately.\n鼠标离开或点击收起；Escape 抑制重复提示。") or >>) }
+        if index == 36 { ids.push(s.modal("Apply configuration?","Focus stays inside this confirmation. Escape returns to the trigger.") or >>)
+            ids.push(s.button("Cancel") or >>)
+            ids.push(s.button("Apply changes") or >>)
+            s.set_parent(ids[2],ids[1]) or >>
+            s.set_parent(ids[3],ids[1]) or >> }
+    }
+    if index == 37 { ids.push(s.webview() or >>)
+        s.load_web_html(ids[0],"<!doctype html><html><meta charset='utf-8'><style>body{font:16px system-ui;background:#f3f2ee;color:#292c30;padding:24px}input{font:inherit;padding:12px;border:1px solid #747b83;border-radius:6px;width:80%}h2{font-weight:500}</style><h2>WebView is a component.</h2><p>Native focus, clipping and independent lifecycle.</p><input aria-label='Web content' placeholder='中文 / English / 🙂'></html>") or >> }
+    if index == 38 {
+        actions := [widgets.button_group_item(10,"Undo"),widgets.button_group_item(20,"Redo"),widgets.button_group_item(30,"Save")]
+        group_choices := [widgets.button_group_item(10,"Day"),widgets.button_group_item(20,"Week"),widgets.button_group_item(30,"Month")]
+        formats := [widgets.button_group_item(10,"Bold"),widgets.button_group_item(20,"Italic"),widgets.button_group_item(30,"Underline")]
+        ids.push(s.button_group(&actions,widgets.BUTTON_GROUP_ACTIONS) or >>)
+        ids.push(s.button_group(&group_choices,widgets.BUTTON_GROUP_SINGLE) or >>)
+        ids.push(s.button_group(&formats,widgets.BUTTON_GROUP_MULTIPLE) or >>)
+        ids.push(s.label("Actions / 独立操作",12.0,true) or >>)
+        ids.push(s.label("Single / 单选",12.0,true) or >>)
+        ids.push(s.label("Multiple / 多选",12.0,true) or >>)
+    }
+    if index == 39 {
+        ids.push(s.chart() or >>)
+        types := [widgets.button_group_item(1,"Line"),widgets.button_group_item(2,"Area"),widgets.button_group_item(3,"Bar"),widgets.button_group_item(4,"Scatter"),widgets.button_group_item(5,"Donut")]
+        ids.push(s.button_group(&types,widgets.BUTTON_GROUP_SINGLE) or >>)
+        series := chart_data(widgets.CHART_LINE,0)
+        s.set_chart_series(ids[0],&series) or >>
+    }
+    if index == 40 {
+        ids.push(s.range_slider(0.0,100.0,20.0,80.0) or >>)
+        ids.push(s.label("20 – 80",18.0,false) or >>)
+        ids.push(s.label("Drag either thumb or the selected band. Tab visits both thumbs. Escape cancels a pending edit.\n拖动端点或整段；Tab 访问两个端点。",14.0,true) or >>)
+        s.set_label_wrapped(ids[2],true) or >>
+    }
+    if index == 41 {
+        ids.push(s.split_view(0.4) or >>)
+        split := ids[0]
+        ids.push(s.split_pane(split,0) or >>)
+        ids.push(s.split_pane(split,1) or >>)
+        ids.push(s.label("Workspace / 工作区\nPane content follows the available size.",16.0,false) or >>)
+        ids.push(s.label("Preview / 预览\nDrag the handle; arrows adjust, Shift accelerates.",16.0,false) or >>)
+        ids.push(s.button("Open workspace") or >>)
+        ids.push(s.button("Refresh preview") or >>)
+        for i in 0:2 { s.set_label_wrapped(ids[3+i],true) or >>
+            s.set_parent(ids[3+i],ids[1+i]) or >>
+            s.set_parent(ids[5+i],ids[1+i]) or >> }
+    }
+    if index >= 42 && index <= 44 {
+        mode := [widgets.MENU_DROPDOWN,widgets.MENU_CONTEXT,widgets.MENU_SPLIT][index-42]
+        label := ["Actions","Right click here · 右键打开菜单","Save"][index-42]
+        ids.push(s.menu(label,&workshop_menu_items(true),mode,100) or >>)
+        ids.push(s.label("Choose an action · 选择操作",16.0,false) or >>)
+        ids.push(s.label("Check and radio items preserve their state. Navigate submenus with arrows; Escape returns one level.\n操作文案与快捷键由应用配置。",14.0,true) or >>)
+        s.set_label_wrapped(ids[1],true) or >>
+        s.set_label_wrapped(ids[2],true) or >>
+    }
+    if index == 45 {
+        ids.push(s.password_input("Xu-密码🙂") or >>)
+        ids.push(s.checkbox("Show password 显示密码",false) or >>)
+        ids.push(s.label("Password 密码",15.0,false) or >>)
+        ids.push(s.label("Paste is supported. Copy and cut are blocked even when revealed.\n支持粘贴、选择和中英文输入；显隐切换保留内容与光标。",14.0,true) or >>)
+        s.set_label_wrapped(ids[3],true) or >>
+    }
+    for i in 0:ids.len {
+        // Card slots and scroll children retain their content parent.
+        if index == 30 && (i == 0 || i == 3) { -> }
+        if index == 31 && i > 0 { -> }
+        if index == 41 && i > 0 { -> }
+        if index == 32 && i > 0 { -> }
+        if index == 36 && i > 1 { -> }
+        if index == 33 && i >= 2 && i <= 7 { -> }
+        s.set_parent(ids[i],group) or >>
+    }
+    s.set_visible(group,false) or >>
+    << Page{group: group,ids: ids}
+}
+fn create(s &mut widgets.Screen) Workshop {
+    labels := names()
+    mut pages := []Page{}
+    preview := s.scroll_area(widgets.AXIS_VERTICAL,760.0) or >>
+    for index in 0:labels.len { page := new_page(s,index) or >>
+        s.set_parent(page.group,preview) or >>
+        pages.push(page) }
+    title := s.label("",25.0,false) or >>
+    caption := s.label("",13.0,true) or >>
+    s.set_label_wrapped(caption,true) or >>
+    status := s.label("Hover · press · Tab · arrows · Escape / 使用真实鼠标与键盘状态",12.0,true) or >>
+    s.set_label_wrapped(status,true) or >>
+    navigation := s.list_box(&labels,5) or >>
+    language := s.select_box(&["中文","English","Custom"],1) or >>
+    _ := s.tooltip(language,"Component language · 组件默认文案与格式") or >>
+    tools := [s.button("Option 1") or >>,s.button("Option 2") or >>,s.button("Option 3") or >>]
+    for tool in tools { s.set_parent(tool,preview) or >> }
+    << Workshop{tooltip_side: widgets.OVERLAY_TOP,range_push: false,range_vertical: false,range_commit: false,split_vertical: false,split_collapsed: false,menu_stays_open: false,menu_export_disabled: false,chart_kind: 0,chart_paused: false,group_vertical: false,group_joined: true,group_disabled: false,language: language,pages: pages,names: labels,navigation: navigation,preview: preview,title: title,caption: caption,status: status,
+        theme: s.select_box(&["Light 亮色","Dark 暗色","Contrast 对比"],1) or >>,
+        density: s.select_box(&["Normal 常规","Compact 紧凑","Touch 触控"],0) or >>,
+        scale: s.select_box(&["Text 100%","Text 140%","Text 200%"],0) or >>,
+        state: s.select_box(&["Normal 普通","Disabled 禁用","Read only 只读","Invalid 错误"],0) or >>,
+        custom: s.button("Default 默认") or >>,reduced: s.checkbox("Reduce 减少动效",false) or >>,
+        motion: s.button("Motion 160ms") or >>,focus: s.button("Focus sample") or >>,
+        tools: tools,selected: 5,customized: false,guided: true,slow: false,
+        variant: 0,revision: 0,completed: 0,running: false,failure: false,pending_before: false,pagination_error: false,preferences_name: "XU workspace",preferences_history: true,unread: 12,online: true,checksum: 0,deadline: time.zero_instant()}
+}
+fn (m &mut Workshop) apply_locale(s &mut widgets.Screen) int {
+    index := s.selected(m.language) or >>
+    mut locale := widgets.locale_en_us()
+    if index != 1 { locale = widgets.locale_zh_cn() }
+    if index == 2 {
+        locale.set_text(widgets.TEXT_TODAY,"回到今天") or >>
+        locale.set_text(widgets.TEXT_CLEAR,"移除日期") or >>
+        locale.set_text(widgets.TEXT_DATE_PLACEHOLDER,"预约日期") or >>
+        locale.set_text(widgets.TEXT_DATE_PATTERN,"{day}.{month}.{year}") or >>
+        locale.set_text(widgets.TEXT_DECIMAL_SEPARATOR,",") or >>
+        locale.set_text(widgets.TEXT_GROUP_SEPARATOR," ") or >>
+        locale.set_weekdays(&["周日","周一","周二","周三","周四","周五","周六"]) or >>
+    }
+    s.set_locale(&locale) or >>
+    pages := &m.pages
+    pagination := &pages[25]
+    sizes := [10,20,50,100]
+    for i in 0:4 { s.set_option_text(pagination.ids[2],i,locale.count_text(widgets.TEXT_ITEMS_PER_PAGE,sizes[i]) or >>) or >> }
+    m.update_pagination(s,false) or >>
+    // Business copy is supplied by the app, never silently translated by the widget.
+    page := &m.pages[8]
+    if index == 1 { s.set_task_labels(page.ids[0],"Building","Built · run again","Retry build","Build again") or >> }
+    else { s.set_task_labels(page.ids[0],"正在构建","已构建 · 再次运行","重试构建","再次构建") or >> }
+    mut group_labels := [["Undo","Redo","Save"],["Day","Week","Month"],["Bold","Italic","Underline"]]
+    mut type_labels := ["Line","Area","Bar","Scatter","Donut"]
+    if index != 1 { group_labels = [["撤销","重做","保存"],["日","周","月"],["加粗","斜体","下划线"]]
+        type_labels = ["折线","面积","柱状","散点","环形"] }
+    for mode in 0:3 { for i in 0:3 { s.set_button_group_label(m.pages[38].ids[mode],(i + 1) * 10,group_labels[mode][i]) or >> } }
+    for i in 0:5 { s.set_button_group_label(m.pages[39].ids[1],i + 1,type_labels[i]) or >> }
+    translated := workshop_menu_items(index == 1)
+    for page_index in 42:45 { for item in translated { s.set_menu_item_label(m.pages[page_index].ids[0],item.key,item.label) or >> } }
+    mut menu_labels := ["Actions","Right click here","Save"]
+    if index != 1 { menu_labels = ["操作","右键打开菜单","保存"] }
+    for page_index in 42:45 { s.set_menu_label(m.pages[page_index].ids[0],menu_labels[page_index-42]) or >> }
+
+
+    << 0
+}
+fn read_only(index int) bool { << index >= 38 || (index >= 1 && index <= 26 && index != 8 && index != 25 && index != 26) }
+fn invalid(index int) bool { << index >= 40 || index >= 1 && index <= 30 && index != 7 && index != 8 && index != 12 && index != 24 && index != 25 && index != 26 && index != 28 }
+fn animated(index int) bool { << (index >= 38 && index <= 44) || index == 1 || index == 2 || index == 5 || index == 6 || index == 7 || index == 8 || index == 9 || index == 10 || index == 11 || index == 25 }
+fn appearance(styles &widgets.Styles,index int) widgets.ControlStyle {
+    if index == 0 { mut c := styles.input.clone()
+        c.padding = layout.Insets{left: 0.0,top: 0.0,right: 0.0,bottom: 0.0}
+        c.align_x = 0.0
+        c.align_y = 0.0
+        << c }
+    if index == 7 { << styles.tree_style() }
+    if index == 24 { << styles.table_style() }
+    if index == 9 || index == 10 || index == 11 || index == 12 { << styles.checkbox.clone() }
+    if index == 3 || index == 5 || index == 45 { << styles.input.clone() }
+    if index == 4 || index == 6 { << styles.text_area.clone() }
+    if index == 13 || index == 40 { << styles.slider_style() }
+    if index == 41 { << styles.card_style() }
+    if index == 14 { << styles.stepper_style() }
+    if index == 15 { << styles.select_style() }
+    if index == 21 || index == 22 { << styles.tabs_style() }
+    if index == 23 { << styles.list_box_style() }
+    if index == 27 { << styles.progress.clone() }
+    if index == 29 { << styles.divider_style() }
+    if index == 30 { << styles.badge_style() }
+    if index == 31 { << styles.card_style() }
+    if index == 32 { << styles.scroll.clone() }
+    << styles.button.clone()
+}
+fn (m &mut Workshop) configure(s &mut widgets.Screen) int {
+    theme := s.selected(m.theme) or >>
+    density := s.selected(m.density) or >>
+    scale := s.selected(m.scale) or >>
+    preset := [widgets.THEME_LIGHT,widgets.THEME_DARK,widgets.THEME_CONTRAST][theme]
+    mut styles := widgets.preset_styles(preset) or >>
+    styles.density = [1.0,0.85,1.25][density]
+    styles.text_scale = [1.0,1.4,2.0][scale]
+    s.set_styles(&styles) or >>
+    s.set_reduced_motion(s.toggle_value(m.reduced) or >>)
+    position := m.selected
+    pages := &m.pages
+    page := &pages[position]
+    s.set_text(m.title,"XUUI  /  " + m.names[position]) or >>
+    s.set_selected(m.navigation,position) or >>
+    id := page.ids[0]
+    state := s.selected(m.state) or >>
+    s.set_enabled(id,state != 1) or >>
+    if position == 45 { s.set_enabled(page.ids[1],state != 1) or >> }
+    if position == 25 { s.set_enabled(page.group,state != 1) or >> }
+    if read_only(m.selected) { s.set_read_only(id,state == 2) or >> }
+    if invalid(m.selected) || m.selected == 31 || m.selected == 32 { s.set_invalid(id,state == 3) or >> }
+    if m.selected == 30 { mut avatar := styles.button_variant(widgets.BUTTON_SUBTLE) or >>
+        avatar.radius = 999.0
+        s.set_control_style(page.ids[2],&avatar) or >> }
+    if m.selected <= 32 || m.selected >= 40 {
+        s.clear_control_style(id) or >>
+        if m.customized { mut c := appearance(&styles,m.selected)
+            c.radius = 14.0
+            c.border_width = 1.5
+            c.padding.left += 4.0
+            c.padding.right += 4.0
+            s.set_control_style(id,&c) or >> }
+    }
+    mut spec := widgets.motion_spec()
+    if m.slow { spec.change = time.milliseconds(420) or >>
+        spec.hover = time.milliseconds(320) or >>
+        spec.enter = time.milliseconds(360) or >>
+        spec.exit = time.milliseconds(240) or >>
+        spec.curve = widgets.EASE_OUT_QUINT }
+    if animated(m.selected) { s.set_motion(id,&spec) or >> }
+    if m.selected == 1 {
+        for i in 0:9 { s.set_enabled(page.ids[i],state != 1) or >> }
+        handles := [page.ids[0],page.ids[1],page.ids[2],page.ids[3]]
+        placements := [widgets.ICON_LEADING,widgets.ICON_TRAILING,widgets.ICON_ABOVE,widgets.ICON_BELOW]
+        for i in 0:4 {
+            icon_size := s.number_value(page.ids[9 + i]) or >>
+            s.set_text(page.ids[13 + i],"Icon 图标 · " + str(int(icon_size)) + " px") or >>
+            mut c := styles.button_variant(widgets.BUTTON_OUTLINE) or >>
+            if i == 0 { c = styles.button_variant(widgets.BUTTON_PRIMARY) or >> }
+            c.icon_placement = placements[i]
+            c.icon_size = icon_size * styles.text_scale
+            if m.customized { c.radius = 14.0
+                c.border_width = 1.5 }
+            s.set_control_style(handles[i],&c) or >>
+            s.set_motion(handles[i],&spec) or >>
+        }
+    }
+    if m.selected == 33 || m.selected == 34 || m.selected == 36 { s.set_motion(page.ids[1],&spec) or >>
+        mut c := styles.overlay_style()
+        if m.customized { c.radius = 18.0
+            c.border_width = 2.0 }
+        s.set_control_style(page.ids[1],&c) or >> }
+    if m.selected == 34 {
+        mut placement := widgets.overlay_placement()
+        placement.side = m.tooltip_side
+        placement.align = widgets.OVERLAY_CENTER
+        s.set_tooltip_placement(page.ids[1],&placement) or >>
+    }
+    if m.selected == 35 {
+        s.set_notice_motion(&spec) or >>
+        if m.customized { mut c := styles.overlay_style()
+            c.radius = 18.0
+            c.border_width = 2.0
+            s.set_notice_style(&c) or >> }
+        else { s.clear_notice_style() or >> }
+    }
+    if m.selected == 38 {
+        mut group_appearance := widgets.button_group_appearance()
+        group_appearance.vertical = m.group_vertical
+        group_appearance.joined = m.group_joined
+        for i in 0:3 { s.set_button_group_appearance(page.ids[i],&group_appearance) or >>
+            s.set_button_group_item_enabled(page.ids[i],20,!m.group_disabled) or >>
+            s.set_enabled(page.ids[i],state != 1) or >>
+            s.set_read_only(page.ids[i],state == 2) or >>
+            s.clear_control_style(page.ids[i]) or >>
+            s.set_motion(page.ids[i],&spec) or >>
+            if m.customized { mut c := styles.button_variant(widgets.BUTTON_OUTLINE) or >>
+                c.radius = 12.0
+                c.border_width = 1.5
+                s.set_control_style(page.ids[i],&c) or >> } }
+    }
+    if m.selected == 39 {
+        s.set_button_group_checked(page.ids[1],m.chart_kind + 1,true) or >>
+        s.set_enabled(page.ids[1],state != 1) or >>
+        s.set_read_only(page.ids[1],state == 2) or >>
+        s.clear_control_style(id) or >>
+        mut appearance := widgets.chart_appearance()
+        appearance.y_unit = " ms"
+        if m.chart_kind == widgets.CHART_DONUT { appearance.y_unit = "" }
+        if m.customized { appearance.grid = false
+            appearance.area_opacity = 0.26
+            appearance.inner_radius = 0.78
+            appearance.palette = [draw.rgb(41,126,178),draw.rgb(215,146,42),draw.rgb(56,153,124)]
+            mut c := styles.card_style()
+            c.radius = 18.0
+            s.set_control_style(id,&c) or >> }
+        s.set_chart_appearance(id,&appearance) or >>
+        mut options := widgets.animation_options()
+        options.duration = time.milliseconds(650) or >>
+        options.curve = widgets.EASE_IN_OUT_CUBIC
+        if m.slow { options.duration = time.milliseconds(1200) or >> }
+        s.set_chart_animation(id,&options) or >>
+        if m.chart_paused { s.pause_chart_animation(id) or >> }
+    }
+    if m.selected == 40 {
+        mut options := widgets.range_slider_options()
+        options.step = 5.0
+        options.min_distance = 10.0
+        if m.range_push { options.collision = widgets.RANGE_PUSH }
+        options.vertical = m.range_vertical
+        options.commit_only = m.range_commit
+        s.set_range_options(id,&options) or >>
+        mut appearance := widgets.slider_appearance()
+        appearance.ticks = 11
+        appearance.show_value = true
+        s.set_range_appearance(id,&appearance) or >>
+    }
+    if m.selected == 41 {
+        mut options := widgets.split_view_options()
+        options.vertical = m.split_vertical
+        options.minimum_first = 120.0*styles.text_scale
+        options.minimum_second = 140.0*styles.text_scale
+        s.set_split_options(id,&options) or >>
+    }
+    if m.selected >= 42 && m.selected <= 44 {
+        mut appearance := widgets.menu_appearance()
+        appearance.close_on_select = !m.menu_stays_open
+        s.set_menu_appearance(id,&appearance) or >>
+    }
+    if m.selected == 37 { mut radius := 8.0
+        if m.customized { radius = 18.0 }
+        s.set_webview_radius(id,radius) or >> }
+    s.set_enabled(m.motion,animated(m.selected) || (m.selected >= 33 && m.selected <= 36)) or >>
+    s.set_selected_button(m.custom,m.customized) or >>
+    mut custom_text := "Default 默认"
+    if m.customized { custom_text = "Custom 自定义" }
+    s.set_text(m.custom,custom_text) or >>
+    mut motion_text := "Motion 160ms"
+    if m.slow { motion_text = "Motion 420ms" }
+    s.set_text(m.motion,motion_text) or >>
+    caption := description(m.selected)
+    s.set_text(m.caption,caption) or >>
+    mut state_text := "Hover · press · Tab · arrows · Escape / 使用真实鼠标与键盘状态"
+    if (state == 2 && !read_only(m.selected)) || (state == 3 && !invalid(m.selected) && m.selected != 31 && m.selected != 32) { state_text = "此组件没有该状态。预览保持其实际语义。" }
+    s.set_text(m.status,state_text) or >>
+    labels := tool_labels(m.selected)
+    for i in 0:3 { s.set_text(m.tools[i],labels[i]) or >>
+        s.set_selected_button(m.tools[i],false) or >>
+        s.set_enabled(m.tools[i],labels[i].len > 0) or >>
+        s.set_visible(m.tools[i],labels[i].len > 0) or >> }
+    if m.selected == 8 { s.set_selected_button(m.tools[1],m.failure) or >> }
+    s.set_visible(m.focus,focusable_sample(m.selected)) or >>
+    << 0
+}
+fn focusable_sample(index int) bool { << index != 0 && index != 27 && index != 28 && index != 29 && index != 30 }
+fn description(index int) string {
+    if index == 45 { << "按 Unicode 字素掩码；显隐切换、原生编辑、只读与禁用，禁止复制或剪切密码。" }
+    if index == 40 { << "双端区间：步进、最小间距、端点推挤、整段拖动；独立焦点与提交。" }
+    if index == 41 { << "可调整分栏：尺寸约束、折叠恢复、键盘调整；内容保持在各自面板内。" }
+    if index >= 42 && index <= 44 { << "动作 / 勾选 / 单选 / 子菜单；键盘、边缘翻转、快捷键与可定制的逐项反馈。" }
+    if index == 38 { << "独立操作 / 单选 / 多选；逐项禁用，方向键导航，Enter 或空格激活。" }
+    if index == 39 { << "原生交互图表：稳定 ID 数据过渡、悬停/选中、图例；Ctrl/⌘ + 滚轮缩放，拖动平移，双击复位。" }
+    descriptions := ["正文、标题与辅助文字分层；原生换行与字体覆盖。",
+        "图标左 / 右 / 上 / 下；各自调节尺寸，按钮按内容宽度自动换行。",
+        "独立点击目标与动作名称；键盘焦点也能查看提示。",
+        "原生单行编辑：选区、复制、粘贴与 IME。",
+        "原生多行编辑：段落、内部滚动与输入法候选定位。",
+        "浮动标签 / 固定标签 / 三种边框；软计数不截断输入。",
+        "多行 Field：最小 3 行、最大 6 行；计数与稳定辅助区。",
+        "层级引导、矢量箭头、图标、元数据、筛选和节点动作。",
+        "真实计算批次驱动进度；任务 ID 拒绝旧回调。",
+        "整行点击；混合态；可中断的勾选显现。",
+        "轨道与圆钮过渡；快速切换可中断；只读保留焦点。",
+        "单项选择与选中动效；完整标签点击目标。",
+        "方向键管理互斥；Tab 只进入一次。",
+        "11 个刻度、10 步吸附、数值提示；松开才提交。",
+        "按住连续增加并加速；到达边界停止。",
+        "有类型的分组 / 禁用选项；方向键跳过不可选行。",
+        "本地匹配高亮与无结果；可控制是否接受自由输入。",
+        "候选筛选、可移除标签、全选和清空。",
+        "今天 / 清空；Page Up/Down 快速翻月，Shift 切年。",
+        "12/24 小时可选；存储保持明确的时间值。",
+        "RGBA 通道、HEX 精确输入、色板与最近颜色。",
+        "可变宽标签；方向键移动，Enter 手动激活。",
+        "与 Tabs 分开的选中底板和容器语义。",
+        "图标 / 主副文本 / 尾部信息；字体放大后命中保持一致。",
+        "拖动调整列宽；横向与纵向滚动；数据状态文字。",
+        "首页、末页与省略项；大页数仍可快速定位。",
+        "保留当前路径；中间段收进可交互的菜单。",
+        "真实确定进度与缓冲区分别显示，不伪造百分比。",
+        "大小 / 粗细 / 周期可配置；减少动效显示静态反馈。",
+        "弱分隔与章节文字组合；水平和垂直使用同一规范。",
+        "Badge 放入真实上下文：未读计数、头像状态点与列表标签。",
+        "Header / body / footer 内容槽；动作使用独立 Button。",
+        "真实子控件裁剪、滚轮冒泡、轨道拖动与键盘焦点滚入。",
+        "锚点定位、边缘翻转；外点 / Escape 关闭。",
+        "Hover 延迟、focus 立即显示；Escape 抑制重复提示。",
+        "最多三条可见通知；队列、去重、优先级与撤销动作。",
+        "模态焦点循环与恢复；安全动作先获得焦点。",
+        "原生网页子视图作为 Screen 组件，支持裁剪与独立生命周期。" ]
+    << descriptions[index]
+}
+fn tool_labels(index int) []string {
+    if index == 45 { << ["Clear 清空","Reset 示例","Focus 输入"] }
+    if index == 40 { << ["Clamp / push 端点","Commit mode 提交","Orientation 方向"] }
+    if index == 41 { << ["Orientation 方向","Collapse / restore 折叠","Reset 复位"] }
+    if index >= 42 && index <= 44 { << ["Open 打开","Keep open 保持展开","Disable export 禁用导出"] }
+    if index == 38 { << ["Disable middle 逐项禁用","Orientation 方向","Joined / gap 拼接"] }
+    if index == 39 { << ["Update data 更新数据","Reset zoom 复位","Pause / resume 暂停"] }
+    if index == 0 { << ["Long text 长文","Short text 短文",""] }
+    if index == 1 || index == 2 { << ["Select 选中","Clear selection",""] }
+    if index == 3 || index == 4 { << ["Empty 清空","Long text 长文",""] }
+    if index == 5 || index == 6 { << ["Empty 清空","Long text 长文","Appearance 外观"] }
+    if index == 7 { << ["Guides 引导线","Reveal last 定位","Clear filter"] }
+    if index == 8 { << ["Progress 外观","Fail next 下次失败","Cancel 取消"] }
+    if index == 9 { << ["Mixed 混合态","Checked 勾选","Unchecked"] }
+    if index == 10 { << ["Pending 等待","Resolve 成功","Fail 恢复"] }
+    if index == 11 { << ["On 选中","Off 取消",""] }
+    if index == 13 { << ["Apply input","Commit only","Live updates"] }
+    if index == 15 { << ["Open 展开","Disabled option",""] }
+    if index == 16 { << ["Allow custom 自由","Options only","Clear 清空"] }
+    if index == 17 { << ["Select all 全选","Clear 清空",""] }
+    if index == 18 { << ["Clear 清空","Set today 今天",""] }
+    if index == 19 { << ["12 hour","24 hour","Hide seconds"] }
+    if index == 20 { << ["Apply HEX","Cinnabar 朱砂","Transparent"] }
+    if index == 24 { << ["Data 数据","Loading 加载","Error 错误"] }
+    if index == 25 { << ["Jump 跳转","Last 末页","Data 空/满"] }
+    if index == 27 { << ["0%","42%","100%"] }
+    if index == 28 { << ["Run 开始","Stop 停止","Large 大号"] }
+    if index == 30 { << ["+1 未读","Clear 清零","99+ 溢出"] }
+    if index == 32 { << ["Top 顶部","Bottom 底部","Focus last"] }
+    if index == 33 { << ["Open 打开","Close 关闭","Position 方位"] }
+    if index == 34 { << ["Focus 提示","Blur 隐藏","Position 方位"] }
+    if index == 35 { << ["Enqueue 通知","Undo","Burst 三条"] }
+    if index == 36 { << ["Open 打开","Close 关闭",""] }
+    if index == 37 { << ["Reload 重载","Hide 隐藏","Show 恢复"] }
+    << ["","",""]
+}
+fn (m &Workshop) layout(s &mut widgets.Screen) int {
+    styles := s.styles()
+    scale := math.max(1.0,styles.text_scale)
+    width := s.width()
+    height := s.height()
+    gap := 16.0
+    rail := 216.0 + 40.0 * (scale - 1.0)
+    x := rail + 48.0
+    right := width - x - 24.0
+    row := math.max(40.0 * styles.density,36.0 * scale)
+    s.place(m.title,24.0,20.0,width - 48.0,36.0 * scale) or >>
+    mut top := 36.0 * scale + 32.0
+    items := [m.theme,m.density,m.scale,m.state]
+    part := (width - 48.0 - gap * 3.0) / 4.0
+    for i in 0:4 { s.place(items[i],24.0 + f64(i) * (part + gap),top,part,row) or >> }
+    top += row + 12.0
+    s.place(m.custom,24.0,top,part,row) or >>
+    s.place(m.motion,24.0 + part + gap,top,part,row) or >>
+    s.place(m.reduced,24.0 + (part + gap) * 2.0,top,part,row) or >>
+    s.place(m.focus,24.0 + (part + gap) * 3.0,top,part,row) or >>
+    top += row + 24.0
+    s.place(m.navigation,24.0,top,rail,height - top - row - 36.0) or >>
+    s.place(m.language,24.0,height - row - 24.0,rail,row) or >>
+    s.place(m.caption,x,top,right,58.0 * scale) or >>
+    control_top := top + 66.0 * scale + 16.0
+    content := math.max(100.0,right - 48.0)
+    // Keep complete action labels at large text sizes. The toolbar shares the
+    // preview's scroll area so wrapping never pushes the sample off the window.
+    mut columns := 3
+    if content < 780.0 * scale { columns = 2 }
+    if content < 520.0 * scale { columns = 1 }
+    column := (content - f64(columns - 1) * 12.0) / f64(columns)
+    tool_names := tool_labels(m.selected)
+    mut tool_count := 0
+    for i in 0:3 { if tool_names[i].len > 0 {
+        s.place(m.tools[i],24.0 + f64(tool_count % columns) * (column + 12.0),24.0 + f64(tool_count / columns) * (row + 12.0),column,row) or >>
+        tool_count += 1 } }
+    mut tool_extent := 0.0
+    if tool_count > 0 { tool_extent = f64((tool_count + columns - 1) / columns) * (row + 12.0) + 16.0 }
+    bottom := height - 56.0 * scale - 24.0
+    s.place(m.preview,x,control_top,right,math.max(100.0,bottom - control_top)) or >>
+    s.place(m.status,x,math.max(bottom + 12.0,control_top + 112.0),right,52.0 * scale) or >>
+    for i in 0:m.pages.len { s.set_visible(m.pages[i].group,i == m.selected) or >> }
+    position := m.selected
+    pages := &m.pages
+    page := &pages[position]
+    s.place(page.group,0.0,tool_extent,right,1000.0 * scale) or >>
+    id := page.ids[0]
+    mut h := row
+    if m.selected == 0 { h = 180.0 * scale }
+    if m.selected == 4 { h = 220.0 * scale }
+    if m.selected == 5 { h = 96.0 * scale }
+    if m.selected == 6 { h = 210.0 * scale }
+    if m.selected == 7 || m.selected == 23 || m.selected == 24 || m.selected == 32 || m.selected == 37 { h = 320.0 * scale }
+    if m.selected == 12 { h = 144.0 * scale }
+    if m.selected == 13 { h = 80.0 * scale }
+    if m.selected == 20 { h = 280.0 * scale }
+    if m.selected == 27 { h = 16.0 * scale }
+    if m.selected == 28 { h = 54.0 * scale }
+    if m.selected == 29 { h = 28.0 * scale }
+    if m.selected == 30 { h = 320.0 * scale }
+    if m.selected == 31 { h = 280.0 * scale }
+    mut y := 24.0
+    if m.selected == 7 || m.selected == 17 { s.place(page.ids[1],24.0,24.0,content,86.0 * scale) or >>
+        y += 102.0 * scale }
+    mut sample_width := content
+    if m.selected == 2 { sample_width = row
+        h = row }
+    if m.selected != 30 && m.selected != 1 { s.place(id,24.0,y,sample_width,h) or >> }
+    if m.selected == 1 {
+        buttons := m.page_snapshot(1)
+        h = layout_buttons(s,&buttons,content,row,scale) or >>
+    }
+    if m.selected == 34 {
+        size := s.measure_button(id) or >>
+        width := math.min(content,math.ceil(size.width))
+        s.place(id,24.0 + (content - width) * 0.5,y + 100.0 * scale,width,math.max(row,size.height)) or >>
+        h = math.max(row,size.height) + 200.0 * scale
+    }
+    if m.selected == 0 { s.place(page.ids[1],24.0,y + h + 16.0,content,48.0 * scale) or >>
+        h += 80.0 * scale }
+    if m.selected == 13 { s.place(page.ids[1],24.0,y + h + 24.0,content,100.0 * scale) or >>
+        h += 148.0 * scale }
+    if m.selected == 25 {
+        mut summary_height := 28.0 * scale
+        if content < 650.0 && scale > 1.4 { summary_height = 56.0 * scale }
+        s.place(page.ids[3],24.0,y,content,summary_height) or >>
+        page_y := y + summary_height + 12.0 * scale
+        s.place(id,24.0,page_y,content,row) or >>
+        cy := page_y + row + 28.0 * scale
+        size_width := math.min(content,150.0 * scale)
+        input_width := 112.0 * scale
+        go_width := 88.0 * scale
+        mut input_x := 40.0 + size_width
+        mut input_y := cy
+        if size_width + input_width + go_width + 32.0 > content {
+            input_x = 24.0
+            input_y = cy + row + 32.0 * scale }
+        s.place(page.ids[2],24.0,cy,size_width,row) or >>
+        s.place(page.ids[1],input_x,input_y - 8.0 * styles.density,input_width,row + 8.0 * styles.density) or >>
+        s.place(page.ids[4],input_x + input_width + 16.0,input_y,go_width,row) or >>
+        s.place(page.ids[5],24.0,input_y + row + 12.0 * scale,content,40.0 * scale) or >>
+        h = input_y - y + row + 64.0 * scale
+    }
+    if m.selected == 33 {
+        s.place(id,24.0,y,math.min(content,200.0 * scale),row) or >>
+        s.place(page.ids[1],0.0,0.0,360.0 * scale,340.0 * scale) or >>
+        s.place(page.ids[2],24.0 * scale,20.0 * scale,312.0 * scale,30.0 * scale) or >>
+        s.place(page.ids[3],24.0 * scale,58.0 * scale,312.0 * scale,66.0 * scale) or >>
+        s.place(page.ids[4],24.0 * scale,132.0 * scale,312.0 * scale,88.0 * scale) or >>
+        s.place(page.ids[5],24.0 * scale,224.0 * scale,312.0 * scale,row) or >>
+        s.place(page.ids[6],24.0 * scale,280.0 * scale,148.0 * scale,row) or >>
+        s.place(page.ids[7],188.0 * scale,280.0 * scale,148.0 * scale,row) or >>
+        s.place(page.ids[8],24.0,y + row + 20.0 * scale,content,64.0 * scale) or >>
+        h = row + 100.0 * scale
+    }
+    if m.selected == 20 { s.place(page.ids[1],24.0,y + h + 24.0,content,96.0 * scale) or >>
+        h += 124.0 * scale }
+    if m.selected == 28 || m.selected == 29 { s.place(page.ids[1],24.0,y + h + 12.0,content,36.0 * scale) or >>
+        h += 60.0 * scale }
+    if m.selected == 30 {
+        button_width := math.min(content - 16.0,220.0 * scale)
+        s.place(page.ids[1],24.0,y,button_width,row) or >>
+        s.place(page.ids[6],24.0,y + row + 14.0 * scale,content,36.0 * scale) or >>
+        ay := y + row + 78.0 * scale
+        s.place(page.ids[2],24.0,ay,56.0 * scale,56.0 * scale) or >>
+        s.place(page.ids[7],100.0 * scale,ay,math.max(1.0,content - 100.0 * scale),32.0 * scale) or >>
+        s.place(page.ids[8],100.0 * scale,ay + 34.0 * scale,math.max(1.0,content - 100.0 * scale),40.0 * scale) or >>
+        sy := ay + 106.0 * scale
+        tag := s.badge_size(page.ids[4]) or >>
+        beta := s.badge_size(page.ids[5]) or >>
+        label_width := 220.0 * scale
+        mut tx := 24.0
+        mut ty := sy + 44.0 * scale
+        if label_width + tag.width + beta.width + 32.0 <= content {
+            s.place(page.ids[9],24.0,sy,label_width,32.0 * scale) or >>
+            tx = 40.0 + label_width
+            ty = sy
+        } else { s.place(page.ids[9],24.0,sy,content,32.0 * scale) or >> }
+        s.place(page.ids[4],tx,ty,tag.width,tag.height) or >>
+        s.place(page.ids[5],tx + 16.0 + tag.width,ty,beta.width,beta.height) or >>
+        h = ty + math.max(tag.height,32.0 * scale)
+    }
+    if m.selected == 31 { s.place(page.ids[4],0.0,0.0,content - 32.0,36.0 * scale) or >>
+        s.place(page.ids[5],0.0,0.0,content - 32.0,110.0 * scale) or >>
+        s.place(page.ids[6],0.0,0.0,content - 32.0,row) or >> }
+    if m.selected == 32 { s.set_scroll_extent(id,14.0 * (row + 16.0) + 24.0) or >>
+        for i in 1:page.ids.len { s.place(page.ids[i],12.0,12.0 + f64(i - 1) * (row + 16.0),content - 44.0,row) or >> } }
+    if m.selected == 38 {
+        height := row
+        mut group_h := height
+        if m.group_vertical { group_h = row * 3.0 }
+        mut group_width := content
+        if m.group_vertical { group_width = math.min(content,260.0 * scale) }
+        for i in 0:3 { cy := y + f64(i) * (group_h + 40.0 * scale)
+            s.place(page.ids[3 + i],24.0,cy,content,24.0 * scale) or >>
+            s.place(page.ids[i],24.0,cy + 28.0 * scale,group_width,group_h) or >> }
+        h = 3.0 * (group_h + 40.0 * scale)
+    }
+    if m.selected == 39 {
+        mut selector_h := row
+        mut selector := widgets.button_group_appearance()
+        selector.equal_width = true
+        if scale > 1.4 && content < 560.0 { selector.vertical = true
+            selector_h = row * 5.0 }
+        s.set_button_group_appearance(page.ids[1],&selector) or >>
+        s.place(page.ids[1],24.0,y,content,selector_h) or >>
+        s.place(id,24.0,y + selector_h + 20.0,content,math.max(320.0,320.0 * scale)) or >>
+        h = selector_h + 340.0 * scale
+    }
+    if m.selected >= 40 { h = m.interaction_layout(s,row,scale,content) or >> }
+    if m.selected == 36 { s.place(page.ids[2],24.0 * scale,190.0 * scale,170.0 * scale,row) or >>
+        s.place(page.ids[3],210.0 * scale,190.0 * scale,170.0 * scale,row) or >> }
+    s.set_scroll_extent(m.preview,tool_extent + y + h + 32.0) or >>
+    << 0
+}
+fn layout_buttons(s &mut widgets.Screen,page &Page,content f64,row f64,scale f64) f64 {
+    stepper_width := math.min(content,160.0 * scale)
+    label_height := 24.0 * scale
+    inspector_height := label_height + 8.0 + row + 12.0
+    mut cy := 24.0
+    // Keep each direction pair together when it fits, then wrap by the native
+    // measured size rather than stretching every example across the preview.
+    for group in 0:2 {
+        mut x := 24.0
+        mut line_height := 0.0
+        for i in (group * 2):(group * 2 + 2) {
+            size := s.measure_button(page.ids[i]) or >>
+            width := math.min(content,math.ceil(size.width))
+            height := math.max(row,math.ceil(size.height))
+            column := math.max(width,stepper_width)
+            if x > 24.0 && x + column > 24.0 + content {
+                x = 24.0
+                cy += line_height + 12.0
+                line_height = 0.0
+            }
+            s.place(page.ids[13 + i],x,cy,column,label_height) or >>
+            s.place(page.ids[9 + i],x,cy + label_height + 8.0,stepper_width,row) or >>
+            s.place(page.ids[i],x,cy + inspector_height,width,height) or >>
+            x += column + 16.0
+            line_height = math.max(line_height,inspector_height + height)
+        }
+        cy += line_height + 20.0
+    }
+    mut x := 24.0
+    mut line_height := 0.0
+    for i in 4:9 {
+        size := s.measure_button(page.ids[i]) or >>
+        width := math.min(content,math.ceil(size.width))
+        height := math.max(row,math.ceil(size.height))
+        if x > 24.0 && x + width > 24.0 + content {
+            x = 24.0
+            cy += line_height + 12.0
+            line_height = 0.0
+        }
+        s.place(page.ids[i],x,cy,width,height) or >>
+        x += width + 12.0
+        line_height = math.max(line_height,height)
+    }
+    cy += line_height + 20.0
+    << cy - 24.0
+}
+fn (m &mut Workshop) tool(s &mut widgets.Screen,option int) int {
+    position := m.selected
+    page := m.page_snapshot(position)
+    id := page.ids[0]
+    index := m.selected
+    if index == 40 {
+        if option == 0 { m.range_push = !m.range_push }
+        if option == 1 { m.range_commit = !m.range_commit }
+        if option == 2 { m.range_vertical = !m.range_vertical }
+        m.configure(s) or >>
+        m.range_summary(s,false) or >>
+    }
+    if index == 41 {
+        if option == 0 { m.split_vertical = !m.split_vertical
+            m.configure(s) or >> }
+        if option == 1 { m.split_collapsed = (s.split_layout(id) or >>).collapsed == 0
+            s.set_split_collapsed(id,0,m.split_collapsed) or >> }
+        if option == 2 { m.split_collapsed = false
+            s.set_split_ratio(id,0.4) or >> }
+    }
+    if index >= 42 && index <= 44 {
+        if option == 0 { s.focus(id) or >>
+            s.set_menu_open(id,true) or >> }
+        if option == 1 { m.menu_stays_open = !m.menu_stays_open
+            m.configure(s) or >> }
+        if option == 2 { m.menu_export_disabled = !m.menu_export_disabled
+            s.set_menu_item_enabled(id,30,!m.menu_export_disabled) or >> }
+    }
+    if index == 45 {
+        if option == 0 { s.set_value(id,"") or >> }
+        if option == 1 { s.set_value(id,"Xu-密码🙂") or >> }
+        if option == 2 { s.focus(id) or >> }
+    }
+    if index == 0 { mut text := "精密 · 清晰 · 可靠。"
+        if option == 0 { text = "长中文：输入、选择、复制与原生排版保持一致。Long English text wraps inside its content width. Family 👨‍👩‍👧‍👦 and developer 👩🏽‍💻 remain intact." }
+        s.set_text(id,text) or >> }
+    if index == 1 || index == 2 { s.set_selected_button(id,option == 0) or >> }
+    if index >= 3 && index <= 6 {
+        if option == 0 { s.set_value(id,"") or >> }
+        if option == 1 { mut value := "Long text · 很长的中文与 English · 👩🏽‍💻 🙂 abcdefghijklmnopqrstuvwxyz"
+            if index == 4 || index == 6 { value = value + "\n第二行\n第三行\n第四行\n第五行\n第六行\n第七行：内部滚动" }
+            s.set_value(id,value) or >> }
+        if option == 2 && index >= 5 { mut decoration := widgets.field_decoration(&"Project name 项目名称")
+            decoration.variant = (m.variant % 3)
+            decoration.floating = (m.variant % 4)
+            decoration.helper = "Floating / fixed label and stable helper area"
+            decoration.error = "Please enter a valid name."
+            decoration.clearable = true
+            s.set_field_decoration(id,&decoration) or >>
+            m.variant += 1 }
+    }
+    if index == 7 { if option == 0 { m.guided = !m.guided
+            mut appearance := widgets.tree_appearance()
+            appearance.guides = m.guided
+            s.set_tree_appearance(id,&appearance) or >> }
+        if option == 1 { s.set_selected(id,7) or >>
+            s.focus(id) or >> }
+        if option == 2 { s.set_value(page.ids[1],"") or >>
+            s.set_tree_filter(id,"") or >> } }
+    if index == 8 { if option == 0 { m.variant += 1
+            s.set_task_progress_mode(id,m.variant % 3) or >> }
+        if option == 1 { m.failure = !m.failure
+            s.set_selected_button(m.tools[1],m.failure) or >> }
+        if option == 2 && m.running { _ := s.complete_task(id,m.revision,widgets.TASK_CANCELLED) or >>
+            m.running = false } }
+    if index == 9 { s.set_checkbox_indeterminate(id,option == 0) or >>
+        if option > 0 { s.set_toggle_value(id,option == 1) or >> } }
+    if index == 10 { if option == 0 { m.pending_before = s.toggle_value(id) or >>
+            s.set_switch_pending(id,true) or >>
+            s.set_text(id,"Live preview · Saving…") or >> }
+        else { s.set_switch_pending(id,false) or >>
+            s.set_toggle_value(id,option == 1 || m.pending_before) or >>
+            s.set_invalid(id,option == 2) or >>
+            s.set_text(id,"Live preview 实时预览") or >> } }
+    if index == 11 { s.set_toggle_value(id,option == 0) or >> }
+    if index == 13 { if option > 0 { s.set_slider_commit_only(id,option == 1) or >> }
+        else { text := s.text_value(page.ids[1]) or >>
+            value := strconv.parse_float(&text) or (err) { s.set_field_invalid(page.ids[1],true) or >>
+                << 0 }
+            if math.is_nan(value) || math.is_inf(value) || value < 0.0 || value > 100.0 { s.set_field_invalid(page.ids[1],true) or >>
+                << 0 }
+            s.set_number_value(id,value) or >>
+            s.set_field_invalid(page.ids[1],false) or >> } }
+    if index == 15 { if option == 0 { s.set_candidate_open(id,true) or >> }
+        else { s.set_select_option_enabled(id,2,false) or >> } }
+    if index == 16 { if option < 2 { s.set_combo_custom_values(id,option == 0) or >> }
+        else { s.set_value(id,"") or >> } }
+    if index == 17 { s.select_all(id,option == 0) or >> }
+    if index == 18 { if option == 0 { s.clear_calendar(id) or >> }
+        else { value := time.date(2026,10,25,0,0,0,0)
+            s.set_calendar_value(id,value) or >> } }
+    if index == 19 { s.set_clock_format(id,option == 0,option != 2) or >> }
+    if index == 20 { mut value := "#B4392DFF"
+        if option == 0 { value = s.text_value(page.ids[1]) or >> }
+        if option == 2 { value = "#3279A080" }
+        s.set_color_hex(id,value) or (err) { s.set_field_invalid(page.ids[1],true) or >>
+            s.set_text(m.status,err.msg()) or >>
+            << 0 }
+        s.set_field_invalid(page.ids[1],false) or >>
+        s.remember_color(id) or >>
+        s.set_value(page.ids[1],s.color_hex(id) or >>) or >> }
+    if index == 24 { s.set_table_status(id,["","Loading workspace… 正在加载","Unable to load. Retry when ready."][option]) or >> }
+    if index == 25 {
+        sizes := [10,20,50,100]
+        size := sizes[s.selected(page.ids[2]) or >>]
+        data := s.pagination_data(id) or >>
+        if option == 2 { if data.total == 0 { s.set_pagination_data(id,20000,size) or >> }
+            else { s.set_pagination_data(id,0,size) or >> } }
+        else {
+            if data.pages == 0 { m.pagination_invalid(s) or >>
+                << 0 }
+            current := s.pagination_data(id) or >>
+            mut number := current.pages
+            if option == 0 { text := s.text_value(page.ids[1]) or >>
+                number = strconv.atoi(&text) or (err) { m.pagination_invalid(s) or >>
+                    << 0 }
+                if number < 1 || number > current.pages { m.pagination_invalid(s) or >>
+                    << 0 } }
+            s.set_selected(id,number - 1) or >>
+            s.set_field_invalid(page.ids[1],false) or >>
+        }
+        m.update_pagination(s,true) or >>
+    }
+    if index == 27 { s.set_number_value(id,[0.0,0.42,1.0][option]) or >> }
+    if index == 28 { if option < 2 { s.set_running(id,option == 0) or >> }
+        else { s.set_spinner_appearance(id,48.0,4.0,time.milliseconds(1200) or >>) or >> } }
+    if index == 30 {
+        if option == 0 { m.unread += 1 }
+        if option == 1 { m.unread = 0 }
+        if option == 2 { m.unread = 123 }
+        m.update_badges(s) or >>
+    }
+    if index == 32 { if option == 0 { s.set_scroll_offset(id,0.0) or >> }
+        if option == 1 { s.set_scroll_offset(id,100000.0) or >> }
+        if option == 2 { s.focus(page.ids[page.ids.len - 1]) or >> } }
+    if index == 33 && option == 2 { m.variant = (m.variant + 1) % 4
+        mut placement := widgets.overlay_placement()
+        placement.side = m.variant
+        placement.align = widgets.OVERLAY_CENTER
+        s.set_popover_placement(page.ids[1],&placement) or >> }
+    if index == 33 || index == 36 { if option == 0 { if index == 33 { m.open_preferences(s) or >> } else { s.open(page.ids[1]) or >> } }
+        else if option == 1 { s.close_overlay(page.ids[1]) or >> } }
+    if index == 34 && option == 2 { m.tooltip_side = (m.tooltip_side + 1) % 4
+        m.configure(s) or >>
+        s.focus(id) or >>
+        s.set_text(m.status,"Tooltip · " + ["Bottom 下","Top 上","Left 左","Right 右"][m.tooltip_side] + " · flips at the viewport edge") or >>
+    }
+    if index == 34 { if option == 0 { s.focus(id) or >> }
+        else if option == 1 { s.focus(0) or >> } }
+    if index == 35 { mut notice := widgets.notice(&"Workspace saved · 工作区已保存")
+        notice.action = "Undo"
+        notice.key = "workspace-save"
+        if option == 1 { notice.text = "Changes restored · 已撤销"
+            notice.key = "workspace-undo" }
+        mut count := 1
+        if option == 2 { count = 3 }
+        for i in 0:count { if count > 1 { notice.key = "notice-" + str(i)
+                notice.text = "Queued notice " + str(i + 1) }
+            _ := s.enqueue_notice(&notice) or >> } }
+    if index == 38 {
+        if option == 0 { m.group_disabled = !m.group_disabled }
+        if option == 1 { m.group_vertical = !m.group_vertical }
+        if option == 2 { m.group_joined = !m.group_joined }
+        m.configure(s) or >>
+    }
+    if index == 39 {
+        if option == 0 { m.revision += 1
+            series := chart_data(m.chart_kind,m.revision)
+            s.set_chart_series(id,&series) or >>
+            m.chart_paused = false }
+        if option == 1 { s.reset_chart_viewport(id) or >> }
+        if option == 2 { m.chart_paused = !m.chart_paused
+            if m.chart_paused { s.pause_chart_animation(id) or >> }
+            else { s.resume_chart_animation(id) or >> } }
+    }
+    if index == 37 { if option == 0 { native := s.webview_native(id) or >>
+            client := webview.bind_native(&native) or >>
+            client.command("reload") or >> }
+        else { s.set_visible(id,option == 2) or >> } }
+    << 0
+}
+fn (m &mut Workshop) update(s &mut widgets.Screen,action widgets.Action) int {
+    position := m.selected
+    page := m.page_snapshot(position)
+    if action.kind == widgets.ACTION_CHANGE {
+        if action.id == m.language { m.apply_locale(s) or >> }
+        else if action.id == m.navigation {
+            if m.selected == 33 || m.selected == 36 { s.close_overlay(page.ids[1]) or >> }
+            m.selected = s.selected(m.navigation) or >>
+            s.set_scroll_offset(m.preview,0.0) or >>
+            s.set_text(m.title,"XUUI  /  " + m.names[m.selected]) or >>
+            m.configure(s) or >>
+            // This navigation event belongs to the old page; do not dispatch it to new-page IDs.
+            << 0
+        } else if action.id == m.theme || action.id == m.density || action.id == m.scale || action.id == m.state || action.id == m.reduced { m.configure(s) or >> }
+        else if m.selected == 1 {
+            for i in 0:4 { if action.id == page.ids[9 + i] { m.configure(s) or >> } }
+        }
+        else if m.selected == 45 && action.id == page.ids[1] {
+            s.set_password_visible(page.ids[0],s.toggle_value(page.ids[1]) or >>) or >>
+        }
+        else if m.selected == 7 && action.id == page.ids[1] { query := s.text_value(page.ids[1]) or >>
+            s.set_tree_filter(page.ids[0],query) or >> }
+        else if m.selected == 17 && action.id == page.ids[1] { query := s.text_value(page.ids[1]) or >>
+            s.set_multi_filter(page.ids[0],query) or >> }
+    }
+    if (action.kind == widgets.ACTION_CHANGE || action.kind == widgets.ACTION_COMMIT) && m.selected == 13 && action.id == page.ids[0] { s.set_value(page.ids[1],str(int(action.value))) or >> }
+    if (action.kind == widgets.ACTION_CHANGE || action.kind == widgets.ACTION_COMMIT) && m.selected == 20 && action.id == page.ids[0] { value := s.color_hex(page.ids[0]) or >>
+        s.set_value(page.ids[1],value) or >>
+        s.set_field_invalid(page.ids[1],false) or >> }
+    if m.selected == 25 && action.kind == widgets.ACTION_CHANGE && action.id == page.ids[2] { data := s.pagination_data(page.ids[0]) or >>
+        sizes := [10,20,50,100]
+        s.set_pagination_data(page.ids[0],max_int_local(0,data.total),sizes[s.selected(page.ids[2]) or >>]) or >>
+        m.update_pagination(s,true) or >> }
+    if m.selected == 25 && action.kind == widgets.ACTION_CHANGE && action.id == page.ids[0] { m.update_pagination(s,true) or >> }
+    if m.selected == 25 && (action.kind == widgets.ACTION_SUBMIT || action.kind == widgets.ACTION_COMMIT) && action.id == page.ids[1] { m.tool(s,0) or >> }
+    if m.selected == 38 && (action.kind == widgets.ACTION_CHANGE || action.kind == widgets.ACTION_ACTIVATE) {
+        for i in 0:3 { if action.id == page.ids[i] { values := s.button_group_values(action.id) or >>
+            s.set_text(m.status,"ButtonGroup · key " + str(int(action.value)) + " · selected " + str(values.len)) or >> } }
+    }
+    if m.selected == 39 {
+        if action.kind == widgets.ACTION_CHANGE && action.id == page.ids[1] {
+            m.chart_kind = int(action.value) - 1
+            series := chart_data(m.chart_kind,m.revision)
+            s.set_chart_series(page.ids[0],&series) or >>
+            s.reset_chart_viewport(page.ids[0]) or >>
+            m.configure(s) or >> }
+        if action.kind == widgets.ACTION_CHART_SELECT || action.kind == widgets.ACTION_CHART_HOVER {
+            mut hit := s.chart_hovered(page.ids[0]) or >>
+            if action.kind == widgets.ACTION_CHART_SELECT { hit = s.chart_selection(page.ids[0]) or >> }
+            if hit.valid { s.set_text(m.status,"Series " + str(hit.series_id) + " / point " + str(hit.point_id) + " · " + str(int(hit.y))) or >> }
+        }
+        if action.kind == widgets.ACTION_CHART_VIEWPORT { s.set_text(m.status,"Viewport updated · Double click / Home to reset") or >> }
+    }
+    if m.selected == 40 && action.id == page.ids[0] && (action.kind == widgets.ACTION_CHANGE || action.kind == widgets.ACTION_COMMIT) { m.range_summary(s,action.kind == widgets.ACTION_COMMIT) or >> }
+    if m.selected >= 42 && m.selected <= 44 && action.id == page.ids[0] && (action.kind == widgets.ACTION_CHANGE || action.kind == widgets.ACTION_ACTIVATE) { s.set_text(page.ids[1],"Action / 操作 · "+str(int(action.value))) or >> }
+    if m.selected == 24 && action.id == page.ids[0] && action.kind == widgets.ACTION_ACTIVATE {
+        descending := s.sort_descending(page.ids[0]) or >>
+        mut direction := "ascending / 升序"
+        if descending { direction = "descending / 降序" }
+        selected := s.table_selected_row(page.ids[0]) or >>
+        s.set_text(m.status,"Sorted / 已排序 · "+direction+" · source row "+str(selected)) or >>
+    }
+    if action.kind == widgets.ACTION_COMMIT {
+        if m.selected == 41 { s.set_text(m.status,"Split ratio / 分栏比例 · "+str(int(math.round(action.value*100.0)))+"%") or >> }
+        else { s.set_text(m.status,"Committed value · " + str(int(action.value))) or >> }
+    }
+    if action.kind == widgets.ACTION_ITEM_ACTION { s.set_text(m.status,"Node action · " + str(int(action.value))) or >> }
+    if action.kind == widgets.ACTION_NOTICE_ACTION { s.set_text(m.status,"Undo requested · business state can now be restored.") or >> }
+    if action.kind != widgets.ACTION_ACTIVATE { << 0 }
+    if m.selected == 25 && action.id == page.ids[4] { m.tool(s,0) or >> }
+    if action.id == m.custom { m.customized = !m.customized
+        m.configure(s) or >> }
+    if action.id == m.motion { m.slow = !m.slow
+        m.configure(s) or >> }
+    if action.id == m.focus { mut target := page.ids[0]
+        if m.selected == 31 { target = page.ids[6] }
+        s.focus(target) or >> }
+    for i in 0:3 { if action.id == m.tools[i] { m.tool(s,i) or >> } }
+    if m.selected == 8 && action.id == page.ids[0] && !m.running {
+        m.revision += 1
+        m.completed = 0
+        m.checksum = 0
+        m.running = true
+        m.deadline = time.instant()
+        s.begin_task(page.ids[0],m.revision) or >>
+    }
+    if m.selected == 33 || m.selected == 36 { if action.id == page.ids[0] { if m.selected == 33 { m.open_preferences(s) or >> } else { s.open(page.ids[1]) or >> } }
+        if m.selected == 36 && (action.id == page.ids[2] || action.id == page.ids[3]) { s.close_overlay(page.ids[1]) or >> } }
+    if m.selected == 30 { if action.id == page.ids[1] { m.unread = 0
+            m.update_badges(s) or >> }
+        if action.id == page.ids[2] { m.online = !m.online
+            m.update_badges(s) or >> } }
+    if m.selected == 33 {
+        if action.id == page.ids[6] { s.close_overlay(page.ids[1]) or >> }
+        if action.id == page.ids[7] { name := s.text_value(page.ids[4]) or >>
+            if name.len == 0 { s.set_field_invalid(page.ids[4],true) or >> }
+            else { s.set_field_invalid(page.ids[4],false) or >>
+                mut history := "off"
+                if s.toggle_value(page.ids[5]) or >> { history = "on" }
+                m.preferences_name = name + ""
+                m.preferences_history = s.toggle_value(page.ids[5]) or >>
+                s.set_text(page.ids[8],"Current: " + name + " · history " + history) or >>
+                s.close_overlay(page.ids[1]) or >> } }
+    }
+    if m.selected == 35 && action.id == page.ids[0] { m.tool(s,0) or >> }
+    << 0
+}
+fn (m &Workshop) open_preferences(s &mut widgets.Screen) int {
+    pages := &m.pages
+    page := &pages[33]
+    s.set_value(page.ids[4],m.preferences_name) or >>
+    s.set_toggle_value(page.ids[5],m.preferences_history) or >>
+    s.set_field_invalid(page.ids[4],false) or >>
+    s.open(page.ids[1]) or >>
+    << 0
+}
+fn max_int_local(a int,b int) int { if a > b { << a }
+    << b }
+fn (m &mut Workshop) pagination_invalid(s &mut widgets.Screen) int {
+    m.pagination_error = true
+    page := m.page_snapshot(25)
+    data := s.pagination_data(page.ids[0]) or >>
+    s.set_field_invalid(page.ids[1],true) or >>
+    mut message := "Enter a page from 1 to " + str(data.pages) + "."
+    if (s.selected(m.language) or >>) != 1 { message = "请输入 1 至 " + str(data.pages) + " 之间的页码。" }
+    if data.pages == 0 { message = "No pages / 暂无数据，无法跳页。" }
+    s.set_text(page.ids[5],message) or >>
+    << 0
+}
+fn (m &mut Workshop) update_pagination(s &mut widgets.Screen,sync_input bool) int {
+    page := m.page_snapshot(25)
+    data := s.pagination_data(page.ids[0]) or >>
+    s.set_text(page.ids[3],s.pagination_summary(page.ids[0]) or >>) or >>
+    s.set_enabled(page.ids[1],data.pages > 0) or >>
+    s.set_enabled(page.ids[4],data.pages > 0) or >>
+    if sync_input {
+        m.pagination_error = false
+        s.set_field_invalid(page.ids[1],false) or >>
+        mut text := ""
+        if data.current >= 0 { text = str(data.current + 1) }
+        s.set_value(page.ids[1],text) or >> }
+    if m.pagination_error { m.pagination_invalid(s) or >> }
+    else { mut hint := "Enter ↵ · 1–" + str(data.pages)
+        if data.pages == 0 { hint = "No data / 暂无数据" }
+        s.set_text(page.ids[5],hint) or >> }
+    << 0
+}
+fn (m &Workshop) update_badges(s &mut widgets.Screen) int {
+    pages := &m.pages
+    page := &pages[30]
+    s.set_badge_count(page.ids[0],m.unread,99,false) or >>
+    s.set_text(page.ids[6],str(m.unread) + " unread · 点击收件箱清零，徽标随数字收紧。") or >>
+    s.set_visible(page.ids[3],m.online) or >>
+    mut name := "林文 · Away 离线"
+    if m.online { name = "林文 · Available 在线" }
+    s.set_text(page.ids[7],name) or >>
+    << 0
+}
+fn (m &mut Workshop) work(s &mut widgets.Screen,now time.Instant) int {
+    if !m.running || now.before(m.deadline) { << 0 }
+    for i in 0:5000 { m.checksum = (m.checksum + i * (m.completed + 1)) % 1000003 }
+    m.completed += 1
+    id := m.pages[8].ids[0]
+    _ := s.set_task_progress(id,m.revision,f64(m.completed) / 48.0) or >>
+    m.deadline = now.add(time.milliseconds(35) or >>) or >>
+    if m.failure && m.completed == 18 { _ := s.complete_task(id,m.revision,widgets.TASK_ERROR) or >>
+        m.running = false
+        m.failure = false
+        if m.selected == 8 { s.set_selected_button(m.tools[1],false) or >> } }
+    else if m.completed == 48 { _ := s.complete_task(id,m.revision,widgets.TASK_SUCCESS) or >>
+        m.running = false }
+    << 0
+}
+
+fn chart_data(kind int,revision int) []widgets.ChartSeries {
+    mut result := []widgets.ChartSeries{}
+    mut series_count := 2
+    if kind == widgets.CHART_DONUT { series_count = 1 }
+    for si in 0:series_count {
+        mut name := "Build 构建"
+        if si == 1 { name = "Index 索引" }
+        if kind == widgets.CHART_DONUT { name = "Workload 工作量" }
+        mut series := widgets.chart_series(si + 1,name,kind)
+        series.smooth = kind == widgets.CHART_LINE || kind == widgets.CHART_AREA
+        mut count := 12 - revision % 2
+        if kind == widgets.CHART_SCATTER { count = 64 }
+        if kind == widgets.CHART_DONUT { count = 5 }
+        for i in 0:count {
+            x := f64(i + 1)
+            phase := f64(revision) * 0.9 + f64(si) * 1.7
+            y := 48.0 + f64(si) * 20.0 + math.sin(x * 0.55 + phase) * 20.0 + math.cos(x * 0.17 + phase) * 7.0
+            mut point := widgets.chart_point(i + 1,x,y)
+            point.label = "Sample 样本 " + str(i + 1)
+            if kind == widgets.CHART_DONUT { point.label = ["Compile 编译","Index 索引","Render 绘制","I/O 输入输出","Other 其他"][i] }
+            series.points.push(point)
+        }
+        result.push(series)
+    }
+    << result
+}
+
+fn next_event(events chan ui.Event,deadline time.Instant) ui.Event {
+    if deadline.is_zero() { << <-events }
+    delay := deadline.since(time.instant())
+    if delay.nanoseconds() <= 0 { << ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: "",width: 0,height: 0} }
+    timer := delay.timer()
+    select { event := <-events { timer.stop()
+            << event }
+        _ := <-timer.c { timer.stop() } }
+    << ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: "",width: 0,height: 0}
+}
+fn workshop_menu_items(english bool) []widgets.MenuItem {
+    labels := ["Open workspace","Show grid","Export","PNG image","SVG image","Unavailable","Save","View density","Compact","Comfortable"]
+    mut translated := labels
+    if !english { translated = ["打开工作区","显示网格","导出","PNG 图片","SVG 图片","暂不可用","保存","视图密度","紧凑","舒适"] }
+    mut grid := widgets.menu_item(20,translated[1])
+    grid.kind = widgets.MENU_CHECK
+    mut export := widgets.menu_item(30,translated[2])
+    export.kind = widgets.MENU_SUBMENU
+    mut png := widgets.menu_item(31,translated[3])
+    png.parent = 30
+    mut svg := widgets.menu_item(32,translated[4])
+    svg.parent = 30
+    mut unavailable := widgets.menu_item(40,translated[5])
+    unavailable.enabled = false
+    mut save := widgets.menu_item(50,translated[6])
+    save.shortcut_key = 115
+    save.shortcut_modifiers = ui.MOD_META
+    save.shortcut_label = "⌘S"
+    mut separator := widgets.menu_item(60,"")
+    separator.kind = widgets.MENU_SEPARATOR
+    mut heading := widgets.menu_item(70,translated[7])
+    heading.kind = widgets.MENU_HEADING
+    mut compact := widgets.menu_item(80,translated[8])
+    compact.kind = widgets.MENU_RADIO
+    compact.radio_group = 1
+    mut comfortable := widgets.menu_item(81,translated[9])
+    comfortable.kind = widgets.MENU_RADIO
+    comfortable.radio_group = 1
+    comfortable.checked = true
+    << [widgets.menu_item(10,translated[0]),grid,export,png,svg,unavailable,save,separator,heading,compact,comfortable]
+}
+fn (m &Workshop) interaction_layout(s &mut widgets.Screen,row f64,scale f64,content f64) f64 {
+    position := m.selected
+    pages := &m.pages
+    page := &pages[position]
+    id := page.ids[0]
+    if m.selected == 45 {
+        width := math.min(content,380.0 * scale)
+        label_height := 28.0 * scale
+        input_height := math.max(row,48.0 * s.styles().density)
+        input_y := 24.0 + label_height + 8.0
+        s.place(page.ids[2],24.0,24.0,width,label_height) or >>
+        s.place(id,24.0,input_y,width,input_height) or >>
+        s.place(page.ids[1],24.0,input_y + input_height + 16.0,content,row) or >>
+        s.place(page.ids[3],24.0,input_y + input_height + row + 36.0,content,100.0 * scale) or >>
+        << label_height + input_height + row + 160.0 * scale
+    }
+    if m.selected == 40 {
+        mut width := content
+        mut height := 104.0*scale
+        if m.range_vertical { width = math.min(content,160.0*scale)
+            height = 300.0*scale }
+        s.place(page.ids[1],24.0,24.0,content,32.0*scale) or >>
+        s.place(id,24.0,64.0*scale,width,height) or >>
+        s.place(page.ids[2],24.0,80.0*scale+height,content,64.0*scale) or >>
+        << height+144.0*scale
+    }
+    if m.selected == 41 {
+        height := 320.0*scale
+        s.place(id,24.0,24.0,content,height) or >>
+        boxes := s.split_layout(id) or >>
+        for pane in 0:2 {
+            mut width := boxes.first.width
+            mut height := boxes.first.height
+            if pane == 1 { width = boxes.second.width
+                height = boxes.second.height }
+            inner := math.max(1.0,width-32.0)
+            caption_height := math.max(1.0,math.min(100.0*scale,height-row-48.0))
+            s.place(page.ids[3+pane],16.0,16.0,inner,caption_height) or >>
+            s.set_visible(page.ids[5+pane],height >= row+32.0) or >>
+            s.place(page.ids[5+pane],16.0,math.max(16.0,height-row-16.0),inner,row) or >>
+        }
+        << height
+    }
+    if m.selected >= 42 && m.selected <= 44 {
+        mut width := math.min(content,240.0*scale)
+        mut height := row
+        if m.selected == 43 { width = content
+            height = 180.0*scale }
+        s.place(id,24.0,24.0,width,height) or >>
+        s.place(page.ids[1],24.0,height+44.0*scale,content,44.0*scale) or >>
+        s.place(page.ids[2],24.0,height+100.0*scale,content,80.0*scale) or >>
+        << height+180.0*scale
+    }
+    << row
+}
+fn (m &Workshop) range_summary(s &mut widgets.Screen,committed bool) int {
+    pages := &m.pages
+    page := &pages[40]
+    values := s.range_values(page.ids[0]) or >>
+    mut prefix := "Preview / 预览"
+    if committed { prefix = "Committed / 已提交" }
+    text := strconv.format_float(values.lower,102,0) or >>
+    upper := strconv.format_float(values.upper,102,0) or >>
+    s.set_text(page.ids[1],prefix+" · "+text+" – "+upper) or >>
+    << 0
+}
+
+fn scene(events chan ui.Event) int {
+    ready := demo.ready(events) or >>
+    if ready.kind == ui.EV_EXIT { << 0 }
+    mut screen := widgets.screen(&ready) or >>
+    screen.resize(1180.0,900.0) or >>
+    screen.set_min_size(920,780) or >>
+    mut model := create(mut &screen) or (err) { screen.dispose()
+        >> err }
+    model.apply_locale(mut &screen) or >>
+    screen.set_text(model.title,"XUUI  /  Field") or >>
+    model.configure(mut &screen) or >>
+    model.layout(mut &screen) or >>
+    while screen.is_open() {
+        now := time.instant()
+        model.work(mut &screen,now) or >>
+        model.layout(mut &screen) or >>
+        mut deadline := screen.advance(now) or >>
+        for action in screen.take_actions() { model.update(mut &screen,action) or >> }
+        _ := screen.render() or >>
+        if model.running && (deadline.is_zero() || model.deadline.before(deadline)) { deadline = model.deadline }
+        event := next_event(events,deadline) or >>
+        mut actions := screen.event(&event) or >>
+        mut count := 0
+        while screen.is_open() && count < 128 { pending := ui.poll_chan(events)
+            if pending.kind == ui.EV_NONE { <- }
+            more := screen.event(&pending) or >>
+            for action in more { actions.push(action) }
+            count += 1 }
+        for action in actions { model.update(mut &screen,action) or >> }
+    }
+    screen.dispose()
+    << 0
+}
+fn worker(events chan ui.Event) { scene(events) or (err) { demo.fail(err.msg())
+    << } }
+fn launch() int {
+    mut app := demo.app("XUUI / Component Workshop",1180,900) or >>
+    xu worker(app.event_ch)
+    << app.run() or >>
+}
+fn main() int { << launch() or (err) { eprintln(err.msg())
+    << 1 } }
