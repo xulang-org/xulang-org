@@ -65,15 +65,17 @@
     // Initialize code block copy and run toolbars
     initCodeToolbars();
 
-    // A declaration link opens its example, including bookmarked fragments.
-    function revealAPIExample() {
+    // Fragment links reveal examples and FAQ answers, including bookmarks.
+    function revealLinkedDetails() {
       var hash = window.location.hash || '';
-      if (!/^#example-[0-9a-f]{12}$/.test(hash)) return;
+      if (!hash) return;
       var target = document.getElementById(hash.slice(1));
-      if (target && target.classList.contains('api-example')) target.open = true;
+      if (target && (target.classList.contains('api-example') || target.classList.contains('faq-item'))) {
+        target.open = true;
+      }
     }
-    window.addEventListener('hashchange', revealAPIExample);
-    revealAPIExample();
+    window.addEventListener('hashchange', revealLinkedDetails);
+    revealLinkedDetails();
 
     // Initialize hero install tab switcher
     initHeroInstallTabs();

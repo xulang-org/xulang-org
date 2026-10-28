@@ -1,6 +1,7 @@
 """Shared navigation and page shell for the static official site."""
 
 from html import escape
+from html.parser import HTMLParser
 import json
 from pathlib import Path
 from string import Template
@@ -186,7 +187,46 @@ def sidebar(route: str, en: bool, xu_version: str = '') -> str:
     )
 
 
-def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str, str]:
+class FAQParser(HTMLParser):
+    """Keep FAQ structured data in sync with the questions shown on each page."""
+
+    def __init__(self):
+        super().__init__()
+        self.entities = []
+        self.active = False
+        self.summary = False
+        self.question = []
+        self.answer = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'details' and 'faq-item' in dict(attrs).get('class', '').split():
+            self.active = True
+            self.question, self.answer = [], []
+        elif self.active and tag == 'summary':
+            self.summary = True
+        elif self.active and tag in ('p', 'li', 'br'):
+            self.answer.append(' ')
+
+    def handle_data(self, data):
+        if self.active:
+            (self.question if self.summary else self.answer).append(data)
+
+    def handle_endtag(self, tag):
+        if tag == 'summary':
+            self.summary = False
+        elif self.active and tag == 'details':
+            self.entities.append({
+                '@type': 'Question',
+                'name': ' '.join(''.join(self.question).split()),
+                'acceptedAnswer': {
+                    '@type': 'Answer',
+                    'text': ' '.join(''.join(self.answer).split()),
+                },
+            })
+            self.active = False
+
+
+def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = '') -> dict[str, str]:
     origin = "https://xulang.org"
     if route in ('/', '/zh'):
         url_en = f"{origin}/"
@@ -273,122 +313,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
     og_type = "website" if bare_path in ('', 'playground', 'benchmarks', 'download', '404') else "article"
     og_locale = "en_US" if en else "zh_CN"
 
-    faq_entities = [
-        {
-            "@type": "Question",
-            "name": "Does the Xu compiler use LLVM? Why a custom native backend?" if en else "Xu 编译器是否使用了 LLVM？为什么采用自研后端？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "No, Xu does not use LLVM. The compiler utilizes a completely self-hosted, custom MIR (Mid-level Intermediate Representation), register allocators, and direct machine code emitters that output native Mach-O, ELF, PE, and WASM binaries. LLVM's massive pass pipeline causes slow C++/Rust compile cycles; Xu targets Go-like sub-second compilation speeds, produces a compact single-binary compiler (~15MB), and requires zero external C++ runtime libraries." if en else "没有使用 LLVM。Xu 编译器采用完全自主研发的轻量 MIR（中间表示）、寄存器分配器与直接原生机器码发射器，直出 Mach-O、ELF、PE 与 WASM 二进制。LLVM pass 链庞大沉重，是 C++/Rust 编译龟速的根源；Xu 追求类似 Go 的亚秒级极致编译速度，且编译器本身为单文件极简二进制（约 15MB），零外置 C++ 动态库依赖，真正开箱即用。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "Does Xu use a garbage collector (GC)?" if en else "Xu 语言是否有垃圾回收（GC）？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "No. Xu has zero runtime GC overhead and no Stop-The-World (STW) pauses. Memory is managed deterministically through compile-time single-ownership tracking and RAII scoping drop, complemented by static shared (&T) and exclusive (&mut T) borrow checking." if en else "没有。Xu 完全不依赖任何运行时垃圾回收器（Zero GC），没有 Stop-The-World (STW) 暂停。内存由编译期唯一所有权跟踪与 RAII 作用域析构确定性释放，并通过 &T 共享借用与 &mut T 独占借用在编译阶段彻底消除悬垂指针、内存泄漏与多线程数据竞争。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "How does Xu compare to Rust and Go?" if en else "Xu 相比 Rust 与 Go 有哪些区别？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Compared to Rust, Xu delivers memory safety and zero runtime overhead without complex lifetime annotations (<'a>), offering first-class language-level coroutines and channels without bulky async runtimes. Compared to Go, Xu compiles to true zero-GC native machine code without runtime STW latency, baseline memory bloat, or background GC threads." if en else "相比 Rust，Xu 在提供同等确定性零成本内存安全的同时，去除了复杂的显式生命周期标注（如 <'a>），并将轻量协程与通信通道作为语言一等公民内置，无需引入笨重的外部异步运行时；相比 Go，Xu 保持了轻快直观的并发体验，但编译为零 GC 原生机器码，完全没有并发三色标记清除 GC 的内存常驻底线与停顿延迟。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "How fast are Xu's compilation speed and runtime throughput?" if en else "Xu 的编译速度与实际执行性能如何？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Compare Xu with C, Rust, Go and Swift across 47 workloads on six ARM64 and x86-64 platforms. The benchmark dashboard reports per-platform runtime, CPU time, peak memory and binary size; C and Rust use the lowest measured O1–O3 median for each workload. Compilation timings are available in the source CI reports." if en else "47 项负载覆盖 ARM64、x86-64 六个平台，对照 Xu、C、Rust、Go 和 Swift。横测看板展示各平台的运行耗时、CPU 时间、峰值内存与二进制体积；C、Rust 按负载选取同平台 O1–O3 的最小实测中位数。编译耗时记录在来源 CI 的原始报告中。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "Which editors support Xu, and how do I enable LSP?" if en else "Xu 支持哪些编辑器？如何启用 LSP？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "The official vscode-xu extension supports VS Code and Cursor. It runs xu lsp to launch the SDK's xu-lsp server for diagnostics, completion, go-to-definition, hover, symbols, references, rename, and formatting. Other LSP-compatible editors can launch xu lsp over stdin/stdout using JSON-RPC 2.0. Run xu lsp --help for help." if en else "官方 vscode-xu 扩展支持 VS Code 与 Cursor，通过 xu lsp 启动 SDK 中的 xu-lsp 语言服务器，提供诊断、补全、跳转定义、悬停、符号大纲、查找引用、重命名与格式化。其他支持 LSP 的编辑器也可配置 xu lsp，通过 stdin/stdout 交换 JSON-RPC 2.0 消息。可用 xu lsp --help 查看帮助。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "What is the difference between xu get and xu install?" if en else "xu get 与 xu install 有什么区别？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "In a project containing xu.xun, xu get <module>@<version> adds or updates a pinned dependency, edits require:, installs sources into vendor/, and updates xu.lock. Replace the placeholders with a real module and verified published SemVer tag; @latest is not accepted. Official packages should use the SDK bundle or matching fixed source commit from the packages guide. xu install installs already-declared dependencies. Both support --offline; use xu build . --frozen for strict lockfile builds. The official packages repository provides 29 extension packages." if en else "在已有 xu.xun 的项目中，xu get <module>@<version> 添加或更新指定依赖，修改 require:、安装源码到 vendor/ 并更新 xu.lock。请将占位符替换为真实模块与已确认发布的 SemVer 标签，不接受 @latest。官方扩展包请使用指南中指定的 SDK 内置包或匹配固定提交。xu install 安装清单中已经声明的依赖。两者均支持 --offline；严格按现有锁文件构建使用 xu build . --frozen。官方 packages 仓库提供 29 个扩展包。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "Does Xu support WebAssembly (WASM) out of the box?" if en else "Xu 是否原生支持 WebAssembly (WASM)？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Yes, first-class native support. The compiler directly emits wasm32 binary modules (xu build --target wasm32) without Emscripten or external dependencies. The interactive in-browser Playground on xulang.org compiles the Xu compiler itself directly to WebAssembly to run client-side." if en else "原生一等公民支持。编译器内建 wasm32 直接后端（xu build --target wasm32），无需 Emscripten 或外置工具。官网上的在线演练场（Playground）正是将 Xu 编译器源码直接编译为 WASM，纯浏览器前端运行，免安装即可体验实时语法编译与借用检查。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "How do I use xu native to integrate C code?" if en else "如何用 xu native 集成 C 代码？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "xu native compile compiles C sources with interface metadata into .a; xu native archive wraps existing object files with metadata; xu native pack bundles target slices into .xulib; xu native inspect and xu native extract inspect and extract slices. Use .a for a single target and .xulib for distribution with interface contracts and multiple target slices. Build with xu build main.xu native/mylib.xulib -o app. Compiling C requires the corresponding C toolchain; run xu native compile --help for options." if en else "xu native compile 将 C 源码与接口元数据编译为 .a；xu native archive 为已有目标文件封装元数据；xu native pack 将目标切片打包为 .xulib；xu native inspect 与 xu native extract 用于检查和提取切片。.a 用于单目标，.xulib 用于携带接口契约与多个目标切片的分发。构建示例：xu build main.xu native/mylib.xulib -o app。编译 C 需相应的 C 工具链；参数见 xu native compile --help。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "What operating systems and CPU architectures are supported?" if en else "Xu 目前支持哪些操作系统与 CPU 芯片架构？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Native multi-platform matrix: operating systems include macOS (Darwin), Linux, Windows (PE AOT), and WebAssembly; hardware architectures include ARM64 (Apple Silicon / AWS Graviton), x86-64 (Intel / AMD), LoongArch64, RISC-V 64/32, and Linux ARM32." if en else "原生支持主流跨端全矩阵：操作系统覆盖 macOS、Linux、Windows (PE AOT) 及 WebAssembly；CPU 架构支持 ARM64 (Apple Silicon / AWS Graviton)、x86-64 (Intel / AMD)、LoongArch64 (龙芯)、RISC-V 64/32 及 Linux ARM32。"
-            }
-        }
-    ]
-    xacp_faq_entities = [
-        {
-            "@type": "Question",
-            "name": "What is XACP?" if en else "什么是 XACP？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "XACP (Xu Agent Control Protocol) is the framed control channel for a hosted native program built with xu build --xacp and/or --xacp-port PORT. ./app --xacp-help prints a machine-readable summary whose capabilities line is stdio and which reports whether TCP is enabled and the bind address. #xacp (src/xacp) is the transport-neutral safety core. Importing it does not install the startup control entry. The launcher is xu xacp / xu-xacp, with modes inspect, run, debug, record, control, and connect. This behavior is from the language repository at 0.10.10-dev.1 (xu#23)." if en else "XACP（Xu Agent Control Protocol）是用 xu build --xacp 和/或 --xacp-port PORT 构建的 hosted native 程序的帧控制通道。./app --xacp-help 打印机器可读摘要，capabilities 为 stdio，并标明 TCP 是否启用及绑定地址。#xacp（src/xacp）是与传输无关的安全核心。单独导入不会装上启动期控制入口。启动器是 xu xacp / xu-xacp，模式为 inspect、run、debug、record、control、connect。该行为来自语言仓库 0.10.10-dev.1（xu#23）。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "How do XACP stdio and loopback TCP differ?" if en else "XACP 的 stdio 与本机回环 TCP 有什么区别？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Stdio uses --xacp-stdio or xu xacp control <program>. Frames are --- !xacp … ===. The session owns stdin/stdout and does not run business main. Loopback TCP requires a build with --xacp-port N (N from 1 to 65535). <app> --xacp-tcp listens on 127.0.0.1:N, and xu xacp connect PORT relays the same frames. Port 0 disables TCP. Each TCP connection is its own session and connections are handled one at a time. The first control flag before -- wins. A normal start does not listen and does not read control stdin. There is no TLS and no non-loopback bind." if en else "stdio 使用 --xacp-stdio 或 xu xacp control <program>。帧为 --- !xacp … ===。会话独占 stdin/stdout，不运行业务 main。本机 TCP 需要用 --xacp-port N 构建（N 为 1 到 65535）。<app> --xacp-tcp 监听 127.0.0.1:N，xu xacp connect PORT 中继同样的帧。端口 0 关闭 TCP。每个 TCP 连接是独立会话，连接按顺序处理。-- 之前的第一个控制标志优先。普通启动不监听，也不读取控制 stdin。没有 TLS，也不能绑定非回环地址。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "What does xacp.hello grant?" if en else "xacp.hello 会授予什么权限？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "The startup stdio and TCP adapters validate xacp.hello (ver !ver 1.0.0), begin the request, then call enable_development() before finish_request. That grants PERM_ALL while the session is still STATE_NEW. The success frame reports state OPEN and permissions development. Schema, lifecycle, and frame limits still apply. Library dispatch() completes hello and does not grant development permissions. An optional token string is schema-only and is not an access secret. proc.status then returns the real pid. proc.output and the UI ops are checked and return not_implemented when no Screen or output adapter is registered." if en else "启动期 stdio 与 TCP 适配器校验 xacp.hello（ver 为 !ver 1.0.0），begin 请求后、finish_request 之前调用 enable_development()。会话仍为 STATE_NEW 时授予 PERM_ALL。成功帧报告 state OPEN 与 permissions development。schema、生命周期和帧上限仍然有效。库函数 dispatch() 只完成 hello，不授予 development 权限。可选 token 字符串只参与 schema，不是访问口令。随后 proc.status 返回真实 pid。没有 Screen 或输出适配器时，proc.output 与 UI 操作在校验后返回 not_implemented。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "How do xu xacp control and xu xacp run differ?" if en else "xu xacp control 与 xu xacp run 有什么区别？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "run executes the program so business main runs, and inserts an extra -- so a business argument named --xacp-help does not trigger discovery. debug prints discovery first, then runs the same way; it is not a breakpoint debugger. record streams at most 1 MiB of stdout on Unix and is still unavailable on Windows. inspect runs --xacp-help and also executes the target. control starts --xacp-stdio, owns stdin/stdout, skips business main, and accepts no business arguments. connect PORT only relays frames to 127.0.0.1:PORT." if en else "run 会执行程序，业务 main 会运行，并额外插入 --，因此名为 --xacp-help 的业务参数不会触发发现。debug 先打印发现信息再按同样方式运行，不是断点调试器。record 在 Unix 上流式输出最多 1 MiB stdout，Windows 上仍不可用。inspect 执行 --xacp-help，同样会运行目标程序。control 启动 --xacp-stdio，独占 stdin/stdout，跳过业务 main，且不接受业务参数。connect PORT 只把帧中继到 127.0.0.1:PORT。"
-            }
-        },
-        {
-            "@type": "Question",
-            "name": "What are the XACP security limits?" if en else "XACP 目前有哪些安全限制？",
-            "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Use it only with a trusted local executable. A validated hello on the startup channel grants development permissions, and control mode skips business main. There is no TLS, no bind address other than 127.0.0.1, and no host timeout if the target hangs. UI Screen adapters are not wired, so tree, screenshot, input, act, record, and proc.output do not return live UI data. The generator allows hosted native executables only." if en else "只用于受信任的本地可执行程序。启动通道上合法的 hello 会授予 development 权限，控制模式会跳过业务 main。没有 TLS，不能绑定 127.0.0.1 以外的地址，目标挂起时宿主也没有超时。UI Screen 适配器尚未接入，因此 tree、screenshot、input、act、record 和 proc.output 不会返回真实界面数据。生成器只允许 hosted native 可执行程序。"
-            }
-        },
-    ]
+    faq_parser = FAQParser()
+    faq_parser.feed(body)
+    faq_entities = faq_parser.entities
 
     if not bare_path:
         schema = {
@@ -443,7 +370,7 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str) -> dict[str,
             "description": desc,
             "url": canonical_url,
             "inLanguage": "en" if en else "zh-CN",
-            "mainEntity": faq_entities + xacp_faq_entities,
+            "mainEntity": faq_entities,
             "publisher": {
                 "@type": "Organization",
                 "name": "Xu Programming Language",
@@ -518,12 +445,17 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     other = ('/zh' if route == '/' else '/zh' + route) if en else (route[3:] or '/')
     if route == '/404':
         other = '/zh'
-    meta = get_seo_meta(route, title, en, xu_version)
+    meta = get_seo_meta(route, title, en, xu_version, body)
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
+    playground_assets = '' if route in ('/', '/zh') else (
+        '<link rel="preload" href="/xu-play.wasm" as="fetch" type="application/wasm" crossorigin>\n'
+        '  <script src="/xu-play.js" defer></script>'
+    )
     return template.substitute(
         lang='en' if en else 'zh-CN', title=escape(title), home=home,
         home_title='Xu Home' if en else 'Xu 官网首页',
         xu_version=escape(xu_version), nav=''.join(nav), main=main,
+        playground_assets=playground_assets,
         other_lang=other, other_lang_code='zh-CN' if en else 'en',
         lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',
         theme_label='Switch theme' if en else '切换主题', ui_href=prefix + '/docs/ui',
