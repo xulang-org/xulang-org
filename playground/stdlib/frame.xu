@@ -1,0 +1,154 @@
+@ui/draw
+
+#ui
+#unicode/utf8
+#errors
+#math
+
+// Browser host adapter only. Widget geometry, state, and paint calls live in
+// desktop_widgets.xu, copied verbatim from the desktop library.
+fn scalar(value f64) string { <<< 1 }
+fn color_text(color Color) string {
+    digits := "0123456789abcdef"
+    mut out := "#"
+    packed := color.value()
+    for i in 0:8 { out = out + string_from_byte(digits[(packed >> ((7 - i) * 4)) & 15]) }
+    << out
+}
+pub struct Context { canvas_id int
+    generation int }
+pub fn default_context() Context { << Context{canvas_id: 1,generation: 1} }
+pub struct Frame { active bool }
+pub fn (context &Context) new_frame(capacity int) Frame { << Frame{active: false} }
+pub fn (frame &mut Frame) begin() int { frame.active = true
+    << begin() }
+pub fn (frame &mut Frame) present() int { frame.active = false
+    << present() }
+pub fn (frame &mut Frame) cancel() { frame.active = false
+    cancel() }
+fn (frame &Frame) writable() int {
+    if !frame.active { >> errors.new("draw: frame is not writable") }
+    << 0
+}
+pub fn (frame &mut Frame) clear(color Color) int { frame.writable() or >>
+    << set_bg(color_text(color)) }
+pub fn (frame &mut Frame) push() int { frame.writable() or >>
+    << push() }
+pub fn (frame &mut Frame) pop() int { frame.writable() or >>
+    << pop() }
+pub fn (frame &mut Frame) clip_rect(x f64,y f64,w f64,h f64) int {
+    frame.writable() or >>
+    << cmd("clip_rect\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(w) + "\t" + scalar(h))
+}
+pub fn (frame &mut Frame) fill_rect(x f64,y f64,w f64,h f64,color Color) int {
+    frame.writable() or >>
+    << cmd("fill_rect\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(w) + "\t" + scalar(h) + "\t" + color_text(color))
+}
+pub fn (frame &mut Frame) stroke_rect(x f64,y f64,w f64,h f64,color Color,width f64) int {
+    frame.writable() or >>
+    << cmd("stroke_rect\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(w) + "\t" + scalar(h) + "\t" + color_text(color) + "\t" + scalar(width))
+}
+pub fn (frame &mut Frame) line(x1 f64,y1 f64,x2 f64,y2 f64,color Color,width f64) int {
+    frame.writable() or >>
+    << cmd("line\t" + scalar(x1) + "\t" + scalar(y1) + "\t" + scalar(x2) + "\t" + scalar(y2) + "\t" + color_text(color) + "\t" + scalar(width))
+}
+
+// Browser text host: deterministic single-line monospace metrics. Full native
+// shaping/wrapping/IME is outside this host. Paint uses the same declared width.
+// VM resources use scalar handles, matching native TextLayout value semantics.
+fn retain(value &string) int { <<< 1 }
+fn lookup(id int) string { <<< 1 }
+pub fn (context &Context) layout_text(value &string,options &TextOptions) TextLayout {
+    if options.size < 1.0 || options.size > 256.0 || math.is_nan(options.size) { >> errors.new("draw: invalid browser text size") }
+    mut cells := 0
+    for i in 0:value.len {
+        c := value[i] & 255
+        if c < 128 || c >= 192 { cells += 1 }
+    }
+    width := f64(cells) * options.size * 0.6
+    height := options.size * 1.25
+    metrics := TextMetrics{width: width,height: height,baseline: options.size,lines: 1,ink_x: 0.0,ink_y: 0.0,ink_width: width,ink_height: height}
+    << TextLayout{metrics: metrics,id: retain(value),canvas_id: context.canvas_id,generation: context.generation}
+}
+pub fn (layout &mut TextLayout) dispose() int { << 0 }
+pub fn (frame &mut Frame) text_layout(label &TextLayout,x f64,y f64,color Color) int {
+    frame.writable() or >>
+    << cmd("layout_text\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(label.metrics.baseline) + "\t" + color_text(color) + "\t" + scalar(label.metrics.width) + "\t" + clean(lookup(label.id)))
+}
+
+// Paths carry only validated geometric commands; Canvas never sees executable
+// code or widget identities. Desktop rounded_path builds these same cubics.
+pub const FILL_NONZERO = 0
+pub struct Path { commands string }
+pub fn new_path(capacity int) Path { << Path{commands: ""} }
+pub fn (path &mut Path) move_to(x f64,y f64) int {
+    path.commands = path.commands + "path_move\t" + scalar(x) + "\t" + scalar(y) + "\n"
+    << 0
+}
+pub fn (path &mut Path) line_to(x f64,y f64) int {
+    path.commands = path.commands + "path_line\t" + scalar(x) + "\t" + scalar(y) + "\n"
+    << 0
+}
+pub fn (path &mut Path) cubic_to(x1 f64,y1 f64,x2 f64,y2 f64,x f64,y f64) int {
+    path.commands = path.commands + "path_cubic\t" + scalar(x1) + "\t" + scalar(y1) + "\t" + scalar(x2) + "\t" + scalar(y2) + "\t" + scalar(x) + "\t" + scalar(y) + "\n"
+    << 0
+}
+pub fn (path &mut Path) close() int { path.commands = path.commands + "path_close\n"
+    << 0 }
+pub fn (frame &mut Frame) fill_path(path &Path,color Color,rule int) int {
+    frame.writable() or >>
+    cmd("path_begin")
+    // cmd adds a newline; trim the path's final newline before transport.
+    if path.commands.len > 0 { cmd(path.commands[0:path.commands.len - 1]) }
+    << cmd("path_fill\t" + color_text(color))
+}
+
+pub fn (frame &mut Frame) stroke_path(path &Path,color Color,options &StrokeOptions) int {
+    frame.writable() or >>
+    if options.cap != CAP_BUTT || options.join != JOIN_MITER || options.dashes.len > 0 {
+        >> errors.new("draw: unsupported browser stroke options")
+    }
+    cmd("path_begin")
+    if path.commands.len > 0 { cmd(path.commands[0:path.commands.len - 1]) }
+    << cmd("path_stroke\t" + color_text(color) + "\t" + scalar(options.width))
+}
+
+
+pub fn (context &Context) clone() Context { << Context{canvas_id: context.canvas_id,generation: context.generation} }
+pub fn (frame &mut Frame) translate(x f64,y f64) int {
+    frame.writable() or >>
+    << cmd("translate\t" + scalar(x) + "\t" + scalar(y))
+}
+
+pub fn (context &Context) matches_canvas(identity &ui.CanvasEvent) bool {
+    << identity.window_id == 1 && identity.canvas_id == context.canvas_id && identity.generation == context.generation
+}
+pub fn (context &Context) start_text_input(options &ui.TextInputOptions) ui.TextInput {
+    >> errors.new("browser: native text input unavailable; use read-only Editor")
+}
+pub fn (layout &TextLayout) bind_input_transform(input &ui.TextInput,revision int,transform &ui.TextInputTransform,upstream bool) int {
+    >> errors.new("browser: native text input geometry unavailable")
+}
+// Single-line code-point grid, with UTF-8 byte indices matching desktop APIs.
+// This supports display-only Editor.paint(), not grapheme or bidi shaping.
+pub fn (layout &TextLayout) caret(index int,trailing bool) TextHit {
+    value := lookup(layout.id)
+    if index < 0 || index > value.len { >> errors.new("draw: invalid browser caret index") }
+    mut cells := 0
+    mut position := 0
+    while position < index { position += utf8.decode_width(&value,position) or >>
+        cells += 1 }
+    if position != index { >> errors.new("draw: caret index must be a UTF-8 boundary") }
+    mut length := 0
+    if index < value.len { length = utf8.decode_width(&value,index) or >> }
+    if trailing && length > 0 { cells += 1 }
+    << TextHit{index: index,length: length,trailing: trailing,inside: true,x: f64(cells) * layout.metrics.baseline * 0.6,y: 0.0,height: layout.metrics.height}
+}
+pub fn (layout &TextLayout) selection_rects(start int,end int) []TextSelectionRect {
+    if end < start { >> errors.new("draw: invalid browser selection") }
+    left := layout.caret(start,false) or >>
+    right := layout.caret(end,false) or >>
+    mut rects := []TextSelectionRect{}
+    if end > start { rects.push(TextSelectionRect{x: left.x,y: 0.0,width: right.x - left.x,height: layout.metrics.height}) }
+    << rects
+}

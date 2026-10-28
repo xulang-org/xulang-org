@@ -1,0 +1,176 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn labels(context &draw.Context,values []string) []draw.TextLayout {
+    options := draw.text_options(15.0)
+    mut result := []draw.TextLayout{}
+    for value in values { shaped := context.layout_text(&value,&options) or >>
+        result.push(shaped) }
+    << result
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := widgets.default_theme()
+    styles := widgets.dark_styles()
+    tab_labels := labels(&context,["Basics", "Data / Scroll", "Display"] ) or >>
+    names := labels(&context,["Button +1", "Checkbox", "Switch", "Radio A", "Radio B"]) or >>
+    button_label := names[0]
+    check_label := names[1]
+    switch_label := names[2]
+    radio_a_label := names[3]
+    radio_b_label := names[4]
+    rows := labels(&context,["Array", "Map", "Struct", "Channel", "Ownership", "AOT", "WASM", "Native"]) or >>
+    mut tabs := widgets.tabs(&identity,1,&box(20.0,44.0,600.0,38.0),3,0) or >>
+    mut button := widgets.button(&identity,2,&box(32.0,106.0,158.0,38.0)) or >>
+    mut check := widgets.checkbox(&identity,3,&box(32.0,160.0,240.0,32.0),false) or >>
+    mut toggle := widgets.switch_control(&identity,4,&box(32.0,210.0,240.0,32.0),false) or >>
+    mut slider := widgets.slider(&identity,5,&box(322.0,112.0,272.0,32.0),0.0,100.0,40.0) or >>
+    slider.set_step(5.0) or >>
+    mut radio_a := widgets.radio(&identity,6,&box(322.0,170.0,260.0,32.0),0,true) or >>
+    mut radio_b := widgets.radio(&identity,7,&box(322.0,220.0,260.0,32.0),1,false) or >>
+    mut list := widgets.list_box(&identity,8,&box(32.0,114.0,254.0,172.0),8,0) or >>
+    mut scroll := widgets.scroll(&identity,9,&box(322.0,114.0,276.0,172.0),widgets.AXIS_VERTICAL,336.0) or >>
+    card := widgets.card(&box(28.0,102.0,584.0,200.0)) or >>
+    mut badge := widgets.badge(&box(478.0,116.0,110.0,30.0)) or >>
+    badge.set_selected(true)
+    badge_labels := labels(&context,["Shared Xu"]) or >>
+    badge_label := badge_labels[0]
+    mut title := widgets.styled_label(&context,&"Desktop control logic")
+    mut editor := widgets.input(&context,&identity,10,&box(52.0,244.0,536.0,38.0),&"Read-only Editor / Xu ownership") or >>
+    editor.set_read_only(true) or >>
+    mut progress := widgets.progress(&box(52.0,208.0,164.0,18.0),0.4) or >>
+    mut invalid_progress := widgets.progress(&box(238.0,208.0,164.0,18.0),0.4) or >>
+    invalid_progress.set_invalid(true)
+    mut disabled_progress := widgets.progress(&box(424.0,208.0,164.0,18.0),0.4) or >>
+    disabled_progress.set_enabled(false)
+    mut focus := widgets.focus_group(&identity,[1,2,3,4,5,6,7]) or >>
+    mut applied_focus := 0
+    mut count := 0
+    mut selected := 0
+    while true {
+        input := playground.next_input()
+        if input.kind == 0 { <- }
+        old_page := tabs.selected()
+        navigation := focus.input(&input)
+        current := focus.current()
+        if current != applied_focus {
+            tabs.set_focus(current == 1)
+            button.set_focus(current == 2)
+            check.set_focus(current == 3)
+            toggle.set_focus(current == 4)
+            slider.set_focus(current == 5)
+            radio_a.set_focus(current == 6)
+            radio_b.set_focus(current == 7)
+            list.set_focus(current == 8)
+            scroll.set_focus(current == 9)
+            applied_focus = current
+        }
+        if navigation.consumed { -> }
+        action := tabs.input(&input)
+        if action.request_focus { focus.focus(1) or >> }
+        if tabs.selected() != old_page {
+            if tabs.selected() == 0 { focus.set_items([1,2,3,4,5,6,7]) or >> }
+            else if tabs.selected() == 1 { focus.set_items([1,8,9]) or >> }
+            else { focus.set_items([1]) or >> }
+            focus.focus(1) or >>
+            button.cancel()
+            toggle.cancel()
+            slider.cancel()
+            radio_a.cancel()
+            radio_b.cancel()
+            list.cancel()
+            scroll.set_focus(false)
+        } else if tabs.selected() == 0 {
+            a := button.input(&input)
+            b := check.input(&input)
+            c := toggle.input(&input)
+            d := slider.input(&input)
+            e := radio_a.input(&input)
+            f := radio_b.input(&input)
+            if a.kind == widgets.ACTION_ACTIVATE { count += 1 }
+            if e.kind == widgets.ACTION_CHANGE { selected = 0 }
+            if f.kind == widgets.ACTION_CHANGE { selected = 1 }
+            radio_a.set_value(selected == 0)
+            radio_b.set_value(selected == 1)
+            if a.request_focus { focus.focus(2) or >> }
+            if b.request_focus { focus.focus(3) or >> }
+            if c.request_focus { focus.focus(4) or >> }
+            if d.request_focus { focus.focus(5) or >> }
+            if e.request_focus { focus.focus(6) or >> }
+            if f.request_focus { focus.focus(7) or >> }
+        } else if tabs.selected() == 1 {
+            a := list.input(&input) or >>
+            _ := scroll.input(&input) or >>
+            if a.request_focus { focus.focus(8) or >> }
+            if input.kind == ui.EV_POINTER_DOWN && box(322.0,114.0,276.0,172.0).contains(input.x,input.y) { focus.focus(9) or >> }
+        }
+        current_after := focus.current()
+        if current_after != applied_focus {
+            tabs.set_focus(current_after == 1)
+            button.set_focus(current_after == 2)
+            check.set_focus(current_after == 3)
+            toggle.set_focus(current_after == 4)
+            slider.set_focus(current_after == 5)
+            radio_a.set_focus(current_after == 6)
+            radio_b.set_focus(current_after == 7)
+            list.set_focus(current_after == 8)
+            scroll.set_focus(current_after == 9)
+            applied_focus = current_after
+        }
+    }
+    progress.set_value(slider.value() / 100.0) or >>
+    invalid_progress.set_value(slider.value() / 100.0) or >>
+    disabled_progress.set_value(slider.value() / 100.0) or >>
+    mut frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(draw.rgb(16,24,39)) or >>
+    draw.text(20,12,21,"#f8fafc","Xu / WASM control gallery")
+    tabs.paint(mut &frame,&tab_labels,&theme) or >>
+    if tabs.selected() == 0 {
+        button.paint(mut &frame,&button_label,&theme) or >>
+        check.paint(mut &frame,&check_label,&theme) or >>
+        toggle.paint(mut &frame,&switch_label,&theme) or >>
+        slider.paint(mut &frame,&theme) or >>
+        radio_a.paint(mut &frame,&radio_a_label,&theme) or >>
+        radio_b.paint(mut &frame,&radio_b_label,&theme) or >>
+        draw.text(32,274,16,"#e2e8f0","Count: " + str(count) + "   Slider: " + str(int(slider.value())))
+    } else if tabs.selected() == 1 {
+        draw.text(32,90,14,"#94a3b8","ListBox: click / Up / Down / End")
+        draw.text(322,90,14,"#94a3b8","Scroll: wheel / Tab + PageDown")
+        list.paint(mut &frame,&rows,&theme) or >>
+        scroll.begin(mut &frame) or >>
+        for i in 0:8 {
+            label := rows[i]
+            frame.text_layout(&label,12.0,12.0 + f64(i) * 42.0,theme.foreground) or >>
+        }
+        scroll.end(mut &frame) or >>
+    } else {
+        card.paint(mut &frame,&theme) or >>
+        title.paint_text_styled(mut &frame,&box(42.0,116.0,410.0,36.0),&styles,&styles.button,0) or >>
+        badge.paint(mut &frame,&badge_label,&theme) or >>
+        draw.text(52,174,15,"#94a3b8","Progress: normal / invalid / disabled (Basics slider)")
+        progress.paint_styled(mut &frame,&styles) or >>
+        invalid_progress.paint_styled(mut &frame,&styles) or >>
+        disabled_progress.paint_styled(mut &frame,&styles) or >>
+        frame.push() or >>
+        frame.translate(52.0,244.0) or >>
+        editor.paint(mut &frame,&theme) or >>
+        frame.pop() or >>
+    }
+    draw.text(20,328,13,"#94a3b8","Tab / Shift+Tab: focus   Arrows: change tab or value   Esc: leave")
+    frame.present() or >>
+    println("Page: " + str(tabs.selected()) + " | Count: " + str(count) + " | Check: " + str(check.value()) + " | Switch: " + str(toggle.value()) + " | Slider: " + str(int(slider.value())) + " | Radio: " + str(selected) + " | List: " + str(list.selected()) + " | Scroll: " + str(int(scroll.offset())))
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

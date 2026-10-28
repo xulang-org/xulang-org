@@ -1,7 +1,7 @@
 <!--title: 常见问题解答 (FAQ)-->
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>常见问题解答 (FAQ)</h1>
-<p class="banner">关于 Xu 语言设计定位、内存模型、编译架构、LSP 编辑器支持、依赖管理、原生互操作与 XACP 控制通道的核心问答</p>
+<p class="banner">关于 Xu 语言设计、内存模型、编译架构、桌面 UI、编辑器支持、依赖管理、原生互操作与 XACP 的核心问答</p>
 
 <section class="faq-list">
   <details class="faq-item">
@@ -43,6 +43,38 @@
     <summary><h3>Xu 是否原生支持 WebAssembly (WASM)？</h3></summary>
     <div class="faq-answer">
       <p><strong>原生一等公民支持</strong>。编译器内建 <code>wasm32</code> 直接后端（<code>xu build --target wasm32</code>），无需 Emscripten 或外置工具。官网上的在线演练场（<a href="/playground">Playground</a>）正是将 Xu 编译器源码直接编译为 WASM，纯浏览器前端运行，免安装即可体验实时语法编译与借用检查。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="native-ui">
+    <summary><h3>Xu 支持原生桌面 UI 吗？必须使用 WebView 吗？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>支持，而且 WebView 是可选项。</strong>当前 Xu {{xu_version}} 正式 SDK 提供两种界面方式：使用 <code>#ui/draw</code>、<code>#ui/layout</code> 和 <code>#ui/widgets</code> 编写原生绘图与控件界面；或使用 <code>#ui/webview</code> 承载 HTML/CSS/JavaScript，通过请求桥接与 Xu 交互。原生控件示例不需要 HTML、CSS 或 JavaScript。</p>
+      <p><code>#ui</code> 提供窗口、事件、菜单、托盘、多窗口、剪贴板和文件对话框等桌面服务。控件由 Xu 在原生 Canvas 上绘制，系统菜单与对话框使用宿主外观。入口见<a href="/docs/ui">UI / WebView 开发指南</a>和<a href="/api/ui/widgets">控件 API 与示例</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="ui-widgets">
+    <summary><h3>UI 有哪些控件？支持中文输入和主题吗？</h3></summary>
+    <div class="faq-answer">
+      <p>SDK 包含按钮、勾选框、开关、单选、滑块、步进器、标签页、列表与选择器；Input / TextArea 支持原生文字输入会话、IME、选区及复制粘贴。还提供 Table、TreeView、Pagination、ComboBox、MultiSelect、DatePicker、TimePicker、ColorPicker，以及 Popover、Tooltip、Toast、Modal 等组件。</p>
+      <p>控件共享深色、浅色和高对比度主题，支持字体与文字缩放、密度、状态样式和局部覆盖。保留布局与 <code>Screen</code> 上下文可协助组织控件、焦点、事件和重绘。绘图、编辑与主题的用法见<a href="/docs/ui#styles">样式指南</a>和<a href="/api/ui/widgets#examples">可运行示例</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="ui-platforms">
+    <summary><h3>桌面 UI 支持哪些平台？需要安装什么？</h3></summary>
+    <div class="faq-answer">
+      <p>桌面宿主覆盖 macOS、Windows 和 Linux。macOS 使用 AppKit，网页使用 WebKit；Windows 使用原生宿主，网页需要 WebView2；Linux 使用 GTK4，网页另需 WebKitGTK 6.0。构建与打包需要对应平台的宿主工具链；原生绘图与控件不要求应用嵌入 WebView。</p>
+      <p>先运行 <code>xu doctor --desktop</code> 检查依赖，使用 WebView 时再加 <code>--webview</code>。应用目录包含 <code>xu.xun</code>、<code>main.xu</code> 与应用图标，使用 <code>xu build &lt;AppDir&gt; --desktop</code> 打包；完整命令见<a href="/docs/ui#build">构建指南</a>。编译器支持某个目标不等于桌面 UI 已在该目标完成运行验收；浏览器 WASM 演练场不运行桌面 UI。范围见<a href="/docs/status">限制与现状</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="ui-limits">
+    <summary><h3>原生 UI 目前有哪些能力边界？</h3></summary>
+    <div class="faq-answer">
+      <p>现有组件覆盖常用桌面交互，仍有明确边界：Input / TextArea 是纯文本编辑器；Table 为有界数据表，排序与取数由应用处理；列表与树不提供按需构建的无界数据虚拟化。富文本、高级表格、拖拽工作区与完整辅助技术桥接仍需进一步开发。</p>
+      <p>平台文字排版、IME 与系统服务也需要在真实目标系统上验收，不能以跨平台编译通过代替交互验证。选用组件前请查看<a href="/api/ui/widgets">对应 API 契约</a>和示例说明。</p>
     </div>
   </details>
 
@@ -116,4 +148,4 @@
   </details>
 </section>
 
-<p><a href="/docs/start">起步教程</a> · <a href="/docs/modules">模块与依赖</a> · <a href="/docs/native">原生模块与 .xulib 规范</a> · <a href="/docs/vscode">编辑器支持</a> · <a href="/docs/cli#xacp">命令行 / XACP</a> · <a href="/api/xacp"><code>#xacp</code> API</a></p>
+<p><a href="/docs/start">起步教程</a> · <a href="/docs/ui">UI / WebView</a> · <a href="/docs/modules">模块与依赖</a> · <a href="/docs/native">原生模块与 .xulib 规范</a> · <a href="/docs/vscode">编辑器支持</a> · <a href="/docs/cli#xacp">命令行 / XACP</a> · <a href="/api/xacp"><code>#xacp</code> API</a></p>
