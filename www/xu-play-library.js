@@ -163,6 +163,15 @@
   window.XuPlayLibrary = {
     load: function (value, getSavedProjects) {
       catalog = {groups: value.groups, projects: Object.assign({}, value.projects)};
+      var select = el('ex');
+      var current = select.value || 'hello';
+      select.textContent = '';
+      Object.keys(catalog.projects).concat(['custom']).forEach(function (key) {
+        var option = node('option', '', key === 'custom' ? text('自定义项目', 'Custom project') : catalog.projects[key].title[lang]);
+        option.value = key;
+        select.appendChild(option);
+      });
+      select.value = current;
       savedProjects = getSavedProjects;
       refreshDrafts();
       el('browse').disabled = false;

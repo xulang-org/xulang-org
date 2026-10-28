@@ -40,7 +40,7 @@ function mount(saved = {}) {
 
 test('search finds a project by filename and previews its complete file set', () => {
   const page = mount();
-  assert.equal(page.get('library-list').children.length, 21);
+  assert.equal(page.get('library-list').children.length, 25);
   page.search('pricing.xu');
   assert.equal(page.get('library-list').children.length, 1);
   const detail = page.get('library-detail').textContent;
@@ -54,8 +54,9 @@ test('diagnostics and UI categories make their expected behavior explicit', () =
   page.get('library-list').children.find(button => button.textContent.includes('Borrow checking')).click();
   assert.match(page.get('library-detail').textContent, /compiler diagnostic/);
   page.category('UI & assets');
-  assert.equal(page.get('library-ui').hidden, false);
-  assert.equal(page.get('library-open').disabled, true);
+  assert.equal(page.get('library-ui').hidden, true);
+  assert.equal(page.get('library-list').children.length, 4);
+  assert.equal(page.get('library-open').disabled, false);
 });
 
 test('a search with no result offers a working clear-filters action', () => {
@@ -64,7 +65,7 @@ test('a search with no result offers a working clear-filters action', () => {
   assert.equal(page.get('library-empty').hidden, false);
   assert.equal(page.get('library-open').disabled, true);
   page.get('library-reset').click();
-  assert.equal(page.get('library-list').children.length, 21);
+  assert.equal(page.get('library-list').children.length, 25);
   assert.equal(page.get('library-open').disabled, false);
 });
 

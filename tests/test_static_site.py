@@ -69,6 +69,20 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn('href="/" hreflang="en"', chinese)
         self.assertIn('<link rel="canonical" href="https://xulang.org/zh/">', chinese)
         self.assertIn('SoftwareApplication', chinese)
+        for page, expected in ((home, 4), (chinese, 4),
+                               ((output / 'docs/faq/index.html').read_text(), 19),
+                               ((output / 'zh/docs/faq/index.html').read_text(), 19)):
+            schema = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.DOTALL)[1])
+            faq = next(item for item in schema['@graph'] if item['@type'] == 'FAQPage') if '@graph' in schema else schema
+            questions = re.findall(r'<summary><h3>(.*?)</h3></summary>', page)
+            self.assertEqual(len(faq['mainEntity']), expected)
+            self.assertEqual([item['name'] for item in faq['mainEntity']], questions)
+            self.assertTrue(all(item['acceptedAnswer']['text'] for item in faq['mainEntity']))
+        for page, destination in ((home, '/playground/'), (chinese, '/zh/playground/')):
+            self.assertIn(f'class="btn pri" href="{destination}"', page)
+            self.assertNotIn('id="xu-play-src"', page)
+            self.assertNotIn('xu-play.js', page)
+            self.assertNotIn('xu-play.wasm', page)
         self.assertIn('data-wasm-available="false"', (output / 'playground/index.html').read_text())
         for page in ('docs/tutorial/01', 'zh/docs/tutorial/01', 'api/fmt', 'zh/api/fmt', 'playground'):
             html = (output / page / 'index.html').read_text()
@@ -101,6 +115,8 @@ class StaticSiteTests(unittest.TestCase):
         self.assertRegex((output / 'playground/index.html').read_text(), r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}"')
         self.assertRegex((output / 'zh/api/fmt/index.html').read_text(), r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}" defer data-wasm-available="false"')
         self.assertIn('href="/xulang-org/site.css"', home)
+        self.assertIn('class="btn pri" href="/xulang-org/playground/"', home)
+        self.assertIn('class="btn pri" href="/xulang-org/zh/playground/"', (output / 'zh/index.html').read_text())
         self.assertIn('href="/xulang-org/"', home)
         chinese = (output / 'zh/docs/start/index.html').read_text()
         self.assertIn('href="/xulang-org/docs/start/" hreflang="en"', chinese)
@@ -198,6 +214,10 @@ class StaticSiteTests(unittest.TestCase):
         record.write_text(json.dumps(stamp))
         output = self.workspace / 'with-wasm-output'
         site.build(source, output, '/repo', require_playground=True)
+        for page in ('index.html', 'zh/index.html'):
+            home = (output / page).read_text()
+            self.assertNotIn('xu-play.js', home)
+            self.assertNotIn('xu-play.wasm', home)
         self.assertIn('data-wasm-available="true"', (output / 'playground/index.html').read_text())
         self.assertRegex((output / 'playground/index.html').read_text(),
                          r'<link rel="preload" href="/repo/xu-play\.wasm\?v=[0-9a-f]{16}" as="fetch" type="application/wasm" crossorigin>')

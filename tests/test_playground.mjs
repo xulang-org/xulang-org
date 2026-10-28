@@ -30,7 +30,11 @@ const expected = {
   'chan-buffered': '42\n',
   'chan-workers': '60\n',
   'chan-pipeline': '1\n4\n9\n16\n25\n',
-  coroutine: '协程 #1 运行中...\n协程 #2 运行中...\n协程 #3 运行中...\n汇总结果: 60\n'
+  coroutine: '协程 #1 运行中...\n协程 #2 运行中...\n协程 #3 运行中...\n汇总结果: 60\n',
+  'ui-draw': 'Canvas frame presented.\n',
+  'ui-counter': 'Count: 0\n',
+  'ui-gallery': 'Page: 0 | Count: 0 | Check: false | Switch: false | Slider: 40 | Radio: 0 | List: 0 | Scroll: 0\n',
+  'ui-widgets': 'Count: 0 | Checkbox: false | Switch: false | Slider: 40\n'
 };
 
 for (const [name, example] of Object.entries(examples)) {
@@ -130,14 +134,34 @@ fn main() int { println(sum(Pair{a: 17, b: 25}, "参数传递"))
 });
 
 
-test('unsupported floating-point execution fails explicitly', async () => {
+test('IEEE scalar arithmetic, casts, comparisons, NaN, and infinity run in WASM', async () => {
   const runtime = await createRuntime(bytes);
-  const result = runtime.run('@main\nfn main() int { println(1.5)\n << 0 }');
-  assert.notEqual(result.exit, 0);
-  assert.match(result.stderr, /floating-point.*not supported/);
-  const comparison = runtime.run('@main\nfn main() int { println(1.5 < 2.0)\n << 0 }');
-  assert.notEqual(comparison.exit, 0);
-  assert.match(comparison.stderr, /floating-point.*not supported/);
+  const result = runtime.run(`@main
+fn main() int {
+    mut x := 1.5
+    x += 2.25
+    assert(x == 3.75)
+    assert(-x < 0.0)
+    assert(3.0 * 2.5 == 7.5)
+    assert(3.0 / 2.0 == 1.5)
+    assert(f64(7) == 7.0)
+    assert(int(-3.9) == -3)
+    assert(2.0 <= 2.0 && 2.0 >= 2.0 && 3.0 > 2.0 && 3.0 != 2.0)
+    inf := 1.0 / 0.0
+    nan := 0.0 / 0.0
+    assert(inf > 1000000000.0)
+    assert(nan != nan)
+    assert(!(nan < 1.0) && !(nan >= 1.0))
+    mut values := [1.25, 2.5]
+    values[0] += 0.75
+    assert(values[0] == 2.0)
+    println(x)
+    eprintln(-1.25)
+    << 0
+}`);
+  assert.equal(result.exit, 0, result.stderr);
+  assert.equal(result.stdout, '3.75\n');
+  assert.equal(result.stderr, '-1.25\n');
 });
 
 test('tutorial 05 error handling and interface method dispatch', async () => {

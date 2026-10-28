@@ -43,7 +43,7 @@ class Element {
   click() { if (!this.disabled) this.listeners.click(); }
 }
 
-async function mount({blocks, en = false, available = true, supported = true} = {}) {
+async function mount({blocks, en = false, available = true, supported = true, ui = false, workspace} = {}) {
   const elements = {};
   for (const id of blocks ? [] : ['src', 'ex', 'run', 'out', 'meta']) {
     elements['xu-play-' + id] = {
@@ -51,6 +51,11 @@ async function mount({blocks, en = false, available = true, supported = true} = 
       addEventListener(name, handler) { this.listeners[name] = handler; },
       click() { if (!this.disabled) this.listeners.click(); }
     };
+  }
+  if (ui) {
+    for (const id of ['ui', 'canvas', 'ui-status']) elements['xu-play-' + id] = new Element(id);
+    elements['xu-play-ui'].hidden = true;
+    elements['xu-play-canvas'].getBoundingClientRect = () => ({left: 10, top: 20, width: 320, height: 180});
   }
   const timers = new Map();
   const workers = [];
@@ -112,6 +117,8 @@ async function mount({blocks, en = false, available = true, supported = true} = 
     setTimeout(handler, delay) { const id = ++nextTimer; timers.set(id, {handler, delay}); return id; },
     clearTimeout(id) { timers.delete(id); }
   };
+  if (ui) context.window.XuPlayCanvas = {maxEvents: 64, render(canvas, commands) { canvas.commands = commands; return true; }};
+  if (workspace) context.window.XuPlayWorkspace = workspace;
   if (blocks) vm.runInNewContext(readFileSync(new URL('../www/theme.js', import.meta.url), 'utf8'), context);
   vm.runInNewContext(readFileSync(new URL('../www/xu-play.js?v=fixture', import.meta.url), 'utf8'), context);
   for (const handler of pageEvents.DOMContentLoaded) handler();
@@ -388,3 +395,126 @@ test('Diagrams, C code, manifests, and outputs retain copy without run or edit b
   assert.ok(wrappers[4].querySelector('.code-copy-btn'));
 });
 
+
+test('project UI previews and event replays use the complete workspace source', async () => {
+  let program = '@main\nfn main() int { << helper() }\nfn helper() int { << 0 }';
+  const workspace = {getSource: () => program, setExample() {}, showConsole() {}};
+  const {elements, workers} = await mount({ui: true, workspace});
+  elements['xu-play-src'].value = 'fn helper() int { << 0 }';
+  let previews = 0;
+  elements['xu-play-preview-tab'] = {click() { previews += 1; }};
+  elements['xu-play-run'].click();
+  assert.equal(workers[0].messages.at(-1).source, program);
+  const result = {type: 'result', exit: 0, stdout: '', stderr: '', ui: {commands: 'frame', interactive: true}};
+  workers[0].respond(result);
+  assert.equal(elements['xu-play-ui'].hidden, false);
+  assert.equal(previews, 1);
+  elements['xu-play-canvas'].listeners.click({clientX: 170, clientY: 120});
+  assert.equal(workers[0].messages.at(-1).source, program);
+  assert.equal(workers[0].messages.at(-1).events.length, 1);
+  program += '\n// changed helper';
+  workers[0].respond(result);
+  assert.equal(elements['xu-play-ui'].hidden, true);
+});
+
+test('Canvas clicks scale to Xu coordinates; edits and fresh runs reset replay', async () => {
+  const {elements, workers} = await mount({ui: true});
+  const button = elements['xu-play-run'], canvas = elements['xu-play-canvas'];
+  const panel = elements['xu-play-ui'], source = elements['xu-play-src'];
+  source.value = 'user UI source';
+  button.click();
+  const result = {type: 'result', exit: 0, stdout: 'Count: 0\n', stderr: '', ui: {commands: 'frame', interactive: true}};
+  workers[0].respond(result);
+  assert.equal(panel.hidden, false);
+  assert.equal(canvas.commands, 'frame');
+  canvas.listeners.click({clientX: 170, clientY: 120});
+  const message = workers[0].messages.at(-1);
+  assert.equal(message.source, source.value);
+  assert.equal(JSON.stringify(message.events), '[{"x":320,"y":200}]');
+  assert.equal(canvas.attributes['aria-disabled'], 'true');
+  const count = workers[0].messages.length;
+  canvas.listeners.click({clientX: 170, clientY: 120});
+  assert.equal(workers[0].messages.length, count, 'ignore clicks while the worker is busy');
+  source.value = 'edited UI source';
+  source.listeners.input();
+  workers[0].respond(result);
+  assert.equal(panel.hidden, true, 'old source must not reopen an edited UI');
+  button.click();
+  assert.equal(JSON.stringify(workers[0].messages.at(-1).events), '[]');
+  workers[0].respond(result);
+  canvas.listeners.keydown({key: 'Enter', preventDefault() {}});
+  assert.equal(JSON.stringify(workers[0].messages.at(-1).events), '[{"x":320,"y":180}]');
+  workers[0].respond({...result, ui: null});
+  assert.equal(panel.hidden, true, 'stdout-only runs hide the canvas');
+});
+
+test('widgets preserve real down/up, drag, key release, blur, and pending input across worker runs', async () => {
+  const {elements, workers} = await mount({ui: true});
+  const canvas = elements['xu-play-canvas'];
+  elements['xu-play-src'].value = 'widget source';
+  elements['xu-play-run'].click();
+  const result = {type:'result', exit:0, stdout:'widgets', stderr:'', ui:{commands:'frame', interactive:true, input:true}};
+  workers[0].respond(result);
+  const pointer = {clientX:50,clientY:80,button:0,buttons:1,pointerId:7,preventDefault(){}};
+  canvas.listeners.pointerdown(pointer);
+  let events = workers[0].messages.at(-1).events;
+  assert.equal(events.length, 1);
+  assert.equal(events[0].kind, 72);
+  assert.equal(events[0].x, 80);
+  assert.equal(events[0].y, 120);
+  assert.equal(canvas.focused, true);
+  canvas.listeners.pointermove({...pointer, clientX:60});
+  canvas.listeners.pointermove({...pointer, clientX:70});
+  canvas.listeners.pointerup({...pointer, clientX:70, buttons:0});
+  canvas.listeners.click(pointer);
+  assert.equal(workers[0].messages.at(-1).events.length, 1, 'pending input does not mutate an already posted snapshot');
+  workers[0].respond(result);
+  events = workers[0].messages.at(-1).events;
+  assert.deepEqual(Array.from(events, e=>e.kind), [72,74,73]);
+  assert.equal(events[1].x, 120, 'motion coalesces before release');
+  workers[0].respond(result);
+  canvas.listeners.keydown({key:'Tab',shiftKey:true,preventDefault(){}});
+  canvas.listeners.keyup({key:'Tab',preventDefault(){}});
+  workers[0].respond(result);
+  events = workers[0].messages.at(-1).events;
+  assert.deepEqual(Array.from(events.slice(-2),e=>e.kind), [78,79]);
+  assert.equal(events.at(-2).key, 257);
+  assert.equal(events.at(-2).modifiers, 1);
+  workers[0].respond(result);
+  const posts = workers[0].messages.length;
+  canvas.listeners.blur({relatedTarget:elements['xu-play-run']});
+  assert.equal(workers[0].messages.length,posts,'Run Code focus must not trigger a blur replay and become Stop');
+  canvas.listeners.blur();
+  assert.equal(workers[0].messages.at(-1).events.at(-1).kind,77);
+  elements['xu-play-src'].value = 'changed';
+  elements['xu-play-src'].listeners.input();
+  workers[0].respond(result);
+  assert.equal(elements['xu-play-ui'].hidden,true);
+  elements['xu-play-run'].click();
+  assert.equal(workers[0].messages.at(-1).events.length,0);
+});
+
+test('wheel host scales line/page units and queues fractional deltas without widget logic', async () => {
+  const {elements, workers} = await mount({ui: true});
+  const canvas = elements['xu-play-canvas'];
+  elements['xu-play-src'].value = 'gallery source';
+  elements['xu-play-run'].click();
+  const result = {type:'result',exit:0,stdout:'gallery',stderr:'',ui:{commands:'frame',interactive:true,input:true}};
+  workers[0].respond(result);
+  let prevented = 0;
+  canvas.listeners.wheel({clientX:210,clientY:100,deltaX:1.5,deltaY:2.25,deltaMode:1,preventDefault(){prevented++;}});
+  let events = workers[0].messages.at(-1).events;
+  assert.equal(events.at(-1).kind,80);
+  assert.equal(events.at(-1).x,400);
+  assert.equal(events.at(-1).y,160);
+  assert.equal(events.at(-1).dx,24);
+  assert.equal(events.at(-1).dy,36);
+  canvas.listeners.wheel({clientX:210,clientY:100,deltaX:0,deltaY:0.5,deltaMode:2,preventDefault(){prevented++;}});
+  workers[0].respond(result);
+  events = workers[0].messages.at(-1).events;
+  assert.equal(events.at(-1).dy,180);
+  assert.equal(prevented,2);
+  workers[0].respond(result);
+  elements['xu-play-src'].listeners.input();
+  canvas.listeners.wheel({preventDefault(){throw Error('cleared UI must permit page scrolling');}});
+});
