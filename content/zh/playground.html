@@ -1,51 +1,82 @@
-<!--title: 在线演练场 (Playground) — XU 编程语言-->
-<div class="hero">
-  <div>
-    <h1><i class="xi xi-play xi-brand"></i> XU 交互式演练场 (WebAssembly Playground)</h1>
-    <p class="lead">在浏览器中即时编写、类型检查与执行 XU 代码，无需在本地安装编译器或依赖云端执行。</p>
-  </div>
-</div>
+<!--title: 在线演练场 — XU 编程语言-->
+<header class="play-heading">
+  <div><p class="play-eyebrow">XU / PLAYGROUND</p><h1>想法，运行一下。</h1></div>
+  <p>写一点 Xu，在浏览器里看见结果。<br><span>无需安装，代码在本机运行。</span></p>
+  <a href="/docs/start">语言指南 <i class="xi xi-arrow-up-right" aria-hidden="true"></i></a>
+</header>
 
-<p class="play-note">运行器完全由 Xu 语言自举编写，并直接编译为原生 WebAssembly 字节码在浏览器宿主沙盒中运行。涵盖词法解析、所有权借用检查、MIR 中间表示生成及运行时虚拟机执行。</p>
-
-<div class="xu-play code-block-wrapper">
-  <div class="code-block-header">
-    <span class="code-block-header-title"><i class="xi xi-play"></i> playground.xu · Xu 浏览器沙盒</span>
-    <span class="code-block-header-pipeline">parse → borrow check → MIR → execute</span>
+<section class="play-workbench" id="xu-play-workspace" data-xu-version="{{xu_version}}" aria-label="Xu 项目工作区">
+  <div class="play-toolbar">
+    <select id="xu-play-ex" hidden aria-hidden="true" tabindex="-1"><option value="hello" selected>Hello world</option></select>
+    <button type="button" class="play-project-switch" id="xu-play-browse" aria-label="打开项目模板库" aria-describedby="xu-play-project-title" aria-haspopup="dialog" aria-controls="xu-play-library" disabled><i class="xi xi-folder-open" aria-hidden="true"></i><span id="xu-play-project-title">Hello world</span><span class="play-switcher-label">项目模板库</span><i class="xi xi-chevron-down" aria-hidden="true"></i></button>
+    <span class="play-browser-label"><span class="play-status-dot"></span> 浏览器沙盒</span>
+    <button type="button" class="play-run" id="xu-play-run"><i class="xi xi-play" aria-hidden="true"></i> 运行代码</button>
   </div>
-  <div class="xu-play-toolbar">
-    <label>选择内置示例
-      <select id="xu-play-ex">
-        <option value="hello" selected>01 hello world</option>
-        <option value="bindings">02 bindings &amp; mut</option>
-        <option value="control">03 if / match / 循环</option>
-        <option value="ints">04 functions &amp; structs</option>
-        <option value="coroutine">05 xu f() 协程并发</option>
-      </select>
-    </label>
-    <button type="button" class="btn pri" id="xu-play-run"><i class="xi xi-play"></i> 运行代码</button>
-    <span class="xu-play-meta" id="xu-play-meta"></span>
-  </div>
-  <p class="play-note" id="xu-play-help" aria-live="polite">从入口函数和标准输出开始，修改文本后再次运行。</p>
-  <textarea id="xu-play-src" spellcheck="false" aria-label="XU source">@main
+  <div class="play-panes">
+    <div class="play-source-pane">
+      <aside class="play-explorer" aria-label="项目文件">
+        <div class="play-panel-heading"><span>项目文件</span><button type="button" class="play-icon-button" id="xu-play-add" aria-label="新建文件" title="新建文件"><i class="xi xi-file-plus" aria-hidden="true"></i></button></div>
+        <form class="play-new-file" id="xu-play-new-file" hidden>
+          <label for="xu-play-file-path">文件路径</label>
+          <input id="xu-play-file-path" placeholder="ui/view.xu" autocomplete="off" spellcheck="false" maxlength="160" required>
+          <div><button type="submit">创建</button><button type="button" id="xu-play-cancel-file">取消</button></div>
+          <p id="xu-play-file-error" role="status"></p>
+        </form>
+        <nav class="play-file-tree" id="xu-play-tree" aria-label="项目目录"></nav>
+        <div class="play-explorer-note"><i class="xi xi-folder-tree" aria-hidden="true"></i><span>源码、UI 与资源，<br>放在同一个项目里。</span></div>
+      </aside>
+      <section class="play-editor" aria-label="文件编辑器">
+        <div class="play-file-tabs" id="xu-play-file-tabs" role="tablist" aria-label="打开的文件"></div>
+        <div class="play-editor-location"><span id="xu-play-file-name">playground / main.xu</span><span class="play-file-actions"><span id="xu-play-file-kind">Xu</span><button type="button" class="play-icon-button" id="xu-play-remove" aria-label="移除当前文件" title="移除当前文件" disabled><i class="xi xi-trash" aria-hidden="true"></i></button></span></div>
+        <div class="play-code-area" role="tabpanel" id="xu-play-editor-panel">
+          <div class="play-line-numbers" id="xu-play-lines" aria-hidden="true">1<br>2<br>3<br>4<br>5<br>6</div>
+          <div class="play-code-viewport"><div class="play-highlight" aria-hidden="true"><div id="xu-play-highlight"></div></div>
+          <textarea id="xu-play-src" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="编辑 main.xu" wrap="off">@main
 
 fn main() int {
-    println("Hello from XU WebAssembly Playground!")
-    << 0
+    println("Hello from XU Programming Language!")
+    &lt;&lt; 0
 }
-</textarea>
-  <pre class="xu-play-out" id="xu-play-out" aria-live="polite">// 执行输出与编译期诊断结果将在此处实时呈现...</pre>
-</div>
-
-<section class="playground-guide">
-  <h2>在线运行须知与功能涵盖</h2>
-  <p>在线示例涵盖基本数据类型、字符串操作、控制流与循环、函数递归、结构体与枚举模式匹配、编译期借用安全诊断，以及通过协程协作调度实现的 <code>chan</code> 信道通信。单次沙盒运行最长支持 10 秒，运行过程中可随时点击中止。</p>
-
-  <h2>本地原生运行进阶</h2>
-  <p>演练场受限于 Web 浏览器宿主安全模型，仅包含部分标准库模拟。体验高性能网络 IO、原生多线程、系统级 FFI 绑定及桌面 WebView UI 应用，请在本地安装原生工具链：</p>
-  <div class="ctas">
-    <a class="btn pri" href="/download"><i class="xi xi-download"></i> 获取原生编译器</a>
-    <a class="btn ghost" href="/docs/start"><i class="xi xi-book"></i> 5 分钟快速入门指南</a>
-    <a class="btn ghost" href="/docs/tutorial/10"><i class="xi xi-cpu"></i> 协程与 chan 专题教程</a>
+</textarea></div>
+        </div>
+        <div class="play-editor-footer"><span id="xu-play-cursor">行 1，列 1</span><span id="xu-play-save-state">本次会话自动保存</span><button type="button" id="xu-play-undo-remove" hidden>撤销移除</button><span>UTF-8</span></div>
+      </section>
+    </div>
+    <section class="play-results" aria-label="运行结果与预览">
+      <div class="play-result-tabs" role="tablist" aria-label="结果视图">
+        <button type="button" role="tab" id="xu-play-console-tab" aria-controls="xu-play-console-panel" aria-selected="true"><i class="xi xi-terminal" aria-hidden="true"></i> 控制台</button>
+        <button type="button" role="tab" id="xu-play-preview-tab" aria-controls="xu-play-preview-panel" aria-selected="false" tabindex="-1"><i class="xi xi-monitor" aria-hidden="true"></i> UI 预览 <span class="play-soon">待接入</span></button>
+      </div>
+      <div class="play-console-panel" id="xu-play-console-panel" role="tabpanel" aria-labelledby="xu-play-console-tab">
+        <div class="play-output-heading"><span>标准输出 / 诊断</span><button type="button" class="play-icon-button" id="xu-play-clear" title="清空输出" aria-label="清空输出"><i class="xi xi-trash" aria-hidden="true"></i></button></div>
+        <pre class="xu-play-out" id="xu-play-out" aria-live="polite">点击「运行代码」，结果会出现在这里。</pre>
+        <p class="play-runtime-note">WebAssembly · 本地执行 · 单次最长 10 秒</p>
+      </div>
+      <div class="play-preview-panel" id="xu-play-preview-panel" role="tabpanel" aria-labelledby="xu-play-preview-tab" hidden>
+        <div class="play-preview-window" aria-hidden="true"><span></span><span></span><span></span><div><i class="xi xi-xuui"></i></div></div>
+        <h2>给界面留一个位置。</h2>
+        <p>UI 预览将在这里接入。现在可以在左侧组织 <code>ui/</code> 与 <code>assets/</code> 文件；浏览器暂不运行原生 UI。</p>
+        <a href="/docs/ui">查看 Xu UI 指南 <i class="xi xi-arrow-up-right" aria-hidden="true"></i></a>
+      </div>
+    </section>
   </div>
+  <div class="play-statusbar"><span class="xu-play-meta" id="xu-play-meta" role="status">正在准备运行器…</span><span class="play-shortcut"><kbd>Ctrl / ⌘</kbd> <kbd>Enter</kbd> 运行</span><span>Xu {{xu_version}}</span></div>
 </section>
+
+<dialog class="play-library" id="xu-play-library" aria-labelledby="xu-play-library-title">
+  <div class="play-library-heading"><div><h2 id="xu-play-library-title">从一个项目开始。</h2><p>选一个目标，看看文件，再改成你的想法。</p></div><button type="button" class="play-icon-button" id="xu-play-library-close" aria-label="关闭项目模板库"><i class="xi xi-close" aria-hidden="true"></i></button></div>
+  <div class="play-library-search"><i class="xi xi-search" aria-hidden="true"></i><label class="play-visually-hidden" for="xu-play-library-search">搜索项目模板</label><input type="search" id="xu-play-library-search" placeholder="搜索项目、知识点或文件名" autocomplete="off"><span id="xu-play-library-count" role="status"></span></div>
+  <div class="play-library-body">
+    <div class="play-library-browser"><nav class="play-library-groups" id="xu-play-library-groups" aria-label="模板分类"></nav><p class="play-library-group-help" id="xu-play-library-group-help"></p><div class="play-template-list" id="xu-play-library-list" aria-label="项目模板"></div></div>
+    <section class="play-template-detail" id="xu-play-library-detail" aria-label="项目模板详情"></section>
+    <section class="play-library-empty" id="xu-play-library-empty" hidden><i class="xi xi-search" aria-hidden="true"></i><h3>没有找到匹配的项目</h3><p>换个关键词，或试试其他分类。</p><button type="button" id="xu-play-library-reset">清除筛选</button></section>
+    <section class="play-library-ui" id="xu-play-library-ui" hidden><i class="xi xi-xuui" aria-hidden="true"></i><h3>接下来，是 UI 项目。</h3><p>窗口、控件与资源模板会沿用这个项目格式。浏览器 UI 预览仍待接入，现在可以使用原生 SDK 体验 UI 示例。</p><a href="/docs/ui">查看原生 UI 示例 <i class="xi xi-arrow-up-right" aria-hidden="true"></i></a></section>
+  </div>
+  <div class="play-library-footer"><span>切换项目会保留本次会话中的修改。</span><button type="button" class="play-template-open" id="xu-play-library-open">打开项目 <i class="xi xi-arrow-right" aria-hidden="true"></i></button></div>
+</dialog>
+
+<p class="play-example-description" id="xu-play-help" aria-live="polite">从入口函数和标准输出开始，修改文本后再次运行。</p>
+<div class="playground-guide">
+  <details><summary>这里可以运行什么？ <i class="xi xi-chevron-down" aria-hidden="true"></i></summary><p>支持基本类型、字符串、控制流、递归、结构体、枚举、借用诊断与协作式 chan 通信。同一目录的 Xu 源码一起运行；子目录可组织文件，跨目录包导入与原生 UI 需使用本地 SDK。 <a href="/docs/tutorial/10">了解协程与 chan</a>.</p></details>
+  <a href="/download">需要网络、FFI 或原生 UI？下载 SDK <i class="xi xi-arrow-up-right" aria-hidden="true"></i></a>
+</div>

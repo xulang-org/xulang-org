@@ -9,10 +9,21 @@ from pathlib import Path
 import re
 
 
+def project_source(project: dict) -> str:
+    """Export a root-package project as one complete, runnable main.xu."""
+    files = project['files']
+    entry = project['entry']
+    paths = sorted(path for path in files if '/' not in path and path.endswith('.xu'))
+    paths.remove(entry)
+    paths.insert(0, entry)
+    sources = [re.sub(r'(?m)^\s*@main\s*$', '', files[path]).strip() for path in paths]
+    return '@main\n\n' + '\n\n'.join(sources) + '\n'
+
+
 def render_corpora(root: Path, xu_version: str) -> dict[str, str]:
     metadata = json.loads((root / 'www/benchmarks.json').read_text())['metadata']
     playground = json.loads((root / 'www/xu-play-examples.json').read_text())
-    examples = {name: item['source'] for name, item in playground.items()}
+    examples = {name: project_source(item) for name, item in playground['projects'].items()}
     examples['errors'] = (root / 'www/api-examples/sources/examples/05_errors/main.xu').read_text()
     tutorial = (root / 'content/en/docs/tutorial/06.html').read_text()
     examples['ownership'] = unescape(re.search(r'<pre><code>(.*?)</code></pre>', tutorial, re.S)[1])

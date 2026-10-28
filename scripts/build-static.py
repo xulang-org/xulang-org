@@ -40,24 +40,28 @@ def write_redirect(output: Path, route: str, destination: str, lang: str) -> Non
 def playground_options(root: Path, body: str, lang: str) -> str:
     if 'id="xu-play-ex"' not in body:
         return body
-    examples = json.loads((root / 'www/xu-play-examples.json').read_text(encoding='utf-8'))
-    groups = {
-        'basics': ('起步与基本类型', 'Getting started'),
-        'flow': ('控制流', 'Control flow'),
-        'data': ('函数与数据结构', 'Functions & data'),
-        'checks': ('断言与编译诊断', 'Assertions & diagnostics'),
-        'concurrency': ('协程与 chan', 'Coroutines & chan'),
-        'combined': ('综合示例', 'Combined example'),
-    }
+    catalog = json.loads((root / 'www/xu-play-examples.json').read_text(encoding='utf-8'))
+    examples = catalog['projects']
+    groups = catalog['groups']
+    group_ids = {group['id'] for group in groups}
+    for key, example in examples.items():
+        files = example['files']
+        if example['group'] not in group_ids or example['entry'] != 'main.xu' or 'main.xu' not in files:
+            raise ValueError(f'Invalid playground project: {key}')
+        for path, source in files.items():
+            if (not re.fullmatch(r'[A-Za-z0-9_./-]{1,160}', path)
+                    or any(part in ('', '.', '..') for part in path.split('/'))
+                    or not isinstance(source, str)):
+                raise ValueError(f'Invalid playground project file: {key}/{path}')
     options = []
-    for group, titles in groups.items():
-        options.append('<optgroup label="' + escape(titles[lang == 'en']) + '">')
+    for group in groups:
+        options.append('<optgroup label="' + escape(group['title'][lang]) + '">')
         for key, example in examples.items():
-            if example['group'] == group:
+            if example['group'] == group['id']:
                 selected = ' selected' if key == 'hello' else ''
                 options.append(f'<option value="{escape(key)}"{selected}>{escape(example["title"][lang])}</option>')
         options.append('</optgroup>')
-    return re.sub(r'(<select id="xu-play-ex">).*?(</select>)',
+    return re.sub(r'(<select\b[^>]*\bid="xu-play-ex"[^>]*>).*?(</select>)',
                   lambda match: match[1] + ''.join(options) + match[2], body, flags=re.DOTALL)
 
 
@@ -128,6 +132,10 @@ class RewriteHTML(HTMLParser):
                 raw = raw.replace("xu-play.js", "xu-play.js?v=" + self.asset_key)
             end = '/>' if closed else '>'
             raw = raw[:-len(end)] + f' data-wasm-available="{str(self.playground).lower()}"' + end
+        if self.asset_key and tag in ('script', 'link'):
+            for asset in ('xu-play-workspace.js', 'xu-play-library.js', 'playground.css'):
+                raw = re.sub(r'(/' + re.escape(asset) + r')(["\'])',
+                             lambda m: m[1] + '?v=' + self.asset_key + m[2], raw)
         self.parts.append(raw)
 
     def handle_starttag(self, tag, attrs):
@@ -256,7 +264,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         if labels != [measured]:
             raise ValueError(f'Benchmark measurement label does not match {measured}: {lang}')
     digest = hashlib.sha256()
-    for name in ('xu-play.js', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
+    for name in ('xu-play.js', 'xu-play-workspace.js', 'xu-play-library.js', 'playground.css', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
         asset = wasm if name == 'xu-play.wasm' else root / 'www' / name
         if asset.exists():
             digest.update(name.encode())
