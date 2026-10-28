@@ -1,8 +1,12 @@
 """Link a fixed set of scalar WASM instructions into the site's MIR VM.
 
-The product wasm32 backend currently lowers integer slots only. These helpers
-keep IEEE f64 bits in those slots; they never interpret source or draw controls.
-All functions retain the product's (args i32, result i32) -> void frame ABI.
+The product wasm32 backend supports typed f64 arithmetic. The MIR interpreter,
+however, stores all VM values as integer bit patterns: vm_fp_* in runtime/float.xu
+are still trap stubs, not typed f64 functions. Numeric int/f64 casts would convert
+these values rather than reinterpret their bits, so they cannot replace this
+bridge. These helpers reinterpret the slots and perform scalar operations only;
+they never interpret source or draw controls. All functions retain the product's
+(args i32, result i32) -> void frame ABI.
 """
 from pathlib import Path
 
@@ -59,7 +63,11 @@ def helper_bodies():
             for name, code in instructions.items()}
 
 
-MEMORY_PAGES = 2048  # bounded 128 MiB browser arena, including checker/MIR
+# The disposable arena starts at 16 MiB and retains parser/checker/MIR/UI
+# allocations until evaluation ends. Gallery checks exceed 64 MiB even without
+# events (about 103 MiB arena end; about 107 MiB with the full 64-event history).
+# Keep this in sync with wasm_support.xu, build metadata and the gallery test.
+MEMORY_PAGES = 2048  # fixed 128 MiB initial and maximum memory
 
 
 def link(path):
@@ -92,7 +100,7 @@ def link(path):
     for tag, payload in parts:
         if tag == 5:
             # The SDK emits one fixed 64 MiB memory. Expand both limits for the
-            # larger desktop declaration set; stack/data addresses stay intact.
+            # checker/MIR/UI arena above; stack/data addresses stay intact.
             if payload != b'\x01\x01' + uleb(1024) + uleb(1024):
                 raise ValueError('unexpected SDK memory limits')
             payload = b'\x01\x01' + uleb(MEMORY_PAGES) + uleb(MEMORY_PAGES)
