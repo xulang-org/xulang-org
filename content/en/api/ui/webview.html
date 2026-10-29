@@ -45,12 +45,12 @@
 <span class="syn-kw">fn</span> run() <span class="syn-type">int</span> {
     ech <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 1024}
     emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 64}
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(ech)
+    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> ui.new_app_events(ech)
     webview.stage_www_root(<span class="syn-str">":mem:"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> ipc(emit_ch,ech)
     <span class="syn-kw">xu</span> events(ech,emit_ch)
-    <span class="syn-kw">mut</span> window <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu UI / WebView Request Lifecycle"</span>,width: 880,height: 640})
-    <span class="syn-kw">mut</span> browser <span class="syn-flow">:=</span> webview.attach(<span class="syn-borrow">mut &amp;</span>window)
+    <span class="syn-kw">$</span>window <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu UI / WebView Request Lifecycle"</span>,width: 880,height: 640})
+    <span class="syn-kw">$</span>browser <span class="syn-flow">:=</span> webview.attach(<span class="syn-borrow">$&amp;</span>window)
     browser.load_url(webview.app_scheme_url()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -105,7 +105,7 @@
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
     emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 32}
     shell_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 32}
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
+    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
     app.set_icon(ui.icon_from_file(<span class="syn-str">"brand/xu_app_logo.png"</span>))
     webview.stage_www_root(demo_www()) <span class="syn-kw">or</span> (err) {
         println(err.msg())
@@ -114,9 +114,9 @@
     <span class="syn-kw">xu</span> ipc_boot(emit_ch, shell_ch)
     sleep_ns(50000000)
 
-    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Shaped WebView"</span>, width: 360, height: 360})
-    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
-    <span class="syn-kw">mut</span> wv <span class="syn-flow">:=</span> webview.attach(r)
+    <span class="syn-kw">$</span>win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Shaped WebView"</span>, width: 360, height: 360})
+    r <span class="syn-flow">:=</span> <span class="syn-borrow">$&amp;</span>win
+    <span class="syn-kw">$</span>wv <span class="syn-flow">:=</span> webview.attach(r)
     wv.on(<span class="syn-str">"ping"</span>)
     wv.on(<span class="syn-str">"greet"</span>)
     wv.on(<span class="syn-str">"win"</span>)
@@ -189,7 +189,7 @@
 }
 
 <span class="syn-kw">fn</span> tick_loop(emit_ch <span class="syn-kw">chan</span> <span class="syn-type">string</span>) {
-    <span class="syn-kw">mut</span> n <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>n <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> true {
         sleep_ns(3000000000)
         n = n + 1
@@ -215,16 +215,16 @@
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
     emit_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 32}
     shell_ch <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> ui.Event{cap: 32}
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
+    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> ui.new_app_events(shell_ch)
     app.set_icon(ui.icon_from_file(<span class="syn-str">"brand/xu_app_logo.png"</span>))
     url <span class="syn-flow">:=</span> remote_url()
     <span class="syn-kw">xu</span> watch_shell(shell_ch)
     <span class="syn-kw">xu</span> ipc_boot(emit_ch, shell_ch)
     <span class="syn-kw">xu</span> tick_loop(emit_ch)
     sleep_ns(50000000)
-    <span class="syn-kw">mut</span> win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Remote HTTP + xu:// IPC"</span>, width: 720, height: 520})
-    r <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>win
-    <span class="syn-kw">mut</span> wv <span class="syn-flow">:=</span> webview.attach(r)
+    <span class="syn-kw">$</span>win <span class="syn-flow">:=</span> app.new_window(ui.WindowOpts{title: <span class="syn-str">"Xu Remote HTTP + xu:// IPC"</span>, width: 720, height: 520})
+    r <span class="syn-flow">:=</span> <span class="syn-borrow">$&amp;</span>win
+    <span class="syn-kw">$</span>wv <span class="syn-flow">:=</span> webview.attach(r)
     wv.on(<span class="syn-str">"ping"</span>)
     wv.on(<span class="syn-str">"greet"</span>)
     url2 <span class="syn-flow">:=</span> url + <span class="syn-str">""</span>
@@ -273,12 +273,12 @@
 </article>
 <article class="api-item" id="attach">
 <h2><code>attach</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach(w <span class="syn-borrow">&amp;mut</span> ui.Window) WebView</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach(w <span class="syn-borrow">$&amp;</span>ui.Window) WebView</code></pre></div>
 <h3>Purpose</h3>
 <p>Execute attach.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">&amp;mut ui.Window</span></dt><dd>writer or width (exclusive borrow; type &amp;mut ui.Window)</dd>
+<dt><code>w</code> <span class="type">$&amp;ui.Window</span></dt><dd>writer or width (exclusive borrow; type $&amp;ui.Window)</dd>
 </dl>
 <h3>Returns</h3>
 <p>WebView — a value of this type</p>
@@ -449,53 +449,53 @@
 <h3>Returns</h3>
 <p>string — result string</p>
 </article>
-<article class="api-item" id="-mut-WebView-load_html">
-<h2><code>(&amp;mut WebView) load_html</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) load_html(html <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--WebView-load_html">
+<h2><code>($&amp;WebView) load_html</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) load_html(html <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut WebView`: load html. Throws on failure.</p>
+<p>Operation on `$&amp;WebView`: load html. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 <dt><code>html</code> <span class="type">string</span></dt><dd>html (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-WebView-load_url">
-<h2><code>(&amp;mut WebView) load_url</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) load_url(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--WebView-load_url">
+<h2><code>($&amp;WebView) load_url</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) load_url(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut WebView`: load url. Throws on failure.</p>
+<p>Operation on `$&amp;WebView`: load url. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 <dt><code>url</code> <span class="type">string</span></dt><dd>url (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-WebView-load_remote">
-<h2><code>(&amp;mut WebView) load_remote</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) load_remote(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--WebView-load_remote">
+<h2><code>($&amp;WebView) load_remote</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) load_remote(url <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>load_remote: remote HTTP(S) document; Xu does not host it. xu:// IPC still available to adapted pages. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 <dt><code>url</code> <span class="type">string</span></dt><dd>url (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-WebView-load_file">
-<h2><code>(&amp;mut WebView) load_file</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) load_file(path <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--WebView-load_file">
+<h2><code>($&amp;WebView) load_file</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) load_file(path <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut WebView`: load file. Throws on failure.</p>
+<p>Operation on `$&amp;WebView`: load file. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 <dt><code>path</code> <span class="type">string</span></dt><dd>filesystem path (string)</dd>
 </dl>
 <h3>Returns</h3>
@@ -755,38 +755,38 @@
 <p>int — a value of this type</p>
 <p><a href="#example-efd1ed863bda">See usage example</a></p>
 </article>
-<article class="api-item" id="-mut-WebView-eval">
-<h2><code>(&amp;mut WebView) eval</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) eval(js <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<article class="api-item" id="--WebView-eval">
+<h2><code>($&amp;WebView) eval</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) eval(js <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `eval` on `&amp;mut WebView`. Throws on failure.</p>
+<p>Execute `eval` on `$&amp;WebView`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 <dt><code>js</code> <span class="type">string</span></dt><dd>js (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
 </article>
-<article class="api-item" id="-mut-WebView-on">
-<h2><code>(&amp;mut WebView) on</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) on(name <span class="syn-type">string</span>)</code></pre></div>
+<article class="api-item" id="--WebView-on">
+<h2><code>($&amp;WebView) on</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) on(name <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `on` on `&amp;mut WebView`.</p>
+<p>Execute `on` on `$&amp;WebView`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 </dl>
 </article>
-<article class="api-item" id="-mut-WebView-invoke">
-<h2><code>(&amp;mut WebView) invoke</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) invoke(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>, dispatch <span class="syn-kw">fn</span>(<span class="syn-type">string</span>, <span class="syn-type">string</span>) <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<article class="api-item" id="--WebView-invoke">
+<h2><code>($&amp;WebView) invoke</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) invoke(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>, dispatch <span class="syn-kw">fn</span>(<span class="syn-type">string</span>, <span class="syn-type">string</span>) <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `invoke` on `&amp;mut WebView`.</p>
+<p>Execute `invoke` on `$&amp;WebView`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 <dt><code>payload</code> <span class="type">string</span></dt><dd>payload (string)</dd>
 <dt><code>dispatch</code> <span class="type">fn(string, string) string</span></dt><dd>dispatch (function value; type fn(string, string) string)</dd>
@@ -832,40 +832,40 @@
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-WebView-emit">
-<h2><code>(&amp;mut WebView) emit</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) emit(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--WebView-emit">
+<h2><code>($&amp;WebView) emit</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) emit(name <span class="syn-type">string</span>, payload <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `emit` on `&amp;mut WebView`.</p>
+<p>Execute `emit` on `$&amp;WebView`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 <dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
 <dt><code>payload</code> <span class="type">string</span></dt><dd>payload (string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-WebView-emit_pending_count">
-<h2><code>(&amp;mut WebView) emit_pending_count</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) emit_pending_count() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--WebView-emit_pending_count">
+<h2><code>($&amp;WebView) emit_pending_count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) emit_pending_count() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut WebView`: emit pending count.</p>
+<p>Operation on `$&amp;WebView`: emit pending count.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-WebView-clear_emits">
-<h2><code>(&amp;mut WebView) clear_emits</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">&amp;mut</span> WebView) clear_emits()</code></pre></div>
+<article class="api-item" id="--WebView-clear_emits">
+<h2><code>($&amp;WebView) clear_emits</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (wv <span class="syn-borrow">$&amp;</span>WebView) clear_emits()</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut WebView`: clear emits.</p>
+<p>Operation on `$&amp;WebView`: clear emits.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>wv</code> <span class="type">&amp;mut WebView</span></dt><dd>receiver &amp;mut WebView (exclusive borrow)</dd>
+<dt><code>wv</code> <span class="type">$&amp;WebView</span></dt><dd>receiver $&amp;WebView (exclusive borrow)</dd>
 </dl>
 </article>
 <article class="api-item" id="bind_ipc_www">

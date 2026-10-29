@@ -12,7 +12,7 @@ Each block is a complete independent program from the site's playground examples
 
 ### Borrowing
 
-`&T` denotes a shared borrow; `&mut T` denotes an exclusive mutable borrow. Follow compiler diagnostics for inferred ownership and borrow lifetimes.
+`&T` denotes a shared borrow; `$&T` denotes an exclusive mutable borrow. Follow compiler diagnostics for inferred ownership and borrow lifetimes.
 
 {{example:ownership}}
 

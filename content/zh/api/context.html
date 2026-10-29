@@ -22,7 +22,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <span class="syn-kw">fn</span> verify_postgres_live() {
     println(<span class="syn-str">"--- Testing Native Postgres Driver Wire Protocol ---"</span>)
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
-    <span class="syn-kw">mut</span> conn <span class="syn-flow">:=</span> postgres.open(dsn)
+    <span class="syn-kw">$</span>conn <span class="syn-flow">:=</span> postgres.open(dsn)
 
     <span class="syn-cmt">// 1. Ping</span>
     err <span class="syn-flow">:=</span> conn.ping()
@@ -49,7 +49,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Table 'xu_heroes' created."</span>)
 
     <span class="syn-cmt">// 3. Exec DML Insert</span>
-    <span class="syn-kw">mut</span> args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    <span class="syn-kw">$</span>args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
     args1.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
     args1.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Ironman"</span>})
     args1.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 100})
@@ -62,7 +62,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Hero inserted (rows="</span> + str(r3.rows_affected) + <span class="syn-str">")."</span>)
 
     <span class="syn-cmt">// 4. Query</span>
-    <span class="syn-kw">mut</span> q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
+    <span class="syn-kw">$</span>q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
     q_args.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
     rows <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, power FROM xu_heroes WHERE id = $$1;"</span>, q_args)
     <span class="syn-kw">if</span> rows.err.len &gt; 0 {
@@ -71,13 +71,13 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] Query executed, columns count: "</span> + str(rows.columns.len))
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>i <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> i &lt; rows.columns.len {
         println(<span class="syn-str">"      Col["</span> + str(i) + <span class="syn-str">"]: "</span> + rows.columns[i])
         i = i + 1
     }
     println(<span class="syn-str">"   Total cells retrieved: "</span> + str(rows.cells.len))
-    <span class="syn-kw">mut</span> j <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>j <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> j &lt; rows.cells.len {
         println(<span class="syn-str">"      Cell["</span> + str(j) + <span class="syn-str">"]: "</span> + rows.cells[j])
         j = j + 1
@@ -85,8 +85,8 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 
     <span class="syn-cmt">// 5. Transaction</span>
     println(<span class="syn-str">"   Testing Transaction Commit..."</span>)
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> conn.begin()
-    <span class="syn-kw">mut</span> args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    <span class="syn-kw">$</span>tx <span class="syn-flow">:=</span> conn.begin()
+    <span class="syn-kw">$</span>args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
     args2.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 2})
     args2.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Thor"</span>})
     args2.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 200})
@@ -122,7 +122,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <span class="syn-kw">fn</span> verify_postgres_pool() {
     println(<span class="syn-str">"\n--- Testing Native Postgres Connection Pool ---"</span>)
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
-    <span class="syn-kw">mut</span> pool <span class="syn-flow">:=</span> postgres.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
+    <span class="syn-kw">$</span>pool <span class="syn-flow">:=</span> postgres.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
 
     pool.ping() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
@@ -142,7 +142,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Pool created table xu_pool_users."</span>)
 
     <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">$</span>i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
         pool.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, i, <span class="syn-str">"User_"</span> + str(i), i * 100) <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
@@ -153,11 +153,11 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
 
     <span class="syn-cmt">// 3. Query</span>
-    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, name, balance FROM xu_pool_users ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, name, balance FROM xu_pool_users ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
         vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
@@ -177,7 +177,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
 
     <span class="syn-cmt">// 4. Transaction via Pool</span>
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -222,7 +222,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <span class="syn-kw">fn</span> verify_mysql_live() {
     println(<span class="syn-str">"--- Testing Native MySQL/MariaDB Driver Wire Protocol ---"</span>)
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
-    <span class="syn-kw">mut</span> conn <span class="syn-flow">:=</span> mysql.open(dsn)
+    <span class="syn-kw">$</span>conn <span class="syn-flow">:=</span> mysql.open(dsn)
 
     <span class="syn-cmt">// 1. Ping</span>
     err <span class="syn-flow">:=</span> conn.ping()
@@ -249,7 +249,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Table 'xu_developers' created."</span>)
 
     <span class="syn-cmt">// 3. Exec DML Insert</span>
-    <span class="syn-kw">mut</span> args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    <span class="syn-kw">$</span>args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
     args1.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
     args1.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Antigravity"</span>})
     args1.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 500})
@@ -262,7 +262,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Developer inserted (rows="</span> + str(r3.rows_affected) + <span class="syn-str">")."</span>)
 
     <span class="syn-cmt">// 4. Query</span>
-    <span class="syn-kw">mut</span> q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
+    <span class="syn-kw">$</span>q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
     q_args.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
     rows <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, commits FROM xu_developers WHERE id = ?;"</span>, q_args)
     <span class="syn-kw">if</span> rows.err.len &gt; 0 {
@@ -271,13 +271,13 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] Query executed, columns count: "</span> + str(rows.columns.len))
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>i <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> i &lt; rows.columns.len {
         println(<span class="syn-str">"      Col["</span> + str(i) + <span class="syn-str">"]: "</span> + rows.columns[i])
         i = i + 1
     }
     println(<span class="syn-str">"   Total cells retrieved: "</span> + str(rows.cells.len))
-    <span class="syn-kw">mut</span> j <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>j <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> j &lt; rows.cells.len {
         println(<span class="syn-str">"      Cell["</span> + str(j) + <span class="syn-str">"]: "</span> + rows.cells[j])
         j = j + 1
@@ -285,8 +285,8 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
     <span class="syn-cmt">// 5. Transaction</span>
     println(<span class="syn-str">"   Testing Transaction Commit..."</span>)
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> conn.begin()
-    <span class="syn-kw">mut</span> args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    <span class="syn-kw">$</span>tx <span class="syn-flow">:=</span> conn.begin()
+    <span class="syn-kw">$</span>args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
     args2.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 2})
     args2.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"XuArchitect"</span>})
     args2.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 1000})
@@ -322,7 +322,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <span class="syn-kw">fn</span> verify_mysql_pool() {
     println(<span class="syn-str">"\n--- Testing Native MySQL/MariaDB Connection Pool ---"</span>)
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
-    <span class="syn-kw">mut</span> pool <span class="syn-flow">:=</span> mysql.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
+    <span class="syn-kw">$</span>pool <span class="syn-flow">:=</span> mysql.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
 
     pool.ping() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
@@ -342,7 +342,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Pool created table xu_pool_orders."</span>)
 
     <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">$</span>i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
         pool.exec(<span class="syn-str">"INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"Order_"</span> + str(i), i * 150) <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
@@ -353,11 +353,11 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
 
     <span class="syn-cmt">// 3. Query</span>
-    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, title, amount FROM xu_pool_orders ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, title, amount FROM xu_pool_orders ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
         vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
@@ -377,7 +377,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
 
     <span class="syn-cmt">// 4. Transaction via Pool</span>
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -463,14 +463,14 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <h3>返回</h3>
 <p>Cancel — 该类型的值</p>
 </article>
-<article class="api-item" id="-mut-Cancel-cancel">
-<h2><code>(&amp;mut Cancel) cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">&amp;mut</span> Cancel) cancel()</code></pre></div>
+<article class="api-item" id="--Cancel-cancel">
+<h2><code>($&amp;Cancel) cancel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">$&amp;</span>Cancel) cancel()</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;mut Cancel` 上的操作：取消。</p>
+<p>`$&amp;Cancel` 上的操作：取消。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;mut Cancel</span></dt><dd>接收者 &amp;mut Cancel（可变借用）</dd>
+<dt><code>c</code> <span class="type">$&amp;Cancel</span></dt><dd>接收者 $&amp;Cancel（可变借用）</dd>
 </dl>
 </article>
 <article class="api-item" id="with_cancel_parent">

@@ -30,7 +30,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     println(<span class="syn-str">"--- SQLite Connection Pool Deep Verification ---"</span>)
     db_file <span class="syn-flow">:=</span> <span class="syn-str">"/tmp/xu_sqlite_pool.db"</span>
     remove_if_exists(db_file + <span class="syn-str">""</span>)
-    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sqlite.open_pool(db_file + <span class="syn-str">""</span>, 5, 2)
+    <span class="syn-kw">$</span>db <span class="syn-flow">:=</span> sqlite.open_pool(db_file + <span class="syn-str">""</span>, 5, 2)
 
     <span class="syn-cmt">// 1. Ping</span>
     db.ping() <span class="syn-kw">or</span> (err) {
@@ -47,7 +47,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     println(<span class="syn-str">"   [PASS] Schema created."</span>)
 
     <span class="syn-cmt">// 3. Sequential &amp; Concurrent Inserts through Pool</span>
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">$</span>i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
         db.exec(<span class="syn-str">"INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"item_"</span> + str(i), i * 10) <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert failed at item "</span> + str(i) + <span class="syn-str">": "</span> + err.msg())
@@ -58,11 +58,11 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     println(<span class="syn-str">"   [PASS] 5 items inserted through SQLite connection pool."</span>)
 
     <span class="syn-cmt">// 4. Query through Pool</span>
-    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, title, value FROM pool_items ORDER BY id ASC;"</span>) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, title, value FROM pool_items ORDER BY id ASC;"</span>) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Query failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
         vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
             <span class="syn-flow">&lt;&lt;</span>
@@ -102,12 +102,12 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <span class="syn-cmt">// 驱动是普通 XU 包，通过 database/sql 接口使用，不依赖编译器内建。</span>
 
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> dsn <span class="syn-flow">:=</span> os.getenv(<span class="syn-str">"XU_MYSQL_DSN"</span>)
+    <span class="syn-kw">$</span>dsn <span class="syn-flow">:=</span> os.getenv(<span class="syn-str">"XU_MYSQL_DSN"</span>)
     <span class="syn-kw">if</span> dsn.len == 0 {
         dsn = <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
     }
 
-    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sql.open(mysql.driver(), dsn)
+    <span class="syn-kw">$</span>db <span class="syn-flow">:=</span> sql.open(mysql.driver(), dsn)
     db.ping() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"MySQL ping failed"</span>)
         println(err.msg())
@@ -134,7 +134,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
     println(<span class="syn-str">"inserted="</span> + str(first.rows_affected()))
 
-    <span class="syn-kw">mut</span> insert_person <span class="syn-flow">:=</span> db.prepare(
+    <span class="syn-kw">$</span>insert_person <span class="syn-flow">:=</span> db.prepare(
         <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES (?, ?, ?)"</span>
     ) <span class="syn-kw">or</span> (err) {
         println(err.msg())
@@ -146,7 +146,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
     insert_person.close()
 
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -164,7 +164,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
         <span class="syn-flow">&lt;&lt;</span> 1
     }
 
-    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -210,12 +210,12 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <span class="syn-cmt">// 驱动是普通 XU 包，通过 database/sql 接口使用，不依赖编译器内建。</span>
 
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> dsn <span class="syn-flow">:=</span> os.getenv(<span class="syn-str">"XU_POSTGRES_DSN"</span>)
+    <span class="syn-kw">$</span>dsn <span class="syn-flow">:=</span> os.getenv(<span class="syn-str">"XU_POSTGRES_DSN"</span>)
     <span class="syn-kw">if</span> dsn.len == 0 {
         dsn = <span class="syn-str">"postgres://postgres:postgres@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
     }
 
-    <span class="syn-kw">mut</span> db <span class="syn-flow">:=</span> sql.open(postgres.driver(), dsn)
+    <span class="syn-kw">$</span>db <span class="syn-flow">:=</span> sql.open(postgres.driver(), dsn)
     db.ping() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"PostgreSQL ping failed"</span>)
         println(err.msg())
@@ -242,7 +242,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
     println(<span class="syn-str">"inserted="</span> + str(first.rows_affected()))
 
-    <span class="syn-kw">mut</span> insert_person <span class="syn-flow">:=</span> db.prepare(
+    <span class="syn-kw">$</span>insert_person <span class="syn-flow">:=</span> db.prepare(
         <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES ($$1, $$2, $$3)"</span>
     )
     insert_person.exec(2, <span class="syn-str">"Lin"</span>, true) <span class="syn-kw">or</span> (err) {
@@ -251,7 +251,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
     insert_person.close()
 
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -269,7 +269,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
         <span class="syn-flow">&lt;&lt;</span> 1
     }
 
-    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -288,7 +288,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
     rows.close()
 
-    <span class="syn-kw">mut</span> qrows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT name FROM xu_people WHERE id = $$1"</span>, 2) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">$</span>qrows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT name FROM xu_people WHERE id = $$1"</span>, 2) <span class="syn-kw">or</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -503,14 +503,14 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h3>Returns</h3>
 <p>int — bytes written</p>
 </article>
-<article class="api-item" id="-mut-File-close">
-<h2><code>(&amp;mut File) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> File) close() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--File-close">
+<h2><code>($&amp;File) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>File) close() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut File`: close the resource. Throws on failure.</p>
+<p>Operation on `$&amp;File`: close the resource. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut File</span></dt><dd>receiver &amp;mut File (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;File</span></dt><dd>receiver $&amp;File (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -1090,26 +1090,26 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h3>Returns</h3>
 <p>File — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-File-take">
-<h2><code>(&amp;mut File) take</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> File) take() File</code></pre></div>
+<article class="api-item" id="--File-take">
+<h2><code>($&amp;File) take</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>File) take() File</code></pre></div>
 <h3>Purpose</h3>
 <p>Transfer a field-owned File without cloning or moving through a borrow. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut File</span></dt><dd>receiver &amp;mut File (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;File</span></dt><dd>receiver $&amp;File (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>File — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-File-release_descriptor">
-<h2><code>(&amp;mut File) release_descriptor</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> File) release_descriptor() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--File-release_descriptor">
+<h2><code>($&amp;File) release_descriptor</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>File) release_descriptor() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Explicit ownership handoff to a raw platform adapter. The adapter must release the returned descriptor exactly once; this owner becomes closed. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut File</span></dt><dd>receiver &amp;mut File (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;File</span></dt><dd>receiver $&amp;File (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>

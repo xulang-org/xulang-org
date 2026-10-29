@@ -20,7 +20,7 @@
 <span class="syn-import"><span class="hash">#</span>ui/draw</span>
 demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
-<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">&amp;mut</span> draw.Frame,hits <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">$&amp;</span>draw.Frame,hits <span class="syn-type">int</span>) <span class="syn-type">int</span> {
     frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     demo.text(context,frame,32.0,28.0,14.0,demo.accent(),<span class="syn-str">"01 / FRAME RECORDER"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -46,17 +46,17 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
     identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(4096)
-    <span class="syn-kw">mut</span> hits <span class="syn-flow">:=</span> 0
-    <span class="syn-kw">mut</span> pressed <span class="syn-flow">:=</span> false
-    paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,hits) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>frame <span class="syn-flow">:=</span> context.new_frame(4096)
+    <span class="syn-kw">$</span>hits <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">$</span>pressed <span class="syn-flow">:=</span> false
+    paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,hits) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">while</span> true {
         event <span class="syn-flow">:=</span> demo.next(ech)
         <span class="syn-kw">if</span> event.kind == ui.EV_EXIT { <span class="syn-flow">&lt;-</span> }
         <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
         <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_CLOSED { <span class="syn-flow">&lt;-</span> }
         <span class="syn-kw">if</span> event.kind == ui.EV_BLURRED { pressed = false }
-        <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_METRICS { paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,hits) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_METRICS { paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,hits) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
         <span class="syn-kw">if</span> ui.is_input_event(event.kind) {
             input <span class="syn-flow">:=</span> ui.input_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
             <span class="syn-kw">if</span> input.generation != identity.generation { <span class="syn-flow">-&gt;</span> }
@@ -68,7 +68,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
             <span class="syn-kw">if</span> input.kind == ui.EV_POINTER_CANCEL { pressed = false }
             <span class="syn-kw">if</span> input.kind == ui.EV_POINTER_UP &amp;&amp; input.button == ui.BUTTON_LEFT {
                 <span class="syn-kw">if</span> pressed &amp;&amp; inside { hits = hits + 1
-                    paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,hits) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+                    paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,hits) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
                 pressed = false
             }
         }
@@ -79,7 +79,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Frame"</span>,680,430) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Frame"</span>,680,430) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -96,15 +96,15 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
 <span class="syn-kw">fn</span> paint(window ui.Window,count <span class="syn-type">int</span>) <span class="syn-type">int</span> {
     context <span class="syn-flow">:=</span> draw.window_context(&amp;window) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(2048)
+    <span class="syn-kw">$</span>frame <span class="syn-flow">:=</span> context.new_frame(2048)
     frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,28.0,14.0,demo.accent(),<span class="syn-str">"06 / INDEPENDENT WINDOWS"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,64.0,27.0,demo.ink(),<span class="syn-str">"Window "</span> + str(window.id)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,116.0,17.0,demo.ink(),<span class="syn-str">"Clicks in this window: "</span> + str(count)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,172.0,14.0,demo.muted(),<span class="syn-str">"N: new window / W: close this window"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,208.0,14.0,demo.muted(),<span class="syn-str">"F: focus first window / R: resize / Escape: quit all"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,26.0,258.0,13.0,demo.muted(),<span class="syn-str">"One event channel. Each canvas owns its resources."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">$&amp;</span>frame,26.0,28.0,14.0,demo.accent(),<span class="syn-str">"06 / INDEPENDENT WINDOWS"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">$&amp;</span>frame,26.0,64.0,27.0,demo.ink(),<span class="syn-str">"Window "</span> + str(window.id)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">$&amp;</span>frame,26.0,116.0,17.0,demo.ink(),<span class="syn-str">"Clicks in this window: "</span> + str(count)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">$&amp;</span>frame,26.0,172.0,14.0,demo.muted(),<span class="syn-str">"N: new window / W: close this window"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">$&amp;</span>frame,26.0,208.0,14.0,demo.muted(),<span class="syn-str">"F: focus first window / R: resize / Escape: quit all"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(&amp;context,<span class="syn-borrow">$&amp;</span>frame,26.0,258.0,13.0,demo.muted(),<span class="syn-str">"One event channel. Each canvas owns its resources."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.dispose()
     <span class="syn-flow">&lt;&lt;</span> 0
@@ -113,16 +113,16 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     ready <span class="syn-flow">:=</span> demo.ready(ech) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
     identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.windows(ech)
+    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.windows(ech)
     first <span class="syn-flow">:=</span> ui.Window{id: identity.window_id,generation: identity.generation,title: <span class="syn-str">"Xu UI / Window 1"</span>,width: 560,height: 340,content_kind: ui.CONTENT_DRAW,content_backend_id: identity.canvas_id,closed: 0}
-    <span class="syn-kw">mut</span> windows <span class="syn-flow">:=</span> []ui.Window{}
+    <span class="syn-kw">$</span>windows <span class="syn-flow">:=</span> []ui.Window{}
     windows.push(first)
-    <span class="syn-kw">mut</span> counts <span class="syn-flow">:=</span> [0]
+    <span class="syn-kw">$</span>counts <span class="syn-flow">:=</span> [0]
     paint(windows[0],0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">while</span> true {
         event <span class="syn-flow">:=</span> demo.next(ech)
         <span class="syn-kw">if</span> event.kind == ui.EV_EXIT { <span class="syn-flow">&lt;-</span> }
-        <span class="syn-kw">mut</span> index <span class="syn-flow">:=</span> -1
+        <span class="syn-kw">$</span>index <span class="syn-flow">:=</span> -1
         <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:windows.len { <span class="syn-kw">if</span> windows[i].id == event.window_id { index = i } }
         <span class="syn-kw">if</span> index &lt; 0 { <span class="syn-flow">-&gt;</span> }
         <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_READY {
@@ -147,7 +147,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         <span class="syn-kw">if</span> input.key == ui.KEY_ESCAPE { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
         <span class="syn-kw">if</span> input.key == 78 || input.key == 110 {
             <span class="syn-cmt">// At most six demo windows; the host's own limit is independent.</span>
-            <span class="syn-kw">mut</span> live <span class="syn-flow">:=</span> 0
+            <span class="syn-kw">$</span>live <span class="syn-flow">:=</span> 0
             <span class="syn-kw">for</span> window <span class="syn-kw">in</span> windows { <span class="syn-kw">if</span> window.closed == 0 { live = live + 1 } }
             <span class="syn-kw">if</span> live &lt; 6 {
                 window <span class="syn-flow">:=</span> app.open_content_window(ui.WindowOpts{title: <span class="syn-str">"Xu UI / Additional Window"</span>,width: 560,height: 340},ui.CONTENT_DRAW) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -156,12 +156,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
             }
         }
         <span class="syn-kw">if</span> input.key == 87 || input.key == 119 {
-            <span class="syn-kw">mut</span> window <span class="syn-flow">:=</span> windows[index]
+            <span class="syn-kw">$</span>window <span class="syn-flow">:=</span> windows[index]
             window.request_close() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
             windows[index] = window
         }
         <span class="syn-kw">if</span> input.key == 82 || input.key == 114 {
-            <span class="syn-kw">mut</span> window <span class="syn-flow">:=</span> windows[index]
+            <span class="syn-kw">$</span>window <span class="syn-flow">:=</span> windows[index]
             window.resize(660,400) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
             windows[index] = window
         }
@@ -175,7 +175,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Window 1"</span>,560,340) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Window 1"</span>,560,340) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -192,11 +192,11 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
 <span class="syn-cmt">// This entire scene is recorded once; subsequent frames replay its resources.</span>
 <span class="syn-kw">fn</span> record(context &amp;draw.Context,image &amp;draw.Image) draw.DisplayList {
-    <span class="syn-kw">mut</span> fragment <span class="syn-flow">:=</span> context.new_frame(4096)
+    <span class="syn-kw">$</span>fragment <span class="syn-flow">:=</span> context.new_frame(4096)
     fragment.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     fragment.fill_rect(0.0,0.0,960.0,510.0,draw.rgb(26,37,50)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(context,<span class="syn-borrow">mut &amp;</span>fragment,24.0,22.0,18.0,demo.ink(),<span class="syn-str">"Vectors / gradients / embedded PNG / shaped text"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> path <span class="syn-flow">:=</span> draw.new_path(256)
+    demo.text(context,<span class="syn-borrow">$&amp;</span>fragment,24.0,22.0,18.0,demo.ink(),<span class="syn-str">"Vectors / gradients / embedded PNG / shaped text"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>path <span class="syn-flow">:=</span> draw.new_path(256)
     path.move_to(40.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     path.cubic_to(80.0,60.0,210.0,60.0,250.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     path.quad_to(145.0,300.0,40.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -211,11 +211,11 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     source <span class="syn-flow">:=</span> draw.ImageRect{x: 0.0,y: 0.0,width: <span class="syn-type">f64</span>(image.width),height: <span class="syn-type">f64</span>(image.height)}
     destination <span class="syn-flow">:=</span> draw.ImageRect{x: 510.0,y: 88.0,width: 190.0,height: 150.0}
     fragment.image_region(image,&amp;source,&amp;destination,0.45,draw.SAMPLER_NEAREST) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(context,<span class="syn-borrow">mut &amp;</span>fragment,320.0,260.0,14.0,demo.muted(),<span class="syn-str">"Linear sampling      Nearest / opacity"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> options <span class="syn-flow">:=</span> draw.text_options(24.0)
+    demo.text(context,<span class="syn-borrow">$&amp;</span>fragment,320.0,260.0,14.0,demo.muted(),<span class="syn-str">"Linear sampling      Nearest / opacity"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>options <span class="syn-flow">:=</span> draw.text_options(24.0)
     options.width = 880.0
     value <span class="syn-flow">:=</span> <span class="syn-str">"你好，Xu · العربية · café · 👩‍💻\nOne native layout: shaping, fallback, wrapping and metrics."</span>
-    <span class="syn-kw">mut</span> text <span class="syn-flow">:=</span> context.layout_text(&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>text <span class="syn-flow">:=</span> context.layout_text(&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     fragment.text_layout(&amp;text,32.0,330.0,demo.ink()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     println(<span class="syn-str">"Text metrics: "</span> + str(text.metrics.lines) + <span class="syn-str">" lines"</span>)
     layer <span class="syn-flow">:=</span> draw.ImageRect{x: 740.0,y: 80.0,width: 180.0,height: 200.0}
@@ -225,13 +225,13 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     fragment.set_fill(draw.rgb(92,127,203)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     fragment.circle(112.0,112.0,52.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     fragment.end_layer() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    demo.text(context,<span class="syn-borrow">mut &amp;</span>fragment,740.0,292.0,14.0,demo.muted(),<span class="syn-str">"Isolated group opacity"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    demo.text(context,<span class="syn-borrow">$&amp;</span>fragment,740.0,292.0,14.0,demo.muted(),<span class="syn-str">"Isolated group opacity"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     list <span class="syn-flow">:=</span> fragment.freeze() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     text.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     fragment.dispose()
     <span class="syn-flow">&lt;&lt;</span> list
 }
-<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">&amp;mut</span> draw.Frame,list &amp;draw.DisplayList,cache <span class="syn-borrow">&amp;mut</span> draw.SurfaceCache,density <span class="syn-type">f64</span>,cached <span class="syn-type">bool</span>) <span class="syn-type">int</span> {
+<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">$&amp;</span>draw.Frame,list &amp;draw.DisplayList,cache <span class="syn-borrow">$&amp;</span>draw.SurfaceCache,density <span class="syn-type">f64</span>,cached <span class="syn-type">bool</span>) <span class="syn-type">int</span> {
     frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     demo.text(context,frame,32.0,24.0,14.0,demo.accent(),<span class="syn-str">"02 / RESOURCE GALLERY"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -241,7 +241,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">if</span> cached { frame.cached_display_list(cache,list,0.0,0.0,960.0,510.0,density,1.0,draw.SAMPLER_LINEAR) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
     <span class="syn-kw">else</span> { frame.display_list(list) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
     frame.pop() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> mode <span class="syn-flow">:=</span> <span class="syn-str">"vector replay"</span>
+    <span class="syn-kw">$</span>mode <span class="syn-flow">:=</span> <span class="syn-str">"vector replay"</span>
     <span class="syn-kw">if</span> cached { mode = <span class="syn-str">"raster cache"</span> }
     demo.text(context,frame,32.0,646.0,15.0,demo.ink(),<span class="syn-str">"Space: vector/cache / R: invalidate / current: "</span> + mode) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -254,18 +254,18 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     path <span class="syn-flow">:=</span> <span class="syn-str">"sample.png"</span>
-    <span class="syn-kw">mut</span> image <span class="syn-flow">:=</span> context.load_embedded_image(&amp;path) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> list <span class="syn-flow">:=</span> record(&amp;context,&amp;image) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> cache <span class="syn-flow">:=</span> draw.new_surface_cache()
-    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(1024)
-    <span class="syn-kw">mut</span> density <span class="syn-flow">:=</span> 1.0
-    <span class="syn-kw">mut</span> cached <span class="syn-flow">:=</span> false
-    paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,&amp;list,<span class="syn-borrow">mut &amp;</span>cache,density,cached) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>image <span class="syn-flow">:=</span> context.load_embedded_image(&amp;path) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>list <span class="syn-flow">:=</span> record(&amp;context,&amp;image) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>cache <span class="syn-flow">:=</span> draw.new_surface_cache()
+    <span class="syn-kw">$</span>frame <span class="syn-flow">:=</span> context.new_frame(1024)
+    <span class="syn-kw">$</span>density <span class="syn-flow">:=</span> 1.0
+    <span class="syn-kw">$</span>cached <span class="syn-flow">:=</span> false
+    paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,&amp;list,<span class="syn-borrow">$&amp;</span>cache,density,cached) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">while</span> true {
         event <span class="syn-flow">:=</span> demo.next(ech)
         <span class="syn-kw">if</span> event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <span class="syn-flow">&lt;-</span> }
         <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
-        <span class="syn-kw">mut</span> dirty <span class="syn-flow">:=</span> false
+        <span class="syn-kw">$</span>dirty <span class="syn-flow">:=</span> false
         <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_METRICS {
             metrics <span class="syn-flow">:=</span> ui.metrics_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
             density = metrics.scale_x
@@ -282,7 +282,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
                 <span class="syn-kw">if</span> input.key == ui.KEY_ESCAPE { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
             }
         }
-        <span class="syn-kw">if</span> dirty { paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,&amp;list,<span class="syn-borrow">mut &amp;</span>cache,density,cached) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> dirty { paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,&amp;list,<span class="syn-borrow">$&amp;</span>cache,density,cached) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
     }
     frame.dispose()
     cache.dispose()
@@ -296,7 +296,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Resource Gallery"</span>,1030,710) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Resource Gallery"</span>,1030,710) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -400,12 +400,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="attach">
 <h2><code>attach</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach(w <span class="syn-borrow">&amp;mut</span> ui.Window) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach(w <span class="syn-borrow">$&amp;</span>ui.Window) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Attach the draw canvas to a window (registers the content_draw plugin).</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">&amp;mut ui.Window</span></dt><dd>writer or width (exclusive borrow; type &amp;mut ui.Window)</dd>
+<dt><code>w</code> <span class="type">$&amp;ui.Window</span></dt><dd>writer or width (exclusive borrow; type $&amp;ui.Window)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -1123,34 +1123,34 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>SurfaceCache — a value of this type</p>
 <p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
-<article class="api-item" id="-mut-SurfaceCache-dispose">
-<h2><code>(&amp;mut SurfaceCache) dispose</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (cache <span class="syn-borrow">&amp;mut</span> SurfaceCache) dispose()</code></pre></div>
+<article class="api-item" id="--SurfaceCache-dispose">
+<h2><code>($&amp;SurfaceCache) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (cache <span class="syn-borrow">$&amp;</span>SurfaceCache) dispose()</code></pre></div>
 <h3>Purpose</h3>
 <p>Release and dispose native resources and underlying handles.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>cache</code> <span class="type">&amp;mut SurfaceCache</span></dt><dd>receiver &amp;mut SurfaceCache (exclusive borrow)</dd>
+<dt><code>cache</code> <span class="type">$&amp;SurfaceCache</span></dt><dd>receiver $&amp;SurfaceCache (exclusive borrow)</dd>
 </dl>
 </article>
-<article class="api-item" id="-mut-SurfaceCache-invalidate">
-<h2><code>(&amp;mut SurfaceCache) invalidate</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (cache <span class="syn-borrow">&amp;mut</span> SurfaceCache) invalidate()</code></pre></div>
+<article class="api-item" id="--SurfaceCache-invalidate">
+<h2><code>($&amp;SurfaceCache) invalidate</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (cache <span class="syn-borrow">$&amp;</span>SurfaceCache) invalidate()</code></pre></div>
 <h3>Purpose</h3>
 <p>Invalidate the control area, requesting a repaint on next frame.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>cache</code> <span class="type">&amp;mut SurfaceCache</span></dt><dd>receiver &amp;mut SurfaceCache (exclusive borrow)</dd>
+<dt><code>cache</code> <span class="type">$&amp;SurfaceCache</span></dt><dd>receiver $&amp;SurfaceCache (exclusive borrow)</dd>
 </dl>
 </article>
-<article class="api-item" id="-mut-SurfaceCache-update">
-<h2><code>(&amp;mut SurfaceCache) update</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (cache <span class="syn-borrow">&amp;mut</span> SurfaceCache) update(list &amp;DisplayList,width <span class="syn-type">f64</span>,height <span class="syn-type">f64</span>,scale <span class="syn-type">f64</span>) <span class="syn-type">bool</span></code></pre></div>
+<article class="api-item" id="--SurfaceCache-update">
+<h2><code>($&amp;SurfaceCache) update</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (cache <span class="syn-borrow">$&amp;</span>SurfaceCache) update(list &amp;DisplayList,width <span class="syn-type">f64</span>,height <span class="syn-type">f64</span>,scale <span class="syn-type">f64</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Returns true only when pixels were regenerated. A failed replacement leaves the previous cache intact. Image updates do not mutate an already frozen list freeze a replacement list to intentionally change that content/version. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>cache</code> <span class="type">&amp;mut SurfaceCache</span></dt><dd>receiver &amp;mut SurfaceCache (exclusive borrow)</dd>
+<dt><code>cache</code> <span class="type">$&amp;SurfaceCache</span></dt><dd>receiver $&amp;SurfaceCache (exclusive borrow)</dd>
 <dt><code>list</code> <span class="type">&amp;DisplayList</span></dt><dd>list (borrowed; caller keeps it; type &amp;DisplayList)</dd>
 <dt><code>width</code> <span class="type">f64</span></dt><dd>width (f64)</dd>
 <dt><code>height</code> <span class="type">f64</span></dt><dd>height (f64)</dd>
@@ -1159,15 +1159,15 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>bool — true or false</p>
 </article>
-<article class="api-item" id="-mut-Frame-cached_display_list">
-<h2><code>(&amp;mut Frame) cached_display_list</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) cached_display_list(cache <span class="syn-borrow">&amp;mut</span> SurfaceCache,list &amp;DisplayList, x <span class="syn-type">f64</span>,y <span class="syn-type">f64</span>,width <span class="syn-type">f64</span>,height <span class="syn-type">f64</span>,scale <span class="syn-type">f64</span>,opacity <span class="syn-type">f64</span>,sampler <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-cached_display_list">
+<h2><code>($&amp;Frame) cached_display_list</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) cached_display_list(cache <span class="syn-borrow">$&amp;</span>SurfaceCache,list &amp;DisplayList, x <span class="syn-type">f64</span>,y <span class="syn-type">f64</span>,width <span class="syn-type">f64</span>,height <span class="syn-type">f64</span>,scale <span class="syn-type">f64</span>,opacity <span class="syn-type">f64</span>,sampler <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: cached display list. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: cached display list. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
-<dt><code>cache</code> <span class="type">&amp;mut SurfaceCache</span></dt><dd>cache (exclusive borrow; type &amp;mut SurfaceCache)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
+<dt><code>cache</code> <span class="type">$&amp;SurfaceCache</span></dt><dd>cache (exclusive borrow; type $&amp;SurfaceCache)</dd>
 <dt><code>list</code> <span class="type">&amp;DisplayList</span></dt><dd>list (borrowed; caller keeps it; type &amp;DisplayList)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
@@ -1259,14 +1259,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>Surface — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-fill_path_gradient">
-<h2><code>(&amp;mut Frame) fill_path_gradient</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) fill_path_gradient(path &amp;Path,paint &amp;Gradient,bounds &amp;ImageRect,scale <span class="syn-type">f64</span>,rule <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-fill_path_gradient">
+<h2><code>($&amp;Frame) fill_path_gradient</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) fill_path_gradient(path &amp;Path,paint &amp;Gradient,bounds &amp;ImageRect,scale <span class="syn-type">f64</span>,rule <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Gradient coordinates are local to bounds. Path coordinates remain in the caller&#x27;s current logical space. Explicit density controls raster quality parent CTM/clip apply when the generated painted Path is composited. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>path</code> <span class="type">&amp;Path</span></dt><dd>filesystem path (borrowed; caller keeps it; type &amp;Path)</dd>
 <dt><code>paint</code> <span class="type">&amp;Gradient</span></dt><dd>paint (borrowed; caller keeps it; type &amp;Gradient)</dd>
 <dt><code>bounds</code> <span class="type">&amp;ImageRect</span></dt><dd>bounds (borrowed; caller keeps it; type &amp;ImageRect)</dd>
@@ -1287,38 +1287,38 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">none</p>
 <p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
-<article class="api-item" id="-mut-Frame-freeze">
-<h2><code>(&amp;mut Frame) freeze</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) freeze() DisplayList</code></pre></div>
+<article class="api-item" id="--Frame-freeze">
+<h2><code>($&amp;Frame) freeze</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) freeze() DisplayList</code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `freeze` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `freeze` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>DisplayList — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-DisplayList-dispose">
-<h2><code>(&amp;mut DisplayList) dispose</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (list <span class="syn-borrow">&amp;mut</span> DisplayList) dispose() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--DisplayList-dispose">
+<h2><code>($&amp;DisplayList) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (list <span class="syn-borrow">$&amp;</span>DisplayList) dispose() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Release and dispose native resources and underlying handles. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>list</code> <span class="type">&amp;mut DisplayList</span></dt><dd>receiver &amp;mut DisplayList (exclusive borrow)</dd>
+<dt><code>list</code> <span class="type">$&amp;DisplayList</span></dt><dd>receiver $&amp;DisplayList (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-display_list">
-<h2><code>(&amp;mut Frame) display_list</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) display_list(list &amp;DisplayList) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-display_list">
+<h2><code>($&amp;Frame) display_list</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) display_list(list &amp;DisplayList) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: display list. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: display list. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>list</code> <span class="type">&amp;DisplayList</span></dt><dd>list (borrowed; caller keeps it; type &amp;DisplayList)</dd>
 </dl>
 <h3>Returns</h3>
@@ -1375,50 +1375,50 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>bool — true or false</p>
 </article>
-<article class="api-item" id="-mut-DisplayListPool-capture">
-<h2><code>(&amp;mut DisplayListPool) capture</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pool <span class="syn-borrow">&amp;mut</span> DisplayListPool) capture(key <span class="syn-type">int</span>,revision <span class="syn-type">int</span>,frame <span class="syn-borrow">&amp;mut</span> Frame) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--DisplayListPool-capture">
+<h2><code>($&amp;DisplayListPool) capture</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pool <span class="syn-borrow">$&amp;</span>DisplayListPool) capture(key <span class="syn-type">int</span>,revision <span class="syn-type">int</span>,frame <span class="syn-borrow">$&amp;</span>Frame) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `capture` on `&amp;mut DisplayListPool`. Throws on failure.</p>
+<p>Execute `capture` on `$&amp;DisplayListPool`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>pool</code> <span class="type">&amp;mut DisplayListPool</span></dt><dd>receiver &amp;mut DisplayListPool (exclusive borrow)</dd>
+<dt><code>pool</code> <span class="type">$&amp;DisplayListPool</span></dt><dd>receiver $&amp;DisplayListPool (exclusive borrow)</dd>
 <dt><code>key</code> <span class="type">int</span></dt><dd>key (int)</dd>
 <dt><code>revision</code> <span class="type">int</span></dt><dd>revision (int)</dd>
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>frame (exclusive borrow; type &amp;mut Frame)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>frame (exclusive borrow; type $&amp;Frame)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-DisplayListPool-remove">
-<h2><code>(&amp;mut DisplayListPool) remove</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pool <span class="syn-borrow">&amp;mut</span> DisplayListPool) remove(key <span class="syn-type">int</span>)</code></pre></div>
+<article class="api-item" id="--DisplayListPool-remove">
+<h2><code>($&amp;DisplayListPool) remove</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pool <span class="syn-borrow">$&amp;</span>DisplayListPool) remove(key <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut DisplayListPool`: remove.</p>
+<p>Operation on `$&amp;DisplayListPool`: remove.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>pool</code> <span class="type">&amp;mut DisplayListPool</span></dt><dd>receiver &amp;mut DisplayListPool (exclusive borrow)</dd>
+<dt><code>pool</code> <span class="type">$&amp;DisplayListPool</span></dt><dd>receiver $&amp;DisplayListPool (exclusive borrow)</dd>
 <dt><code>key</code> <span class="type">int</span></dt><dd>key (int)</dd>
 </dl>
 </article>
-<article class="api-item" id="-mut-DisplayListPool-dispose">
-<h2><code>(&amp;mut DisplayListPool) dispose</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pool <span class="syn-borrow">&amp;mut</span> DisplayListPool) dispose()</code></pre></div>
+<article class="api-item" id="--DisplayListPool-dispose">
+<h2><code>($&amp;DisplayListPool) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pool <span class="syn-borrow">$&amp;</span>DisplayListPool) dispose()</code></pre></div>
 <h3>Purpose</h3>
 <p>Release and dispose native resources and underlying handles.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>pool</code> <span class="type">&amp;mut DisplayListPool</span></dt><dd>receiver &amp;mut DisplayListPool (exclusive borrow)</dd>
+<dt><code>pool</code> <span class="type">$&amp;DisplayListPool</span></dt><dd>receiver $&amp;DisplayListPool (exclusive borrow)</dd>
 </dl>
 </article>
-<article class="api-item" id="-mut-Frame-pooled_display_list">
-<h2><code>(&amp;mut Frame) pooled_display_list</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) pooled_display_list(pool &amp;DisplayListPool,key <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-pooled_display_list">
+<h2><code>($&amp;Frame) pooled_display_list</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) pooled_display_list(pool &amp;DisplayListPool,key <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: pooled display list. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: pooled display list. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>pool</code> <span class="type">&amp;DisplayListPool</span></dt><dd>pool (borrowed; caller keeps it; type &amp;DisplayListPool)</dd>
 <dt><code>key</code> <span class="type">int</span></dt><dd>key (int)</dd>
 </dl>
@@ -1611,26 +1611,26 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>Frame — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-begin">
-<h2><code>(&amp;mut Frame) begin</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) begin() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-begin">
+<h2><code>($&amp;Frame) begin</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) begin() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Discards only this recorder&#x27;s unsubmitted work. Capacity is retained. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-cancel">
-<h2><code>(&amp;mut Frame) cancel</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) cancel()</code></pre></div>
+<article class="api-item" id="--Frame-cancel">
+<h2><code>($&amp;Frame) cancel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) cancel()</code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `cancel` on `&amp;mut Frame`.</p>
+<p>Execute `cancel` on `$&amp;Frame`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 </article>
 <article class="api-item" id="-Frame-byte_len">
@@ -1669,196 +1669,180 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-present">
-<h2><code>(&amp;mut Frame) present</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) present() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-present">
+<h2><code>($&amp;Frame) present</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) present() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Seal and submit a complete frame. Success means queued, not displayed. A full queue preserves the sealed frame for retry or rebuilding with cancel / begin.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>0 on success; throws on failure</p>
 </article>
-<article class="api-item" id="-mut-Frame-present_wait">
-<h2><code>(&amp;mut Frame) present_wait</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) present_wait() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-present_wait">
+<h2><code>($&amp;Frame) present_wait</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) present_wait() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Worker-thread submission parks for bounded queue capacity. Validation and closed-canvas errors still fail immediately once admission is available. UI hosts must continue draining commands on their own native thread. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-set_bg">
-<h2><code>(&amp;mut Frame) set_bg</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) set_bg(color Color) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-set_bg">
+<h2><code>($&amp;Frame) set_bg</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) set_bg(color Color) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: set bg. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: set bg. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>color</code> <span class="type">Color</span></dt><dd>color (Color)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-set_color">
-<h2><code>(&amp;mut Frame) set_color</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) set_color(color Color) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-set_color">
+<h2><code>($&amp;Frame) set_color</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) set_color(color Color) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: set color. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: set color. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>color</code> <span class="type">Color</span></dt><dd>color (Color)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-set_fill">
-<h2><code>(&amp;mut Frame) set_fill</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) set_fill(color Color) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-set_fill">
+<h2><code>($&amp;Frame) set_fill</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) set_fill(color Color) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: set fill. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: set fill. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>color</code> <span class="type">Color</span></dt><dd>color (Color)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-set_stroke">
-<h2><code>(&amp;mut Frame) set_stroke</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) set_stroke(color Color) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-set_stroke">
+<h2><code>($&amp;Frame) set_stroke</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) set_stroke(color Color) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: set stroke. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: set stroke. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>color</code> <span class="type">Color</span></dt><dd>color (Color)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-set_width">
-<h2><code>(&amp;mut Frame) set_width</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) set_width(width <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-set_width">
+<h2><code>($&amp;Frame) set_width</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) set_width(width <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: set width. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: set width. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>width</code> <span class="type">f64</span></dt><dd>width (f64)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-push">
-<h2><code>(&amp;mut Frame) push</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) push() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-push">
+<h2><code>($&amp;Frame) push</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) push() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `push` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `push` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-pop">
-<h2><code>(&amp;mut Frame) pop</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) pop() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-pop">
+<h2><code>($&amp;Frame) pop</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) pop() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `pop` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `pop` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-origin">
-<h2><code>(&amp;mut Frame) origin</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) origin() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-origin">
+<h2><code>($&amp;Frame) origin</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) origin() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `origin` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `origin` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-translate">
-<h2><code>(&amp;mut Frame) translate</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) translate(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-translate">
+<h2><code>($&amp;Frame) translate</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) translate(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `translate` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `translate` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-rotate">
-<h2><code>(&amp;mut Frame) rotate</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) rotate(degrees <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-rotate">
+<h2><code>($&amp;Frame) rotate</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) rotate(degrees <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `rotate` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `rotate` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>degrees</code> <span class="type">f64</span></dt><dd>degrees (f64)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-scale">
-<h2><code>(&amp;mut Frame) scale</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) scale(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-scale">
+<h2><code>($&amp;Frame) scale</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) scale(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Scale factors: 1 = 100%. The legacy free function still uses percent. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-clip_rect">
-<h2><code>(&amp;mut Frame) clip_rect</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) clip_rect(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-clip_rect">
+<h2><code>($&amp;Frame) clip_rect</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) clip_rect(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: clip rectangle. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: clip rectangle. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
-<dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
-<dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
-<dt><code>w</code> <span class="type">f64</span></dt><dd>writer or width (f64)</dd>
-<dt><code>h</code> <span class="type">f64</span></dt><dd>height or handle (f64)</dd>
-</dl>
-<h3>Returns</h3>
-<p>int — a value of this type</p>
-</article>
-<article class="api-item" id="-mut-Frame-rect">
-<h2><code>(&amp;mut Frame) rect</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) rect(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
-<h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: draw or fill a rectangle on the canvas. Throws on failure.</p>
-<h3>Parameters</h3>
-<dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>w</code> <span class="type">f64</span></dt><dd>writer or width (f64)</dd>
@@ -1867,14 +1851,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-rect_line">
-<h2><code>(&amp;mut Frame) rect_line</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) rect_line(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-rect">
+<h2><code>($&amp;Frame) rect</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) rect(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: rectangle line. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: draw or fill a rectangle on the canvas. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>w</code> <span class="type">f64</span></dt><dd>writer or width (f64)</dd>
@@ -1883,14 +1867,30 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-fill_rect">
-<h2><code>(&amp;mut Frame) fill_rect</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) fill_rect(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>, color Color) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-rect_line">
+<h2><code>($&amp;Frame) rect_line</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) rect_line(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: fill rectangle. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: rectangle line. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
+<dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
+<dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
+<dt><code>w</code> <span class="type">f64</span></dt><dd>writer or width (f64)</dd>
+<dt><code>h</code> <span class="type">f64</span></dt><dd>height or handle (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="--Frame-fill_rect">
+<h2><code>($&amp;Frame) fill_rect</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) fill_rect(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>, color Color) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Frame`: fill rectangle. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>w</code> <span class="type">f64</span></dt><dd>writer or width (f64)</dd>
@@ -1900,14 +1900,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-stroke_rect">
-<h2><code>(&amp;mut Frame) stroke_rect</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) stroke_rect(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>, color Color, width <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-stroke_rect">
+<h2><code>($&amp;Frame) stroke_rect</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) stroke_rect(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>, color Color, width <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: stroke rectangle. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: stroke rectangle. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>w</code> <span class="type">f64</span></dt><dd>writer or width (f64)</dd>
@@ -1918,14 +1918,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-ellipse">
-<h2><code>(&amp;mut Frame) ellipse</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) ellipse(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-ellipse">
+<h2><code>($&amp;Frame) ellipse</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) ellipse(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, w <span class="syn-type">f64</span>, h <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `ellipse` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `ellipse` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>w</code> <span class="type">f64</span></dt><dd>writer or width (f64)</dd>
@@ -1934,14 +1934,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-line">
-<h2><code>(&amp;mut Frame) line</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) line(x1 <span class="syn-type">f64</span>, y1 <span class="syn-type">f64</span>, x2 <span class="syn-type">f64</span>, y2 <span class="syn-type">f64</span>, color Color, width <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-line">
+<h2><code>($&amp;Frame) line</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) line(x1 <span class="syn-type">f64</span>, y1 <span class="syn-type">f64</span>, x2 <span class="syn-type">f64</span>, y2 <span class="syn-type">f64</span>, color Color, width <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `line` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `line` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x1</code> <span class="type">f64</span></dt><dd>x1 (f64)</dd>
 <dt><code>y1</code> <span class="type">f64</span></dt><dd>y1 (f64)</dd>
 <dt><code>x2</code> <span class="type">f64</span></dt><dd>x2 (f64)</dd>
@@ -1952,14 +1952,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-text">
-<h2><code>(&amp;mut Frame) text</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) text(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, size <span class="syn-type">f64</span>, color Color, text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-text">
+<h2><code>($&amp;Frame) text</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) text(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, size <span class="syn-type">f64</span>, color Color, text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>UTF-8 text is length-delimited: tabs/newlines cannot inject host commands. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>size</code> <span class="type">f64</span></dt><dd>size (f64)</dd>
@@ -1969,14 +1969,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-circle">
-<h2><code>(&amp;mut Frame) circle</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) circle(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, radius <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-circle">
+<h2><code>($&amp;Frame) circle</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) circle(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, radius <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `circle` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `circle` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>radius</code> <span class="type">f64</span></dt><dd>radius (f64)</dd>
@@ -1984,14 +1984,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-triangle">
-<h2><code>(&amp;mut Frame) triangle</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">&amp;mut</span> Frame) triangle(x1 <span class="syn-type">f64</span>, y1 <span class="syn-type">f64</span>, x2 <span class="syn-type">f64</span>, y2 <span class="syn-type">f64</span>, x3 <span class="syn-type">f64</span>, y3 <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-triangle">
+<h2><code>($&amp;Frame) triangle</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f <span class="syn-borrow">$&amp;</span>Frame) triangle(x1 <span class="syn-type">f64</span>, y1 <span class="syn-type">f64</span>, x2 <span class="syn-type">f64</span>, y2 <span class="syn-type">f64</span>, x3 <span class="syn-type">f64</span>, y3 <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `triangle` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `triangle` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>f</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>x1</code> <span class="type">f64</span></dt><dd>x1 (f64)</dd>
 <dt><code>y1</code> <span class="type">f64</span></dt><dd>y1 (f64)</dd>
 <dt><code>x2</code> <span class="type">f64</span></dt><dd>x2 (f64)</dd>
@@ -2253,26 +2253,26 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Image-dispose">
-<h2><code>(&amp;mut Image) dispose</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (image <span class="syn-borrow">&amp;mut</span> Image) dispose() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Image-dispose">
+<h2><code>($&amp;Image) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (image <span class="syn-borrow">$&amp;</span>Image) dispose() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Release and dispose native resources and underlying handles. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>image</code> <span class="type">&amp;mut Image</span></dt><dd>receiver &amp;mut Image (exclusive borrow)</dd>
+<dt><code>image</code> <span class="type">$&amp;Image</span></dt><dd>receiver $&amp;Image (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-image_region">
-<h2><code>(&amp;mut Frame) image_region</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) image_region(image &amp;Image, source &amp;ImageRect, destination &amp;ImageRect, opacity <span class="syn-type">f64</span>, sampler <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-image_region">
+<h2><code>($&amp;Frame) image_region</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) image_region(image &amp;Image, source &amp;ImageRect, destination &amp;ImageRect, opacity <span class="syn-type">f64</span>, sampler <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Source coordinates are pixels; destination coordinates follow the frame CTM. Opacity is 0...1; sampler_nearest/linear are explicit and portable. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>image</code> <span class="type">&amp;Image</span></dt><dd>image (borrowed; caller keeps it; type &amp;Image)</dd>
 <dt><code>source</code> <span class="type">&amp;ImageRect</span></dt><dd>source (borrowed; caller keeps it; type &amp;ImageRect)</dd>
 <dt><code>destination</code> <span class="type">&amp;ImageRect</span></dt><dd>destination (borrowed; caller keeps it; type &amp;ImageRect)</dd>
@@ -2282,14 +2282,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-image">
-<h2><code>(&amp;mut Frame) image</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) image(image &amp;Image, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, width <span class="syn-type">f64</span>, height <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-image">
+<h2><code>($&amp;Frame) image</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) image(image &amp;Image, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, width <span class="syn-type">f64</span>, height <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `image` on `&amp;mut Frame`. Throws on failure.</p>
+<p>Execute `image` on `$&amp;Frame`. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>image</code> <span class="type">&amp;Image</span></dt><dd>image (borrowed; caller keeps it; type &amp;Image)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
@@ -2307,14 +2307,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
-<article class="api-item" id="-mut-Frame-begin_layer">
-<h2><code>(&amp;mut Frame) begin_layer</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) begin_layer(bounds &amp;ImageRect, scale <span class="syn-type">f64</span>, opacity <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-begin_layer">
+<h2><code>($&amp;Frame) begin_layer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) begin_layer(bounds &amp;ImageRect, scale <span class="syn-type">f64</span>, opacity <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Isolated transparent child frame, with its own white pen, identity CTM and [0,width]x[0,height] bounds. Parent state/clip are restored at end_layer and apply to the resulting image at (x,y). Rasterization occurs once at end_layer. begin/cancel/dispose discard every open child and owned temporary resource. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>bounds</code> <span class="type">&amp;ImageRect</span></dt><dd>bounds (borrowed; caller keeps it; type &amp;ImageRect)</dd>
 <dt><code>scale</code> <span class="type">f64</span></dt><dd>scale (f64)</dd>
 <dt><code>opacity</code> <span class="type">f64</span></dt><dd>opacity (f64)</dd>
@@ -2322,26 +2322,26 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-end_layer">
-<h2><code>(&amp;mut Frame) end_layer</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) end_layer() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-end_layer">
+<h2><code>($&amp;Frame) end_layer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) end_layer() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: end layer. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: end layer. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-dispose">
-<h2><code>(&amp;mut Frame) dispose</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) dispose()</code></pre></div>
+<article class="api-item" id="--Frame-dispose">
+<h2><code>($&amp;Frame) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) dispose()</code></pre></div>
 <h3>Purpose</h3>
 <p>A Frame can own transient native images after end_layer/gradient fills. Explicitly retire a recorder that will not be presented or reused.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 </dl>
 </article>
 <article class="api-item" id="const-MAX_PATH_BYTES">
@@ -2448,14 +2448,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>Path — a value of this type</p>
 <p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
-<article class="api-item" id="-mut-Path-clear">
-<h2><code>(&amp;mut Path) clear</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">&amp;mut</span> Path) clear()</code></pre></div>
+<article class="api-item" id="--Path-clear">
+<h2><code>($&amp;Path) clear</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">$&amp;</span>Path) clear()</code></pre></div>
 <h3>Purpose</h3>
 <p>Clear all buffered or stored entries and internal state.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>path</code> <span class="type">&amp;mut Path</span></dt><dd>receiver &amp;mut Path (exclusive borrow)</dd>
+<dt><code>path</code> <span class="type">$&amp;Path</span></dt><dd>receiver $&amp;Path (exclusive borrow)</dd>
 </dl>
 </article>
 <article class="api-item" id="-Path-byte_len">
@@ -2494,42 +2494,42 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Path-move_to">
-<h2><code>(&amp;mut Path) move_to</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">&amp;mut</span> Path) move_to(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Path-move_to">
+<h2><code>($&amp;Path) move_to</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">$&amp;</span>Path) move_to(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Path`: move to. Throws on failure.</p>
+<p>Operation on `$&amp;Path`: move to. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>path</code> <span class="type">&amp;mut Path</span></dt><dd>receiver &amp;mut Path (exclusive borrow)</dd>
+<dt><code>path</code> <span class="type">$&amp;Path</span></dt><dd>receiver $&amp;Path (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Path-line_to">
-<h2><code>(&amp;mut Path) line_to</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">&amp;mut</span> Path) line_to(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Path-line_to">
+<h2><code>($&amp;Path) line_to</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">$&amp;</span>Path) line_to(x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Path`: line to. Throws on failure.</p>
+<p>Operation on `$&amp;Path`: line to. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>path</code> <span class="type">&amp;mut Path</span></dt><dd>receiver &amp;mut Path (exclusive borrow)</dd>
+<dt><code>path</code> <span class="type">$&amp;Path</span></dt><dd>receiver $&amp;Path (exclusive borrow)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Path-quad_to">
-<h2><code>(&amp;mut Path) quad_to</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">&amp;mut</span> Path) quad_to(cx <span class="syn-type">f64</span>, cy <span class="syn-type">f64</span>, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Path-quad_to">
+<h2><code>($&amp;Path) quad_to</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">$&amp;</span>Path) quad_to(cx <span class="syn-type">f64</span>, cy <span class="syn-type">f64</span>, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Path`: quad to. Throws on failure.</p>
+<p>Operation on `$&amp;Path`: quad to. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>path</code> <span class="type">&amp;mut Path</span></dt><dd>receiver &amp;mut Path (exclusive borrow)</dd>
+<dt><code>path</code> <span class="type">$&amp;Path</span></dt><dd>receiver $&amp;Path (exclusive borrow)</dd>
 <dt><code>cx</code> <span class="type">f64</span></dt><dd>cx (f64)</dd>
 <dt><code>cy</code> <span class="type">f64</span></dt><dd>cy (f64)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
@@ -2538,14 +2538,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Path-cubic_to">
-<h2><code>(&amp;mut Path) cubic_to</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">&amp;mut</span> Path) cubic_to(c1x <span class="syn-type">f64</span>, c1y <span class="syn-type">f64</span>, c2x <span class="syn-type">f64</span>, c2y <span class="syn-type">f64</span>, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Path-cubic_to">
+<h2><code>($&amp;Path) cubic_to</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">$&amp;</span>Path) cubic_to(c1x <span class="syn-type">f64</span>, c1y <span class="syn-type">f64</span>, c2x <span class="syn-type">f64</span>, c2y <span class="syn-type">f64</span>, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Path`: cubic to. Throws on failure.</p>
+<p>Operation on `$&amp;Path`: cubic to. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>path</code> <span class="type">&amp;mut Path</span></dt><dd>receiver &amp;mut Path (exclusive borrow)</dd>
+<dt><code>path</code> <span class="type">$&amp;Path</span></dt><dd>receiver $&amp;Path (exclusive borrow)</dd>
 <dt><code>c1x</code> <span class="type">f64</span></dt><dd>c1x (f64)</dd>
 <dt><code>c1y</code> <span class="type">f64</span></dt><dd>c1y (f64)</dd>
 <dt><code>c2x</code> <span class="type">f64</span></dt><dd>c2x (f64)</dd>
@@ -2556,14 +2556,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Path-close">
-<h2><code>(&amp;mut Path) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">&amp;mut</span> Path) close() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Path-close">
+<h2><code>($&amp;Path) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (path <span class="syn-borrow">$&amp;</span>Path) close() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Ends this figure. Start another with move_to before adding more segments. Filling implicitly closes open figures; stroking preserves their open ends. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>path</code> <span class="type">&amp;mut Path</span></dt><dd>receiver &amp;mut Path (exclusive borrow)</dd>
+<dt><code>path</code> <span class="type">$&amp;Path</span></dt><dd>receiver $&amp;Path (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -2605,14 +2605,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p>StrokeOptions — a value of this type</p>
 <p><a href="#example-6a8e15392deb">See usage example</a></p>
 </article>
-<article class="api-item" id="-mut-Frame-fill_path">
-<h2><code>(&amp;mut Frame) fill_path</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) fill_path(path &amp;Path, color Color, rule <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-fill_path">
+<h2><code>($&amp;Frame) fill_path</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) fill_path(path &amp;Path, color Color, rule <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: fill path. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: fill path. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>path</code> <span class="type">&amp;Path</span></dt><dd>filesystem path (borrowed; caller keeps it; type &amp;Path)</dd>
 <dt><code>color</code> <span class="type">Color</span></dt><dd>color (Color)</dd>
 <dt><code>rule</code> <span class="type">int</span></dt><dd>rule (int)</dd>
@@ -2620,14 +2620,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-stroke_path">
-<h2><code>(&amp;mut Frame) stroke_path</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) stroke_path(path &amp;Path, color Color, style &amp;StrokeOptions) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-stroke_path">
+<h2><code>($&amp;Frame) stroke_path</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) stroke_path(path &amp;Path, color Color, style &amp;StrokeOptions) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Dash lengths are positive, even-count on/off pairs in logical units. Phase restarts for each figure. Cap/join apply to generated dash figures too. Host admission rejects excessive flattening/dash work atomically; no partial path is displayed, and the previous scene remains intact. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>path</code> <span class="type">&amp;Path</span></dt><dd>filesystem path (borrowed; caller keeps it; type &amp;Path)</dd>
 <dt><code>color</code> <span class="type">Color</span></dt><dd>color (Color)</dd>
 <dt><code>style</code> <span class="type">&amp;StrokeOptions</span></dt><dd>style (borrowed; caller keeps it; type &amp;StrokeOptions)</dd>
@@ -2653,14 +2653,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>pixel_height</code> <span class="type">int</span></dt><dd>field (int)</dd>
 </dl>
 </article>
-<article class="api-item" id="-mut-Frame-snapshot">
-<h2><code>(&amp;mut Frame) snapshot</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) snapshot(width <span class="syn-type">f64</span>, height <span class="syn-type">f64</span>, scale <span class="syn-type">f64</span>) Surface</code></pre></div>
+<article class="api-item" id="--Frame-snapshot">
+<h2><code>($&amp;Frame) snapshot</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) snapshot(width <span class="syn-type">f64</span>, height <span class="syn-type">f64</span>, scale <span class="syn-type">f64</span>) Surface</code></pre></div>
 <h3>Purpose</h3>
 <p>Render once, without presenting to the window or using its camera/DPI. Source coordinates cover [0,width] x [0,height]; scale determines backing pixels (ceil per dimension). The default clear is transparent; set_bg makes an opaque clear. The frame remains sealed for present or another snapshot. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>width</code> <span class="type">f64</span></dt><dd>width (f64)</dd>
 <dt><code>height</code> <span class="type">f64</span></dt><dd>height (f64)</dd>
 <dt><code>scale</code> <span class="type">f64</span></dt><dd>scale (f64)</dd>
@@ -2668,26 +2668,26 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>Surface — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Surface-dispose">
-<h2><code>(&amp;mut Surface) dispose</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (surface <span class="syn-borrow">&amp;mut</span> Surface) dispose() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Surface-dispose">
+<h2><code>($&amp;Surface) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (surface <span class="syn-borrow">$&amp;</span>Surface) dispose() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Release and dispose native resources and underlying handles. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>surface</code> <span class="type">&amp;mut Surface</span></dt><dd>receiver &amp;mut Surface (exclusive borrow)</dd>
+<dt><code>surface</code> <span class="type">$&amp;Surface</span></dt><dd>receiver $&amp;Surface (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-surface">
-<h2><code>(&amp;mut Frame) surface</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) surface(surface &amp;Surface, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, width <span class="syn-type">f64</span>, height <span class="syn-type">f64</span>, opacity <span class="syn-type">f64</span>, sampler <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-surface">
+<h2><code>($&amp;Frame) surface</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) surface(surface &amp;Surface, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, width <span class="syn-type">f64</span>, height <span class="syn-type">f64</span>, opacity <span class="syn-type">f64</span>, sampler <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Group opacity is applied once to the cached layer. Destination geometry and clipping follow this frame&#x27;s CTM; source frame transforms are already baked. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>surface</code> <span class="type">&amp;Surface</span></dt><dd>surface (borrowed; caller keeps it; type &amp;Surface)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
@@ -2923,26 +2923,26 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>TextLayout — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-TextLayout-dispose">
-<h2><code>(&amp;mut TextLayout) dispose</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (layout <span class="syn-borrow">&amp;mut</span> TextLayout) dispose() <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--TextLayout-dispose">
+<h2><code>($&amp;TextLayout) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (layout <span class="syn-borrow">$&amp;</span>TextLayout) dispose() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Release and dispose native resources and underlying handles. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>layout</code> <span class="type">&amp;mut TextLayout</span></dt><dd>receiver &amp;mut TextLayout (exclusive borrow)</dd>
+<dt><code>layout</code> <span class="type">$&amp;TextLayout</span></dt><dd>receiver $&amp;TextLayout (exclusive borrow)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
-<article class="api-item" id="-mut-Frame-text_layout">
-<h2><code>(&amp;mut Frame) text_layout</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">&amp;mut</span> Frame) text_layout(layout &amp;TextLayout, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, color Color) <span class="syn-type">int</span></code></pre></div>
+<article class="api-item" id="--Frame-text_layout">
+<h2><code>($&amp;Frame) text_layout</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) text_layout(layout &amp;TextLayout, x <span class="syn-type">f64</span>, y <span class="syn-type">f64</span>, color Color) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;mut Frame`: text layout. Throws on failure.</p>
+<p>Operation on `$&amp;Frame`: text layout. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>frame</code> <span class="type">&amp;mut Frame</span></dt><dd>receiver &amp;mut Frame (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>receiver $&amp;Frame (exclusive borrow)</dd>
 <dt><code>layout</code> <span class="type">&amp;TextLayout</span></dt><dd>layout (borrowed; caller keeps it; type &amp;TextLayout)</dd>
 <dt><code>x</code> <span class="type">f64</span></dt><dd>value (f64)</dd>
 <dt><code>y</code> <span class="type">f64</span></dt><dd>value (f64)</dd>

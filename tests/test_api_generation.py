@@ -152,7 +152,7 @@ pub struct Options {
     pub:
     size int
 }
-pub fn read#T: Reader(src &mut T) string {
+pub fn read#T: Reader(src $&T) string {
     << src.read_n(1)
 }
 fn private_helper() {}

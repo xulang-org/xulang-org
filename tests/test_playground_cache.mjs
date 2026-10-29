@@ -52,7 +52,7 @@ test('compile diagnostics survive reuse; parser and execution traps discard the 
   assert.match(broken.stderr, /error:/);
   // Exponential strings trap at the fixed arena limit, exercising an
   // interrupted wasm stack rather than an ordinary VM diagnostic.
-  const bad = '@main\nfn main() int { mut s := "x"\n for i in 0:32 { s = s + s }\n println(s)\n << 0 }';
+  const bad = '@main\nfn main() int { $s := "x"\n for i in 0:32 { s = s + s }\n println(s)\n << 0 }';
   for (let i = 0; i < 2; i++) {
     const trapped = runtime.run(bad, {profile:true});
     assert.equal(trapped.exit, 1);
