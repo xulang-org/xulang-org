@@ -1,7 +1,7 @@
 <!--title: #math-->
 <p class="crumb">API</p>
 <h1><code>#math</code></h1>
-<!--xu-api-version: 0.10.7-->
+<!--xu-api-version: 0.10.11-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#math</code></p>
 <p class="meta">counts: 49 fns, 0 methods, 2 types, 0 consts, 0 ifaces</p>
@@ -10,9 +10,103 @@
 <section class="api-examples" id="examples">
 <h2>Examples</h2>
 <p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
-<details class="api-example" id="example-008f8a20c76f" open>
+<details class="api-example" id="example-fecca66f5617" open>
+<summary><code>16_ui_webview/webview_component/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/16_ui_webview/webview_component">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_component/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/webview_component/main.xu"><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/widgets</span>
+<span class="syn-import"><span class="hash">#</span>ui/webview</span>
+<span class="syn-import"><span class="hash">#</span>math</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">fn</span> document(title <span class="syn-type">string</span>,tone <span class="syn-type">string</span>) <span class="syn-type">string</span> {
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset='utf-8'&gt;&lt;title&gt;"</span> + title + <span class="syn-str">"&lt;/title&gt;&lt;style&gt;body{margin:0;padding:28px;font:15px -apple-system,system-ui;color:#252521;background:#faf9f6}small{letter-spacing:.14em;color:#797970}h1{font-size:28px;font-weight:600;letter-spacing:-.04em;margin:16px 0}p{line-height:1.65;color:#6b6b63}input,button{box-sizing:border-box;font:inherit;border-radius:8px;padding:12px;width:100%;margin:8px 0}input{border:1px solid #d8d8cf;background:white;outline-color:"</span> + tone + <span class="syn-str">"}button{border:0;background:"</span> + tone + <span class="syn-str">";color:white;cursor:pointer}output{display:block;min-height:42px;padding:12px 0;line-height:1.5;color:"</span> + tone + <span class="syn-str">"}&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&lt;small&gt;EMBEDDED WEBVIEW&lt;/small&gt;&lt;h1&gt;"</span> + title + <span class="syn-str">"&lt;/h1&gt;&lt;p&gt;This document has its own viewport, focus and request identity.&lt;/p&gt;&lt;input aria-label='Message' value='Hello from "</span> + title + <span class="syn-str">"'&gt;&lt;button onclick='send()'&gt;Ask native Xu&lt;/button&gt;&lt;output aria-live='polite'&gt;Ready for an independent native request.&lt;/output&gt;&lt;p&gt;Tab moves inside this document.&lt;br&gt;Ctrl + Tab returns to the native controls.&lt;/p&gt;&lt;script&gt;async function send(){let out=document.querySelector('output');out.textContent='Waiting…';try{out.textContent=await window.__XU__.invoke('echo',document.querySelector('input').value)}catch(e){out.textContent=e.message}}&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;"</span>
+}
+<span class="syn-kw">fn</span> route(request webview.InvokeRequest) <span class="syn-type">string</span> {
+    target <span class="syn-flow">:=</span> request.target() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"Target closed: "</span> + err.msg() }
+    script <span class="syn-flow">:=</span> <span class="syn-str">"document.title"</span>
+    options <span class="syn-flow">:=</span> ui.RequestOptions{timeout_ms: 3000}
+    result <span class="syn-flow">:=</span> ui.webview_request_wait(&amp;target,ui.REQUEST_WEBVIEW_EVAL,&amp;script,&amp;options) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> err.msg() }
+    <span class="syn-flow">&lt;&lt;</span> result.value + <span class="syn-str">" · "</span> + request.payload + <span class="syn-str">" · view "</span> + str(target.canvas_id)
+}
+<span class="syn-kw">fn</span> ipc(events <span class="syn-kw">chan</span> ui.Event,emits <span class="syn-kw">chan</span> <span class="syn-type">string</span>) {
+    webview.bind_ipc_requests_www(<span class="syn-str">":mem:"</span>,route,emits,events) <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> }
+}
+<span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
+    <span class="syn-kw">mut</span> screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.resize(1020.0,720.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_min_size(760,580) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    title <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Web content. Native composition."</span>,26.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    subtitle <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Two independent WebViews inside a Canvas window"</span>,13.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    hide <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Hide left"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    reload <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Reload right"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    close <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Dispose left"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    modal_button <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Open modal"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    left <span class="syn-flow">:=</span> screen.webview() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    right <span class="syn-flow">:=</span> screen.webview() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    status <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Resize the window, edit both pages, or test their native requests."</span>,13.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    modal <span class="syn-flow">:=</span> screen.modal(<span class="syn-str">"Native overlay"</span>,<span class="syn-str">"The WebViews resume when this dialog closes."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    dismiss <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Close dialog"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_parent(dismiss,modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(dismiss,24.0,175.0,180.0,38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.load_web_html(left,document(<span class="syn-str">"Editor preview"</span>,<span class="syn-str">"#b64c3c"</span>)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.load_web_html(right,document(<span class="syn-str">"Reference panel"</span>,<span class="syn-str">"#386f6b"</span>)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> hidden <span class="syn-flow">:=</span> false
+    <span class="syn-kw">mut</span> disposed <span class="syn-flow">:=</span> false
+    <span class="syn-kw">while</span> screen.is_open() {
+        width <span class="syn-flow">:=</span> screen.width()
+        height <span class="syn-flow">:=</span> screen.height()
+        half <span class="syn-flow">:=</span> (width - 76.0) * 0.5
+        screen.place(title,28.0,25.0,width-56.0,38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(subtitle,28.0,69.0,width-56.0,25.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(hide,28.0,112.0,136.0,38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(reload,174.0,112.0,146.0,38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(close,330.0,112.0,136.0,38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(modal_button,476.0,112.0,136.0,38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(left,28.0,174.0,half,math.max(300.0,height-245.0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(right,48.0+half,174.0,half,math.max(300.0,height-245.0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(status,28.0,height-49.0,width-56.0,28.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        _ <span class="syn-flow">:=</span> screen.render() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">for</span> action <span class="syn-kw">in</span> screen.next(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> {
+            <span class="syn-kw">if</span> action.kind == widgets.ACTION_ACTIVATE {
+                <span class="syn-kw">if</span> action.id == hide &amp;&amp; !disposed { hidden = !hidden
+                    screen.set_visible(left,!hidden) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    <span class="syn-kw">if</span> hidden { screen.set_text(hide,<span class="syn-str">"Show left"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> } <span class="syn-kw">else</span> { screen.set_text(hide,<span class="syn-str">"Hide left"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> } }
+                <span class="syn-kw">if</span> action.id == reload { screen.webview_command(right,<span class="syn-str">"reload"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+                <span class="syn-kw">if</span> action.id == close &amp;&amp; !disposed { screen.close_webview(left) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    disposed = true
+                    screen.set_enabled(hide,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                    screen.set_enabled(close,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+                <span class="syn-kw">if</span> action.id == modal_button { screen.open(modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+                <span class="syn-kw">if</span> action.id == dismiss { screen.close_overlay(modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+            }
+            <span class="syn-kw">if</span> action.kind == widgets.ACTION_WEB_LOADED { screen.set_text(status,<span class="syn-str">"WebView "</span> + str(action.id) + <span class="syn-str">" loaded independently"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+            <span class="syn-kw">if</span> action.kind == widgets.ACTION_WEB_FAILED { screen.set_text(status,<span class="syn-str">"WebView "</span> + str(action.id) + <span class="syn-str">" failed to load"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        }
+    }
+    screen.dispose()
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) { scene(events) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> } }
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"XUUI / WebView Components"</span>,1020,720) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> ui.register_content_plugin(ui.content_plugin_webview())
+    emits <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 64}
+    <span class="syn-kw">xu</span> ipc(app.event_ch,emits)
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
+</details>
+<details class="api-example" id="example-008f8a20c76f">
 <summary><code>16_ui_webview/text_input/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/854c7c3d617c7e28af9e62b9d4e6bf53e23dfdba/examples/16_ui_webview/text_input">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/text_input/main.xu" download>Download source</a></p>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/16_ui_webview/text_input">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/text_input/main.xu" download>Download source</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/text_input/main.xu"><code class="language-xu">@main
 <span class="syn-import"><span class="hash">#</span>ui</span>
 <span class="syn-import"><span class="hash">#</span>ui/draw</span>
@@ -106,298 +200,214 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
     <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
 </details>
-<details class="api-example" id="example-b1a0463173fe">
-<summary><code>16_ui_webview/workbench/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/854c7c3d617c7e28af9e62b9d4e6bf53e23dfdba/examples/16_ui_webview/workbench">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/main.xu" download>Download source</a></p>
-<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/workbench/main.xu"><code class="language-xu">@main
+<details class="api-example" id="example-6ee2790cc9f4">
+<summary><code>16_ui_webview/component_catalog/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/16_ui_webview/component_catalog">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_catalog/main.xu" download>Download source</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/component_catalog/main.xu"><code class="language-xu">@main
 <span class="syn-import"><span class="hash">#</span>ui</span>
-<span class="syn-import"><span class="hash">#</span>ui/draw</span>
-<span class="syn-import"><span class="hash">#</span>ui/layout</span>
 <span class="syn-import"><span class="hash">#</span>ui/widgets</span>
+<span class="syn-import"><span class="hash">#</span>ui/draw</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
 <span class="syn-import"><span class="hash">#</span>math</span>
 demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
+<span class="syn-cmt">// The model contains business choices and screen-local handles only.</span>
 <span class="syn-kw">struct</span> Model {
-    button widgets.Button
-    checkbox widgets.Checkbox
-    progress widgets.Progress
-    scroll widgets.Scroll
-    button_label draw.TextLayout
-    checkbox_label draw.TextLayout
-    theme widgets.Theme
-    context draw.Context
-    count <span class="syn-type">int</span>
-    message <span class="syn-type">string</span>
-    source <span class="syn-type">string</span>
-    images []draw.Image
-    header_id <span class="syn-type">int</span>
-    button_id <span class="syn-type">int</span>
-    check_id <span class="syn-type">int</span>
-    progress_id <span class="syn-type">int</span>
-    scroll_id <span class="syn-type">int</span>
-    row_ids []<span class="syn-type">int</span>
+    page <span class="syn-type">int</span>
+    theme <span class="syn-type">int</span>
+    nav []<span class="syn-type">int</span>
+    settings []<span class="syn-type">int</span>
+    pages []<span class="syn-type">int</span>
+    headings []<span class="syn-type">int</span>
+    captions []<span class="syn-type">int</span>
+    table <span class="syn-type">int</span>
+    tree <span class="syn-type">int</span>
+    pager <span class="syn-type">int</span>
+    crumbs <span class="syn-type">int</span>
+    combo <span class="syn-type">int</span>
+    multi <span class="syn-type">int</span>
+    color <span class="syn-type">int</span>
+    spinner <span class="syn-type">int</span>
+    overlay_buttons []<span class="syn-type">int</span>
+    popover <span class="syn-type">int</span>
+    modal <span class="syn-type">int</span>
+    modal_actions []<span class="syn-type">int</span>
+    value_label <span class="syn-type">int</span>
+    note <span class="syn-type">int</span>
 }
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) button_input(kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) widgets.Action {
-    button <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.button
-    <span class="syn-flow">&lt;&lt;</span> button.route(kind,input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) checkbox_input(kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) widgets.Action {
-    checkbox <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.checkbox
-    <span class="syn-flow">&lt;&lt;</span> checkbox.route(kind,input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) scroll_input(kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) widgets.Action {
-    scroll <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.scroll
-    <span class="syn-flow">&lt;&lt;</span> scroll.route(kind,input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) input(id <span class="syn-type">int</span>,kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) widgets.Action {
-    <span class="syn-kw">if</span> id == model.button_id { <span class="syn-flow">&lt;&lt;</span> model.button_input(kind,input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-    <span class="syn-kw">if</span> id == model.check_id { <span class="syn-flow">&lt;&lt;</span> model.checkbox_input(kind,input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-    <span class="syn-kw">if</span> id == model.scroll_id { <span class="syn-flow">&lt;&lt;</span> model.scroll_input(kind,input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-    <span class="syn-flow">&lt;&lt;</span> widgets.Action{kind: widgets.ACTION_NONE,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) place_button(bounds &amp;layout.Rect) <span class="syn-type">int</span> {
-    button <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.button
-    <span class="syn-flow">&lt;&lt;</span> button.set_bounds(bounds) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) place_checkbox(bounds &amp;layout.Rect) <span class="syn-type">int</span> {
-    checkbox <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.checkbox
-    <span class="syn-flow">&lt;&lt;</span> checkbox.set_bounds(bounds) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) place_progress(bounds &amp;layout.Rect) <span class="syn-type">int</span> {
-    progress <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.progress
-    <span class="syn-flow">&lt;&lt;</span> progress.set_bounds(bounds) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) paint(id <span class="syn-type">int</span>,bounds &amp;layout.Rect,frame <span class="syn-borrow">&amp;mut</span> draw.Frame) <span class="syn-type">bool</span> {
-    model.draw_node(id,bounds,frame) <span class="syn-kw">or</span> (err) { eprintln(err.msg())
-        <span class="syn-flow">&lt;&lt;</span> false }
-    <span class="syn-flow">&lt;&lt;</span> true
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) draw_node(id <span class="syn-type">int</span>,bounds &amp;layout.Rect,frame <span class="syn-borrow">&amp;mut</span> draw.Frame) <span class="syn-type">int</span> {
-    <span class="syn-kw">if</span> id == model.header_id {
-        demo.text(&amp;model.context,frame,0.0,0.0,14.0,demo.accent(),<span class="syn-str">"07 / IMAGE WORKBENCH"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        demo.text(&amp;model.context,frame,0.0,28.0,24.0,demo.ink(),<span class="syn-str">"Image workbench"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        demo.text(&amp;model.context,frame,0.0,58.0,13.0,demo.muted(),model.message + <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    } <span class="syn-kw">else</span> <span class="syn-kw">if</span> id == model.button_id {
-        model.place_button(bounds) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        model.button.paint(frame,&amp;model.button_label,&amp;model.theme) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    } <span class="syn-kw">else</span> <span class="syn-kw">if</span> id == model.check_id {
-        model.place_checkbox(bounds) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        model.checkbox.paint(frame,&amp;model.checkbox_label,&amp;model.theme) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    } <span class="syn-kw">else</span> <span class="syn-kw">if</span> id == model.progress_id {
-        model.place_progress(bounds) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        model.progress.paint(frame,&amp;model.theme) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    } <span class="syn-kw">else</span> <span class="syn-kw">if</span> id == model.scroll_id {
-        scroll <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.scroll
-        scroll.set_bounds(bounds) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        frame.fill_rect(0.0,0.0,bounds.width,bounds.height,draw.rgb(26,37,50)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    } <span class="syn-kw">else</span> <span class="syn-kw">if</span> model.row_ids.len &gt; 0 &amp;&amp; id == model.row_ids[0] {
-        <span class="syn-kw">if</span> model.images.len &gt; 0 {
-            image <span class="syn-flow">:=</span> model.images[0]
-            scale <span class="syn-flow">:=</span> math.min(bounds.width / <span class="syn-type">f64</span>(image.width),bounds.height / <span class="syn-type">f64</span>(image.height))
-            frame.image(&amp;image,0.0,0.0,<span class="syn-type">f64</span>(image.width) * scale,<span class="syn-type">f64</span>(image.height) * scale) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        } <span class="syn-kw">else</span> { demo.text(&amp;model.context,frame,12.0,20.0,17.0,demo.muted(),<span class="syn-str">"The selected image appears here."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+<span class="syn-kw">fn</span> (m &amp;Model) fill_table(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen) <span class="syn-type">int</span> {
+    names <span class="syn-flow">:=</span> [<span class="syn-str">"Compiler"</span>,<span class="syn-str">"Widgets"</span>,<span class="syn-str">"Runtime"</span>,<span class="syn-str">"Desktop"</span>,<span class="syn-str">"Examples"</span>,<span class="syn-str">"Tooling"</span>]
+    states <span class="syn-flow">:=</span> [<span class="syn-str">"Ready"</span>,<span class="syn-str">"Review"</span>,<span class="syn-str">"Ready"</span>,<span class="syn-str">"Draft"</span>,<span class="syn-str">"Ready"</span>,<span class="syn-str">"Review"</span>]
+    clocks <span class="syn-flow">:=</span> [<span class="syn-str">"10:30"</span>,<span class="syn-str">"11:15"</span>,<span class="syn-str">"09:40"</span>,<span class="syn-str">"12:00"</span>,<span class="syn-str">"10:05"</span>,<span class="syn-str">"08:50"</span>]
+    <span class="syn-kw">mut</span> order <span class="syn-flow">:=</span> [0,1,2,3,4,5]
+    col <span class="syn-flow">:=</span> screen.sort_column(m.table) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> col == 0 { order = [0,3,4,2,5,1] }
+    <span class="syn-kw">if</span> col == 1 { order = [3,0,2,4,1,5] }
+    <span class="syn-kw">if</span> col == 2 { order = [5,2,4,0,1,3] }
+    desc <span class="syn-flow">:=</span> screen.sort_descending(m.table) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    page <span class="syn-flow">:=</span> (screen.selected(m.pager) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) + 1
+    <span class="syn-kw">for</span> row <span class="syn-kw">in</span> 0:6 {
+        <span class="syn-kw">mut</span> slot <span class="syn-flow">:=</span> row
+        <span class="syn-kw">if</span> desc { slot = 5 - row }
+        i <span class="syn-flow">:=</span> order[slot]
+        screen.set_cell(m.table,row,0,names[i] + <span class="syn-str">" / "</span> + str(page)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.set_cell(m.table,row,1,states[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.set_cell(m.table,row,2,clocks[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     }
     <span class="syn-flow">&lt;&lt;</span> 0
 }
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) progress_value(value <span class="syn-type">f64</span>) <span class="syn-type">int</span> {
-    progress <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.progress
-    <span class="syn-flow">&lt;&lt;</span> progress.set_value(value) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) retire_image(index <span class="syn-type">int</span>) <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> image <span class="syn-flow">:=</span> model.images[index]
-    image.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    model.images[index] = image
+<span class="syn-kw">fn</span> (m <span class="syn-borrow">&amp;mut</span> Model) layout(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen) <span class="syn-type">int</span> {
+    width <span class="syn-flow">:=</span> screen.width()
+    height <span class="syn-flow">:=</span> screen.height()
+    row <span class="syn-flow">:=</span> screen.row_height()
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:3 {
+        screen.place(m.nav[i],28.0 + <span class="syn-type">f64</span>(i) * 124.0,142.0,112.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.set_selected_button(m.nav[i],m.page == i) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.set_visible(m.pages[i],m.page == i) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(m.settings[i],width - 420.0 + <span class="syn-type">f64</span>(i) * 132.0,142.0,120.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    screen.place(m.headings[0],28.0,26.0,width - 56.0,24.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.headings[1],28.0,61.0,width - 56.0,46.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.headings[2],28.0,108.0,width - 56.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.crumbs,28.0,204.0,width - 56.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.note,28.0,height - 48.0,width - 56.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    content <span class="syn-flow">:=</span> math.max(160.0,height - 420.0)
+    screen.place(m.captions[0],28.0,253.0,width * 0.62 - 40.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.captions[1],width * 0.62 + 12.0,253.0,width * 0.38 - 40.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.table,28.0,280.0,width * 0.62 - 40.0,content) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.tree,width * 0.62 + 12.0,280.0,width * 0.38 - 40.0,content) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.pager,28.0,height - 118.0,380.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.captions[2],28.0,253.0,400.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.captions[3],28.0,363.0,400.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.captions[4],450.0,253.0,width - 478.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.combo,28.0,280.0,370.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.multi,28.0,390.0,370.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.color,450.0,280.0,width - 478.0,240.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.spinner,28.0,562.0,28.0,28.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.captions[5],70.0,568.0,width - 98.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.value_label,28.0,620.0,width - 56.0,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.captions[6],28.0,253.0,width - 56.0,30.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:4 { screen.place(m.overlay_buttons[i],28.0 + <span class="syn-type">f64</span>(i) * 208.0,280.0,190.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(m.captions[i + 7],28.0,365.0 + <span class="syn-type">f64</span>(i) * 40.0,width - 56.0,32.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    screen.place(m.modal_actions[0],24.0,210.0,194.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.modal_actions[1],234.0,210.0,194.0,row) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-flow">&lt;&lt;</span> 0
 }
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) replace_image(image draw.Image) <span class="syn-type">int</span> {
-    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:model.images.len { model.retire_image(i) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-    model.images = []draw.Image{}
-    model.images.push(image)
+<span class="syn-kw">fn</span> (m <span class="syn-borrow">&amp;mut</span> Model) update(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen,action widgets.Action) <span class="syn-type">int</span> {
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_KEY &amp;&amp; <span class="syn-type">int</span>(action.value) == ui.KEY_ESCAPE { screen.close() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_ACTIVATE {
+        <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:3 { <span class="syn-kw">if</span> action.id == m.nav[i] { m.page = i } }
+        <span class="syn-kw">if</span> action.id == m.settings[0] { m.theme = (m.theme + 1) % 3
+            current <span class="syn-flow">:=</span> screen.styles()
+            <span class="syn-kw">mut</span> next <span class="syn-flow">:=</span> widgets.preset_styles(m.theme) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            next.text_scale = current.text_scale
+            next.density = current.density
+            screen.set_styles(&amp;next) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> action.id == m.settings[1] || action.id == m.settings[2] {
+            <span class="syn-kw">mut</span> styles <span class="syn-flow">:=</span> screen.styles()
+            <span class="syn-kw">if</span> action.id == m.settings[1] { <span class="syn-kw">if</span> styles.text_scale == 1.0 { styles.text_scale = 1.4 }
+                <span class="syn-kw">else</span> { styles.text_scale = 1.0 } }
+            <span class="syn-kw">else</span> { <span class="syn-kw">if</span> styles.density == 1.0 { styles.density = 0.8 }
+                <span class="syn-kw">else</span> { styles.density = 1.0 } }
+            screen.set_styles(&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        }
+        <span class="syn-kw">if</span> action.id == m.table { m.fill_table(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> action.id == m.overlay_buttons[0] { screen.open(m.popover) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> action.id == m.overlay_buttons[1] { screen.open(m.modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> action.id == m.overlay_buttons[2] { _ <span class="syn-flow">:=</span> screen.notify(<span class="syn-str">"All components share the same theme."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> action.id == m.modal_actions[0] || action.id == m.modal_actions[1] { screen.close_overlay(m.modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">if</span> action.id == m.modal_actions[0] { _ <span class="syn-flow">:=</span> screen.notify(<span class="syn-str">"Action completed."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> } }
+    }
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_CHANGE {
+        <span class="syn-kw">if</span> action.id == m.pager { m.fill_table(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> action.id == m.combo || action.id == m.multi {
+            value <span class="syn-flow">:=</span> screen.text_value(m.combo) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            count <span class="syn-flow">:=</span> (screen.values(m.multi) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>).len
+            screen.set_text(m.value_label,<span class="syn-str">"Value: "</span> + value + <span class="syn-str">"    Selected tags: "</span> + str(count)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        }
+        screen.set_text(m.note,<span class="syn-str">"Value changed · Tab / Shift+Tab · Escape"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
     <span class="syn-flow">&lt;&lt;</span> 0
 }
-<span class="syn-kw">fn</span> preview_paint(window &amp;ui.Window,path &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span> {
-    context <span class="syn-flow">:=</span> draw.window_context(window) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> image <span class="syn-flow">:=</span> context.load_image(path) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(256)
-    frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    scale <span class="syn-flow">:=</span> math.min(<span class="syn-type">f64</span>(window.width - 40) / <span class="syn-type">f64</span>(image.width),<span class="syn-type">f64</span>(window.height - 40) / <span class="syn-type">f64</span>(image.height))
-    frame.image(&amp;image,20.0,20.0,<span class="syn-type">f64</span>(image.width) * scale,<span class="syn-type">f64</span>(image.height) * scale) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    frame.dispose()
-    image.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-flow">&lt;&lt;</span> 0
+<span class="syn-kw">fn</span> new_model(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen) Model {
+    <span class="syn-kw">mut</span> nav <span class="syn-flow">:=</span> []<span class="syn-type">int</span>{}
+    <span class="syn-kw">for</span> text <span class="syn-kw">in</span> [<span class="syn-str">"Data"</span>,<span class="syn-str">"Inputs"</span>,<span class="syn-str">"Overlays"</span>] { nav.push(screen.button(text) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) }
+    <span class="syn-kw">mut</span> settings <span class="syn-flow">:=</span> []<span class="syn-type">int</span>{}
+    <span class="syn-kw">for</span> text <span class="syn-kw">in</span> [<span class="syn-str">"Theme"</span>,<span class="syn-str">"Text size"</span>,<span class="syn-str">"Density"</span>] { settings.push(screen.button(text) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) }
+    <span class="syn-kw">mut</span> pages <span class="syn-flow">:=</span> []<span class="syn-type">int</span>{}
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:3 { pages.push(screen.group() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) }
+    headings <span class="syn-flow">:=</span> [screen.label(<span class="syn-str">"XUUI / COMPONENT CATALOG"</span>,12.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
+        screen.label(<span class="syn-str">"Native components, working together."</span>,26.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
+        screen.label(<span class="syn-str">"Keyboard, pointer, themes, typography and density — managed by Screen."</span>,13.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>]
+    crumbs <span class="syn-flow">:=</span> screen.breadcrumbs(&amp;[<span class="syn-str">"Workspace"</span>,<span class="syn-str">"UI"</span>,<span class="syn-str">"Component catalog"</span>]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    note <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Choose a category · Tab / Shift+Tab · Escape"</span>,13.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    table <span class="syn-flow">:=</span> screen.table(&amp;[<span class="syn-str">"Module"</span>,<span class="syn-str">"State"</span>,<span class="syn-str">"Updated"</span>],6,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    tree <span class="syn-flow">:=</span> screen.tree() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    pager <span class="syn-flow">:=</span> screen.pagination(3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    combo <span class="syn-flow">:=</span> screen.combo_box(&amp;[<span class="syn-str">"Compiler"</span>,<span class="syn-str">"Widgets"</span>,<span class="syn-str">"Runtime"</span>,<span class="syn-str">"Desktop"</span>,<span class="syn-str">"Examples"</span>,<span class="syn-str">"工具链"</span>],<span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    multi <span class="syn-flow">:=</span> screen.multi_select(&amp;[<span class="syn-str">"Native"</span>,<span class="syn-str">"Keyboard"</span>,<span class="syn-str">"IME"</span>,<span class="syn-str">"Theming"</span>,<span class="syn-str">"Motion"</span>]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_checked(multi,0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    color <span class="syn-flow">:=</span> screen.color_picker(draw.rgba(59,130,246,220)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    spinner <span class="syn-flow">:=</span> screen.spinner() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    value_label <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Value:    Selected tags: 1"</span>,14.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> overlay_buttons <span class="syn-flow">:=</span> []<span class="syn-type">int</span>{}
+    <span class="syn-kw">for</span> text <span class="syn-kw">in</span> [<span class="syn-str">"Open popover"</span>,<span class="syn-str">"Open modal"</span>,<span class="syn-str">"Show toast"</span>,<span class="syn-str">"Hover / focus me"</span>] { overlay_buttons.push(screen.button(text) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) }
+    popover <span class="syn-flow">:=</span> screen.popover(overlay_buttons[0],<span class="syn-str">"An anchored panel for related actions."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    modal <span class="syn-flow">:=</span> screen.modal(<span class="syn-str">"Keep focus where it belongs"</span>,<span class="syn-str">"Screen owns focus, input isolation and restoration."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> screen.tooltip(overlay_buttons[3],<span class="syn-str">"Pointer and keyboard share this hint."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    modal_actions <span class="syn-flow">:=</span> [screen.button(<span class="syn-str">"Complete action"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,screen.button(<span class="syn-str">"Close"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>]
+    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> modal_actions { screen.set_parent(id,modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">mut</span> captions <span class="syn-flow">:=</span> []<span class="syn-type">int</span>{}
+    <span class="syn-kw">for</span> text <span class="syn-kw">in</span> [<span class="syn-str">"TABLE / sort columns · select rows · scroll"</span>,<span class="syn-str">"TREE / expand · navigate"</span>,
+        <span class="syn-str">"COMBO BOX / type to filter · native IME"</span>,<span class="syn-str">"MULTI SELECT / independent choices"</span>,
+        <span class="syn-str">"COLOR PICKER / red · green · blue · alpha"</span>,<span class="syn-str">"Loading indicator · respects reduced motion"</span>,
+        <span class="syn-str">"OVERLAYS / anchor placement · focus ownership · timed feedback"</span>,
+        <span class="syn-str">"Popover: anchored to its trigger and constrained to the canvas."</span>,
+        <span class="syn-str">"Modal: Tab stays inside; Escape closes; focus returns to the trigger."</span>,
+        <span class="syn-str">"Toast: closes automatically; hover or focus pauses its lifetime."</span>,
+        <span class="syn-str">"Tooltip: hover or keyboard focus reveals a delayed explanation."</span>] { captions.push(screen.label(text,13.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) }
+    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> [table,tree,pager,captions[0],captions[1]] { screen.set_parent(id,pages[0]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> [combo,multi,color,spinner,value_label,captions[2],captions[3],captions[4],captions[5]] { screen.set_parent(id,pages[1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> overlay_buttons { screen.set_parent(id,pages[2]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    screen.set_parent(popover,pages[2]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 6:11 { screen.set_parent(captions[i],pages[2]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    root <span class="syn-flow">:=</span> screen.tree_add(tree,-1,<span class="syn-str">"XU Workspace"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    compiler <span class="syn-flow">:=</span> screen.tree_add(tree,root,<span class="syn-str">"Compiler"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> screen.tree_add(tree,compiler,<span class="syn-str">"Frontend"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> screen.tree_add(tree,compiler,<span class="syn-str">"Native backend"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    ui_root <span class="syn-flow">:=</span> screen.tree_add(tree,root,<span class="syn-str">"UI"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> screen.tree_add(tree,ui_root,<span class="syn-str">"Widgets"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> screen.tree_add(tree,ui_root,<span class="syn-str">"Drawing"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> screen.tree_add(tree,root,<span class="syn-str">"Examples"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> node <span class="syn-kw">in</span> [root,compiler,ui_root] { screen.set_expanded(tree,node,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    m <span class="syn-flow">:=</span> Model{page: 0,theme: 1,nav: nav,settings: settings,pages: pages,headings: headings,captions: captions,
+        table: table,tree: tree,pager: pager,crumbs: crumbs,combo: combo,multi: multi,color: color,spinner: spinner,
+        overlay_buttons: overlay_buttons,popover: popover,modal: modal,modal_actions: modal_actions,value_label: value_label,note: note}
+    m.fill_table(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> m
 }
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) acknowledge_button() {
-    control <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.button
-    control.painted()
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) acknowledge_checkbox() {
-    control <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.checkbox
-    control.painted()
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) acknowledge_progress() {
-    control <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.progress
-    control.painted()
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) acknowledge_scroll() {
-    control <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.scroll
-    control.painted()
-}
-<span class="syn-kw">fn</span> (model <span class="syn-borrow">&amp;mut</span> Model) acknowledge() {
-    model.acknowledge_button()
-    model.acknowledge_checkbox()
-    model.acknowledge_progress()
-    model.acknowledge_scroll()
-}
-<span class="syn-kw">fn</span> scene(ech <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
-    ready <span class="syn-flow">:=</span> demo.ready(ech) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+<span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
-    identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    host <span class="syn-flow">:=</span> widgets.Host{context: context,identity: identity}
-    <span class="syn-kw">mut</span> column <span class="syn-flow">:=</span> layout.box_style(layout.BOX_COLUMN)
-    column.padding = layout.insets(28.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    column.gap = 14.0
-    column.cross_alignment = layout.CROSS_STRETCH
-    <span class="syn-kw">mut</span> view <span class="syn-flow">:=</span> host.view(&amp;column,demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    leaf <span class="syn-flow">:=</span> layout.box_style(layout.BOX_LEAF)
-    header <span class="syn-flow">:=</span> view.add(view.root(),&amp;leaf,&amp;layout.Size{width: 400.0,height: 88.0}) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    button_id <span class="syn-flow">:=</span> view.add(view.root(),&amp;leaf,&amp;layout.Size{width: 280.0,height: 44.0}) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    check_id <span class="syn-flow">:=</span> view.add(view.root(),&amp;leaf,&amp;layout.Size{width: 280.0,height: 40.0}) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    progress_id <span class="syn-flow">:=</span> view.add(view.root(),&amp;leaf,&amp;layout.Size{width: 280.0,height: 12.0}) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> viewport <span class="syn-flow">:=</span> layout.box_style(layout.BOX_COLUMN)
-    viewport.height = 260.0
-    viewport.clip = true
-    viewport.cross_alignment = layout.CROSS_STRETCH
-    viewport.gap = 6.0
-    scroll_id <span class="syn-flow">:=</span> view.add(view.root(),&amp;viewport,&amp;layout.Size{width: 400.0,height: 260.0}) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> []<span class="syn-type">int</span>{}
-    <span class="syn-kw">for</span> _ <span class="syn-kw">in</span> 0:1 {
-        row <span class="syn-flow">:=</span> view.add(scroll_id,&amp;leaf,&amp;layout.Size{width: 400.0,height: 250.0}) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        rows.push(row)
-        view.set_boundary(row,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    }
-    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> [header,button_id,check_id,progress_id,scroll_id] { view.set_boundary(id,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> [button_id,check_id,scroll_id] { view.set_input(id,true,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-    empty <span class="syn-flow">:=</span> layout.Rect{x: 0.0,y: 0.0,width: 0.0,height: 0.0}
-    options <span class="syn-flow">:=</span> draw.text_options(15.0)
-    first <span class="syn-flow">:=</span> <span class="syn-str">"Open a PNG or JPEG"</span>
-    second <span class="syn-flow">:=</span> <span class="syn-str">"Show a separate preview window"</span>
-    <span class="syn-kw">mut</span> model <span class="syn-flow">:=</span> Model{button: widgets.button(&amp;identity,button_id,&amp;empty) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
-        checkbox: widgets.checkbox(&amp;identity,check_id,&amp;empty,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
-        progress: widgets.progress(&amp;empty,0.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
-        scroll: widgets.scroll(&amp;identity,scroll_id,&amp;empty,widgets.AXIS_VERTICAL,250.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
-        button_label: context.layout_text(&amp;first,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
-        checkbox_label: context.layout_text(&amp;second,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
-        theme: widgets.default_theme(),context: context,count: 0,message: <span class="syn-str">"Open a local image to begin."</span>,source: <span class="syn-str">""</span>,images: []draw.Image{},header_id: header,button_id: button_id,check_id: check_id,progress_id: progress_id,scroll_id: scroll_id,row_ids: rows}
-    <span class="syn-kw">mut</span> width <span class="syn-flow">:=</span> 900.0
-    <span class="syn-kw">mut</span> height <span class="syn-flow">:=</span> 700.0
-    <span class="syn-kw">mut</span> native <span class="syn-flow">:=</span> demo.windows(ech)
-    <span class="syn-kw">mut</span> preview <span class="syn-flow">:=</span> ui.Window{id: 0,generation: 0,title: <span class="syn-str">"Preview"</span>,width: 720,height: 500,content_kind: ui.CONTENT_DRAW,content_backend_id: 0,closed: 1}
-    <span class="syn-kw">mut</span> pending <span class="syn-flow">:=</span> ui.Request{id: 0,window_id: 0,canvas_id: 0,generation: 0,kind: 0}
-    <span class="syn-kw">while</span> true {
-        constraints <span class="syn-flow">:=</span> layout.tight(width,height) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        submitted <span class="syn-flow">:=</span> widgets.present(<span class="syn-borrow">mut &amp;</span>view,&amp;constraints,<span class="syn-borrow">mut &amp;</span>model) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        <span class="syn-kw">if</span> submitted { model.acknowledge() }
-        event <span class="syn-flow">:=</span> demo.next(ech)
-        <span class="syn-kw">if</span> event.kind == ui.EV_EXIT { <span class="syn-flow">&lt;-</span> }
-        <span class="syn-kw">if</span> preview.id &gt; 0 &amp;&amp; event.window_id == preview.id {
-            <span class="syn-kw">if</span> event.kind == ui.EV_CLOSED || event.kind == ui.EV_WINDOW_FAILED { preview.closed = 1 }
-            <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_READY &amp;&amp; model.source.len &gt; 0 {
-                preview.content_command(<span class="syn-str">"input_enabled\t1"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                preview.content_command(<span class="syn-str">"pan_enabled\t0"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                preview_paint(&amp;preview,&amp;model.source) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-            <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_METRICS {
-                metrics <span class="syn-flow">:=</span> ui.metrics_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                <span class="syn-kw">if</span> metrics.width &gt; 40.0 &amp;&amp; metrics.height &gt; 40.0 { preview.width = <span class="syn-type">int</span>(metrics.width)
-                    preview.height = <span class="syn-type">int</span>(metrics.height)
-                    <span class="syn-kw">if</span> model.source.len &gt; 0 { preview_paint(&amp;preview,&amp;model.source) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> } }
-            }
-            <span class="syn-flow">-&gt;</span>
-        }
-        <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
-        <span class="syn-kw">if</span> event.kind == ui.EV_REQUEST {
-            result <span class="syn-flow">:=</span> ui.request_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-            <span class="syn-kw">if</span> result.matches(&amp;pending) {
-                pending.id = 0
-                model.message = <span class="syn-str">"Selection cancelled or failed."</span>
-                <span class="syn-kw">if</span> result.status == ui.REQUEST_COMPLETED {
-                    paths <span class="syn-flow">:=</span> ui.file_paths(&amp;result) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                    <span class="syn-kw">if</span> paths.len &gt; 0 {
-                        path <span class="syn-flow">:=</span> paths[0] + <span class="syn-str">""</span>
-                        image <span class="syn-flow">:=</span> context.load_image(&amp;path) <span class="syn-kw">or</span> (err) { model.message = err.msg()
-                            view.mark_paint(header) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                            <span class="syn-flow">-&gt;</span> }
-                        model.replace_image(image) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                        model.source = path + <span class="syn-str">""</span>
-                        model.message = <span class="syn-str">"Loaded "</span> + str(image.width) + <span class="syn-str">" x "</span> + str(image.height) + <span class="syn-str">" pixels"</span>
-                        println(model.message + <span class="syn-str">""</span>)
-                        model.progress_value(1.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                        view.mark_paint(model.row_ids[0]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                        <span class="syn-kw">if</span> model.checkbox.value() {
-                            <span class="syn-kw">if</span> preview.closed != 0 { preview = native.open_content_window(ui.WindowOpts{title: <span class="syn-str">"Xu UI / Image Preview"</span>,width: 720,height: 500},ui.CONTENT_DRAW) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-                            <span class="syn-kw">else</span> { preview_paint(&amp;preview,&amp;path) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                                preview.focus() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-                        }
-                    }
-                }
-                view.mark_paint(header) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                view.mark_paint(progress_id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-            }
-        }
-        <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_METRICS {
-            metrics <span class="syn-flow">:=</span> ui.metrics_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-            <span class="syn-kw">if</span> metrics.width &gt; 0.0 &amp;&amp; metrics.height &gt; 0.0 { width = metrics.width
-                height = metrics.height }
-        }
-        actions <span class="syn-flow">:=</span> widgets.dispatch_event(<span class="syn-borrow">mut &amp;</span>view,&amp;event,<span class="syn-borrow">mut &amp;</span>model) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        <span class="syn-kw">for</span> action <span class="syn-kw">in</span> actions {
-            <span class="syn-kw">if</span> action.kind == widgets.ACTION_ACTIVATE &amp;&amp; pending.id == 0 {
-                <span class="syn-kw">mut</span> options <span class="syn-flow">:=</span> ui.file_dialog_options()
-                options.title = <span class="syn-str">"Open an image"</span>
-                options.filters = [ui.FileFilter{label: <span class="syn-str">"Images"</span>,extensions: [<span class="syn-str">"png"</span>,<span class="syn-str">"jpg"</span>,<span class="syn-str">"jpeg"</span>]}]
-                pending = ui.open_files_async(&amp;identity,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                model.message = <span class="syn-str">"Choose a PNG or JPEG in the native dialog."</span>
-                model.progress_value(0.2) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                view.mark_paint(header) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-                view.mark_paint(progress_id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-            }
-            <span class="syn-kw">if</span> action.kind == widgets.ACTION_SCROLL { view.set_scroll(scroll_id,0.0,action.value) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-        }
-        <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_CLOSED { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-            <span class="syn-flow">&lt;-</span> }
-        <span class="syn-kw">if</span> ui.is_input_event(event.kind) {
-            input <span class="syn-flow">:=</span> ui.input_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-            <span class="syn-kw">if</span> input.kind == ui.EV_KEY_DOWN &amp;&amp; input.key == ui.KEY_ESCAPE { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-        }
-        stats <span class="syn-flow">:=</span> view.stats()
-        <span class="syn-kw">if</span> stats.recorded_boundaries &gt; 0 || stats.reused_boundaries &gt; 0 {
-            println(<span class="syn-str">"View: "</span> + str(stats.recorded_boundaries) + <span class="syn-str">" recorded / "</span> + str(stats.reused_boundaries) + <span class="syn-str">" reused boundaries"</span>)
-        }
-    }
-    <span class="syn-kw">if</span> pending.id &gt; 0 { _ <span class="syn-flow">:=</span> pending.cancel() }
-    view.dispose()
-    <span class="syn-cmt">// Native close has already revoked this canvas's images and text layouts.</span>
-    <span class="syn-kw">if</span> demo.alive(&amp;identity) {
-        <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:model.images.len { model.retire_image(i) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-        label <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.button_label
-        label.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        check_label <span class="syn-flow">:=</span> <span class="syn-borrow">mut &amp;</span>model.checkbox_label
-        check_label.dispose() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    }
-    <span class="syn-flow">&lt;&lt;</span> 0
+    <span class="syn-kw">mut</span> screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.resize(1040.0,820.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_min_size(1040,760) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> model <span class="syn-flow">:=</span> new_model(<span class="syn-borrow">mut &amp;</span>screen) <span class="syn-kw">or</span> (err) { screen.dispose()
+        <span class="syn-flow">&gt;&gt;</span> err }
+    <span class="syn-flow">&lt;&lt;</span> widgets.run_screen(<span class="syn-borrow">mut &amp;</span>screen,events,<span class="syn-borrow">mut &amp;</span>model) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
-<span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+<span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) { scene(events) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
-<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Retained Image Workbench"</span>,900,700) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> { <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Component Catalog"</span>,1040,820) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
-    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-}
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
     <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
 </details>
+<details class="api-example"><summary>More related examples</summary><ul>
+<li id="example-b1a0463173fe"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/16_ui_webview/workbench"><code>16_ui_webview/workbench/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/main.xu" download>Download source</a></li>
+<li id="example-a2be48ce1c23"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/16_ui_webview/component_workshop"><code>16_ui_webview/component_workshop/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/main.xu" download>Download source</a></li>
+</ul></details>
 </section>
 <h2 id="api-declarations">API declarations</h2>
 <article class="api-item" id="fma">
@@ -453,6 +463,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>f64 — a value of this type</p>
+<p><a href="#example-fecca66f5617">See usage example</a></p>
 </article>
 <article class="api-item" id="floor">
 <h2><code>floor</code></h2>
@@ -477,6 +488,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>f64 — a value of this type</p>
+<p><a href="#example-a2be48ce1c23">See usage example</a></p>
 </article>
 <article class="api-item" id="sqrt">
 <h2><code>sqrt</code></h2>
@@ -581,6 +593,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>bool — true or false</p>
+<p><a href="#example-a2be48ce1c23">See usage example</a></p>
 </article>
 <article class="api-item" id="struct-Frexp">
 <h2><code>struct Frexp</code></h2>
@@ -658,6 +671,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>bool — true or false</p>
+<p><a href="#example-a2be48ce1c23">See usage example</a></p>
 </article>
 <article class="api-item" id="copysign">
 <h2><code>copysign</code></h2>
@@ -708,6 +722,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>f64 — a value of this type</p>
+<p><a href="#example-a2be48ce1c23">See usage example</a></p>
 </article>
 <article class="api-item" id="round_to_even">
 <h2><code>round_to_even</code></h2>
@@ -732,6 +747,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>f64 — a value of this type</p>
+<p><a href="#example-a2be48ce1c23">See usage example</a></p>
 </article>
 <article class="api-item" id="cos">
 <h2><code>cos</code></h2>
@@ -744,6 +760,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>f64 — a value of this type</p>
+<p><a href="#example-a2be48ce1c23">See usage example</a></p>
 </article>
 <article class="api-item" id="tan">
 <h2><code>tan</code></h2>

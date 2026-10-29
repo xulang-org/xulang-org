@@ -9,7 +9,7 @@
 
 fn configure(view &amp;mut widgets.View) int {
     mut themes := widgets.style_switcher()
-    themes.use_preset(widgets.theme_light) or &gt;&gt;
+    themes.use_preset(widgets.THEME_LIGHT) or &gt;&gt;
     themes.set_text_scale(1.2) or &gt;&gt;
     themes.set_density(0.85) or &gt;&gt;
     themes.apply(view) or &gt;&gt;
@@ -18,3 +18,31 @@ fn configure(view &amp;mut widgets.View) int {
     &lt;&lt; 0
 }
 fn main() int { &lt;&lt; 0 }</code></pre></div>
+
+<h2 id="component-workshop">组件工作坊：图文按钮、Tooltip 与密码</h2>
+<p><a href="#example-a2be48ce1c23">component_workshop 完整工程与源码</a>提供 46 个入口，可切换主题、密度、100%/140%/200% 字号以及禁用、只读和错误状态。需要与源码配套的 Xu 0.10.11；Windows/Linux 的交叉构建不等于目标机器 GUI 验收。</p>
+<p><code>Screen.button_with_icon()</code> 创建图文按钮，<code>icon_button()</code> 创建纯图标按钮。每个按钮保存自己的样式快照；分别设置 <code>icon_size</code> 和 <code>ICON_LEADING/TRAILING/ABOVE/BELOW</code>，再用 <code>measure_button()</code> 获取内容尺寸并放置，避免示例按钮占满整行。资源随 <code>--www</code> 嵌入，下面的代码需要 <code>www/logo.png</code>。</p>
+<p>Tooltip 默认上方居中；<code>set_tooltip_placement()</code> 设置四方向和边缘翻转。普通悬停约 500 ms 显示，键盘或显式焦点立即显示；移出、点击或滚动时收起。Escape 抑制当前这一轮提示，离开重入或重新聚焦后恢复。完全滚出裁剪区域的锚点不显示提示。</p>
+<p><code>password_input()</code> 是单行 Input 的真实密码模式，每个 Unicode 字素对应一个圆点。<code>set_password_visible()</code> 显隐切换保留值和选择；支持粘贴，显文时也禁止复制和剪切。原生周围文字查询和 XACP 节点文本不返回密码；<code>text_value()</code> 仍为应用返回实际值。应用应自行管理值的保存和日志，不应将掩码误认为内存加密。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui/widgets
+
+fn configure(screen &amp;mut widgets.Screen, styles &amp;widgets.Styles) int {
+    button := screen.button_with_icon(&quot;logo.png&quot;, &quot;Build project&quot;) or &gt;&gt;
+    mut appearance := styles.button_variant(widgets.BUTTON_PRIMARY) or &gt;&gt;
+    appearance.icon_placement = widgets.ICON_ABOVE
+    appearance.icon_size = 32.0 * styles.text_scale
+    screen.set_control_style(button, &amp;appearance) or &gt;&gt;
+    size := screen.measure_button(button) or &gt;&gt;
+    screen.place(button, 24.0, 24.0, size.width, size.height) or &gt;&gt;
+    tip := screen.tooltip(button, &quot;Build project&quot;) or &gt;&gt;
+    mut placement := widgets.overlay_placement()
+    placement.side = widgets.OVERLAY_RIGHT
+    placement.align = widgets.OVERLAY_CENTER
+    screen.set_tooltip_placement(tip, &amp;placement) or &gt;&gt;
+    password := screen.password_input(&quot;&quot;) or &gt;&gt;
+    screen.place(password, 24.0, 160.0, 320.0, 48.0) or &gt;&gt;
+    &lt;&lt; 0
+}
+fn main() int { &lt;&lt; 0 }
+</code></pre></div>
