@@ -20,8 +20,6 @@ FAMILIES = {
     'multi_select': ('MultiSelect multi_select', ['multi_select.xu', 'choice_highlight.xu'], ()),
     'color_picker': ('ColorPicker color_picker', ['color_picker.xu', 'color_precision.xu'], ()),
     'chart': ('Chart chart chart_point chart_series chart_domain CHART_BAR', ['chart.xu', 'chart_data.xu', 'chart_input.xu', 'chart_paint.xu'], ()),
-    'overlay': ('Popover popover Modal modal Tooltip tooltip', ['overlays.xu', 'overlay_content.xu', 'tooltip.xu'], ()),
-    'toast': ('ToastHost toast_host notice', ['toast_host.xu'], ()),
 }
 
 
@@ -38,6 +36,7 @@ def identity(sig):
 
 
 def portable(sig):
+    if sig.startswith('fn screen_controls_pop('): return True
     return not any(x in sig for x in ('Screen', 'Host)', 'NativeView', ') event(', 'screen_', 'ui.Event'))
 
 
@@ -48,7 +47,8 @@ def extensions(xu, base, declarations):
     paths = sorted((xu / 'src/ui/widgets').glob('*.xu'))
     external = {'strings': ['mod.xu', 'view.xu', 'storage.xu'], 'strconv': ['mod.xu', 'format_float.xu', 'parse_float.xu', 'bignum.xu'],
                 'math': ['mod.xu'], 'time': ['mod.xu', 'typed.xu', 'constants.xu'],
-                'unicode/utf8': ['mod.xu'], 'unicode': ['mod.xu', 'tables.xu', 'case_tables.xu']}
+                'unicode/utf8': ['mod.xu'], 'unicode': ['mod.xu', 'tables.xu', 'case_tables.xu'],
+                'ui/layout': ['mod.xu'], 'ui/internal/codec': ['mod.xu']}
     paths += [xu / 'src' / module / filename for module, names in external.items() for filename in names]
     for path in paths:
         module = path.parent.relative_to(xu / 'src').as_posix()
@@ -82,7 +82,7 @@ def extensions(xu, base, declarations):
                 continue
             if receivers and not (receiver in receivers or name in ('Stepper', 'stepper', 'Select', 'select_box')):
                 continue
-            roots = set(FAMILIES[family][0].split()) | {'input','paint','paint_styled','apply_styles','set_focus','selected','value','values','active_key','layout','selection','set_cell','set_local_sort','set_sort_kind','set_series','open','close','is_open','set_delay'}
+            roots = set(FAMILIES[family][0].split()) | {'input','paint','paint_styled','apply_styles','set_focus','selected','value','values','active_key','layout','selection','set_cell','set_local_sort','set_sort_kind','set_series','open','close','is_open','hex'}
             if family in ('menu','chart'): roots.add('tick')
             if kind != 'fn' or name not in roots: continue
             chosen.add(key)
@@ -120,10 +120,11 @@ def extensions(xu, base, declarations):
                                 if owner:
                                     recv = resolve(owner)
                                     if recv: candidates = [k for k in methods.get((recv[0],name),[]) if pool[k][3] == recv[1]]
+                                    elif owner in external: candidates = functions.get((owner,name),[])
                                 else: candidates = functions.get((module,expression),[])
                                 if candidates:
                                     ret = candidates[0][1].rsplit(')',1)[-1].strip()
-                                    if ret: inferred = type_of(ret,module)
+                                    if ret: inferred = type_of(ret,candidates[0][0])
                         if inferred: variables[var] = inferred
                 for word in set(re.findall(r'\b\w+\b', body)):
                     symbol = symbols.get((module, word))
@@ -131,12 +132,12 @@ def extensions(xu, base, declarations):
                 for name in set(re.findall(r'(?<![.\w])([a-z_]\w*)\s*\(', body)):
                     chosen.update(k for k in functions.get((module, name), []) if k not in base_keys)
                 for alias, name in re.findall(r'\b(\w+)\.(\w+)', body):
-                    dependency = {'utf8': 'unicode/utf8'}.get(alias, alias)
+                    dependency = {'utf8': 'unicode/utf8', 'layout':'ui/layout', 'codec':'ui/internal/codec'}.get(alias, alias)
                     if dependency in external:
                         symbol = symbols.get((dependency,name))
                         if symbol and symbol not in base_keys: chosen.add(symbol)
                 for alias, name in re.findall(r'\b([\w.]+)\.(\w+)\s*\(', body):
-                    dependency = {'utf8': 'unicode/utf8'}.get(alias, alias)
+                    dependency = {'utf8': 'unicode/utf8', 'layout':'ui/layout', 'codec':'ui/internal/codec'}.get(alias, alias)
                     if dependency in external:
                         chosen.update(k for k in functions.get((dependency, name), []) if k not in base_keys)
                         continue

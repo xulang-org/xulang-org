@@ -302,15 +302,17 @@
       label(true);
       show(text('正在运行…', 'Running…'), false);
       status(text('运行中', 'Running'));
+      var program = activeSource || source.value;
+      var seconds = /(?:^|\n)\s*#ui\/widgets\b/.test(program) ? 30 : 10;
       timer = setTimeout(function () {
-        show(text('运行超过 10 秒，已停止。请检查循环或缩小输入。',
-          'Execution stopped after 10 seconds. Check loops or reduce the input.'), true);
+        show(text('运行超过 ' + seconds + ' 秒，已停止。请检查循环或缩小输入。',
+          'Execution stopped after ' + seconds + ' seconds. Check loops or reduce the input.'), true);
         if (inline) {
           clearWorker();
           status(text('已超时', 'Timed out'));
         } else startWorker();
-      }, 10000);
-      worker.postMessage({type: 'run', source: activeSource || source.value, events: clicks.slice()});
+      }, seconds * 1000);
+      worker.postMessage({type: 'run', source: program, events: clicks.slice()});
     }
     if (!inline) {
       button.addEventListener('click', run);
@@ -355,10 +357,10 @@
           appendInput({kind: kind,
             x: Math.floor((event.clientX - bounds.left) * 640 / bounds.width),
             y: Math.floor((event.clientY - bounds.top) * 360 / bounds.height),
-            button: event.button === 0 ? 1 : 0, buttons: event.buttons || 0});
+            button: event.button === 0 ? 1 : event.button === 2 ? 2 : event.button === 1 ? 3 : 0, buttons: event.buttons || 0});
         }
         canvas.addEventListener('pointerdown', function (event) {
-          if (!inputMode || event.button !== 0 || running || !interactive) return;
+          if (!inputMode || ![0,1,2].includes(event.button) || running || !interactive) return;
           event.preventDefault();
           if (canvas.focus) canvas.focus({preventScroll: true});
           pointerActive = true;
@@ -376,6 +378,9 @@
           if (!inputMode || !pointerActive) return;
           pointerActive = false;
           pointerInput(73, event);
+        });
+        canvas.addEventListener('contextmenu', function (event) {
+          if (inputMode) event.preventDefault();
         });
         canvas.addEventListener('wheel', function (event) {
           if (!inputMode || !ready || activeSource !== currentSource() || (!running && !interactive)) return;

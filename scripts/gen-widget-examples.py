@@ -141,7 +141,7 @@ def generate(root=ROOT, check=False):
     if not check:
         for p in changed:
             p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(outputs[p], encoding='utf-8')
+            p.write_text(outputs[p], encoding='utf-8', newline='\n')
     return changed
 
 

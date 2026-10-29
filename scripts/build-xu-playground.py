@@ -100,7 +100,7 @@ def build(root: Path, xu: Path, compiler: Path):
     if (xu / 'VERSION').read_text().strip() != version:
         raise RuntimeError('Xu SDK version changed during the build; rebuild from a fixed SDK')
     (wasm.parent / 'build.json').write_text(json.dumps({
-        'memory_limit_bytes': 128 * 1024 * 1024,
+        'memory_limit_bytes': 256 * 1024 * 1024,
         'widget_sources_sha256': hashlib.sha256((root / 'playground/stdlib/desktop-sources.json').read_bytes()).hexdigest(),
         'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest(),
         **({'dev_build': True} if allow_dev else {}),

@@ -14,7 +14,7 @@ CASES = {
     'context-menu': ('menu(&context,&identity,1,&bounds,"Actions",&items,widgets.MENU_CONTEXT,0)', '"Command: " + str(last)', 'Command: 0', 'styled'),
     'split-button': ('menu(&context,&identity,1,&bounds,"Save",&items,widgets.MENU_SPLIT,1)', '"Command: " + str(last)', 'Command: 0', 'styled'),
     'multi-select': ('multi_select(&context,&identity,1,&bounds,&options)', '"Selected count: " + str(control.values().len)', 'Selected count: 0', 'styled'),
-    'color-picker': ('color_picker(&context,&identity,1,&bounds,draw.rgb(180,69,50))', '"Color: " + str(control.value().value())', 'Color: 3024433919', 'styled'),
+    'color-picker': ('color_picker(&context,&identity,1,&bounds,draw.rgb(180,69,50))', '"Color: " + control.hex()', 'Color: #B44532FF', 'styled'),
     'chart': ('chart(&context,&identity,1,&bounds)', '"Selected point: " + str(control.selection().point_id)', 'Selected point: 0', 'styled'),
 }
 
@@ -80,8 +80,6 @@ fn demo() int {
 '''
     if slug in ('menu', 'context-menu', 'split-button'):
         code += '        _ := control.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>\n'
-    if apply:
-        code += '        control.apply_styles(&styles) or >>\n'
     code += '''    }
     mut frame := context.new_frame(8192)
     frame.begin() or >>

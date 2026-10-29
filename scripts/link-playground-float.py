@@ -65,10 +65,10 @@ def helper_bodies():
 
 
 # The disposable arena starts at 16 MiB and retains parser/checker/MIR/UI
-# allocations until evaluation ends. Gallery checks exceed 64 MiB even without
-# events (about 103 MiB arena end; about 107 MiB with the full 64-event history).
+# allocations until evaluation ends. Styled table/chart programs add compiler
+# and paint work beyond the original gallery's roughly 107 MiB peak.
 # Keep this in sync with wasm_support.xu, build metadata and the gallery test.
-MEMORY_PAGES = 2048  # fixed 128 MiB initial and maximum memory
+MEMORY_PAGES = 4096  # fixed 256 MiB initial and maximum memory
 
 
 def link(path):
@@ -116,7 +116,7 @@ def link(path):
             payload = bytes(code)
         out += bytes([tag]) + uleb(len(payload)) + payload
     name = b'xu.playground.float'
-    provenance = uleb(len(name)) + name + b'Frame ABI v1; fixed IEEE f64 scalar helpers; bounded memory 128 MiB; scripts/link-playground-float.py'
+    provenance = uleb(len(name)) + name + b'Frame ABI v1; fixed IEEE f64 scalar helpers; bounded memory 256 MiB; scripts/link-playground-float.py'
     out += b'\x00' + uleb(len(provenance)) + provenance
     path.write_bytes(out)
 

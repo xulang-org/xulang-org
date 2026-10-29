@@ -208,7 +208,7 @@ catalog with released declarations and adds focused native setup fragments.
 It runs automatically after release API generation. Use `--check` to verify
 that checked-in pages are current.
 
-Fourteen component experiences execute real Xu/WASM. Their editable sources
+Twenty-nine component experiences execute real Xu/WASM. Their editable sources
 live in `playground/examples/widget-*.xu` and are published by
 `python3 scripts/gen-widget-examples.py`. Other components have browser
 interaction previews explicitly labeled as not executing Xu, with links to

@@ -1898,6 +1898,16 @@ def purpose_for(pkg: str, item: Item, lang: str) -> str:
     if ov and ov.get("purpose"):
         return ov["purpose"]
     if pkg_id(pkg) == 'ui/widgets' and item.kind == 'method':
+        widget_purposes = {
+            'count': ('返回该控件当前包含的项目数量。', 'Return the number of items in this control.'),
+            'needs_paint': ('返回控件是否需要重新绘制；绘制完成后调用 painted 清除标记。', 'Return whether the control needs repainting; call painted after painting to clear the flag.'),
+            'is_open': ('返回浮层、菜单或对话框当前是否打开。', 'Return whether the overlay, menu or dialog is currently open.'),
+            'is_enabled': ('返回控件当前是否可用。', 'Return whether the control is currently enabled.'),
+            'is_focused': ('返回控件当前是否拥有输入焦点。', 'Return whether the control currently has input focus.'),
+            'hovered_option': ('返回指针悬停的选项索引；无悬停项时返回 -1。', 'Return the hovered option index, or -1 when no option is hovered.'),
+        }
+        if item.name in widget_purposes:
+            return widget_purposes[item.name][lang != 'zh']
         if widget_constructor(item):
             return ('在 Screen 中创建 ' + widget_constructor(item) + '，返回组件节点 ID；创建失败时抛出错误。' if lang == 'zh' else
                     'Create ' + widget_constructor(item) + ' in Screen and return the component node ID; throw on creation failure.')

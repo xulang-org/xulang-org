@@ -196,6 +196,13 @@ fn (m &mut Menu) truncate(count int) {
     m.control.dirty = true
 }
 
+// Upstream: src/ui/widgets/motion.xu
+fn (spec &MotionSpec) exit_easing() int {
+    if spec.curve == EASE_OUT_QUART { << EASE_IN_QUART }
+    if spec.curve == EASE_OUT_QUINT { << EASE_IN_QUINT }
+    << spec.curve
+}
+
 // Upstream: src/ui/widgets/menu_paint.xu
 fn menu_chevron(frame &mut draw.Frame,x f64,y f64,size f64,right bool,color draw.Color,width f64) int {
     if right { frame.line(x-size*0.4,y-size*0.5,x+size*0.1,y,color,width) or >>
@@ -659,6 +666,37 @@ pub fn (m &mut Menu) tick(styles &Styles,now time.Instant,reduced bool) bool {
 
 // Upstream: src/ui/widgets/motion.xu
 pub fn (motion &PaintTransition) is_animating() bool { << motion.progress.is_animating() }
+
+// Upstream: src/ui/widgets/motion.xu
+pub fn (t &Tween) is_animating() bool { << t.current != t.target }
+
+// Upstream: src/ui/widgets/motion.xu
+pub fn (t &mut Tween) retarget_unit(value f64,now time.Instant,duration time.Duration,reduced bool) int {
+    if math.is_nan(value) || math.is_inf(value) || value < 0.0 || value > 1.0 || duration.is_negative() || duration.nanoseconds() > 10 * time.second() { >> errors.new("widgets: invalid unit motion target or duration") }
+    _ := t.advance(now) or >>
+    distance := math.min(1.0,math.abs(value - t.current))
+    scaled := time.duration(int(f64(duration.nanoseconds()) * distance))
+    << t.retarget(value,now,scaled,reduced) or >>
+}
+
+// Upstream: src/ui/widgets/overlays.xu
+pub fn anchored_overlay_bounds(anchor &layout.Rect,size &layout.Size,viewport &layout.Rect) layout.Rect {
+    validate_bounds(anchor) or >>
+    validate_bounds(viewport) or >>
+    desired := layout.Rect{x: 0.0,y: 0.0,width: size.width,height: size.height}
+    validate_bounds(&desired) or >>
+    gap := 6.0
+    width := math.min(size.width,viewport.width)
+    height := math.min(size.height,viewport.height)
+    mut x := anchor.x
+    mut y := anchor.y + anchor.height + gap
+    below := viewport.y + viewport.height - y
+    above := anchor.y - gap - viewport.y
+    if height > below && above > below { y = anchor.y - gap - height }
+    x = math.max(viewport.x,math.min(x,viewport.x + viewport.width - width))
+    y = math.max(viewport.y,math.min(y,viewport.y + viewport.height - height))
+    << layout.Rect{x: x,y: y,width: width,height: height}
+}
 
 // Upstream: src/ui/widgets/menu.xu
 pub fn menu(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,label string,items &[]MenuItem,mode int,primary_key int) Menu {
