@@ -85,11 +85,15 @@ single-line monospace grid (0.6 × font size per Unicode code point, height
 1.25 × size). Canvas fits painted text to that same width. This is deterministic
 basic text layout, not native shaping, wrapping, bidi, grapheme-cell measurement,
 or IME. TextOptions fields other than size are outside this subset.
+`layout_masked_text()` paints one mask character per code point on this grid
+while caret and selection queries retain the original UTF-8 byte positions.
+The original text is never included in the masked layout's Canvas paint command.
 
 ## Floating-point VM support
 
-Widget geometry uses real IEEE binary64 values. The product wasm32 backend
-supports typed f64 arithmetic, but the MIR interpreter represents VM values as
+Widget geometry uses real IEEE binary64 values. The development wasm32 backend
+supports typed f64 arithmetic; the selected 0.10.11 SDK predates that support.
+The MIR interpreter represents VM values as
 integer bit patterns. Its `vm_fp_*` functions are still trap stubs: numeric
 `f64(int)` / `int(f64)` casts convert values and cannot reinterpret those bits.
 The build therefore retains thirteen fixed scalar helpers linked by
