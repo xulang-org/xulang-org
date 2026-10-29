@@ -57,6 +57,10 @@
   }
   function render(canvas, commands) {
     var display = frame(commands);
+    return draw(canvas, display);
+  }
+  // Kept separate so the benchmark can time validation and Canvas calls.
+  function draw(canvas, display) {
     if (!display) return false; // cancel or an unfinished frame never commits.
     var staging = canvas.ownerDocument.createElement('canvas');
     staging.width = WIDTH; staging.height = HEIGHT;
@@ -126,5 +130,5 @@
     target.drawImage(staging, 0, 0);
     return true;
   }
-  root.XuPlayCanvas = {render: render, frame: frame, width: WIDTH, height: HEIGHT, maxEvents: MAX_EVENTS};
+  root.XuPlayCanvas = {render: render, frame: frame, draw: draw, width: WIDTH, height: HEIGHT, maxEvents: MAX_EVENTS};
 })(typeof window === 'undefined' ? globalThis : window);

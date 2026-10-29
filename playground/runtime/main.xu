@@ -6,6 +6,13 @@
 #xu/types
 
 pub fn xu_eval(ptr int, length int) int {
+    m := xu_prepare(ptr, length)
+    << vm_run(&m)
+}
+
+// Separate host entry points let the worker retain checked MIR between inputs
+// and measure compiler time independently from interpreted execution.
+pub fn xu_prepare(ptr int, length int) types.Mir {
     mut source := make_string(length)
     for i in 0:length{source[i] = wasm_mem_load8(ptr + i)}
     mut tokens :=[]ast.Token{}
@@ -40,8 +47,13 @@ pub fn xu_eval(ptr int, length int) int {
     m.opt_level = 0
     mut fns :=[]types.CFn{}
     types.run_checker(mut &c, &p, 11, 0, 0,[]string {},[]string {}, 1, mut &m,[]string {}, "", false, false, 1, false, mut &fns)
-    << vm_run(&m)
+    vm_prepare(&m)
+    << m
 }
+
+pub fn xu_execute(m &types.Mir) int { << vm_run(m) }
+pub fn xu_start(m &types.Mir) Eval { << vm_start(m) }
+pub fn xu_drive(m &types.Mir, e &mut Eval) int { << vm_drive(m, e) }
 
 fn main() int { << 0}
 
