@@ -250,7 +250,7 @@
       function currentCode() { return editor ? editor.value : rawCode; }
 
       var kind = detectBlockKind(pre, rawCode);
-      var isRunnable = (kind === 'xu' || kind === 'api') && !pre.closest('.xu-local-only');
+      var isRunnable = kind === 'xu' && !pre.closest('.xu-local-only');
 
       var kindMeta = {
         xu: { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: '' },

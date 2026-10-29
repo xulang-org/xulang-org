@@ -1,0 +1,674 @@
+<!--title: TreeView · UI / Widgets-->
+<!--xu-api-version: 0.10.11-->
+<nav class="widget-crumb" aria-label="位置"><a href="/zh/api">API</a><span>/</span><a href="/zh/api/ui">UI</a><span>/</span><a href="/zh/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">TreeView</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / 数据展示</p><h1>TreeView</h1><p class="lead">浏览可展开的层级节点</p><a class="btn pri" href="/zh/playground?widget=tree-view#widget-experience">在演练场体验预览 <span aria-hidden="true">↗</span></a><p class="note">演练场中的预览用于体验交互，不执行 Xu；原生行为以本页 API 和完整 Xu 示例为准。</p></header>
+<h2 id="experience">体验什么</h2><p>展开目录并选择文件。</p>
+<h2 id="behavior">使用要点</h2><p>树用于表达父子层级。展开状态与当前选择分开管理，过滤后仍需保留节点身份，叶节点动作由应用处理。</p>
+<h2 id="create">通过 Screen 创建</h2>
+<p>下面的 Screen 构造方法返回节点 ID。将 ID 交给 Screen 的布局、状态与事件接口；它不是下方独立控件类型的实例。</p>
+<p class="note">原生 Xu 创建片段：在已有 Screen 的初始化阶段调用 configure；窗口创建、事件循环与资源释放参见完整原生示例。</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+
+fn configure(screen &amp;mut widgets.Screen) int {
+    id := screen.tree() or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="-mut-Screen-tree">
+<h2><code>(&amp;mut Screen) tree</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Screen) tree() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 Screen 中创建 TreeView，返回组件节点 ID；创建失败时抛出错误。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;mut Screen</span></dt><dd>接收者 &amp;mut Screen（可变借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 组件节点 ID，供 place 和其他 Screen 方法使用。</p>
+</article>
+<h2 id="lifecycle">放置、状态与事件</h2>
+<p>组件由应用拥有。Screen.place 放置节点，Screen.set_enabled 和 Screen.set_visible 管理可用性与显示。状态变化后重新呈现；创建和修改时处理 <code>or</code> 错误，不在绘制回调中修改拓扑。ToastHost 使用自己的队列接口。</p>
+<p><a href="/zh/api/ui/widgets#struct-Action">Action</a> · <a href="/zh/api/ui/widgets#struct-Styles">Styles</a> · <a href="/zh/docs/ui">界面生命周期与样式指南</a></p>
+<p><a href="/zh/api/ui/widgets#-mut-Screen-place">Screen.place</a> · <a href="/zh/api/ui/widgets#-mut-Screen-set_enabled">Screen.set_enabled</a> · <a href="/zh/api/ui/widgets#-mut-Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">独立控件对象 API</h2>
+<p>以下类型与方法用于自行管理控件、输入和绘制的进阶用法。接收者是控件对象，不是 Screen 返回的节点 ID；普通 Screen 用法请使用上面的创建接口及 Widgets 模块中的 Screen 方法。</p>
+<article class="api-item" id="-mut-TreeView-set_appearance">
+<h2><code>(&amp;mut TreeView) set_appearance</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_appearance(a &amp;TreeAppearance) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 appearance。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>a</code> <span class="type">&amp;TreeAppearance</span></dt><dd>值（借用，调用方仍持有；类型 &amp;TreeAppearance）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_motion">
+<h2><code>(&amp;mut TreeView) set_motion</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_motion(spec &amp;MotionSpec) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 motion。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>spec</code> <span class="type">&amp;MotionSpec</span></dt><dd>spec（借用，调用方仍持有；类型 &amp;MotionSpec）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_metadata">
+<h2><code>(&amp;mut TreeView) set_metadata</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_metadata(node <span class="syn-type">int</span>,text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 metadata。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+<dt><code>text</code> <span class="type">&amp;string</span></dt><dd>文本（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_icon">
+<h2><code>(&amp;mut TreeView) set_icon</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_icon(node <span class="syn-type">int</span>,icon <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 icon。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+<dt><code>icon</code> <span class="type">int</span></dt><dd>icon（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_action">
+<h2><code>(&amp;mut TreeView) set_action</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_action(node <span class="syn-type">int</span>,enabled <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 action。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-begin_update">
+<h2><code>(&amp;mut TreeView) begin_update</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) begin_update() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：执行 begin update 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-end_update">
+<h2><code>(&amp;mut TreeView) end_update</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) end_update() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：执行 end update 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_filter">
+<h2><code>(&amp;mut TreeView) set_filter</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_filter(query &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 filter。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>query</code> <span class="type">&amp;string</span></dt><dd>query（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-reveal_selected">
+<h2><code>(&amp;mut TreeView) reveal_selected</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) reveal_selected() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：执行 reveal selected 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-find_next">
+<h2><code>(&amp;mut TreeView) find_next</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) find_next(prefix &amp;<span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：执行 find next 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>prefix</code> <span class="type">&amp;string</span></dt><dd>前缀（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-mut-TreeView-tick">
+<h2><code>(&amp;mut TreeView) tick</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) tick(now time.Instant,reduced_motion <span class="syn-type">bool</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>推进动画时间戳与状态过渡动画步进。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>now</code> <span class="type">time.Instant</span></dt><dd>now（time.Instant）</dd>
+<dt><code>reduced_motion</code> <span class="type">bool</span></dt><dd>reduced_motion（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-TreeView-next_tick">
+<h2><code>(&amp;TreeView) next_tick</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) next_tick(now time.Instant) time.Instant</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：执行 next tick 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+<dt><code>now</code> <span class="type">time.Instant</span></dt><dd>now（time.Instant）</dd>
+</dl>
+<h3>返回</h3>
+<p>time.Instant — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-action_bounds">
+<h2><code>(&amp;TreeView) action_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) action_bounds(row <span class="syn-type">int</span>) layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：执行 action bounds 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+<dt><code>row</code> <span class="type">int</span></dt><dd>row（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-paint_styled">
+<h2><code>(&amp;mut TreeView) paint_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) paint_styled(frame <span class="syn-borrow">&amp;mut</span> draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：执行 paint styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>frame</code> <span class="type">&amp;mut draw.Frame</span></dt><dd>frame（独占借用；类型 &amp;mut draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-TreeView">
+<h2><code>struct TreeView</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> TreeView {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>树形折叠层级列表控件，支持多层节点展开收起与选中。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="-TreeView-id">
+<h2><code>(&amp;TreeView) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) id() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件、元素或节点的唯一标识 ID。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-bounds">
+<h2><code>(&amp;TreeView) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件或几何对象的有效外接矩形边界（Rectangle）。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-count">
+<h2><code>(&amp;TreeView) count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) count() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：统计非重叠出现次数。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-visible_count">
+<h2><code>(&amp;TreeView) visible_count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) visible_count() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：执行 visible count 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-selected">
+<h2><code>(&amp;TreeView) selected</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) selected() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>获取或判断当前选中的项索引、节点或文本状态。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-is_expanded">
+<h2><code>(&amp;TreeView) is_expanded</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) is_expanded(node <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：判断是否 expanded。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-TreeView-parent">
+<h2><code>(&amp;TreeView) parent</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) parent(node <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;TreeView` 上执行 `parent` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-text">
+<h2><code>(&amp;TreeView) text</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) text(node <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：返回当前文本。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="-TreeView-visible_node">
+<h2><code>(&amp;TreeView) visible_node</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) visible_node(index <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：执行 visible node 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-needs_paint">
+<h2><code>(&amp;TreeView) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：执行 needs paint 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-mut-TreeView-painted">
+<h2><code>(&amp;mut TreeView) painted</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) painted()</code></pre></div>
+<h3>用途</h3>
+<p>确认当前帧已绘制，清除重绘标记；不是状态查询。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="-TreeView-is_enabled">
+<h2><code>(&amp;TreeView) is_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) is_enabled() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：判断是否 enabled。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-TreeView-is_focused">
+<h2><code>(&amp;TreeView) is_focused</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) is_focused() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：判断是否 focused。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-TreeView-is_read_only">
+<h2><code>(&amp;TreeView) is_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) is_read_only() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：判断是否 read only。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-TreeView-scroll_offset">
+<h2><code>(&amp;TreeView) scroll_offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) scroll_offset() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：执行 scroll offset 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-cancel">
+<h2><code>(&amp;mut TreeView) cancel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) cancel()</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：取消。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-TreeView-set_focus">
+<h2><code>(&amp;mut TreeView) set_focus</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_focus(focused <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 focus。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>focused（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-TreeView-set_enabled">
+<h2><code>(&amp;mut TreeView) set_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_enabled(enabled <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 enabled。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-TreeView-set_read_only">
+<h2><code>(&amp;mut TreeView) set_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_read_only(value <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 read only。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>value</code> <span class="type">bool</span></dt><dd>value（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-add">
+<h2><code>(&amp;mut TreeView) add</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) add(parent <span class="syn-type">int</span>,text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：相加。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>parent</code> <span class="type">int</span></dt><dd>parent（int）</dd>
+<dt><code>text</code> <span class="type">&amp;string</span></dt><dd>文本（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_text">
+<h2><code>(&amp;mut TreeView) set_text</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_text(node <span class="syn-type">int</span>,text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 text。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+<dt><code>text</code> <span class="type">&amp;string</span></dt><dd>文本（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_expanded">
+<h2><code>(&amp;mut TreeView) set_expanded</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_expanded(node <span class="syn-type">int</span>,expanded <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 expanded。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+<dt><code>expanded</code> <span class="type">bool</span></dt><dd>expanded（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_selected">
+<h2><code>(&amp;mut TreeView) set_selected</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_selected(node <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 selected。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-clear">
+<h2><code>(&amp;mut TreeView) clear</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) clear() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>清空所有已缓冲或存储的数据项与内部状态。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_bounds">
+<h2><code>(&amp;mut TreeView) set_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_bounds(bounds &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 bounds。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>bounds</code> <span class="type">&amp;layout.Rect</span></dt><dd>bounds（借用，调用方仍持有；类型 &amp;layout.Rect）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_scroll_offset">
+<h2><code>(&amp;mut TreeView) set_scroll_offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_scroll_offset(offset <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 scroll offset。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>offset</code> <span class="type">f64</span></dt><dd>偏移（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-style_or">
+<h2><code>(&amp;TreeView) style_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) style_or(styles &amp;Styles) ControlStyle</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：执行 style or 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>ControlStyle — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-set_style">
+<h2><code>(&amp;mut TreeView) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：设置 style。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style（借用，调用方仍持有；类型 &amp;ControlStyle）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-clear_style">
+<h2><code>(&amp;mut TreeView) clear_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) clear_style()</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：执行 clear style 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-TreeView-apply_styles">
+<h2><code>(&amp;mut TreeView) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>根据当前主题样式表解析并应用几何与视觉度量。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-TreeView-row_bounds">
+<h2><code>(&amp;TreeView) row_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;TreeView) row_bounds(index <span class="syn-type">int</span>) layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;TreeView` 上的操作：执行 row bounds 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;TreeView</span></dt><dd>接收者 &amp;TreeView（借用）</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-input">
+<h2><code>(&amp;mut TreeView) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) input(input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>接收并处理分发的鼠标、键盘或触摸交互输入事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="-mut-TreeView-route">
+<h2><code>(&amp;mut TreeView) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) route(kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>路由并分发交互事件至命中的子节点或处理器。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>类型标签（int）</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="-mut-TreeView-event">
+<h2><code>(&amp;mut TreeView) event</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) event(event &amp;ui.Event) Action</code></pre></div>
+<h3>用途</h3>
+<p>处理并响应窗口与系统的交互及生命周期事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.Event</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.Event）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="-mut-TreeView-measure_styled">
+<h2><code>(&amp;mut TreeView) measure_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) measure_styled(styles &amp;Styles) layout.Size</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut TreeView` 上的操作：执行 measure styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Size — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-TreeView-dispose">
+<h2><code>(&amp;mut TreeView) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> TreeView) dispose()</code></pre></div>
+<h3>用途</h3>
+<p>释放并清理对象所持有的系统原生资源与底层句柄。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut TreeView</span></dt><dd>接收者 &amp;mut TreeView（可变借用）</dd>
+</dl>
+</article>
+<h2 id="native-example">完整原生示例</h2><p><a href="/zh/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/zh/api/ui/widgets">返回 Widgets 目录</a></p>

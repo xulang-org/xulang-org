@@ -672,6 +672,702 @@
         "zh": "修改控件状态，然后重新运行或操作画布。",
         "en": "Change a control, then run again or interact with the canvas."
       }
+    },
+    "widget-styled-label": {
+      "group": "ui",
+      "component": "styled-label",
+      "title": {
+        "zh": "StyledLabel",
+        "en": "StyledLabel"
+      },
+      "description": {
+        "zh": "带排版与主题样式的文本标签",
+        "en": "Text labels with cached layout and theme styles"
+      },
+      "exercise": {
+        "zh": "修改示例代码中的标题和字号，重新运行比较排版",
+        "en": "Edit the title and font size in the example, then rerun to compare the layout"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.styled_label(&context,&\"Make room for ideas.\")\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"StyledLabel\")\n    control.paint_text_styled(mut &frame,&bounds,&styles,&styles.button,0) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"StyledLabel rendered.\")\n    println(\"StyledLabel rendered.\")\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "StyledLabel rendered.\n"
+      }
+    },
+    "widget-button": {
+      "group": "ui",
+      "component": "button",
+      "title": {
+        "zh": "Button",
+        "en": "Button"
+      },
+      "description": {
+        "zh": "触发一项明确的操作",
+        "en": "Trigger a clearly named action"
+      },
+      "exercise": {
+        "zh": "点击按钮，或按 Tab 聚焦后按 Enter，观察计数变化",
+        "en": "Click the button, or focus it with Tab and press Enter, to increment the count"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.button(&identity,1,&bounds) or >>\n    mut count := 0\n    label := context.layout_text(&\"Count +1 / 计数 +1\",&draw.text_options(16.0)) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event)\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Button\")\n    control.paint(mut &frame,&label,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Count: \" + str(count))\n    println(\"Count: \" + str(count))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Count: 0\n"
+      }
+    },
+    "widget-checkbox": {
+      "group": "ui",
+      "component": "checkbox",
+      "title": {
+        "zh": "Checkbox",
+        "en": "Checkbox"
+      },
+      "description": {
+        "zh": "独立切换一个选项",
+        "en": "Toggle an independent option"
+      },
+      "exercise": {
+        "zh": "勾选复选框，查看布尔值的变化",
+        "en": "Toggle the checkbox and observe the boolean value"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.checkbox(&identity,1,&bounds,false) or >>\n    mut count := 0\n    label := context.layout_text(&\"Receive updates / 接收更新\",&draw.text_options(16.0)) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event)\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Checkbox\")\n    control.paint(mut &frame,&label,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Value: \" + str(control.value()))\n    println(\"Value: \" + str(control.value()))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Value: false\n"
+      }
+    },
+    "widget-switch": {
+      "group": "ui",
+      "component": "switch",
+      "title": {
+        "zh": "Switch",
+        "en": "Switch"
+      },
+      "description": {
+        "zh": "即时开启或关闭一项设置",
+        "en": "Turn a setting on or off immediately"
+      },
+      "exercise": {
+        "zh": "切换开关，查看布尔值的变化",
+        "en": "Toggle the switch and observe the boolean value"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.switch_control(&identity,1,&bounds,false) or >>\n    mut count := 0\n    label := context.layout_text(&\"Live preview / 实时预览\",&draw.text_options(16.0)) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event)\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Switch\")\n    control.paint(mut &frame,&label,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Value: \" + str(control.value()))\n    println(\"Value: \" + str(control.value()))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Value: false\n"
+      }
+    },
+    "widget-radio": {
+      "group": "ui",
+      "component": "radio",
+      "title": {
+        "zh": "Radio",
+        "en": "Radio"
+      },
+      "description": {
+        "zh": "在互斥选项中选择一个",
+        "en": "Choose one mutually exclusive option"
+      },
+      "exercise": {
+        "zh": "激活单选控件，查看选中状态",
+        "en": "Activate the radio control and observe its selected state"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.radio(&identity,1,&bounds,0,false) or >>\n    mut count := 0\n    label := context.layout_text(&\"Stable / 稳定版\",&draw.text_options(16.0)) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event)\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Radio\")\n    control.paint(mut &frame,&label,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Value: \" + str(control.value()))\n    println(\"Value: \" + str(control.value()))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Value: false\n"
+      }
+    },
+    "widget-slider": {
+      "group": "ui",
+      "component": "slider",
+      "title": {
+        "zh": "Slider",
+        "en": "Slider"
+      },
+      "description": {
+        "zh": "在连续区间内调节数值",
+        "en": "Adjust a value within a range"
+      },
+      "exercise": {
+        "zh": "拖动滑块，或聚焦后按方向键，查看当前数值",
+        "en": "Drag the slider, or use arrow keys after focusing it, to change the value"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.slider(&identity,1,&bounds,0.0,100.0,40.0) or >>\n    mut count := 0\n    label := context.layout_text(&\"Value / 数值\",&draw.text_options(16.0)) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event)\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Slider\")\n    control.paint(mut &frame,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Value: \" + str(int(control.value())))\n    println(\"Value: \" + str(int(control.value())))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Value: 40\n"
+      }
+    },
+    "widget-tabs": {
+      "group": "ui",
+      "component": "tabs",
+      "title": {
+        "zh": "Tabs",
+        "en": "Tabs"
+      },
+      "description": {
+        "zh": "在相关内容面板间切换",
+        "en": "Switch between related content panels"
+      },
+      "exercise": {
+        "zh": "切换 Overview、Activity、Settings，观察选中项编号",
+        "en": "Switch between Overview, Activity and Settings and observe the selected index"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.tabs(&identity,1,&bounds,3,0) or >>\n    mut count := 0\n    label := context.layout_text(&\"Value / 数值\",&draw.text_options(16.0)) or >>\n    mut labels := []draw.TextLayout{}\n    for value in [\"Overview\",\"Activity\",\"Settings\"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event)\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Tabs\")\n    control.paint(mut &frame,&labels,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Selected: \" + str(control.selected()))\n    println(\"Selected: \" + str(control.selected()))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected: 0\n"
+      }
+    },
+    "widget-segmented": {
+      "group": "ui",
+      "component": "segmented",
+      "title": {
+        "zh": "Segmented",
+        "en": "Segmented"
+      },
+      "description": {
+        "zh": "在少量同级视图间快速切换",
+        "en": "Switch quickly between a few peer views"
+      },
+      "exercise": {
+        "zh": "切换分段，观察选中项编号",
+        "en": "Switch segments and observe the selected index"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.segmented(&identity,1,&bounds,3,0) or >>\n    mut count := 0\n    label := context.layout_text(&\"Value / 数值\",&draw.text_options(16.0)) or >>\n    mut labels := []draw.TextLayout{}\n    for value in [\"Overview\",\"Activity\",\"Settings\"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event)\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Segmented\")\n    control.paint(mut &frame,&labels,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Selected: \" + str(control.selected()))\n    println(\"Selected: \" + str(control.selected()))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected: 0\n"
+      }
+    },
+    "widget-list-box": {
+      "group": "ui",
+      "component": "list-box",
+      "title": {
+        "zh": "ListBox",
+        "en": "ListBox"
+      },
+      "description": {
+        "zh": "在可滚动列表中选择条目",
+        "en": "Select an item from a scrollable list"
+      },
+      "exercise": {
+        "zh": "点击条目或聚焦后使用方向键，观察选择变化",
+        "en": "Click a row or use arrow keys after focusing the list to change the selection"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,86.0,550.0,160.0)\n    mut control := widgets.list_box(&identity,1,&bounds,3,0) or >>\n    mut count := 0\n    label := context.layout_text(&\"Value / 数值\",&draw.text_options(16.0)) or >>\n    mut labels := []draw.TextLayout{}\n    for value in [\"Overview\",\"Activity\",\"Settings\"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"ListBox\")\n    control.paint(mut &frame,&labels,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Selected: \" + str(control.selected()))\n    println(\"Selected: \" + str(control.selected()))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected: 0\n"
+      }
+    },
+    "widget-progress": {
+      "group": "ui",
+      "component": "progress",
+      "title": {
+        "zh": "Progress",
+        "en": "Progress"
+      },
+      "description": {
+        "zh": "显示已完成的任务比例",
+        "en": "Show how much of a task is complete"
+      },
+      "exercise": {
+        "zh": "点击按钮逐步增加进度，查看百分比",
+        "en": "Click the button to increase progress and observe the percentage"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,116.0,550.0,22.0)\n    mut control := widgets.progress(&bounds,0.4) or >>\n    mut count := 4\n    label := context.layout_text(&\"Advance / 增加进度\",&draw.text_options(16.0)) or >>\n    mut trigger := widgets.button(&identity,2,&box(32.0,260.0,220.0,40.0)) or >>\n    mut focus := widgets.focus_group(&identity,[2]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        trigger.set_focus(focus.current() == 2)\n        if navigation.consumed { -> }\n        action := trigger.input(&event)\n        if action.request_focus { focus.focus(2) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n        if action.kind == widgets.ACTION_ACTIVATE { control.set_value(f64(count % 11) / 10.0) or >> }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Progress\")\n    control.paint(mut &frame,&theme) or >>\n    trigger.paint(mut &frame,&label,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Progress: \" + str(int(control.value() * 100.0)))\n    println(\"Progress: \" + str(int(control.value() * 100.0)))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Progress: 40\n"
+      }
+    },
+    "widget-divider": {
+      "group": "ui",
+      "component": "divider",
+      "title": {
+        "zh": "Divider",
+        "en": "Divider"
+      },
+      "description": {
+        "zh": "在内容之间建立视觉分隔",
+        "en": "Separate adjacent sections visually"
+      },
+      "exercise": {
+        "zh": "修改示例中的分隔方向，重新运行比较外观",
+        "en": "Change the divider orientation in the source and rerun to compare its appearance"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.divider(&bounds,widgets.AXIS_HORIZONTAL) or >>\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Divider\")\n    control.paint(mut &frame,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Divider rendered.\")\n    println(\"Divider rendered.\")\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Divider rendered.\n"
+      }
+    },
+    "widget-badge": {
+      "group": "ui",
+      "component": "badge",
+      "title": {
+        "zh": "Badge",
+        "en": "Badge"
+      },
+      "description": {
+        "zh": "为内容补充数量或状态",
+        "en": "Attach a count or status to content"
+      },
+      "exercise": {
+        "zh": "点击按钮增加徽标数字",
+        "en": "Click the button to increment the badge count"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,104.0,550.0,44.0)\n    mut control := widgets.badge(&bounds) or >>\n    mut count := 0\n    label := context.layout_text(&\"+1\",&draw.text_options(16.0)) or >>\n    mut trigger := widgets.button(&identity,2,&box(32.0,260.0,220.0,40.0)) or >>\n    mut focus := widgets.focus_group(&identity,[2]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        trigger.set_focus(focus.current() == 2)\n        if navigation.consumed { -> }\n        action := trigger.input(&event)\n        if action.request_focus { focus.focus(2) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Badge\")\n    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) or >>\n    control.paint(mut &frame,&badge_label,&theme) or >>\n    trigger.paint(mut &frame,&label,&theme) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Count: \" + str(count))\n    println(\"Count: \" + str(count))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Count: 0\n"
+      }
+    },
+    "widget-card": {
+      "group": "ui",
+      "component": "card",
+      "title": {
+        "zh": "Card",
+        "en": "Card"
+      },
+      "description": {
+        "zh": "将相关内容组织成一个区域",
+        "en": "Group related content into one region"
+      },
+      "exercise": {
+        "zh": "观察卡片容器，修改示例中的尺寸后重新运行",
+        "en": "Inspect the card container, then edit its dimensions and rerun"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,86.0,550.0,160.0)\n    mut control := widgets.card(&bounds) or >>\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Card\")\n    control.paint(mut &frame,&theme) or >>\n    draw.text(48,110,20,\"#f8fafc\",\"Xu workspace\")\n    draw.text(48,146,16,\"#cbd5e1\",\"A place for your next idea.\")\n    draw.text(32,320,16,\"#e2e8f0\",\"Card rendered.\")\n    println(\"Card rendered.\")\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Card rendered.\n"
+      }
+    },
+    "widget-scroll": {
+      "group": "ui",
+      "component": "scroll",
+      "title": {
+        "zh": "Scroll",
+        "en": "Scroll"
+      },
+      "description": {
+        "zh": "让受限区域容纳更多内容",
+        "en": "Fit longer content inside a bounded viewport"
+      },
+      "exercise": {
+        "zh": "滚动列表，保持页面其余部分不动",
+        "en": "Scroll the panel independently"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    bounds := box(32.0,86.0,550.0,160.0)\n    mut control := widgets.scroll(&identity,1,&bounds,widgets.AXIS_VERTICAL,400.0) or >>\n    mut count := 0\n    label := context.layout_text(&\"Value / 数值\",&draw.text_options(16.0)) or >>\n    mut labels := []draw.TextLayout{}\n    for value in [\"Overview\",\"Activity\",\"Settings\"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Scroll\")\n    control.begin(mut &frame) or >>\n    for i in 0:9 { text := labels[i % 3]\n        frame.text_layout(&text,12.0,12.0 + f64(i) * 42.0,theme.foreground) or >> }\n    control.end(mut &frame) or >>\n    draw.text(32,320,16,\"#e2e8f0\",\"Offset: \" + str(int(control.offset())))\n    println(\"Offset: \" + str(int(control.offset())))\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Offset: 0\n"
+      }
+    },
+    "widget-radio-group": {
+      "group": "ui",
+      "component": "radio-group",
+      "title": {
+        "zh": "RadioGroup",
+        "en": "RadioGroup"
+      },
+      "description": {
+        "zh": "统一管理一组单选项",
+        "en": "Manage a related group of choices"
+      },
+      "exercise": {
+        "zh": "切换选项并查看当前选择",
+        "en": "Switch options and observe the current choice"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,200.0)\n    mut control := widgets.radio_group(&context,&identity,1,&bounds,&options,0) or >>\n    mut last := 0\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"RadioGroup\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Selected: \" + str(control.selected())\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected: 0\n"
+      }
+    },
+    "widget-stepper": {
+      "group": "ui",
+      "component": "stepper",
+      "title": {
+        "zh": "Stepper",
+        "en": "Stepper"
+      },
+      "description": {
+        "zh": "按固定步长增减数值",
+        "en": "Increase or decrease a value by a fixed step"
+      },
+      "exercise": {
+        "zh": "调整数量，试试上下限",
+        "en": "Adjust a quantity and try its limits"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    mut control := widgets.stepper(&identity,1,&bounds,0.0,100.0,5.0,40.0) or >>\n    mut last := 0\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Stepper\")\n    value := str(int(control.value()))\n    label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n    control.paint(mut &frame,&label,&theme) or >>\n    message := \"Value: \" + str(int(control.value()))\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Value: 40\n"
+      }
+    },
+    "widget-select": {
+      "group": "ui",
+      "component": "select",
+      "title": {
+        "zh": "Select",
+        "en": "Select"
+      },
+      "description": {
+        "zh": "从给定选项中选择一个",
+        "en": "Pick one option from a fixed set"
+      },
+      "exercise": {
+        "zh": "展开菜单并更换工作区",
+        "en": "Open the list and choose a workspace"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    mut control := widgets.select_box(&identity,1,&bounds,3,0) or >>\n    mut last := 0\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Select\")\n    mut labels := []draw.TextLayout{}\n    for value in options { label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(label) }\n    control.paint(mut &frame,&labels,&theme) or >>\n    message := \"Selected: \" + str(control.selected())\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected: 0\n"
+      }
+    },
+    "widget-multi-select": {
+      "group": "ui",
+      "component": "multi-select",
+      "title": {
+        "zh": "MultiSelect",
+        "en": "MultiSelect"
+      },
+      "description": {
+        "zh": "从列表中选择多项",
+        "en": "Choose multiple items from a list"
+      },
+      "exercise": {
+        "zh": "选择多个标签，再移除一个",
+        "en": "Select several labels and remove one"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    mut control := widgets.multi_select(&context,&identity,1,&bounds,&options) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"MultiSelect\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Selected count: \" + str(control.values().len)\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected count: 0\n"
+      }
+    },
+    "widget-color-picker": {
+      "group": "ui",
+      "component": "color-picker",
+      "title": {
+        "zh": "ColorPicker",
+        "en": "ColorPicker"
+      },
+      "description": {
+        "zh": "选择并查看颜色值",
+        "en": "Choose a color and inspect its value"
+      },
+      "exercise": {
+        "zh": "更换颜色并查看色值",
+        "en": "Choose a color and read its value"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,200.0)\n    mut control := widgets.color_picker(&context,&identity,1,&bounds,draw.rgb(180,69,50)) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"ColorPicker\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Color: \" + str(control.value().value())\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Color: 3024433919\n"
+      }
+    },
+    "widget-table": {
+      "group": "ui",
+      "component": "table",
+      "title": {
+        "zh": "Table",
+        "en": "Table"
+      },
+      "description": {
+        "zh": "按列展示并操作结构化记录",
+        "en": "Browse structured records in columns"
+      },
+      "exercise": {
+        "zh": "点击表头切换排序",
+        "en": "Click a column header to change sorting"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,200.0)\n    mut control := widgets.table(&context,&identity,1,&bounds,&headers,3,0) or >>\n    mut last := 0\n    for i in 0:3 { value := options[i]\n        control.set_cell(i,0,&value) or >>\n        number := str(12 - i * 3)\n        control.set_cell(i,1,&number) or >> }\n    control.set_sort_kind(1,widgets.TABLE_SORT_NUMBER) or >>\n    control.set_local_sort(true) or >>\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Table\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Selected: \" + str(control.selected())\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected: 0\n"
+      }
+    },
+    "widget-pagination": {
+      "group": "ui",
+      "component": "pagination",
+      "title": {
+        "zh": "Pagination",
+        "en": "Pagination"
+      },
+      "description": {
+        "zh": "在分页数据中移动",
+        "en": "Move through paginated data"
+      },
+      "exercise": {
+        "zh": "切换页码并查看当前页内容",
+        "en": "Change pages and inspect the visible results"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    mut control := widgets.pagination(&context,&identity,1,&bounds,4,0) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Pagination\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Page: \" + str(control.selected() + 1)\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Page: 1\n"
+      }
+    },
+    "widget-breadcrumbs": {
+      "group": "ui",
+      "component": "breadcrumbs",
+      "title": {
+        "zh": "Breadcrumbs",
+        "en": "Breadcrumbs"
+      },
+      "description": {
+        "zh": "显示当前位置并返回上级",
+        "en": "Show the current location and navigate to ancestors"
+      },
+      "exercise": {
+        "zh": "点击上级目录返回",
+        "en": "Navigate back to a parent location"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    mut control := widgets.breadcrumbs(&context,&identity,1,&bounds,&options) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Breadcrumbs\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Activated: \" + str(last)\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Activated: 0\n"
+      }
+    },
+    "widget-button-group": {
+      "group": "ui",
+      "component": "button-group",
+      "title": {
+        "zh": "ButtonGroup",
+        "en": "ButtonGroup"
+      },
+      "description": {
+        "zh": "将相关操作或选择组合成一组",
+        "en": "Group related actions or selections"
+      },
+      "exercise": {
+        "zh": "组合切换格式选项",
+        "en": "Toggle several formatting choices"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    items := [widgets.button_group_item(1,\"Design\"),widgets.button_group_item(2,\"Develop\"),widgets.button_group_item(3,\"Review\")]\n    mut control := widgets.button_group(&context,&identity,1,&bounds,&items,widgets.BUTTON_GROUP_SINGLE) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"ButtonGroup\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Selected: \" + str(control.active_key())\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected: 1\n"
+      }
+    },
+    "widget-chart": {
+      "group": "ui",
+      "component": "chart",
+      "title": {
+        "zh": "Chart",
+        "en": "Chart"
+      },
+      "description": {
+        "zh": "将一组数据转为图形",
+        "en": "Visualize a series of data points"
+      },
+      "exercise": {
+        "zh": "切换数据并观察图形变化",
+        "en": "Change the data and inspect the chart"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,200.0)\n    mut control := widgets.chart(&context,&identity,1,&bounds) or >>\n    mut last := 0\n    mut series := widgets.chart_series(1,\"Workspace\",widgets.CHART_BAR)\n    series.points = [widgets.chart_point(1,1.0,12.0),widgets.chart_point(2,2.0,8.0),widgets.chart_point(3,3.0,5.0)]\n    control.set_series(&[series]) or >>\n    _ := control.tick(&styles,time.instant_from_ns(1) or >>,true) or >>\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Chart\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Selected point: \" + str(control.selection().point_id)\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected point: 0\n"
+      }
+    },
+    "widget-range-slider": {
+      "group": "ui",
+      "component": "range-slider",
+      "title": {
+        "zh": "RangeSlider",
+        "en": "RangeSlider"
+      },
+      "description": {
+        "zh": "用两个端点选择数值范围",
+        "en": "Choose a range using two endpoints"
+      },
+      "exercise": {
+        "zh": "调整最小值与最大值",
+        "en": "Adjust the lower and upper bounds"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    mut control := widgets.range_slider(&context,&identity,1,&bounds,0.0,100.0,20.0,80.0) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"RangeSlider\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Range: \" + str(int(control.values().lower)) + \" - \" + str(int(control.values().upper))\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Range: 20 - 80\n"
+      }
+    },
+    "widget-split-view": {
+      "group": "ui",
+      "component": "split-view",
+      "title": {
+        "zh": "SplitView",
+        "en": "SplitView"
+      },
+      "description": {
+        "zh": "在可调分隔区域中安排内容",
+        "en": "Arrange content in resizable panes"
+      },
+      "exercise": {
+        "zh": "调节两个面板的占比",
+        "en": "Resize the two panes"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,200.0)\n    mut control := widgets.split_view(&identity,1,&bounds,0.4) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"SplitView\")\n    control.paint_styled(mut &frame,&styles) or >>\n    panes := control.layout()\n    frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(39,60,85)) or >>\n    frame.fill_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(62,45,74)) or >>\n    message := \"Ratio: \" + str(int(control.value() * 100.0))\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Ratio: 40\n"
+      }
+    },
+    "widget-menu": {
+      "group": "ui",
+      "component": "menu",
+      "title": {
+        "zh": "Menu",
+        "en": "Menu"
+      },
+      "description": {
+        "zh": "以命令列表呈现操作",
+        "en": "Present actions in a command list"
+      },
+      "exercise": {
+        "zh": "打开菜单并选择命令",
+        "en": "Open a menu and choose a command"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    items := [widgets.menu_item(1,\"Save\"),widgets.menu_item(2,\"Export\"),widgets.menu_item(3,\"Duplicate\")]\n    mut control := widgets.menu(&context,&identity,1,&bounds,\"Actions\",&items,widgets.MENU_DROPDOWN,0) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        _ := control.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"Menu\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Command: \" + str(last)\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Command: 0\n"
+      }
+    },
+    "widget-context-menu": {
+      "group": "ui",
+      "component": "context-menu",
+      "title": {
+        "zh": "ContextMenu",
+        "en": "ContextMenu"
+      },
+      "description": {
+        "zh": "在操作对象附近显示相关命令",
+        "en": "Show commands next to the affected object"
+      },
+      "exercise": {
+        "zh": "右键或用按钮打开菜单",
+        "en": "Right-click or use the button to open the menu"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    items := [widgets.menu_item(1,\"Save\"),widgets.menu_item(2,\"Export\"),widgets.menu_item(3,\"Duplicate\")]\n    mut control := widgets.menu(&context,&identity,1,&bounds,\"Actions\",&items,widgets.MENU_CONTEXT,0) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        _ := control.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"ContextMenu\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Command: \" + str(last)\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Command: 0\n"
+      }
+    },
+    "widget-split-button": {
+      "group": "ui",
+      "component": "split-button",
+      "title": {
+        "zh": "SplitButton",
+        "en": "SplitButton"
+      },
+      "description": {
+        "zh": "组合默认操作与备选命令",
+        "en": "Combine a primary action with alternatives"
+      },
+      "exercise": {
+        "zh": "使用默认动作，再展开备选项",
+        "en": "Use the main action and choose an alternative"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n#time\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := widgets.default_theme()\n    styles := widgets.dark_styles()\n    options := [\"Design\",\"Develop\",\"Review\"]\n    headers := [\"Workspace\",\"Members\"]\n    bounds := box(32.0,86.0,550.0,44.0)\n    items := [widgets.menu_item(1,\"Save\"),widgets.menu_item(2,\"Export\"),widgets.menu_item(3,\"Duplicate\")]\n    mut control := widgets.menu(&context,&identity,1,&bounds,\"Save\",&items,widgets.MENU_SPLIT,1) or >>\n    mut last := 0\n    control.apply_styles(&styles) or >>\n    mut focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        navigation := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if navigation.consumed { -> }\n        action := control.input(&event) or >>\n        if action.request_focus { focus.focus(1) or >> }\n        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }\n        _ := control.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>\n        control.apply_styles(&styles) or >>\n    }\n    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n    draw.text(32,24,24,\"#f8fafc\",\"SplitButton\")\n    control.paint_styled(mut &frame,&styles) or >>\n    message := \"Command: \" + str(last)\n    draw.text(32,320,16,\"#e2e8f0\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Command: 0\n"
+      }
     }
   }
 }

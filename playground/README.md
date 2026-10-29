@@ -121,6 +121,11 @@ count. Run Code, source edits, and example changes reset the session.
   Slider. Esc cancels and leaves the canvas. Click requests focus through the
   widgets API. Key events and an active drag’s motion/release are queued during replay; new pointer presses while busy are ignored. Stopping/editing discards pending input.
 - 10-second worker timeout, VM step limit, and 128 MiB memory ceiling (fixed WASM initial and maximum memory).
+
+Worker initialization runs a silent minimal Xu program before reporting ready.
+This warms the parser, checker and interpreter under the separate 30-second
+loading deadline, keeping cold WASM tiering out of the first user execution's
+10-second budget. Initialization output is never shown as user output.
 - Commands: 256 KiB / 4096 lines; transform stack: 32; text size: 1–256.
 - No continuous animation, hover tracking while idle, native services/windows,
   WebView, full styled widgets, editable text input, or persistent external effects.

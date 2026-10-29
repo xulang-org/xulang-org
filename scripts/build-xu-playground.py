@@ -11,6 +11,12 @@ import tempfile
 import re
 
 
+def xu_literal(value):
+    # JSON escaping covers quotes/backslashes/control characters. Xu also
+    # interpolates '$', including inside embedded upstream Unicode tables.
+    return json.dumps(value, ensure_ascii=False).replace('$', '\\$')
+
+
 def build(root: Path, xu: Path, compiler: Path):
     version = (xu / 'VERSION').read_text().strip()
     expected = os.environ.get('XU_RELEASE_VERSION', version)
@@ -40,12 +46,48 @@ def build(root: Path, xu: Path, compiler: Path):
             shutil.copyfile(source, runtime / source.name)
     manifest = runtime / 'xu.xun'
     manifest.write_text(re.sub(r'(?m)^xu:.*$', 'xu: !ver ' + version, manifest.read_text()))
-    embedded = '@main\n\n'
+    embedded = '@main\n#xu/ast\n#xu/parser\n\n'
     for name, source in [('runtime', 'src/runtime/str_algo.xu'), ('errors', 'src/errors/mod.xu')]:
-        embedded += f'fn playground_std_{name}() string {{\n    << ' + json.dumps((xu / source).read_text(), ensure_ascii=False) + '\n}\n\n'
-    for name in ('draw', 'browser', 'frame', 'text_input', 'desktop_draw_types', 'desktop_ui', 'desktop_math', 'desktop_time', 'desktop_layout', 'desktop_utf8', 'desktop_codec', 'desktop_widgets'):
+        embedded += f'fn playground_std_{name}() string {{\n    << ' + xu_literal((xu / source).read_text()) + '\n}\n\n'
+    embedded += 'fn playground_std_maps() string {\n    << ' + xu_literal((xu / 'src/runtime/map_algo.xu').read_text()) + '\n}\n\n'
+    for name in ('draw', 'browser', 'frame', 'text_input', 'clock', 'desktop_draw_types', 'desktop_ui', 'desktop_math', 'desktop_time', 'desktop_layout', 'desktop_utf8', 'desktop_codec', 'desktop_widgets'):
         source = root / 'playground/stdlib' / (name + '.xu')
-        embedded += f'fn playground_std_{name}() string {{\n    << ' + json.dumps(source.read_text(), ensure_ascii=False) + '\n}\n\n'
+        embedded += f'fn playground_std_{name}() string {{\n    << ' + xu_literal(source.read_text()) + '\n}\n\n'
+    selection = json.loads((root / 'playground/stdlib/desktop-sources.json').read_text())
+    base_body = re.sub(r'(?m)^[@#][^\n]*\n', '', (root / 'playground/stdlib/desktop_widgets.xu').read_text())
+    embedded += 'fn playground_std_widgets_base_body() string {\n    << ' + xu_literal(base_body) + '\n}\n\n'
+    families = selection.get('families', {})
+    chunks = selection.get('extension_chunks', [])
+    for chunk in chunks:
+        name = chunk['name']
+        source = root / 'playground/stdlib' / ('desktop_' + name + '.xu')
+        content = re.sub(r'(?m)^[@#][^\n]*\n', '', source.read_text())
+        embedded += f'fn playground_std_{name}() string {{\n    << ' + xu_literal(content) + '\n}\n\n'
+    embedded += 'fn playground_widget_flags(tokens &[]ast.Token) []bool {\n    mut flags := []bool{}\n'
+    for family, names in families.items():
+        condition = ' || '.join('token.sval == ' + json.dumps(name) for name in names)
+        embedded += f'    mut want_{family} := false\n    for token in tokens {{ if token.kind == ast.TOK_IDENT && ({condition}) {{ want_{family} = true }} }}\n    flags.push(want_{family})\n'
+    embedded += '    mut native_maps := false\n    for token in tokens { if token.kind == ast.TOK_MAP { native_maps = true } }\n    flags.push(native_maps)\n    << flags\n}\nfn playground_merge_widget_extensions(p &mut parser.Parser, flags &[]bool) {\n    mut needed := false\n    for flag in flags { if flag { needed = true } }\n    if !needed { playground_merge(p,playground_std_desktop_widgets(),"ui/widgets.xu")\n        << }\n    playground_merge(p,playground_std_maps(),"runtime/map_algo.xu")\n'
+    indexes = {family:i for i,family in enumerate(families)}
+    def condition(names):
+        return ' || '.join('flags[' + str(indexes[name]) + ']' for name in families if name in names) or 'false'
+    modules = sorted({chunk['module'] for chunk in chunks} - {'ui/widgets'})
+    for module in modules + ['ui/widgets']:
+        parts = [chunk for chunk in chunks if chunk['module'] == module]
+        name = 'source_' + module.replace('/','_')
+        header = '@' + module + '\n' + '\n'.join('#' + p for p in ('ui','ui/draw','ui/layout','errors','math','time','unicode/utf8','ui/internal/codec') if p != module) + '\n'
+        embedded += '    mut ' + name + ' := ' + xu_literal(header) + '\n'
+        for external in ('strings','strconv','unicode'):
+            if external == module: continue
+            required = {family for chunk in chunks if chunk['module'] == external for family in chunk['families']}
+            embedded += f'    if {condition(required)} {{ {name} = {name} + "#{external}\\n" }}\n'
+        if module == 'ui/widgets': embedded += f'    {name} = {name} + playground_std_widgets_base_body()\n'
+        for part in parts:
+            embedded += f'    if {condition(part["families"])} {{ {name} = {name} + playground_std_{part["name"]}() }}\n'
+        required = {family for part in parts for family in part['families']}
+        if module == 'ui/widgets': embedded += f'    playground_merge(p,{name},"{module}.xu")\n'
+        else: embedded += f'    if {condition(required)} {{ playground_merge(p,{name},"{module}.xu") }}\n'
+    embedded += '}\n'
     (runtime / 'stdlib.xu').write_text(embedded)
     wasm = root / 'build/playground/xu-play.wasm'
     with tempfile.TemporaryDirectory(prefix='xu-play-build-') as temporary:

@@ -1,0 +1,468 @@
+<!--title: ColorPicker · UI / Widgets-->
+<!--xu-api-version: 0.10.11-->
+<nav class="widget-crumb" aria-label="位置"><a href="/zh/api">API</a><span>/</span><a href="/zh/api/ui">UI</a><span>/</span><a href="/zh/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">ColorPicker</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / 选择与调节</p><h1>ColorPicker</h1><p class="lead">选择并查看颜色值</p><a class="btn pri" href="/zh/playground?widget=color-picker#widget-experience">在演练场体验预览 <span aria-hidden="true">↗</span></a><p class="note">演练场中的预览用于体验交互，不执行 Xu；原生行为以本页 API 和完整 Xu 示例为准。</p></header>
+<h2 id="experience">体验什么</h2><p>更换颜色并查看色值。</p>
+<h2 id="behavior">使用要点</h2><p>同时提供色块与可读的颜色值。应用应检查输入格式与透明度含义，不能只通过颜色表达状态。</p>
+<h2 id="create">通过 Screen 创建</h2>
+<p>下面的 Screen 构造方法返回节点 ID。将 ID 交给 Screen 的布局、状态与事件接口；它不是下方独立控件类型的实例。</p>
+<p class="note">原生 Xu 创建片段：在已有 Screen 的初始化阶段调用 configure；窗口创建、事件循环与资源释放参见完整原生示例。</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+#ui/draw
+
+fn configure(screen &amp;mut widgets.Screen) int {
+    id := screen.color_picker(draw.rgb(180,69,50)) or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="-mut-Screen-color_picker">
+<h2><code>(&amp;mut Screen) color_picker</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Screen) color_picker(value draw.Color) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 Screen 中创建 ColorPicker，返回组件节点 ID；创建失败时抛出错误。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;mut Screen</span></dt><dd>接收者 &amp;mut Screen（可变借用）</dd>
+<dt><code>value</code> <span class="type">draw.Color</span></dt><dd>value（draw.Color）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 组件节点 ID，供 place 和其他 Screen 方法使用。</p>
+</article>
+<h2 id="lifecycle">放置、状态与事件</h2>
+<p>组件由应用拥有。Screen.place 放置节点，Screen.set_enabled 和 Screen.set_visible 管理可用性与显示。状态变化后重新呈现；创建和修改时处理 <code>or</code> 错误，不在绘制回调中修改拓扑。ToastHost 使用自己的队列接口。</p>
+<p><a href="/zh/api/ui/widgets#struct-Action">Action</a> · <a href="/zh/api/ui/widgets#struct-Styles">Styles</a> · <a href="/zh/docs/ui">界面生命周期与样式指南</a></p>
+<p><a href="/zh/api/ui/widgets#-mut-Screen-place">Screen.place</a> · <a href="/zh/api/ui/widgets#-mut-Screen-set_enabled">Screen.set_enabled</a> · <a href="/zh/api/ui/widgets#-mut-Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">独立控件对象 API</h2>
+<p>以下类型与方法用于自行管理控件、输入和绘制的进阶用法。接收者是控件对象，不是 Screen 返回的节点 ID；普通 Screen 用法请使用上面的创建接口及 Widgets 模块中的 Screen 方法。</p>
+<article class="api-item" id="struct-ColorPicker">
+<h2><code>struct ColorPicker</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> ColorPicker {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>RGBA 颜色选择调色板控件，支持通道调节与实时预览。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="-ColorPicker-id">
+<h2><code>(&amp;ColorPicker) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) id() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件、元素或节点的唯一标识 ID。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-ColorPicker-bounds">
+<h2><code>(&amp;ColorPicker) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件或几何对象的有效外接矩形边界（Rectangle）。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-ColorPicker-is_enabled">
+<h2><code>(&amp;ColorPicker) is_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) is_enabled() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：判断是否 enabled。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-ColorPicker-is_focused">
+<h2><code>(&amp;ColorPicker) is_focused</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) is_focused() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：判断是否 focused。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-ColorPicker-active_channel">
+<h2><code>(&amp;ColorPicker) active_channel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) active_channel() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：执行 active channel 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-ColorPicker-needs_paint">
+<h2><code>(&amp;ColorPicker) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：执行 needs paint 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-ColorPicker-channel">
+<h2><code>(&amp;ColorPicker) channel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) channel(index <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;ColorPicker` 上执行 `channel` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-ColorPicker-value">
+<h2><code>(&amp;ColorPicker) value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) value() draw.Color</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>draw.Color — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_channel">
+<h2><code>(&amp;mut ColorPicker) set_channel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_channel(index <span class="syn-type">int</span>,value <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 channel。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index（int）</dd>
+<dt><code>value</code> <span class="type">int</span></dt><dd>value（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_value">
+<h2><code>(&amp;mut ColorPicker) set_value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_value(value draw.Color) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 value。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>value</code> <span class="type">draw.Color</span></dt><dd>value（draw.Color）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-ColorPicker-style_or">
+<h2><code>(&amp;ColorPicker) style_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) style_or(styles &amp;Styles) ControlStyle</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：执行 style or 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>ControlStyle — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_style">
+<h2><code>(&amp;mut ColorPicker) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 style。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style（借用，调用方仍持有；类型 &amp;ControlStyle）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_enabled">
+<h2><code>(&amp;mut ColorPicker) set_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_enabled(enabled <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 enabled。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_read_only">
+<h2><code>(&amp;mut ColorPicker) set_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_read_only(read_only <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 read only。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>read_only</code> <span class="type">bool</span></dt><dd>read_only（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_invalid">
+<h2><code>(&amp;mut ColorPicker) set_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_invalid(invalid <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 invalid。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>invalid</code> <span class="type">bool</span></dt><dd>invalid（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_focus">
+<h2><code>(&amp;mut ColorPicker) set_focus</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_focus(focused <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 focus。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>focused（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-ColorPicker-preview_bounds">
+<h2><code>(&amp;ColorPicker) preview_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) preview_bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：执行 preview bounds 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-ColorPicker-channel_bounds">
+<h2><code>(&amp;ColorPicker) channel_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) channel_bounds(index <span class="syn-type">int</span>) layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：执行 channel bounds 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_bounds">
+<h2><code>(&amp;mut ColorPicker) set_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_bounds(bounds &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 bounds。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>bounds</code> <span class="type">&amp;layout.Rect</span></dt><dd>bounds（借用，调用方仍持有；类型 &amp;layout.Rect）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-apply_styles">
+<h2><code>(&amp;mut ColorPicker) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>根据当前主题样式表解析并应用几何与视觉度量。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-input">
+<h2><code>(&amp;mut ColorPicker) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) input(event &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>接收并处理分发的鼠标、键盘或触摸交互输入事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-route">
+<h2><code>(&amp;mut ColorPicker) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) route(kind <span class="syn-type">int</span>,event &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>路由并分发交互事件至命中的子节点或处理器。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>类型标签（int）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-event">
+<h2><code>(&amp;mut ColorPicker) event</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) event(event &amp;ui.Event) Action</code></pre></div>
+<h3>用途</h3>
+<p>处理并响应窗口与系统的交互及生命周期事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.Event</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.Event）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-measure_styled">
+<h2><code>(&amp;mut ColorPicker) measure_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) measure_styled(styles &amp;Styles) layout.Size</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：执行 measure styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Size — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-paint_styled">
+<h2><code>(&amp;mut ColorPicker) paint_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) paint_styled(frame <span class="syn-borrow">&amp;mut</span> draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：执行 paint styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>frame</code> <span class="type">&amp;mut draw.Frame</span></dt><dd>frame（独占借用；类型 &amp;mut draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-dispose">
+<h2><code>(&amp;mut ColorPicker) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) dispose()</code></pre></div>
+<h3>用途</h3>
+<p>释放并清理对象所持有的系统原生资源与底层句柄。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="-ColorPicker-hex">
+<h2><code>(&amp;ColorPicker) hex</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) hex() <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：十六进制。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_hex">
+<h2><code>(&amp;mut ColorPicker) set_hex</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_hex(text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 hex。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>text</code> <span class="type">&amp;string</span></dt><dd>文本（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_swatches">
+<h2><code>(&amp;mut ColorPicker) set_swatches</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_swatches(colors &amp;[]draw.Color) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 swatches。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>colors</code> <span class="type">&amp;[]draw.Color</span></dt><dd>colors（借用，调用方仍持有；类型 &amp;[]draw.Color）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-remember">
+<h2><code>(&amp;mut ColorPicker) remember</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) remember()</code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;mut ColorPicker` 上执行 `remember` 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="-ColorPicker-recent_colors">
+<h2><code>(&amp;ColorPicker) recent_colors</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) recent_colors() []draw.Color</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：执行 recent colors 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>[]draw.Color — 切片结果</p>
+</article>
+<article class="api-item" id="-ColorPicker-swatch_bounds">
+<h2><code>(&amp;ColorPicker) swatch_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker &amp;ColorPicker) swatch_bounds(index <span class="syn-type">int</span>) layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;ColorPicker` 上的操作：执行 swatch bounds 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;ColorPicker</span></dt><dd>接收者 &amp;ColorPicker（借用）</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_show_swatches">
+<h2><code>(&amp;mut ColorPicker) set_show_swatches</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_show_swatches(visible <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 show swatches。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>visible</code> <span class="type">bool</span></dt><dd>visible（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-ColorPicker-set_locale">
+<h2><code>(&amp;mut ColorPicker) set_locale</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (picker <span class="syn-borrow">&amp;mut</span> ColorPicker) set_locale(locale &amp;Locale) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;mut ColorPicker` 上的操作：设置 locale。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>picker</code> <span class="type">&amp;mut ColorPicker</span></dt><dd>接收者 &amp;mut ColorPicker（可变借用）</dd>
+<dt><code>locale</code> <span class="type">&amp;Locale</span></dt><dd>locale（借用，调用方仍持有；类型 &amp;Locale）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<h2 id="native-example">完整原生示例</h2><p><a href="/zh/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/zh/api/ui/widgets">返回 Widgets 目录</a></p>

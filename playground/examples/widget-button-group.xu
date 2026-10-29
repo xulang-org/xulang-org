@@ -1,0 +1,50 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+#time
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := widgets.default_theme()
+    styles := widgets.dark_styles()
+    options := ["Design","Develop","Review"]
+    headers := ["Workspace","Members"]
+    bounds := box(32.0,86.0,550.0,44.0)
+    items := [widgets.button_group_item(1,"Design"),widgets.button_group_item(2,"Develop"),widgets.button_group_item(3,"Review")]
+    mut control := widgets.button_group(&context,&identity,1,&bounds,&items,widgets.BUTTON_GROUP_SINGLE) or >>
+    mut last := 0
+    control.apply_styles(&styles) or >>
+    mut focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        navigation := focus.input(&event)
+        control.set_focus(focus.current() == 1)
+        if navigation.consumed { -> }
+        action := control.input(&event) or >>
+        if action.request_focus { focus.focus(1) or >> }
+        if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }
+        control.apply_styles(&styles) or >>
+    }
+    mut frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(draw.rgb(16,24,39)) or >>
+    draw.text(32,24,24,"#f8fafc","ButtonGroup")
+    control.paint_styled(mut &frame,&styles) or >>
+    message := "Selected: " + str(control.active_key())
+    draw.text(32,320,16,"#e2e8f0",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

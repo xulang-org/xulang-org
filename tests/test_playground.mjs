@@ -49,8 +49,10 @@ for (const [name, example] of Object.entries(examples)) {
       return;
     }
     assert.equal(result.exit, 0, result.stderr);
-    assert.equal(result.stdout, expected[name]);
-    assert.equal(example.expected.value, expected[name]);
+    const output = example.component ? example.expected.value : expected[name];
+    assert.equal(result.stdout, output);
+    assert.equal(example.expected.value, output);
+    if (example.component) assert.ok(result.ui?.commands.length, 'component renders a real Xu frame');
     if (name === 'recursion') assert.match(result.stderr, /warning: recursive call cycle/);
     else assert.equal(result.stderr, '');
   });

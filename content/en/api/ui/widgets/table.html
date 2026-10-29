@@ -1,0 +1,705 @@
+<!--title: Table · UI / Widgets-->
+<!--xu-api-version: 0.10.11-->
+<nav class="widget-crumb" aria-label="Breadcrumb"><a href="/api">API</a><span>/</span><a href="/api/ui">UI</a><span>/</span><a href="/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">Table</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / Data</p><h1>Table</h1><p class="lead">Browse structured records in columns</p><a class="btn pri" href="/playground?widget=table#widget-experience">Try the interactive preview <span aria-hidden="true">↗</span></a><p class="note">The playground preview demonstrates interaction without executing Xu. Use this API and the complete Xu example for native behavior.</p></header>
+<h2 id="experience">What to try</h2><p>Click a column header to change sorting.</p>
+<h2 id="behavior">Usage notes</h2><p>Column types determine sorting semantics. Sort numeric columns by value and balance column and minimum widths against available space.</p>
+<h2 id="create">Create through Screen</h2>
+<p>The Screen constructor returns a node ID. Pass that ID to Screen layout, state and event APIs. It is separate from the standalone control object documented below.</p>
+<p class="note">Native Xu setup fragment: call configure during initialization of an existing Screen. See the complete example for window creation, event dispatch and cleanup.</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+
+fn configure(screen &amp;mut widgets.Screen) int {
+    options := [&quot;Design&quot;,&quot;Develop&quot;,&quot;Review&quot;]
+    id := screen.table(&amp;options,3,0) or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="-mut-Screen-table">
+<h2><code>(&amp;mut Screen) table</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">&amp;mut</span> Screen) table(headers &amp;[]<span class="syn-type">string</span>,rows <span class="syn-type">int</span>,selected <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Create Table in Screen and return the component node ID; throw on creation failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;mut Screen</span></dt><dd>receiver &amp;mut Screen (exclusive borrow)</dd>
+<dt><code>headers</code> <span class="type">&amp;[]string</span></dt><dd>headers (borrowed; caller keeps it; type &amp;[]string)</dd>
+<dt><code>rows</code> <span class="type">int</span></dt><dd>rows (int)</dd>
+<dt><code>selected</code> <span class="type">int</span></dt><dd>selected (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — component node ID for place and other Screen methods.</p>
+</article>
+<h2 id="lifecycle">Placement, state and events</h2>
+<p>The application owns the component. Screen.place positions nodes; Screen.set_enabled and Screen.set_visible control availability and visibility. Present again after state changes, handle <code>or</code> errors, and keep topology changes outside paint callbacks. ToastHost uses its own queue API.</p>
+<p><a href="/api/ui/widgets#struct-Action">Action</a> · <a href="/api/ui/widgets#struct-Styles">Styles</a> · <a href="/docs/ui">UI lifecycle and styling guide</a></p>
+<p><a href="/api/ui/widgets#-mut-Screen-place">Screen.place</a> · <a href="/api/ui/widgets#-mut-Screen-set_enabled">Screen.set_enabled</a> · <a href="/api/ui/widgets#-mut-Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">Standalone control object API</h2>
+<p>These types and methods support applications that manage control objects, input and painting directly. Their receiver is a control object, not a Screen node ID. For Screen usage, use the constructor above and the Screen methods in the Widgets module.</p>
+<article class="api-item" id="-mut-Table-set_locale">
+<h2><code>(&amp;mut Table) set_locale</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (table <span class="syn-borrow">&amp;mut</span> Table) set_locale(locale &amp;Locale) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set locale. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>table</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>locale</code> <span class="type">&amp;Locale</span></dt><dd>locale (borrowed; caller keeps it; type &amp;Locale)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="struct-Table">
+<h2><code>struct Table</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Table {
+
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>A bounded single-line, equal-width column table: 1..16 columns and at most 768 cells (512 rows). Header activation sorts locally unless manual mode is set. Only visible rows are shaped, and their cache slots are reused on scroll.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="-Table-id">
+<h2><code>(&amp;Table) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) id() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Return the unique integer ID of the element or control.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-bounds">
+<h2><code>(&amp;Table) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) bounds() layout.Rect</code></pre></div>
+<h3>Purpose</h3>
+<p>Return the bounding Rectangle of the control or geometry.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.Rect — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-count">
+<h2><code>(&amp;Table) count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) count() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: count non-overlapping occurrences.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-column_count">
+<h2><code>(&amp;Table) column_count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) column_count() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: column count.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-selected">
+<h2><code>(&amp;Table) selected</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) selected() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Get or test the currently selected index, node, or state.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-sort_column">
+<h2><code>(&amp;Table) sort_column</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) sort_column() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: sort column.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-sort_descending">
+<h2><code>(&amp;Table) sort_descending</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) sort_descending() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: sort descending.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Table-scroll_offset">
+<h2><code>(&amp;Table) scroll_offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) scroll_offset() <span class="syn-type">f64</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: scroll offset.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>f64 — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-needs_paint">
+<h2><code>(&amp;Table) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: needs paint.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-mut-Table-painted">
+<h2><code>(&amp;mut Table) painted</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) painted()</code></pre></div>
+<h3>Purpose</h3>
+<p>Acknowledge the painted frame and clear the dirty flag; this is not a query.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+</dl>
+</article>
+<article class="api-item" id="-Table-is_enabled">
+<h2><code>(&amp;Table) is_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) is_enabled() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: whether it is enabled.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Table-is_focused">
+<h2><code>(&amp;Table) is_focused</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) is_focused() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: whether it is focused.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Table-is_read_only">
+<h2><code>(&amp;Table) is_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) is_read_only() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: whether it is read only.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-mut-Table-cancel">
+<h2><code>(&amp;mut Table) cancel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) cancel()</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute `cancel` on `&amp;mut Table`.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-Table-set_focus">
+<h2><code>(&amp;mut Table) set_focus</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_focus(focused <span class="syn-type">bool</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set focus.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>focused (bool)</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-Table-set_enabled">
+<h2><code>(&amp;mut Table) set_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_enabled(enabled <span class="syn-type">bool</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set enabled.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled (bool)</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-Table-set_read_only">
+<h2><code>(&amp;mut Table) set_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_read_only(value <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set read only. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>value</code> <span class="type">bool</span></dt><dd>value (bool)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_cell">
+<h2><code>(&amp;mut Table) set_cell</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_cell(row <span class="syn-type">int</span>,column <span class="syn-type">int</span>,text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set cell. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>row</code> <span class="type">int</span></dt><dd>row (int)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+<dt><code>text</code> <span class="type">&amp;string</span></dt><dd>text (borrowed; caller keeps it; type &amp;string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-cell">
+<h2><code>(&amp;Table) cell</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) cell(row <span class="syn-type">int</span>,column <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute `cell` on `&amp;Table`. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+<dt><code>row</code> <span class="type">int</span></dt><dd>row (int)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>string — result string</p>
+</article>
+<article class="api-item" id="-mut-Table-set_rows">
+<h2><code>(&amp;mut Table) set_rows</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_rows(count <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set rows. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>count</code> <span class="type">int</span></dt><dd>count (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_selected">
+<h2><code>(&amp;mut Table) set_selected</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_selected(index <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set selected. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_scroll_offset">
+<h2><code>(&amp;mut Table) set_scroll_offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_scroll_offset(offset <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set scroll offset. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>offset</code> <span class="type">f64</span></dt><dd>offset (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_bounds">
+<h2><code>(&amp;mut Table) set_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_bounds(bounds &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set bounds. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>bounds</code> <span class="type">&amp;layout.Rect</span></dt><dd>bounds (borrowed; caller keeps it; type &amp;layout.Rect)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-style_or">
+<h2><code>(&amp;Table) style_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) style_or(styles &amp;Styles) ControlStyle</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: style or.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles (borrowed; caller keeps it; type &amp;Styles)</dd>
+</dl>
+<h3>Returns</h3>
+<p>ControlStyle — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_style">
+<h2><code>(&amp;mut Table) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set style. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style (borrowed; caller keeps it; type &amp;ControlStyle)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-clear_style">
+<h2><code>(&amp;mut Table) clear_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) clear_style()</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: clear style.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+</dl>
+</article>
+<article class="api-item" id="-mut-Table-apply_styles">
+<h2><code>(&amp;mut Table) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Resolve and apply theme metrics to the control. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles (borrowed; caller keeps it; type &amp;Styles)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-row_bounds">
+<h2><code>(&amp;Table) row_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) row_bounds(row <span class="syn-type">int</span>) layout.Rect</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: row bounds.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+<dt><code>row</code> <span class="type">int</span></dt><dd>row (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.Rect — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-header_bounds">
+<h2><code>(&amp;Table) header_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) header_bounds(column <span class="syn-type">int</span>) layout.Rect</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: header bounds.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.Rect — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-input">
+<h2><code>(&amp;mut Table) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) input(input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>Purpose</h3>
+<p>Process routed mouse, keyboard, or touch input events. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input (borrowed; caller keeps it; type &amp;ui.InputEvent)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Action — input result with kind, id, repaint and focus requests.</p>
+</article>
+<article class="api-item" id="-mut-Table-route">
+<h2><code>(&amp;mut Table) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) route(kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>Purpose</h3>
+<p>Route and dispatch the input event to matching targets. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>kind tag (int)</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input (borrowed; caller keeps it; type &amp;ui.InputEvent)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Action — input result with kind, id, repaint and focus requests.</p>
+</article>
+<article class="api-item" id="-mut-Table-event">
+<h2><code>(&amp;mut Table) event</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) event(event &amp;ui.Event) Action</code></pre></div>
+<h3>Purpose</h3>
+<p>Handle and respond to window or system lifecycle and interaction events. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>event</code> <span class="type">&amp;ui.Event</span></dt><dd>event (borrowed; caller keeps it; type &amp;ui.Event)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Action — input result with kind, id, repaint and focus requests.</p>
+</article>
+<article class="api-item" id="-mut-Table-measure_styled">
+<h2><code>(&amp;mut Table) measure_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) measure_styled(styles &amp;Styles) layout.Size</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: measure styled. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles (borrowed; caller keeps it; type &amp;Styles)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.Size — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-dispose">
+<h2><code>(&amp;mut Table) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) dispose()</code></pre></div>
+<h3>Purpose</h3>
+<p>Release and dispose native resources and underlying handles.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+</dl>
+</article>
+<article class="api-item" id="-Table-column_width">
+<h2><code>(&amp;Table) column_width</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) column_width(column <span class="syn-type">int</span>) <span class="syn-type">f64</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: column width. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>f64 — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_column_width">
+<h2><code>(&amp;mut Table) set_column_width</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_column_width(column <span class="syn-type">int</span>,width <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set column width. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+<dt><code>width</code> <span class="type">f64</span></dt><dd>width (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_column_alignment">
+<h2><code>(&amp;mut Table) set_column_alignment</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_column_alignment(column <span class="syn-type">int</span>,alignment <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set column alignment. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+<dt><code>alignment</code> <span class="type">f64</span></dt><dd>alignment (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_horizontal_offset">
+<h2><code>(&amp;mut Table) set_horizontal_offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_horizontal_offset(offset <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set horizontal offset. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>offset</code> <span class="type">f64</span></dt><dd>offset (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-horizontal_offset">
+<h2><code>(&amp;Table) horizontal_offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) horizontal_offset() <span class="syn-type">f64</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: horizontal offset.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>f64 — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_status">
+<h2><code>(&amp;mut Table) set_status</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_status(text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set status. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>text</code> <span class="type">&amp;string</span></dt><dd>text (borrowed; caller keeps it; type &amp;string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-paint_styled">
+<h2><code>(&amp;mut Table) paint_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) paint_styled(frame <span class="syn-borrow">&amp;mut</span> draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: paint styled. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">&amp;mut draw.Frame</span></dt><dd>frame (exclusive borrow; type &amp;mut draw.Frame)</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles (borrowed; caller keeps it; type &amp;Styles)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_column_min_width">
+<h2><code>(&amp;mut Table) set_column_min_width</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_column_min_width(column <span class="syn-type">int</span>,width <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set column min width. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+<dt><code>width</code> <span class="type">f64</span></dt><dd>width (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-row_at">
+<h2><code>(&amp;Table) row_at</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) row_at(view_row <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Source row indices remain stable while the view is sorted. cell/set_cell address source rows; view_cell and row_at address displayed rows. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+<dt><code>view_row</code> <span class="type">int</span></dt><dd>view_row (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-view_row">
+<h2><code>(&amp;Table) view_row</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) view_row(source_row <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: view row. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+<dt><code>source_row</code> <span class="type">int</span></dt><dd>source_row (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-selected_row">
+<h2><code>(&amp;Table) selected_row</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) selected_row() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: selected row. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Table-view_cell">
+<h2><code>(&amp;Table) view_cell</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t &amp;Table) view_cell(row <span class="syn-type">int</span>,column <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Table`: view cell. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;Table</span></dt><dd>receiver &amp;Table (borrow)</dd>
+<dt><code>row</code> <span class="type">int</span></dt><dd>row (int)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>string — result string</p>
+</article>
+<article class="api-item" id="-mut-Table-set_selected_row">
+<h2><code>(&amp;mut Table) set_selected_row</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_selected_row(source_row <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set selected row. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>source_row</code> <span class="type">int</span></dt><dd>source_row (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-sort_by">
+<h2><code>(&amp;mut Table) sort_by</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) sort_by(column <span class="syn-type">int</span>,descending <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: sort by. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+<dt><code>descending</code> <span class="type">bool</span></dt><dd>descending (bool)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-refresh_sort">
+<h2><code>(&amp;mut Table) refresh_sort</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) refresh_sort() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: refresh sort. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_sort_kind">
+<h2><code>(&amp;mut Table) set_sort_kind</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_sort_kind(column <span class="syn-type">int</span>,kind <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;mut Table`: set sort kind. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>column</code> <span class="type">int</span></dt><dd>column (int)</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>kind tag (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-mut-Table-set_local_sort">
+<h2><code>(&amp;mut Table) set_local_sort</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">&amp;mut</span> Table) set_local_sort(enabled <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Manual mode keeps header state/events and lets a remote data source own order. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">&amp;mut Table</span></dt><dd>receiver &amp;mut Table (exclusive borrow)</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled (bool)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<h2 id="native-example">Complete native example</h2><p><a href="/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/api/ui/widgets">Back to Widgets</a></p>
