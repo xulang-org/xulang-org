@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Sync all 47 official cross-language benchmark workloads and sources into the website dataset."""
+"""Sync registered cross-language benchmark workloads and sources into the website dataset."""
 import json
 import os
 from pathlib import Path
@@ -72,6 +72,7 @@ BENCH_DESCRIPTIONS = {
 
     # 6. 高性能并发与协程通信 (concurrency, 1项)
     'chan_ping': {'cat': 'concurrency', 'zh': 'CSP 协程有界管道双向乒乓通信（50万次调度）', 'en': 'CSP coroutine channel throughput (500k messages)'},
+    'http_concurrent': {'cat': 'concurrency', 'zh': 'HTTP 高并发端到端吞吐（16 并发 × 200 请求自环回压测）', 'en': 'HTTP high-concurrency throughput (16 concurrent x 200 loopback requests)'},
 }
 
 

@@ -5,8 +5,13 @@ import assert from 'node:assert/strict';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 
 const bytes = readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url));
-const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url), 'utf8'));
+const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url), 'utf8')).projects;
+function exampleSource(example) {
+  return '@main\n' + Object.entries(example.files).filter(([path]) => !path.includes('/') && path.endsWith('.xu')).map(([, source]) => source.replace(/^\s*@main\s*$/gm, '')).join('\n\n');
+}
 const expected = {
+  blank: '',
+  checkout: '180\n',
   hello: 'Hello from XU Programming Language!\n',
   bindings: 'Xu\n21\n100\n',
   arithmetic: '22\n12\n85\n3\n2\ntrue\nfalse\n',
@@ -33,17 +38,19 @@ const expected = {
 };
 
 for (const [name, example] of Object.entries(examples)) {
-  test('homepage example: ' + name, async () => {
+  test('project template: ' + name, async () => {
     const runtime = await createRuntime(bytes);
-    const result = runtime.run(example.source);
+    const result = runtime.run(exampleSource(example));
     if (name === 'borrow') {
       assert.notEqual(result.exit, 0);
       assert.match(result.stderr, /cannot assign.*borrowed/);
+      assert.ok(result.stderr.includes(example.expected.value));
       assert.equal(result.stdout, '');
       return;
     }
     assert.equal(result.exit, 0, result.stderr);
     assert.equal(result.stdout, expected[name]);
+    assert.equal(example.expected.value, expected[name]);
     if (name === 'recursion') assert.match(result.stderr, /warning: recursive call cycle/);
     else assert.equal(result.stderr, '');
   });
@@ -58,12 +65,12 @@ test('user edits execute as Xu and compiler diagnostics recover', async () => {
   assert.notEqual(broken.exit, 0);
   assert.match(broken.stderr, /error:/);
   assert.equal(broken.stdout, '');
-  assert.equal(runtime.run(examples.hello.source).stdout, expected.hello);
+  assert.equal(runtime.run(exampleSource(examples.hello)).stdout, expected.hello);
 });
 
 test('embedded errors import runs; unsupported imports report a real error', async () => {
   const runtime = await createRuntime(bytes);
-  const supported = runtime.run(examples.hello.source.replace('@main', '@main\n#errors'));
+  const supported = runtime.run(exampleSource(examples.hello).replace('@main', '@main\n#errors'));
   assert.equal(supported.exit, 0, supported.stderr);
   const unsupported = runtime.run('@main\n#os\nfn main() int { << 0 }');
   assert.notEqual(unsupported.exit, 0);
@@ -96,7 +103,7 @@ fn main() int {
 }`);
   assert.equal(result.exit, 0, result.stderr);
   assert.equal(result.stdout, '42\n');
-  assert.equal(runtime.run(examples.hello.source).stdout, expected.hello);
+  assert.equal(runtime.run(exampleSource(examples.hello)).stdout, expected.hello);
 });
 
 test('chan deadlock reports a diagnostic and permits a fresh run', async () => {
@@ -109,7 +116,7 @@ fn main() int {
 }`);
   assert.notEqual(result.exit, 0);
   assert.match(result.stderr, /channel deadlock/);
-  assert.equal(runtime.run(examples['chan-workers'].source).stdout, '60\n');
+  assert.equal(runtime.run(exampleSource(examples['chan-workers'])).stdout, '60\n');
 });
 
 test('by-value strings and multi-slot structs follow the Xu ABI', async () => {

@@ -9,7 +9,7 @@
 
 fn configure(view &amp;mut widgets.View) int {
     mut themes := widgets.style_switcher()
-    themes.use_preset(widgets.theme_light) or &gt;&gt;
+    themes.use_preset(widgets.THEME_LIGHT) or &gt;&gt;
     themes.set_text_scale(1.2) or &gt;&gt;
     themes.set_density(0.85) or &gt;&gt;
     themes.apply(view) or &gt;&gt;
@@ -18,3 +18,31 @@ fn configure(view &amp;mut widgets.View) int {
     &lt;&lt; 0
 }
 fn main() int { &lt;&lt; 0 }</code></pre></div>
+
+<h2 id="component-workshop">Component workshop: icon buttons, tooltips and passwords</h2>
+<p><a href="#example-a2be48ce1c23">The complete component_workshop project and source</a> provide 46 entries with themes, density, 100%/140%/200% text, disabled, read-only and invalid states. Use the matching Xu 0.10.11 SDK. A successful Windows/Linux cross build does not establish target-machine GUI acceptance.</p>
+<p><code>Screen.button_with_icon()</code> creates an icon-and-text button; <code>icon_button()</code> creates an icon-only button. Each button owns its style snapshot. Set its own <code>icon_size</code> and <code>ICON_LEADING/TRAILING/ABOVE/BELOW</code>, then use <code>measure_button()</code> to place it at its content size. Embed resources with <code>--www</code>; the code below requires <code>www/logo.png</code>.</p>
+<p>Tooltips default to top/center. <code>set_tooltip_placement()</code> selects a side with edge flipping. Ordinary pointer hover shows help after about 500 ms; keyboard or explicit focus shows it immediately. Leaving, clicking or scrolling dismisses it. Escape suppresses the current interaction until re-entry or refocus. Anchors fully outside their scroll clip do not show a tooltip.</p>
+<p><code>password_input()</code> enables a real single-line password Input, with one bullet per Unicode grapheme. <code>set_password_visible()</code> preserves value and selection. Paste works; copy and cut remain blocked when revealed. Native surrounding-text queries and XACP node text do not return the password. <code>text_value()</code> still returns the application value, so applications must manage storage and logging; masking does not encrypt memory.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#ui/widgets
+
+fn configure(screen &amp;mut widgets.Screen, styles &amp;widgets.Styles) int {
+    button := screen.button_with_icon(&quot;logo.png&quot;, &quot;Build project&quot;) or &gt;&gt;
+    mut appearance := styles.button_variant(widgets.BUTTON_PRIMARY) or &gt;&gt;
+    appearance.icon_placement = widgets.ICON_ABOVE
+    appearance.icon_size = 32.0 * styles.text_scale
+    screen.set_control_style(button, &amp;appearance) or &gt;&gt;
+    size := screen.measure_button(button) or &gt;&gt;
+    screen.place(button, 24.0, 24.0, size.width, size.height) or &gt;&gt;
+    tip := screen.tooltip(button, &quot;Build project&quot;) or &gt;&gt;
+    mut placement := widgets.overlay_placement()
+    placement.side = widgets.OVERLAY_RIGHT
+    placement.align = widgets.OVERLAY_CENTER
+    screen.set_tooltip_placement(tip, &amp;placement) or &gt;&gt;
+    password := screen.password_input(&quot;&quot;) or &gt;&gt;
+    screen.place(password, 24.0, 160.0, 320.0, 48.0) or &gt;&gt;
+    &lt;&lt; 0
+}
+fn main() int { &lt;&lt; 0 }
+</code></pre></div>

@@ -43,7 +43,7 @@ class Element {
   click() { if (!this.disabled) this.listeners.click(); }
 }
 
-async function mount({blocks, en = false, available = true, supported = true, ui = false} = {}) {
+async function mount({blocks, en = false, available = true, supported = true, ui = false, workspace} = {}) {
   const elements = {};
   for (const id of blocks ? [] : ['src', 'ex', 'run', 'out', 'meta']) {
     elements['xu-play-' + id] = {
@@ -118,6 +118,7 @@ async function mount({blocks, en = false, available = true, supported = true, ui
     clearTimeout(id) { timers.delete(id); }
   };
   if (ui) context.window.XuPlayCanvas = {maxEvents: 64, render(canvas, commands) { canvas.commands = commands; return true; }};
+  if (workspace) context.window.XuPlayWorkspace = workspace;
   if (blocks) vm.runInNewContext(readFileSync(new URL('../www/theme.js', import.meta.url), 'utf8'), context);
   vm.runInNewContext(readFileSync(new URL('../www/xu-play.js?v=fixture', import.meta.url), 'utf8'), context);
   for (const handler of pageEvents.DOMContentLoaded) handler();
@@ -157,6 +158,22 @@ test('Timeout terminates execution and late results cannot overwrite the next ru
   workers[1].respond({type: 'result', exit: 0, stdout: 'fresh result\n', stderr: ''});
   workers[0].respond({type: 'result', exit: 0, stdout: 'stale result\n', stderr: ''});
   assert.equal(elements['xu-play-out'].textContent, 'fresh result\n');
+});
+
+test('opening a different project stops old execution and ignores its late result', async () => {
+  const {elements, workers} = await mount();
+  elements['xu-play-src'].value = 'busy program';
+  elements['xu-play-run'].click();
+  elements['xu-play-ex'].value = 'hello';
+  elements['xu-play-ex'].listeners.change();
+  await new Promise(setImmediate);
+  assert.equal(workers[0].terminated, true);
+  assert.equal(elements['xu-play-src'].value, '@main');
+  workers[0].respond({type: 'result', exit: 0, stdout: 'stale output', stderr: ''});
+  assert.doesNotMatch(elements['xu-play-out'].textContent, /stale output/);
+  elements['xu-play-run'].click();
+  workers[1].respond({type: 'result', exit: 0, stdout: 'new project', stderr: ''});
+  assert.equal(elements['xu-play-out'].textContent, 'new project');
 });
 
 test('Local SDK examples can be copied without offering browser execution', async () => {
@@ -378,6 +395,27 @@ test('Diagrams, C code, manifests, and outputs retain copy without run or edit b
   assert.ok(wrappers[4].querySelector('.code-copy-btn'));
 });
 
+
+test('project UI previews and event replays use the complete workspace source', async () => {
+  let program = '@main\nfn main() int { << helper() }\nfn helper() int { << 0 }';
+  const workspace = {getSource: () => program, setExample() {}, showConsole() {}};
+  const {elements, workers} = await mount({ui: true, workspace});
+  elements['xu-play-src'].value = 'fn helper() int { << 0 }';
+  let previews = 0;
+  elements['xu-play-preview-tab'] = {click() { previews += 1; }};
+  elements['xu-play-run'].click();
+  assert.equal(workers[0].messages.at(-1).source, program);
+  const result = {type: 'result', exit: 0, stdout: '', stderr: '', ui: {commands: 'frame', interactive: true}};
+  workers[0].respond(result);
+  assert.equal(elements['xu-play-ui'].hidden, false);
+  assert.equal(previews, 1);
+  elements['xu-play-canvas'].listeners.click({clientX: 170, clientY: 120});
+  assert.equal(workers[0].messages.at(-1).source, program);
+  assert.equal(workers[0].messages.at(-1).events.length, 1);
+  program += '\n// changed helper';
+  workers[0].respond(result);
+  assert.equal(elements['xu-play-ui'].hidden, true);
+});
 
 test('Canvas clicks scale to Xu coordinates; edits and fresh runs reset replay', async () => {
   const {elements, workers} = await mount({ui: true});

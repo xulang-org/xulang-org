@@ -1,0 +1,97 @@
+@main
+
+#ui
+#ui/widgets
+#xacp
+#errors
+
+demo #"github.com/xulang-org/examples/ui_demo"
+
+struct Model {
+    label_id int
+    count int
+}
+
+fn (m &mut Model) layout(s &mut widgets.Screen) int {
+    s.place(m.label_id,32.0,36.0,540.0,44.0) or >>
+    << 0
+}
+
+fn (m &mut Model) update(s &mut widgets.Screen,action widgets.Action) int {
+    if action.kind == widgets.ACTION_KEY && int(action.value) == ui.KEY_ESCAPE {
+        s.close() or >>
+    }
+    if action.kind == widgets.ACTION_ACTIVATE {
+        m.count += 1
+        s.set_text(m.label_id,"Button actions: " + str(m.count)) or >>
+    }
+    << 0
+}
+
+fn inspect_screen(s &mut widgets.Screen) int {
+    mut session := xacp.open_session()
+    permissions := xacp.PERM_UI_READ | xacp.PERM_UI_MUTATE
+    if !xacp.set_permissions(mut &session,permissions) {
+        xacp.close_session(mut &session)
+        >> errors.new("xacp_screen: failed to set least-privilege UI permissions")
+    }
+    limits := xacp.default_limits()
+    nodes := xacp.ui_tree(mut &*s,mut &session,1,false,32,&limits) or (err) {
+        xacp.close_session(mut &session)
+        >> err
+    }
+    println("XACP ui.tree: " + str(nodes.len) + " visible nodes")
+    for node in nodes {
+        println("  #" + str(node.id) + " kind=" + str(node.kind) + " " + node.text)
+    }
+
+    mut snapshot := xacp.ui_screenshot(mut &*s,mut &session,2,1.0,&limits) or (err) {
+        xacp.close_session(mut &session)
+        >> err
+    }
+    println("XACP ui.screenshot: " + str(snapshot.pixel_width) + "x" + str(snapshot.pixel_height) + " pixels")
+    snapshot.dispose() or (err) {
+        xacp.close_session(mut &session)
+        >> err
+    }
+
+    _ := xacp.ui_act(mut &*s,mut &session,2,3,"focus","",false,&limits) or (err) {
+        xacp.close_session(mut &session)
+        >> err
+    }
+    xacp.close_session(mut &session)
+    << 0
+}
+
+fn scene(events chan ui.Event) int {
+    ready := demo.ready(events) or >>
+    if ready.kind == ui.EV_EXIT { << 0 }
+    mut screen := widgets.screen(&ready) or >>
+    screen.resize(640.0,180.0) or >>
+    label_id := screen.label("XACP Screen adapter",22.0,false) or >>
+    button_id := screen.button("Activate locally or through ui.act") or >>
+    screen.place(label_id,32.0,36.0,540.0,44.0) or >>
+    screen.place(button_id,32.0,96.0,360.0,40.0) or >>
+    inspect_screen(mut &screen) or (err) {
+        screen.dispose()
+        >> err
+    }
+    mut model := Model{label_id: label_id,count: 0}
+    << widgets.run_screen(mut &screen,events,mut &model) or >>
+}
+
+fn worker(events chan ui.Event) {
+    scene(events) or (err) { demo.fail(err.msg())
+        << }
+}
+
+fn launch() int {
+    mut app := demo.app("Xu / XACP Screen adapter",640,180) or >>
+    xu worker(app.event_ch)
+    << app.run() or >>
+}
+
+fn main() int {
+    << launch() or (err) { eprintln(err.msg())
+        << 1 }
+}

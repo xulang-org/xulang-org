@@ -1,7 +1,7 @@
 <!--title: #errors-->
 <p class="crumb">API</p>
 <h1><code>#errors</code></h1>
-<!--xu-api-version: 0.10.7-->
+<!--xu-api-version: 0.10.11-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#errors</code></p>
 <p class="meta">counts: 6 函数, 4 方法, 3 类型, 0 常量, 1 方法集</p>
@@ -12,7 +12,7 @@
 <p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
 <details class="api-example" id="example-269a57431fb0" open>
 <summary><code>05_errors/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/854c7c3d617c7e28af9e62b9d4e6bf53e23dfdba/examples/05_errors">完整工程</a> · <a href="/api-examples/sources/examples/05_errors/main.xu" download>下载源码</a></p>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/05_errors">完整工程</a> · <a href="/api-examples/sources/examples/05_errors/main.xu" download>下载源码</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="05_errors/main.xu"><code class="language-xu">@main
 
 <span class="syn-import"><span class="hash">#</span>errors</span>
@@ -42,6 +42,431 @@
     println(t)
     <span class="syn-flow">&lt;&lt;</span> 0
 }</code></pre></div>
+</details>
+<details class="api-example" id="example-79cd31b33432">
+<summary><code>16_ui_webview/xacp_screen/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/16_ui_webview/xacp_screen">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/xacp_screen/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/xacp_screen/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/widgets</span>
+<span class="syn-import"><span class="hash">#</span>xacp</span>
+<span class="syn-import"><span class="hash">#</span>errors</span>
+
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">struct</span> Model {
+    label_id <span class="syn-type">int</span>
+    count <span class="syn-type">int</span>
+}
+
+<span class="syn-kw">fn</span> (m <span class="syn-borrow">&amp;mut</span> Model) layout(s <span class="syn-borrow">&amp;mut</span> widgets.Screen) <span class="syn-type">int</span> {
+    s.place(m.label_id,32.0,36.0,540.0,44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> (m <span class="syn-borrow">&amp;mut</span> Model) update(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,action widgets.Action) <span class="syn-type">int</span> {
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_KEY &amp;&amp; <span class="syn-type">int</span>(action.value) == ui.KEY_ESCAPE {
+        s.close() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_ACTIVATE {
+        m.count += 1
+        s.set_text(m.label_id,<span class="syn-str">"Button actions: "</span> + str(m.count)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> inspect_screen(s <span class="syn-borrow">&amp;mut</span> widgets.Screen) <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> session <span class="syn-flow">:=</span> xacp.open_session()
+    permissions <span class="syn-flow">:=</span> xacp.PERM_UI_READ | xacp.PERM_UI_MUTATE
+    <span class="syn-kw">if</span> !xacp.set_permissions(<span class="syn-borrow">mut &amp;</span>session,permissions) {
+        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"xacp_screen: failed to set least-privilege UI permissions"</span>)
+    }
+    limits <span class="syn-flow">:=</span> xacp.default_limits()
+    nodes <span class="syn-flow">:=</span> xacp.ui_tree(<span class="syn-borrow">mut &amp;</span>*s,<span class="syn-borrow">mut &amp;</span>session,1,false,32,&amp;limits) <span class="syn-kw">or</span> (err) {
+        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> err
+    }
+    println(<span class="syn-str">"XACP ui.tree: "</span> + str(nodes.len) + <span class="syn-str">" visible nodes"</span>)
+    <span class="syn-kw">for</span> node <span class="syn-kw">in</span> nodes {
+        println(<span class="syn-str">"  #"</span> + str(node.id) + <span class="syn-str">" kind="</span> + str(node.kind) + <span class="syn-str">" "</span> + node.text)
+    }
+
+    <span class="syn-kw">mut</span> snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(<span class="syn-borrow">mut &amp;</span>*s,<span class="syn-borrow">mut &amp;</span>session,2,1.0,&amp;limits) <span class="syn-kw">or</span> (err) {
+        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> err
+    }
+    println(<span class="syn-str">"XACP ui.screenshot: "</span> + str(snapshot.pixel_width) + <span class="syn-str">"x"</span> + str(snapshot.pixel_height) + <span class="syn-str">" pixels"</span>)
+    snapshot.dispose() <span class="syn-kw">or</span> (err) {
+        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> err
+    }
+
+    _ <span class="syn-flow">:=</span> xacp.ui_act(<span class="syn-borrow">mut &amp;</span>*s,<span class="syn-borrow">mut &amp;</span>session,2,3,<span class="syn-str">"focus"</span>,<span class="syn-str">""</span>,false,&amp;limits) <span class="syn-kw">or</span> (err) {
+        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> err
+    }
+    xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
+    <span class="syn-kw">mut</span> screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.resize(640.0,180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>,22.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    button_id <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Activate locally or through ui.act"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(label_id,32.0,36.0,540.0,44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(button_id,32.0,96.0,360.0,40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    inspect_screen(<span class="syn-borrow">mut &amp;</span>screen) <span class="syn-kw">or</span> (err) {
+        screen.dispose()
+        <span class="syn-flow">&gt;&gt;</span> err
+    }
+    <span class="syn-kw">mut</span> model <span class="syn-flow">:=</span> Model{label_id: label_id,count: 0}
+    <span class="syn-flow">&lt;&lt;</span> widgets.run_screen(<span class="syn-borrow">mut &amp;</span>screen,events,<span class="syn-borrow">mut &amp;</span>model) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+
+<span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) {
+    scene(events) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> }
+}
+
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>,640,180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
+    <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1 }
+}</code></pre></div>
+</details>
+<details class="api-example" id="example-17db607e9e9f">
+<summary><code>16_ui_webview/interaction_gallery/main.xu</code></summary>
+<p class="meta"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/16_ui_webview/interaction_gallery">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/interaction_gallery/main.xu" download>下载源码</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/interaction_gallery/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/widgets</span>
+<span class="syn-import"><span class="hash">#</span>ui/layout</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+<span class="syn-import"><span class="hash">#</span>math</span>
+<span class="syn-import"><span class="hash">#</span>errors</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">struct</span> Model {
+    tree <span class="syn-type">int</span>
+    name <span class="syn-type">int</span>
+    search <span class="syn-type">int</span>
+    task <span class="syn-type">int</span>
+    cancel <span class="syn-type">int</span>
+    table <span class="syn-type">int</span>
+    theme <span class="syn-type">int</span>
+    guides <span class="syn-type">int</span>
+    density <span class="syn-type">int</span>
+    effects <span class="syn-type">int</span>
+    failure <span class="syn-type">int</span>
+    message <span class="syn-type">int</span>
+    headings []<span class="syn-type">int</span>
+    controls_page <span class="syn-type">int</span>
+    work_group <span class="syn-type">int</span>
+    basic_group <span class="syn-type">int</span>
+    extras []<span class="syn-type">int</span>
+    show_controls <span class="syn-type">bool</span>
+    theme_index <span class="syn-type">int</span>
+    guided <span class="syn-type">bool</span>
+    compact <span class="syn-type">bool</span>
+    reduced <span class="syn-type">bool</span>
+    fail_next <span class="syn-type">bool</span>
+    task_id <span class="syn-type">int</span>
+    completed <span class="syn-type">int</span>
+    running <span class="syn-type">bool</span>
+    checksum <span class="syn-type">int</span>
+    next_work time.Instant
+}
+<span class="syn-kw">fn</span> make_model(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen) Model {
+    <span class="syn-kw">mut</span> name_decoration <span class="syn-flow">:=</span> widgets.field_decoration(&amp;<span class="syn-str">"Output name"</span>)
+    name_decoration.helper = <span class="syn-str">"A persistent label, native text selection and IME"</span>
+    name_decoration.<span class="syn-type">error</span> = <span class="syn-str">"Enter an output name before building."</span>
+    name_decoration.clearable = true
+    name <span class="syn-flow">:=</span> screen.field(<span class="syn-str">""</span>,&amp;name_decoration) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> search_decoration <span class="syn-flow">:=</span> widgets.field_decoration(&amp;<span class="syn-str">"Find a component"</span>)
+    search_decoration.helper = <span class="syn-str">"Matching nodes keep their ancestor path"</span>
+    search_decoration.clearable = true
+    search <span class="syn-flow">:=</span> screen.field(<span class="syn-str">""</span>,&amp;search_decoration) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    tree <span class="syn-flow">:=</span> screen.tree() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    root <span class="syn-flow">:=</span> screen.tree_add(tree,-1,<span class="syn-str">"xu-workbench"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    src <span class="syn-flow">:=</span> screen.tree_add(tree,root,<span class="syn-str">"src"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    entry <span class="syn-flow">:=</span> screen.tree_add(tree,src,<span class="syn-str">"main.xu"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    controls <span class="syn-flow">:=</span> screen.tree_add(tree,src,<span class="syn-str">"widgets"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> label <span class="syn-kw">in</span> [<span class="syn-str">"tree_view.xu"</span>,<span class="syn-str">"task_button.xu"</span>,<span class="syn-str">"field.xu"</span>,<span class="syn-str">"table.xu"</span>] {
+        node <span class="syn-flow">:=</span> screen.tree_add(tree,controls,label) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.set_tree_action(tree,node,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    manifest <span class="syn-flow">:=</span> screen.tree_add(tree,root,<span class="syn-str">"xu.xun"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_tree_metadata(tree,entry,<span class="syn-str">"entry"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_tree_metadata(tree,manifest,<span class="syn-str">"module"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> node <span class="syn-kw">in</span> [root,src,controls] { screen.set_expanded(tree,node,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    task <span class="syn-flow">:=</span> screen.task_button(<span class="syn-str">"Build project"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_task_labels(task,<span class="syn-str">"Building"</span>,<span class="syn-str">"Built · run again"</span>,<span class="syn-str">"Retry build"</span>,<span class="syn-str">"Build again"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    table <span class="syn-flow">:=</span> screen.table(&amp;[<span class="syn-str">"Component"</span>,<span class="syn-str">"Experience"</span>,<span class="syn-str">"Status"</span>],18,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_table_column(table,0,144.0,0.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_table_column(table,1,340.0,0.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_table_column(table,2,128.0,0.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    names <span class="syn-flow">:=</span> [<span class="syn-str">"TreeView"</span>,<span class="syn-str">"TaskButton"</span>,<span class="syn-str">"Field"</span>,<span class="syn-str">"Table"</span>,<span class="syn-str">"Select"</span>,<span class="syn-str">"Popover"</span>]
+    details <span class="syn-flow">:=</span> [<span class="syn-str">"Find and reveal"</span>,<span class="syn-str">"Real task progress"</span>,<span class="syn-str">"Floating label / native IME"</span>,<span class="syn-str">"Resizable columns"</span>,<span class="syn-str">"Keyboard choices"</span>,<span class="syn-str">"Anchored feedback"</span>]
+    <span class="syn-kw">for</span> row <span class="syn-kw">in</span> 0:18 {
+        index <span class="syn-flow">:=</span> row % 6
+        screen.set_cell(table,row,0,names[index]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.set_cell(table,row,1,details[index]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.set_cell(table,row,2,<span class="syn-str">"Ready"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    headings <span class="syn-flow">:=</span> [screen.label(<span class="syn-str">"XUUI / INTERACTION LAB"</span>,12.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
+        screen.label(<span class="syn-str">"Precision in every interaction."</span>,25.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
+        screen.label(<span class="syn-str">"WORKSPACE"</span>,12.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,screen.label(<span class="syn-str">"BUILD CONFIGURATION"</span>,12.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
+        screen.label(<span class="syn-str">"COMPONENTS / scroll, select and sort"</span>,12.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>]
+    work_group <span class="syn-flow">:=</span> screen.group() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    basic_group <span class="syn-flow">:=</span> screen.group() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> [tree,name,search,task,table,headings[2],headings[3],headings[4]] { screen.set_parent(id,work_group) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    extras <span class="syn-flow">:=</span> extra_controls(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> id <span class="syn-kw">in</span> extras { screen.set_parent(id,basic_group) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    cancel <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Cancel task"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_parent(cancel,work_group) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    controls_page <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"All controls"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    styles <span class="syn-flow">:=</span> screen.styles()
+    primary_style <span class="syn-flow">:=</span> styles.button_variant(widgets.BUTTON_PRIMARY) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_control_style(task,&amp;primary_style) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> Model{tree: tree,name: name,search: search,task: task,cancel: cancel,
+        table: table,theme: screen.button(<span class="syn-str">"Theme"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,guides: screen.button(<span class="syn-str">"Tree guides"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
+        density: screen.button(<span class="syn-str">"Density"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,effects: screen.button(<span class="syn-str">"Motion"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,failure: screen.button(<span class="syn-str">"Fail next build"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
+        message: screen.label(<span class="syn-str">"Local work batches report completed items. No simulated percentage clock."</span>,13.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>,
+        headings: headings,controls_page: controls_page,work_group: work_group,basic_group: basic_group,extras: extras,show_controls: false,theme_index: 1,guided: false,compact: false,reduced: false,fail_next: false,
+        task_id: 0,completed: 0,running: false,checksum: 0,next_work: time.zero_instant()}
+}
+<span class="syn-kw">fn</span> (m &amp;Model) layout(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen) <span class="syn-type">int</span> {
+    width <span class="syn-flow">:=</span> screen.width()
+    height <span class="syn-flow">:=</span> screen.height()
+    left <span class="syn-flow">:=</span> 310.0
+    screen.place(m.headings[0],28.0,24.0,width - 56.0,22.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.headings[1],28.0,54.0,width - 56.0,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    buttons <span class="syn-flow">:=</span> [m.theme,m.guides,m.density,m.effects,m.failure,m.controls_page]
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:buttons.len { screen.place(buttons[i],28.0 + <span class="syn-type">f64</span>(i) * 144.0,111.0,132.0,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    screen.set_visible(m.work_group,!m.show_controls) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_visible(m.basic_group,m.show_controls) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_selected_button(m.controls_page,m.show_controls) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    extra_layout(screen,&amp;m.extras) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_selected_button(m.guides,m.guided) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_selected_button(m.effects,m.reduced) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_selected_button(m.failure,m.fail_next) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.headings[2],28.0,173.0,left - 24.0,24.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.search,28.0,208.0,left - 24.0,80.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.tree,28.0,302.0,left - 24.0,height - 352.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    x <span class="syn-flow">:=</span> left + 36.0
+    right_width <span class="syn-flow">:=</span> width - x - 28.0
+    screen.place(m.headings[3],x,173.0,right_width,24.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.name,x,208.0,right_width,86.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.task,x,307.0,230.0,40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.cancel,x + 246.0,307.0,136.0,40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_enabled(m.cancel,m.running) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.headings[4],x,377.0,right_width,24.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.table,x,413.0,right_width,height - 493.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(m.message,28.0,height - 41.0,width - 56.0,24.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> (m <span class="syn-borrow">&amp;mut</span> Model) update(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen,action widgets.Action) <span class="syn-type">int</span> {
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_CHANGE {
+        <span class="syn-kw">if</span> action.id == m.search { query <span class="syn-flow">:=</span> screen.text_value(m.search) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            screen.set_tree_filter(m.tree,query) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> action.id == m.name { screen.set_field_invalid(m.name,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    }
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_ITEM_ACTION { _ <span class="syn-flow">:=</span> screen.notify(<span class="syn-str">"Node action · "</span> + str(<span class="syn-type">int</span>(action.value))) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_COMMIT &amp;&amp; action.id == m.extras[5] { screen.set_text(m.message,<span class="syn-str">"Slider committed · "</span> + str(<span class="syn-type">int</span>(action.value))) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> action.kind == widgets.ACTION_NOTICE_ACTION { screen.set_text(m.message,<span class="syn-str">"Notification action · "</span> + str(<span class="syn-type">int</span>(action.value))) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> action.kind != widgets.ACTION_ACTIVATE { <span class="syn-flow">&lt;&lt;</span> 0 }
+    <span class="syn-kw">if</span> action.id == m.controls_page { m.show_controls = !m.show_controls }
+    <span class="syn-kw">if</span> action.id == m.extras[19] {
+        <span class="syn-kw">mut</span> notice <span class="syn-flow">:=</span> widgets.notice(&amp;<span class="syn-str">"Saved a local configuration"</span>)
+        notice.action = <span class="syn-str">"Undo"</span>
+        _ <span class="syn-flow">:=</span> screen.enqueue_notice(&amp;notice) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+
+    <span class="syn-kw">if</span> action.id == m.theme {
+        m.theme_index = (m.theme_index + 1) % 3
+        current <span class="syn-flow">:=</span> screen.styles()
+        <span class="syn-kw">mut</span> styles <span class="syn-flow">:=</span> widgets.preset_styles(m.theme_index) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        styles.density = current.density
+        screen.set_styles(&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        primary_style <span class="syn-flow">:=</span> styles.button_variant(widgets.BUTTON_PRIMARY) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.set_control_style(m.task,&amp;primary_style) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-kw">if</span> action.id == m.guides {
+        m.guided = !m.guided
+        <span class="syn-kw">mut</span> appearance <span class="syn-flow">:=</span> widgets.tree_appearance()
+        appearance.guides = m.guided
+        screen.set_tree_appearance(m.tree,&amp;appearance) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-kw">if</span> action.id == m.density {
+        m.compact = !m.compact
+        <span class="syn-kw">mut</span> styles <span class="syn-flow">:=</span> screen.styles()
+        styles.density = 1.0
+        <span class="syn-kw">if</span> m.compact { styles.density = 0.85 }
+        screen.set_styles(&amp;styles) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-kw">if</span> action.id == m.effects { m.reduced = !m.reduced
+        screen.set_reduced_motion(m.reduced) }
+    <span class="syn-kw">if</span> action.id == m.failure { m.fail_next = !m.fail_next }
+    <span class="syn-kw">if</span> action.id == m.task &amp;&amp; !m.running {
+        name <span class="syn-flow">:=</span> screen.text_value(m.name) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">if</span> name.len == 0 { screen.set_field_invalid(m.name,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            screen.focus(m.name) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-flow">&lt;&lt;</span> 0 }
+        m.task_id = m.task_id + 1
+        m.completed = 0
+        m.checksum = 0
+        m.running = true
+        m.next_work = time.instant()
+        screen.begin_task(m.task,m.task_id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-kw">if</span> action.id == m.cancel &amp;&amp; m.running {
+        _ <span class="syn-flow">:=</span> screen.complete_task(m.task,m.task_id,widgets.TASK_CANCELLED) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        m.running = false
+        screen.set_text(m.message,<span class="syn-str">"Task cancelled. Completed work remains "</span> + str(m.completed) + <span class="syn-str">"/48."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> (m <span class="syn-borrow">&amp;mut</span> Model) work(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen,now time.Instant) <span class="syn-type">int</span> {
+    <span class="syn-kw">if</span> !m.running || now.before(m.next_work) { <span class="syn-flow">&lt;&lt;</span> 0 }
+    <span class="syn-cmt">// Each progress update follows an actual bounded work batch. The pause</span>
+    <span class="syn-cmt">// represents an application work queue and never changes the percentage.</span>
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:5000 { m.checksum = (m.checksum + i * (m.completed + 1)) % 1000003 }
+    m.completed = m.completed + 1
+    _ <span class="syn-flow">:=</span> screen.set_task_progress(m.task,m.task_id,<span class="syn-type">f64</span>(m.completed) / 48.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    m.next_work = now.add(time.milliseconds(35) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> m.fail_next &amp;&amp; m.completed == 18 {
+        _ <span class="syn-flow">:=</span> screen.complete_task(m.task,m.task_id,widgets.TASK_ERROR) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        m.running = false
+        m.fail_next = false
+        screen.set_text(m.message,<span class="syn-str">"Example failure. Retry starts a new task; stale progress is rejected."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    } <span class="syn-kw">else</span> <span class="syn-kw">if</span> m.completed == 48 {
+        _ <span class="syn-flow">:=</span> screen.complete_task(m.task,m.task_id,widgets.TASK_SUCCESS) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        m.running = false
+        screen.set_text(m.message,<span class="syn-str">"48/48 work batches completed · checksum "</span> + str(m.checksum)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> extra_controls(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen) []<span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> ids <span class="syn-flow">:=</span> []<span class="syn-type">int</span>{}
+    ids.push(screen.card() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.label(<span class="syn-str">"CONTROLS / keyboard, pointer and state"</span>,12.0,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.checkbox(<span class="syn-str">"Keep generated files"</span>,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.switch_control(<span class="syn-str">"Live preview"</span>,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.radio(<span class="syn-str">"Use workspace settings"</span>,1,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.slider(0.0,100.0,40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.stepper(1.0,16.0,1.0,4.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.tabs(&amp;[<span class="syn-str">"Files"</span>,<span class="syn-str">"History"</span>,<span class="syn-str">"Output"</span>],0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.segmented(&amp;[<span class="syn-str">"Desktop"</span>,<span class="syn-str">"Tablet"</span>,<span class="syn-str">"Phone"</span>],0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.select_box(&amp;[<span class="syn-str">"Xu source"</span>,<span class="syn-str">"Configuration"</span>,<span class="syn-str">"Plain text"</span>],0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.list_box(&amp;[<span class="syn-str">"Compiler"</span>,<span class="syn-str">"Widgets"</span>,<span class="syn-str">"Runtime"</span>,<span class="syn-str">"Desktop"</span>,<span class="syn-str">"Examples"</span>,<span class="syn-str">"Tooling"</span>],0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.progress(0.62) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.badge(<span class="syn-str">"Ready"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.divider(widgets.AXIS_HORIZONTAL) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.radio_group(&amp;[<span class="syn-str">"Use local build"</span>,<span class="syn-str">"Use cached build"</span>,<span class="syn-str">"Build dependencies"</span>],0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.input(<span class="syn-str">"Native input · 中文"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.text_area(<span class="syn-str">"A multi-line editor.\nSelection, clipboard and native IME remain available."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.date_picker(time.date(2026,10,25,10,30,0,0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.time_picker(time.date(2026,10,25,10,30,0,0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    ids.push(screen.button(<span class="syn-str">"Queue notification"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
+    _ <span class="syn-flow">:=</span> screen.tooltip(ids[19],<span class="syn-str">"Repeated notifications queue; hover or focus pauses expiry."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_slider_commit_only(ids[5],true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_checkbox_indeterminate(ids[2],true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_select_option_enabled(ids[9],2,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_badge_tone(ids[12],widgets.BADGE_SUCCESS) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_progress_buffer(ids[11],0.84) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_date_options(ids[17],time.date(2026,10,25,0,0,0,0),true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_clock_format(ids[18],true,true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> ids
+}
+<span class="syn-kw">fn</span> extra_layout(screen <span class="syn-borrow">&amp;mut</span> widgets.Screen,ids &amp;[]<span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    gap <span class="syn-flow">:=</span> 28.0
+    width <span class="syn-flow">:=</span> (screen.width() - 84.0) * 0.5
+    right <span class="syn-flow">:=</span> 56.0 + width
+    screen.place(ids[0],gap,628.0,width,112.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[1],gap,173.0,screen.width()-56.0,24.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 2:5 { screen.place(ids[i],gap,211.0+<span class="syn-type">f64</span>(i-2)*46.0,width,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    screen.place(ids[5],gap,357.0,width-136.0,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[6],gap+width-124.0,357.0,124.0,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[7],gap,412.0,width,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[8],gap,466.0,width,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[11],gap,522.0,width-120.0,12.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[12],gap+width-100.0,510.0,100.0,32.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[13],gap,607.0,width,1.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[14],right,211.0,width,126.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[9],right,357.0,width,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[10],right,412.0,width,158.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[15],right,590.0,width,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[16],right,644.0,width,96.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[17],gap,560.0,(width-16.0)*0.5,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[18],gap+(width+16.0)*0.5,560.0,(width-16.0)*0.5,36.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(ids[19],gap+16.0,665.0,width-32.0,38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> next_event(events <span class="syn-kw">chan</span> ui.Event,deadline time.Instant) ui.Event {
+    <span class="syn-kw">if</span> deadline.is_zero() { <span class="syn-flow">&lt;&lt;</span> <span class="syn-flow">&lt;-</span>events }
+    delay <span class="syn-flow">:=</span> deadline.since(time.instant())
+    <span class="syn-kw">if</span> delay.nanoseconds() &lt;= 0 { <span class="syn-flow">&lt;&lt;</span> ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: <span class="syn-str">""</span>,width: 0,height: 0} }
+    timer <span class="syn-flow">:=</span> delay.timer()
+    select {
+        event <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span>events { timer.stop()
+            <span class="syn-flow">&lt;&lt;</span> event }
+        _ <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span>timer.c { timer.stop() }
+    }
+    <span class="syn-flow">&lt;&lt;</span> ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: <span class="syn-str">""</span>,width: 0,height: 0}
+}
+<span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
+    <span class="syn-kw">mut</span> screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.resize(1000.0,820.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_min_size(900,720) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">mut</span> model <span class="syn-flow">:=</span> make_model(<span class="syn-borrow">mut &amp;</span>screen) <span class="syn-kw">or</span> (err) { screen.dispose()
+        <span class="syn-flow">&gt;&gt;</span> err }
+    model.layout(<span class="syn-borrow">mut &amp;</span>screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> screen.render() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">while</span> screen.is_open() {
+        now <span class="syn-flow">:=</span> time.instant()
+        model.work(<span class="syn-borrow">mut &amp;</span>screen,now) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        model.layout(<span class="syn-borrow">mut &amp;</span>screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">mut</span> deadline <span class="syn-flow">:=</span> screen.advance(now) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"gallery animation: "</span> + err.msg()) }
+        <span class="syn-kw">for</span> action <span class="syn-kw">in</span> screen.take_actions() { model.update(<span class="syn-borrow">mut &amp;</span>screen,action) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        _ <span class="syn-flow">:=</span> screen.render() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"gallery render: "</span> + err.msg()) }
+        <span class="syn-kw">if</span> model.running &amp;&amp; (deadline.is_zero() || model.next_work.before(deadline)) { deadline = model.next_work }
+        event <span class="syn-flow">:=</span> next_event(events,deadline) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">mut</span> actions <span class="syn-flow">:=</span> screen.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+        <span class="syn-kw">while</span> screen.is_open() &amp;&amp; count &lt; 128 {
+            pending <span class="syn-flow">:=</span> ui.poll_chan(events)
+            <span class="syn-kw">if</span> pending.kind == ui.EV_NONE { <span class="syn-flow">&lt;-</span> }
+            more <span class="syn-flow">:=</span> screen.event(&amp;pending) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">for</span> action <span class="syn-kw">in</span> more { actions.push(action) }
+            count += 1
+        }
+        <span class="syn-kw">for</span> action <span class="syn-kw">in</span> actions { model.update(<span class="syn-borrow">mut &amp;</span>screen,action) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    }
+    screen.dispose()
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) { scene(events) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> } }
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"XUUI / Interaction Lab"</span>,1000,820) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> 1 } }</code></pre></div>
 </details>
 </section>
 <h2 id="api-declarations">API 声明</h2>

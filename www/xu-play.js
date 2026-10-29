@@ -16,6 +16,8 @@
     var output = inline ? options.output : document.getElementById('xu-play-out');
     var meta = inline ? options.meta : document.getElementById('xu-play-meta');
     var help = inline ? null : document.getElementById('xu-play-help');
+    var workspace = inline ? null : window.XuPlayWorkspace;
+    var library = inline ? null : window.XuPlayLibrary;
     var panel = inline ? null : document.getElementById('xu-play-ui');
     var canvas = inline ? null : document.getElementById('xu-play-canvas');
     var uiStatus = inline ? null : document.getElementById('xu-play-ui-status');
@@ -26,6 +28,7 @@
     var running = false;
     var timer = null;
     var pendingRun = false;
+    var examplesLoading = false;
     var clicks = [];
     var activeSource = null;
     var interactive = false;
@@ -38,6 +41,13 @@
       button.innerHTML = stopping
         ? '<i class="xi xi-stop"></i> ' + text('停止运行', 'Stop')
         : '<i class="xi xi-play"></i> ' + (inline ? text('运行', 'Run') : text('运行代码', 'Run Code'));
+    }
+    function mainSource(example) {
+      return example.files ? example.files[example.entry || 'main.xu'] : example.source;
+    }
+    function currentSource() {
+      try { return workspace ? workspace.getSource() : source.value; }
+      catch (_) { return null; }
     }
     function readyStatus() {
       var isMobile = typeof window !== 'undefined' && typeof window.innerWidth === 'number' && (window.innerWidth <= 640 || /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || ''));
@@ -61,7 +71,7 @@
     }
     function showUI(result) {
       interactive = false;
-      if (!panel || !canvas || !result.ui || result.exit !== 0 || activeSource !== source.value) {
+      if (!panel || !canvas || !result.ui || result.exit !== 0 || activeSource !== currentSource()) {
         if (panel) panel.hidden = true;
         return;
       }
@@ -69,7 +79,11 @@
       inputMode = !!result.ui.input;
       var committed = window.XuPlayCanvas.render(canvas, result.ui.commands);
       panel.hidden = !committed;
-      interactive = committed && result.ui.interactive && activeSource === source.value && clicks.length < window.XuPlayCanvas.maxEvents;
+      if (committed && workspace) {
+        var previewTab = document.getElementById('xu-play-preview-tab');
+        if (previewTab) previewTab.click();
+      }
+      interactive = committed && result.ui.interactive && activeSource === currentSource() && clicks.length < window.XuPlayCanvas.maxEvents;
       canvas.setAttribute('aria-disabled', String(!interactive));
       if (uiStatus) uiStatus.textContent = result.ui.interactive
         ? clicks.length + '/64 · ' + (clicks.length >= 64
@@ -121,12 +135,7 @@
           if (pendingRun) {
             pendingRun = false;
             run();
-          } else if (autoRunCode && !hasAutoRun) {
-            hasAutoRun = true;
-            setTimeout(function () {
-              if (!button.disabled && !running) button.click();
-            }, 60);
-          }
+          } else maybeAutoRun();
         } else if (result.type === 'result') {
           running = false;
           label(false);
@@ -137,7 +146,7 @@
           status('exit ' + result.exit);
           try {
             showUI(result);
-            if (inputMode && queuedInputs.length && activeSource === source.value) {
+            if (inputMode && queuedInputs.length && activeSource === currentSource()) {
               clicks = clicks.concat(queuedInputs.splice(0, window.XuPlayCanvas.maxEvents - clicks.length));
               if (interactive) execute();
               else queuedInputs = [];
@@ -162,19 +171,32 @@
       select.disabled = true;
       select.addEventListener('change', function () {
         var example = examples[select.value];
-        if (!example) return;
         clearUI();
-        if (running) startWorker();
-        source.value = example.source;
-        if (help) help.textContent = example.description[en ? 'en' : 'zh'];
+        if (!example && !(workspace && select.value === 'custom')) return;
+        if (running) {
+          clearWorker();
+          startWorker();
+        }
+        if (workspace) workspace.setExample(select.value, example || source.value);
+        else source.value = mainSource(example);
+        if (library) library.setActive(select.value);
+        if (help) help.textContent = example ? example.description[en ? 'en' : 'zh'] : text('自定义项目', 'Custom project');
         show(text('点击「运行代码」查看结果。', 'Click Run Code to see the result.'), false);
         if (ready && !running) status(readyStatus());
       });
     }
     var autoRunCode = null;
     var hasAutoRun = false;
+    function maybeAutoRun() {
+      if (!autoRunCode || hasAutoRun || !ready) return;
+      hasAutoRun = true;
+      setTimeout(function () {
+        if (!button.disabled && !running) button.click();
+      }, 60);
+    }
 
     function load() {
+      if (!inline) loadExamples();
       if (!available) {
         button.disabled = !inline;
         status(text('暂不可用', 'Unavailable'));
@@ -197,13 +219,19 @@
       button.disabled = true;
       status(text('正在加载…', 'Loading…'));
       startWorker();
+    }
+    function loadExamples() {
+      if (examplesLoading) return;
+      examplesLoading = true;
       fetch(examplesUrl)
         .then(function (response) {
           if (!response.ok) throw new Error('HTTP ' + response.status);
           return response.json();
         })
         .then(function (loaded) {
-          examples = loaded;
+          var catalog = loaded.projects ? loaded : {projects: loaded, groups: []};
+          examples = catalog.projects;
+          if (library) library.load(catalog, workspace && workspace.getSavedProjects);
           if (select) select.disabled = false;
           var customCode = null;
           try {
@@ -218,23 +246,30 @@
           } catch (e) {}
           if (customCode) {
             autoRunCode = customCode;
-            source.value = customCode;
+            if (workspace) workspace.setSource(customCode);
+            else source.value = customCode;
+            if (library) library.setActive('custom');
             if (help) help.textContent = text('来自文档与 API 的示例代码', 'Example code from documentation');
+            maybeAutoRun();
           } else {
             try {
               var selected = new URL(window.location.href).searchParams.get('example');
               if (select && examples[selected]) {
                 select.value = selected;
-                source.value = examples[selected].source;
+                if (workspace) workspace.setExample(selected, examples[selected]);
+                else source.value = mainSource(examples[selected]);
                 autoRunCode = source.value;
               }
             } catch (_) {}
-            var current = examples[select && select.value] || examples.hello;
-            if (help && current) help.textContent = current.description[en ? 'en' : 'zh'];
+            var current = examples[select && select.value] || (select && select.value === 'custom' ? null : examples.hello);
+            if (workspace && current) workspace.setExample(select.value || 'hello', current);
+            if (library) library.setActive(select.value || 'hello');
+            if (help) help.textContent = current ? current.description[en ? 'en' : 'zh'] : text('自定义项目', 'Custom project');
           }
           if (autoRunCode && ready && !running && !hasAutoRun) { hasAutoRun = true; run(); }
         })
         .catch(function () {
+          examplesLoading = false;
           failure(text('示例加载失败，请重试。', 'Could not load examples. Please retry.'));
         });
     }
@@ -248,8 +283,17 @@
         return;
       }
       if (!ready) { load(); return; }
+      var program;
+      try {
+        if (workspace) workspace.showConsole();
+        program = workspace ? workspace.getSource() : source.value;
+      } catch (error) {
+        show(error.message, true);
+        status(text('项目暂不支持运行', 'Project cannot run yet'));
+        return;
+      }
       clearUI();
-      activeSource = source.value;
+      activeSource = program;
       execute();
     }
     function execute() {
@@ -273,7 +317,7 @@
       source.addEventListener('input', clearUI);
       if (canvas) {
         function clickAt(x, y) {
-          if (!interactive || running || !ready || activeSource !== source.value) return;
+          if (!interactive || running || !ready || activeSource !== currentSource()) return;
           interactive = false;
           clicks.push({x: x, y: y});
           execute();
@@ -296,7 +340,7 @@
           } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); clickAt(320, 180); }
         });
         function appendInput(input) {
-          if (!inputMode || !ready || activeSource !== source.value || (!running && !interactive) ||
+          if (!inputMode || !ready || activeSource !== currentSource() || (!running && !interactive) ||
               clicks.length + queuedInputs.length >= window.XuPlayCanvas.maxEvents) return;
           if (running) queuedInputs.push(input);
           else { clicks.push(input); execute(); }
@@ -334,7 +378,7 @@
           pointerInput(73, event);
         });
         canvas.addEventListener('wheel', function (event) {
-          if (!inputMode || !ready || activeSource !== source.value || (!running && !interactive)) return;
+          if (!inputMode || !ready || activeSource !== currentSource() || (!running && !interactive)) return;
           event.preventDefault();
           var bounds = canvas.getBoundingClientRect();
           if (!bounds.width || !bounds.height) return;

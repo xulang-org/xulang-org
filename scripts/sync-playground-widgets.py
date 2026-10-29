@@ -38,7 +38,8 @@ def selected(path, sig):
                 (('&Switch)' in sig or '&mut Switch)' in sig or '&Slider)' in sig or '&mut Slider)' in sig or '&Radio)' in sig or '&mut Radio)' in sig) and
                 not any(x in sig for x in ('_styled(', 'paint_position', 'style(', 'style_or(', 'has_style(', 'visual_state(', ') event(', 'set_motion(', 'tick(', 'next_tick(', 'apply_styles('))))
     if path == 'ui/widgets/editor.xu':
-        return sig.startswith(('pub const ACTION_SUBMIT', 'pub struct Editor', 'fn new_editor(', 'pub fn input(',
+        return sig.startswith(('pub const ACTION_SUBMIT', 'const EDITOR_', 'pub const EDITOR_', 'pub struct Editor', 'fn new_editor(', 'pub fn input(',
+            'fn (editor &Editor) is_multiline(', 'fn (editor &Editor) layout_value(',
             'pub fn (editor &Editor)', 'fn (editor &Editor) caret_rect(', 'fn (editor &mut Editor) read_state(',
             'fn (editor &mut Editor) drop_layout(', 'fn (editor &mut Editor) stash(', 'fn (editor &mut Editor) stop_session(',
             'pub fn (editor &mut Editor) focus_session(', 'pub fn (editor &mut Editor) paint(',

@@ -6,13 +6,13 @@ import assert from 'node:assert/strict';
 import {createRuntime, MAX_UI_EVENTS} from '../www/xu-play-runtime.mjs';
 
 const runtime = await createRuntime(readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url)));
-const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url)));
+const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url))).projects;
 const context = {};
 vm.runInNewContext(readFileSync(new URL('../www/xu-play-canvas.js', import.meta.url), 'utf8'), context);
 const host = context.XuPlayCanvas;
 
 test('Xu emits draw commands separately from stdout, including Unicode', () => {
-  const result = runtime.run(examples['ui-draw'].source);
+  const result = runtime.run(examples['ui-draw'].files['main.xu']);
   assert.equal(result.exit, 0, result.stderr);
   assert.equal(result.stdout, 'Canvas frame presented.\n');
   assert.equal(result.ui.interactive, false);
@@ -23,7 +23,7 @@ test('Xu emits draw commands separately from stdout, including Unicode', () => {
 });
 
 test('Xu owns counter state, hit testing, reset, and a fresh session', () => {
-  const run = events => runtime.run(examples['ui-counter'].source, {events});
+  const run = events => runtime.run(examples['ui-counter'].files['main.xu'], {events});
   const plus = {x: 320, y: 200}, reset = {x: 500, y: 200}, miss = {x: 20, y: 20};
   const result = run([plus, plus, miss]);
   assert.equal(result.exit, 0, result.stderr);
@@ -38,7 +38,7 @@ test('Xu owns counter state, hit testing, reset, and a fresh session', () => {
 });
 
 test('edited Xu code changes both state transitions and drawing', () => {
-  const source = examples['ui-counter'].source.replace('count += 1', 'count += 7').replace('#e11d48', '#22c55e');
+  const source = examples['ui-counter'].files['main.xu'].replace('count += 1', 'count += 7').replace('#e11d48', '#22c55e');
   const result = runtime.run(source, {events: [{x: 320, y: 200}]});
   assert.equal(result.exit, 0, result.stderr);
   assert.equal(result.stdout, 'Count: 7\n');
@@ -62,7 +62,7 @@ fn main() int {
   assert.notEqual(result.exit, 0);
   assert.match(result.stderr, /UI command buffer limit/);
   assert.equal(result.ui, null);
-  assert.equal(runtime.run(examples['ui-draw'].source).exit, 0);
+  assert.equal(runtime.run(examples['ui-draw'].files['main.xu']).exit, 0);
 });
 
 test('Canvas transaction commits the last present and discards cancelled work', () => {

@@ -20,8 +20,8 @@ function run(events = [], code = source) {
 const data = click(320,62), display = click(520,62);
 
 test('gallery entry source is the reviewable Xu example and paints valid resource text', () => {
-  const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url)));
-  assert.equal(examples['ui-gallery'].source, source);
+  const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url))).projects;
+  assert.equal(examples['ui-gallery'].files['main.xu'], source);
   const commands = host.frame(run().ui.commands);
   const labels = commands.filter(c => c.op === 'layout_text');
   assert.deepEqual(Array.from(labels, c => c.args.at(-1)), ['Basics','Data / Scroll','Display','Button +1','Checkbox','Switch','Radio A','Radio B']);

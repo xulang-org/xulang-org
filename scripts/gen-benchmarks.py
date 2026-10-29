@@ -1328,6 +1328,31 @@ def render_toolchain_versions(platforms: dict, version: str, en: bool) -> str:
             '<tbody>' + "".join(rows) + '</tbody></table></div>')
 
 
+def render_pending_workloads(sources: dict, platforms: dict, en: bool) -> str:
+    measured = {
+        bench["name"]
+        for platform in platforms.values()
+        for bench in platform.get("benches", [])
+        if bench.get("xu_wall_ms") is not None
+    }
+    if "http_concurrent" not in sources or "http_concurrent" in measured:
+        return ""
+    title = "Workloads awaiting measurement" if en else "等待统一测量的负载"
+    description = (
+        "HTTP concurrency: 16 workers × 200 loopback requests, with Xu, Go and Rust source. "
+        "This workload is excluded from the official measured workload count and ratios until matching measurements are available."
+        if en else
+        "HTTP 并发：16 个 worker × 200 次自环回请求，提供 Xu、Go 和 Rust 源码。"
+        "该负载等待统一测量，暂不计入正式实测负载数量与性能比值。"
+    )
+    button = "View HTTP workload source" if en else "查看 HTTP 负载源码"
+    return f'''<section class="bench-section" id="pending-workloads">
+  <h2>{title}</h2>
+  <p>{description}</p>
+  <button type="button" class="bench-src-modal-btn" onclick="openBenchCodeModal('http_concurrent', 'HTTP concurrency')">{button}</button>
+</section>'''
+
+
 def render_page(data: dict, lang: str) -> str:
     en = lang == "en"
     meta = data["metadata"]
@@ -1426,6 +1451,7 @@ def render_page(data: dict, lang: str) -> str:
     sources_json_str = "{}"
     if SOURCES_FILE.is_file():
         sources_json_str = SOURCES_FILE.read_text(encoding="utf-8")
+    pending_workloads = render_pending_workloads(json.loads(sources_json_str), platforms, en)
 
     modal_title = "Source Code" if en else "算法实现源码"
     modal_copy_text = "Copy Code" if en else "复制代码"
@@ -1752,6 +1778,8 @@ function searchBenchAll(query) {
 
 <!-- 2. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 6 平台详细数据表) -->
 {''.join(category_sections)}
+
+{pending_workloads}
 
 <!-- 评测准则与环境审计公示专区 -->
 {method_audit_section}

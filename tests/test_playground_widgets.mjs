@@ -4,7 +4,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 const runtime = await createRuntime(readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url)));
-const source = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url)))['ui-widgets'].source;
+const source = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url))).projects['ui-widgets'].files['main.xu'];
 const context = {};
 vm.runInNewContext(readFileSync(new URL('../www/xu-play-canvas.js', import.meta.url), 'utf8'), context);
 const host = context.XuPlayCanvas;
@@ -69,4 +69,39 @@ test('typed input rejects invalid records and Canvas validates fractional paths 
   for (const cmd of ['path_fill\t#ffffff', 'path_cubic\t0\t0\t0\t0\t0\t0',
     'layout_text\t0\t0\t16\t#ffffff\t-1\tbad', 'fill_rect\tNaN\t0\t2\t2\t#ffffff'])
     assert.throws(() => host.frame('begin\n' + cmd + '\npresent'));
+});
+
+test('masked text layout keeps plain metrics and never retains the secret', () => {
+  const program = `@main
+#ui
+#ui/draw
+
+fn probe() int {
+    context := draw.default_context()
+    options := draw.text_options(16.0)
+    secret := "hunter2"
+    plain := context.layout_text(&secret,&options) or >>
+    masked := context.layout_masked_text(&secret,&options) or >>
+    assert(masked.metrics.width == plain.metrics.width)
+    assert(masked.metrics.height == plain.metrics.height)
+    hit := masked.caret(3,false) or >>
+    reference := plain.caret(3,false) or >>
+    assert(hit.index == 3)
+    assert(hit.x == reference.x)
+    mut frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.text_layout(&masked,0.0,0.0,draw.rgb(255,255,255)) or >>
+    frame.present() or >>
+    println("masked layout ok")
+    << 0
+}
+fn main() int {
+    << probe() or (err) { eprintln(err.msg())
+        << 1 }
+}
+`;
+  const result = run([], program);
+  assert.equal(result.stdout, 'masked layout ok\n');
+  assert.match(result.ui.commands, /layout_text\t.*\t\*{7}\n/);
+  assert.doesNotMatch(result.ui.commands, /hunter2/);
 });
