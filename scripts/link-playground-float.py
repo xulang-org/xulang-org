@@ -1,6 +1,7 @@
 """Link a fixed set of scalar WASM instructions into the site's MIR VM.
 
-The product wasm32 backend supports typed f64 arithmetic. The MIR interpreter,
+The development wasm32 backend supports typed f64 arithmetic; the site's
+selected 0.10.11 SDK predates it. The MIR interpreter,
 however, stores all VM values as integer bit patterns: vm_fp_* in runtime/float.xu
 are still trap stubs, not typed f64 functions. Numeric int/f64 casts would convert
 these values rather than reinterpret their bits, so they cannot replace this
