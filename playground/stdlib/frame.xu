@@ -70,6 +70,17 @@ pub fn (context &Context) layout_text(value &string,options &TextOptions) TextLa
     metrics := TextMetrics{width: width,height: height,baseline: options.size,lines: 1,ink_x: 0.0,ink_y: 0.0,ink_width: width,ink_height: height}
     << TextLayout{metrics: metrics,id: retain(value),canvas_id: context.canvas_id,generation: context.generation}
 }
+// Masked (password) layout: metrics equal the plain layout, but the retained
+// and painted text is one '*' per UTF-8 byte, so the secret never reaches the
+// canvas and byte-indexed caret/selection queries keep matching the source.
+// Non-ASCII secrets are approximated: caret x counts bytes, not graphemes.
+pub fn (context &Context) layout_masked_text(value &string,options &TextOptions) TextLayout {
+    mut shaped := context.layout_text(value,options) or >>
+    mut masked := ""
+    for i in 0:value.len { masked = masked + "*" }
+    shaped.id = retain(&masked)
+    << shaped
+}
 pub fn (layout &mut TextLayout) dispose() int { << 0 }
 pub fn (frame &mut Frame) text_layout(label &TextLayout,x f64,y f64,color Color) int {
     frame.writable() or >>
