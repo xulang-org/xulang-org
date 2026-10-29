@@ -85,6 +85,9 @@ single-line monospace grid (0.6 × font size per Unicode code point, height
 1.25 × size). Canvas fits painted text to that same width. This is deterministic
 basic text layout, not native shaping, wrapping, bidi, grapheme-cell measurement,
 or IME. TextOptions fields other than size are outside this subset.
+`layout_masked_text()` paints one mask character per code point on this grid
+while caret and selection queries retain the original UTF-8 byte positions.
+The original text is never included in the masked layout's Canvas paint command.
 
 ## Floating-point VM support
 
