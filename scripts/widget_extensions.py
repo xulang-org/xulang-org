@@ -84,6 +84,7 @@ def extensions(xu, base, declarations):
                 continue
             roots = set(FAMILIES[family][0].split()) | {'input','paint','paint_styled','apply_styles','set_focus','selected','value','values','active_key','layout','selection','set_cell','set_local_sort','set_sort_kind','set_series','open','close','is_open','hex'}
             if family in ('menu','chart'): roots.add('tick')
+            if family == 'menu': roots.update(('paint_popup_styled','set_viewport'))
             if kind != 'fn' or name not in roots: continue
             chosen.add(key)
         while True:

@@ -11,7 +11,7 @@ CASES = {
     'button-group': ('button_group(&context,&identity,1,&bounds,&items,widgets.BUTTON_GROUP_SINGLE)', '"Selected: " + str(control.active_key())', 'Selected: 1', 'styled'),
     'table': ('table(&context,&identity,1,&bounds,&headers,3,0)', '"Selected: " + str(control.selected())', 'Selected: 0', 'styled'),
     'menu': ('menu(&context,&identity,1,&bounds,"Actions",&items,widgets.MENU_DROPDOWN,0)', '"Command: " + str(last)', 'Command: 0', 'styled'),
-    'context-menu': ('menu(&context,&identity,1,&bounds,"Actions",&items,widgets.MENU_CONTEXT,0)', '"Command: " + str(last)', 'Command: 0', 'styled'),
+    'context-menu': ('menu(&context,&identity,1,&bounds,"Right-click here / 在此右键",&items,widgets.MENU_CONTEXT,0)', '"Command: " + str(last)', 'Command: 0', 'styled'),
     'split-button': ('menu(&context,&identity,1,&bounds,"Save",&items,widgets.MENU_SPLIT,1)', '"Command: " + str(last)', 'Command: 0', 'styled'),
     'multi-select': ('multi_select(&context,&identity,1,&bounds,&options)', '"Selected count: " + str(control.values().len)', 'Selected count: 0', 'styled'),
     'color-picker': ('color_picker(&context,&identity,1,&bounds,draw.rgb(180,69,50))', '"Color: " + control.hex()', 'Color: #B44532FF', 'styled'),
@@ -21,7 +21,7 @@ CASES = {
 
 def source(name, slug):
     constructor, summary, initial, paint = CASES[slug]
-    tall = slug in ('radio-group', 'split-view', 'table', 'chart', 'color-picker')
+    tall = slug in ('radio-group', 'split-view', 'table', 'chart', 'color-picker', 'context-menu')
     height = 200 if tall else 44
     code = '''@main
 #ui
@@ -48,6 +48,8 @@ fn demo() int {
     elif slug in ('menu', 'context-menu', 'split-button'):
         code += '    items := [widgets.menu_item(1,"Save"),widgets.menu_item(2,"Export"),widgets.menu_item(3,"Duplicate")]\n'
     code += '    mut control := widgets.' + constructor + ' or >>\n    mut last := 0\n'
+    if slug in ('menu', 'context-menu', 'split-button'):
+        code += '    control.set_viewport(&box(0.0,0.0,640.0,360.0)) or >>\n'
     if slug == 'table':
         code += '''    for i in 0:3 { value := options[i]
         control.set_cell(i,0,&value) or >>
@@ -92,6 +94,8 @@ fn demo() int {
         code += '    mut labels := []draw.TextLayout{}\n    for value in options { label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(label) }\n    control.paint(mut &frame,&labels,&theme) or >>\n'
     else:
         code += '    control.paint_styled(mut &frame,&styles) or >>\n'
+    if slug in ('menu', 'context-menu', 'split-button'):
+        code += '    control.paint_popup_styled(mut &frame,&styles) or >>\n'
     if slug == 'split-view':
         code += '''    panes := control.layout()
     frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(39,60,85)) or >>

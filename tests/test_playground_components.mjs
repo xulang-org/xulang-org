@@ -1,10 +1,13 @@
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 
 const module = await WebAssembly.compile(readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url)));
 const projects = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url), 'utf8')).projects;
+const canvas = {};
+vm.runInNewContext(readFileSync(new URL('../www/xu-play-canvas.js', import.meta.url), 'utf8'), canvas);
 const click = (x, y) => [{kind: 72, x, y, button: 1, buttons: 1}, {kind: 73, x, y, button: 1, buttons: 0}];
 const key = key => [{kind:78,key},{kind:79,key}];
 for (const [slug, events, output] of [
@@ -37,5 +40,22 @@ for (const [slug, events, output] of [
     assert.equal(result.exit, 0, result.stderr);
     assert.equal(result.stdout, output);
     assert.ok(result.ui.commands.length);
+    assert.ok(canvas.XuPlayCanvas.frame(result.ui.commands));
   });
 }
+
+test('opening a real Xu menu paints its popup items into the frame', async () => {
+  const runtime = await createRuntime(module);
+  const result = runtime.run(projects['widget-menu'].files['main.xu'], {events:click(100,108)});
+  assert.equal(result.exit,0,result.stderr);
+  const labels = Array.from(canvas.XuPlayCanvas.frame(result.ui.commands)).filter(c => c.op === 'layout_text').map(c => c.args.at(-1));
+  for (const label of ['Save','Export','Duplicate']) assert.ok(labels.includes(label), label + ' is visible in the popup');
+});
+
+test('clicking the table header sorts the actual Xu rows numerically', async () => {
+  const runtime = await createRuntime(module);
+  const result = runtime.run(projects['widget-table'].files['main.xu'], {events:click(500,108)});
+  assert.equal(result.exit,0,result.stderr);
+  const labels = Array.from(canvas.XuPlayCanvas.frame(result.ui.commands)).filter(c => c.op === 'layout_text').map(c => c.args.at(-1));
+  assert.deepEqual(labels.filter(label => ['Design','Develop','Review'].includes(label)), ['Review','Develop','Design']);
+});

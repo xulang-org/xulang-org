@@ -21,6 +21,7 @@
       var parts = line.split('\t'), op = parts.shift(), signature = signatures[op];
       // circle has a pen form and an explicit fill/stroke form, like the SDK.
       if (op === 'circle' && parts.length === 6) signature = 'nnnccn';
+      if (op === 'path_stroke' && parts.length === 5) signature = 'cnnnn';
       if (typeof signature !== 'string' || parts.length !== signature.length) throw Error('Unsupported UI command: ' + op);
       var args = parts.map(function (value, index) {
         var type = signature[index];
@@ -50,7 +51,10 @@
       if (['rect', 'fill_rect', 'stroke_rect', 'round_rect', 'clip_rect'].includes(op) && (args[2] < 0 || args[3] < 0)) throw Error('Negative UI size');
       if (op === 'circle' && args[2] < 0 || op === 'round_rect' && args[4] < 0) throw Error('Negative UI radius');
       if ((op === 'text' || op === 'layout_text') && (args[2] < 1 || args[2] > 256)) throw Error('Invalid UI font size');
-      if (['path_stroke', 'width', 'stroke_rect', 'round_rect', 'line'].includes(op) && (args.at(-1) < 1 || args.at(-1) > 1000) || op === 'circle' && args.length === 6 && (args[5] < 1 || args[5] > 1000)) throw Error('Invalid UI stroke width');
+      var strokeWidth = op === 'path_stroke' ? args[1] : args.at(-1);
+      if (['path_stroke', 'width', 'stroke_rect', 'round_rect', 'line'].includes(op) && (strokeWidth < 1 || strokeWidth > 1000) || op === 'circle' && args.length === 6 && (args[5] < 1 || args[5] > 1000)) throw Error('Invalid UI stroke width');
+      if (op === 'path_stroke' && args.length === 5 &&
+          (!Number.isInteger(args[2]) || args[2] < 0 || args[2] > 2 || !Number.isInteger(args[3]) || args[3] < 0 || args[3] > 2 || args[4] <= 0 || args[4] > 1000)) throw Error('Invalid UI stroke options');
       pending.push({op: op, args: args});
     });
     return committed;
@@ -89,7 +93,13 @@
       else if (op === 'path_cubic') ctx.bezierCurveTo(...a);
       else if (op === 'path_close') ctx.closePath();
       else if (op === 'path_fill') paint(a[0], '-', 1);
-      else if (op === 'path_stroke') paint('-', a[0], a[1]);
+      else if (op === 'path_stroke') {
+        ctx.save();
+        ctx.lineCap = ['butt','round','square'][a[2] || 0];
+        ctx.lineJoin = ['miter','round','bevel'][a[3] || 0];
+        ctx.miterLimit = a[4] || 10;
+        paint('-', a[0], a[1]); ctx.restore();
+      }
       else if (op === 'layout_text') {
         if (a[3] !== '-' && a[4] > 0 && a[5]) {
           ctx.save(); ctx.font = a[2] + 'px monospace'; ctx.textBaseline = 'top';
