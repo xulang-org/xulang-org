@@ -38,13 +38,13 @@ struct Model {
     checksum int
     next_work time.Instant
 }
-fn make_model(screen &mut widgets.Screen) Model {
-    mut name_decoration := widgets.field_decoration(&"Output name")
+fn make_model(screen $&widgets.Screen) Model {
+    $name_decoration := widgets.field_decoration(&"Output name")
     name_decoration.helper = "A persistent label, native text selection and IME"
     name_decoration.error = "Enter an output name before building."
     name_decoration.clearable = true
     name := screen.field("",&name_decoration) or >>
-    mut search_decoration := widgets.field_decoration(&"Find a component")
+    $search_decoration := widgets.field_decoration(&"Find a component")
     search_decoration.helper = "Matching nodes keep their ancestor path"
     search_decoration.clearable = true
     search := screen.field("",&search_decoration) or >>
@@ -97,7 +97,7 @@ fn make_model(screen &mut widgets.Screen) Model {
         headings: headings,controls_page: controls_page,work_group: work_group,basic_group: basic_group,extras: extras,show_controls: false,theme_index: 1,guided: false,compact: false,reduced: false,fail_next: false,
         task_id: 0,completed: 0,running: false,checksum: 0,next_work: time.zero_instant()}
 }
-fn (m &Model) layout(screen &mut widgets.Screen) int {
+fn (m &Model) layout(screen $&widgets.Screen) int {
     width := screen.width()
     height := screen.height()
     left := 310.0
@@ -127,7 +127,7 @@ fn (m &Model) layout(screen &mut widgets.Screen) int {
     screen.place(m.message,28.0,height - 41.0,width - 56.0,24.0) or >>
     << 0
 }
-fn (m &mut Model) update(screen &mut widgets.Screen,action widgets.Action) int {
+fn (m $&Model) update(screen $&widgets.Screen,action widgets.Action) int {
     if action.kind == widgets.ACTION_CHANGE {
         if action.id == m.search { query := screen.text_value(m.search) or >>
             screen.set_tree_filter(m.tree,query) or >> }
@@ -139,7 +139,7 @@ fn (m &mut Model) update(screen &mut widgets.Screen,action widgets.Action) int {
     if action.kind != widgets.ACTION_ACTIVATE { << 0 }
     if action.id == m.controls_page { m.show_controls = !m.show_controls }
     if action.id == m.extras[19] {
-        mut notice := widgets.notice(&"Saved a local configuration")
+        $notice := widgets.notice(&"Saved a local configuration")
         notice.action = "Undo"
         _ := screen.enqueue_notice(&notice) or >>
     }
@@ -147,7 +147,7 @@ fn (m &mut Model) update(screen &mut widgets.Screen,action widgets.Action) int {
     if action.id == m.theme {
         m.theme_index = (m.theme_index + 1) % 3
         current := screen.styles()
-        mut styles := widgets.preset_styles(m.theme_index) or >>
+        $styles := widgets.preset_styles(m.theme_index) or >>
         styles.density = current.density
         screen.set_styles(&styles) or >>
         primary_style := styles.button_variant(widgets.BUTTON_PRIMARY) or >>
@@ -155,13 +155,13 @@ fn (m &mut Model) update(screen &mut widgets.Screen,action widgets.Action) int {
     }
     if action.id == m.guides {
         m.guided = !m.guided
-        mut appearance := widgets.tree_appearance()
+        $appearance := widgets.tree_appearance()
         appearance.guides = m.guided
         screen.set_tree_appearance(m.tree,&appearance) or >>
     }
     if action.id == m.density {
         m.compact = !m.compact
-        mut styles := screen.styles()
+        $styles := screen.styles()
         styles.density = 1.0
         if m.compact { styles.density = 0.85 }
         screen.set_styles(&styles) or >>
@@ -188,7 +188,7 @@ fn (m &mut Model) update(screen &mut widgets.Screen,action widgets.Action) int {
     }
     << 0
 }
-fn (m &mut Model) work(screen &mut widgets.Screen,now time.Instant) int {
+fn (m $&Model) work(screen $&widgets.Screen,now time.Instant) int {
     if !m.running || now.before(m.next_work) { << 0 }
     // Each progress update follows an actual bounded work batch. The pause
     // represents an application work queue and never changes the percentage.
@@ -208,8 +208,8 @@ fn (m &mut Model) work(screen &mut widgets.Screen,now time.Instant) int {
     }
     << 0
 }
-fn extra_controls(screen &mut widgets.Screen) []int {
-    mut ids := []int{}
+fn extra_controls(screen $&widgets.Screen) []int {
+    $ids := []int{}
     ids.push(screen.card() or >>)
     ids.push(screen.label("CONTROLS / keyboard, pointer and state",12.0,true) or >>)
     ids.push(screen.checkbox("Keep generated files",true) or >>)
@@ -240,7 +240,7 @@ fn extra_controls(screen &mut widgets.Screen) []int {
     screen.set_clock_format(ids[18],true,true) or >>
     << ids
 }
-fn extra_layout(screen &mut widgets.Screen,ids &[]int) int {
+fn extra_layout(screen $&widgets.Screen,ids &[]int) int {
     gap := 28.0
     width := (screen.width() - 84.0) * 0.5
     right := 56.0 + width
@@ -279,24 +279,24 @@ fn next_event(events chan ui.Event,deadline time.Instant) ui.Event {
 fn scene(events chan ui.Event) int {
     ready := demo.ready(events) or >>
     if ready.kind == ui.EV_EXIT { << 0 }
-    mut screen := widgets.screen(&ready) or >>
+    $screen := widgets.screen(&ready) or >>
     screen.resize(1000.0,820.0) or >>
     screen.set_min_size(900,720) or >>
-    mut model := make_model(mut &screen) or (err) { screen.dispose()
+    $model := make_model($&screen) or (err) { screen.dispose()
         >> err }
-    model.layout(mut &screen) or >>
+    model.layout($&screen) or >>
     _ := screen.render() or >>
     while screen.is_open() {
         now := time.instant()
-        model.work(mut &screen,now) or >>
-        model.layout(mut &screen) or >>
-        mut deadline := screen.advance(now) or (err) { >> errors.new("gallery animation: " + err.msg()) }
-        for action in screen.take_actions() { model.update(mut &screen,action) or >> }
+        model.work($&screen,now) or >>
+        model.layout($&screen) or >>
+        $deadline := screen.advance(now) or (err) { >> errors.new("gallery animation: " + err.msg()) }
+        for action in screen.take_actions() { model.update($&screen,action) or >> }
         _ := screen.render() or (err) { >> errors.new("gallery render: " + err.msg()) }
         if model.running && (deadline.is_zero() || model.next_work.before(deadline)) { deadline = model.next_work }
         event := next_event(events,deadline) or >>
-        mut actions := screen.event(&event) or >>
-        mut count := 0
+        $actions := screen.event(&event) or >>
+        $count := 0
         while screen.is_open() && count < 128 {
             pending := ui.poll_chan(events)
             if pending.kind == ui.EV_NONE { <- }
@@ -304,7 +304,7 @@ fn scene(events chan ui.Event) int {
             for action in more { actions.push(action) }
             count += 1
         }
-        for action in actions { model.update(mut &screen,action) or >> }
+        for action in actions { model.update($&screen,action) or >> }
     }
     screen.dispose()
     << 0
@@ -312,7 +312,7 @@ fn scene(events chan ui.Event) int {
 fn worker(events chan ui.Event) { scene(events) or (err) { demo.fail(err.msg())
     << } }
 fn launch() int {
-    mut app := demo.app("XUUI / Interaction Lab",1000,820) or >>
+    $app := demo.app("XUUI / Interaction Lab",1000,820) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }
