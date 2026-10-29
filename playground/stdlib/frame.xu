@@ -59,6 +59,12 @@ pub fn (frame &mut Frame) line(x1 f64,y1 f64,x2 f64,y2 f64,color Color,width f64
 fn retain(value &string) int { <<< 1 }
 fn lookup(id int) string { <<< 1 }
 pub fn (context &Context) layout_text(value &string,options &TextOptions) TextLayout {
+    << context.layout_text_mode(value,options,false) or >>
+}
+pub fn (context &Context) layout_masked_text(value &string,options &TextOptions) TextLayout {
+    << context.layout_text_mode(value,options,true) or >>
+}
+fn (context &Context) layout_text_mode(value &string,options &TextOptions,masked bool) TextLayout {
     if options.size < 1.0 || options.size > 256.0 || math.is_nan(options.size) { >> errors.new("draw: invalid browser text size") }
     mut cells := 0
     for i in 0:value.len {
@@ -68,23 +74,31 @@ pub fn (context &Context) layout_text(value &string,options &TextOptions) TextLa
     width := f64(cells) * options.size * 0.6
     height := options.size * 1.25
     metrics := TextMetrics{width: width,height: height,baseline: options.size,lines: 1,ink_x: 0.0,ink_y: 0.0,ink_width: width,ink_height: height}
-    << TextLayout{metrics: metrics,id: retain(value),canvas_id: context.canvas_id,generation: context.generation}
+    // A negative handle marks concealed text; keep the original UTF-8 bytes
+    // for caret/selection queries and mask only the emitted paint command.
+    mut id := retain(value)
+    if masked { id = 0 - id }
+    << TextLayout{metrics: metrics,id: id,canvas_id: context.canvas_id,generation: context.generation}
 }
-// Masked (password) layout: metrics equal the plain layout, but the retained
-// and painted text is one '*' per UTF-8 byte, so the secret never reaches the
-// canvas and byte-indexed caret/selection queries keep matching the source.
-// Non-ASCII secrets are approximated: caret x counts bytes, not graphemes.
-pub fn (context &Context) layout_masked_text(value &string,options &TextOptions) TextLayout {
-    mut shaped := context.layout_text(value,options) or >>
+fn layout_source(layout &TextLayout) string {
+    mut id := layout.id
+    if id < 0 { id = 0 - id }
+    << lookup(id)
+}
+fn layout_display(layout &TextLayout) string {
+    value := layout_source(layout)
+    if layout.id >= 0 { << value }
     mut masked := ""
-    for i in 0:value.len { masked = masked + "*" }
-    shaped.id = retain(&masked)
-    << shaped
+    for i in 0:value.len {
+        c := value[i] & 255
+        if c < 128 || c >= 192 { masked = masked + "*" }
+    }
+    << masked
 }
 pub fn (layout &mut TextLayout) dispose() int { << 0 }
 pub fn (frame &mut Frame) text_layout(label &TextLayout,x f64,y f64,color Color) int {
     frame.writable() or >>
-    << cmd("layout_text\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(label.metrics.baseline) + "\t" + color_text(color) + "\t" + scalar(label.metrics.width) + "\t" + clean(lookup(label.id)))
+    << cmd("layout_text\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(label.metrics.baseline) + "\t" + color_text(color) + "\t" + scalar(label.metrics.width) + "\t" + clean(layout_display(label)))
 }
 
 // Paths carry only validated geometric commands; Canvas never sees executable
@@ -152,7 +166,7 @@ pub fn (layout &TextLayout) bind_input_transform(input &ui.TextInput,revision in
 // Single-line code-point grid, with UTF-8 byte indices matching desktop APIs.
 // This supports display-only Editor.paint(), not grapheme or bidi shaping.
 pub fn (layout &TextLayout) caret(index int,trailing bool) TextHit {
-    value := lookup(layout.id)
+    value := layout_source(layout)
     if index < 0 || index > value.len { >> errors.new("draw: invalid browser caret index") }
     mut cells := 0
     mut position := 0

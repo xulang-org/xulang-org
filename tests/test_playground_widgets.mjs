@@ -71,7 +71,7 @@ test('typed input rejects invalid records and Canvas validates fractional paths 
     assert.throws(() => host.frame('begin\n' + cmd + '\npresent'));
 });
 
-test('masked text layout keeps plain metrics and never retains the secret', () => {
+test('masked text layout keeps plain metrics and conceals painted text', () => {
   const program = `@main
 #ui
 #ui/draw
@@ -104,4 +104,33 @@ fn main() int {
   assert.equal(result.stdout, 'masked layout ok\n');
   assert.match(result.ui.commands, /layout_text\t.*\t\*{7}\n/);
   assert.doesNotMatch(result.ui.commands, /hunter2/);
+});
+
+test('masked browser layouts conceal paint while preserving original UTF-8 caret positions', () => {
+  const result = run([], `@main
+#ui/draw
+fn paint() int {
+    context := draw.default_context()
+    value := "a中🙂"
+    options := draw.text_options(10.0)
+    masked := context.layout_masked_text(&value,&options) or >>
+    hit := masked.caret(4,false) or >>
+    println(int(masked.metrics.width))
+    println(int(hit.x))
+    println(hit.index)
+    selection := masked.selection_rects(1,8) or >>
+    println(int(selection[0].width))
+    mut frame := context.new_frame(16)
+    frame.begin() or >>
+    frame.text_layout(&masked,0.0,0.0,draw.rgb(255,255,255)) or >>
+    frame.present() or >>
+    << 0
+}
+fn main() int { paint() or (err) { eprintln(err.msg())
+    << 1 }
+    << 0
+}`);
+  assert.equal(result.stdout, '18\n12\n4\n12\n');
+  assert.deepEqual(Array.from(labels(result), label => label.args.at(-1)), ['***']);
+  assert.ok(!result.ui.commands.includes('a中🙂'));
 });
