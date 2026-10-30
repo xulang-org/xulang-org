@@ -271,9 +271,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
 
     if not bare_path:
         if en:
-            desc = f"Official portal for Xu v{xu_version} — rock-solid memory safety with zero runtime GC overhead, supersonic native AOT & WebAssembly compilation, user-space coroutines, and typed channels."
+            desc = "Xu systems programming language: zero GC, inferred ownership, borrow checking, deterministic cleanup, built-in coroutines, and custom native/WebAssembly AOT backends."
         else:
-            desc = f"Xu 编程语言官方网站 (v{xu_version}) — 坚若磐石、零 GC 运行时开销、超音速原生 AOT 与 WebAssembly 编译的系统级编程语言，具备确定性 RAII 所有权、轻量协程与类型安全通道。"
+            desc = "Xu 系统编程语言：零 GC、所有权推断、借用检查、确定性资源释放、内建协程及自研原生 / WebAssembly AOT 后端。"
     elif bare_path == 'benchmarks':
         if en:
             desc = "Cross-language runtime, CPU time, peak memory and binary-size measurements across Linux, macOS and Windows on ARM64 and x86-64. See the measured Xu version and source CI records."
@@ -291,9 +291,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
             desc = f"下载官方 Xu (v{xu_version}) 编译器 SDK 与工具链（macOS、Linux、Windows）。支持一键自动化安装脚本与原生二进制发行包。"
     elif bare_path.startswith('docs/faq'):
         if en:
-            desc = f"Frequently Asked Questions (FAQ) for Xu v{xu_version} — Custom native backend, zero-GC memory safety, LSP editor support, xu get vs xu install, native C modules, WebAssembly, and the XACP control channel."
+            desc = "Xu FAQ: ownership and borrow checking, shared-state synchronization, native/FFI safety boundaries, code generation targets, SDK availability, and runtime verification."
         else:
-            desc = f"Xu 编程语言 (v{xu_version}) 常见问题解答 (FAQ) — 自研原生后端、零 GC 内存安全、LSP 编辑器支持、xu get 与 xu install 依赖管理、xu native 原生 C 模块、WebAssembly 与 XACP 控制通道。"
+            desc = "Xu 常见问题：所有权与借用检查、共享状态同步、原生 / FFI 安全边界、代码发射目标、SDK 可下载范围与运行实测。"
     elif bare_path.startswith('docs/tutorial'):
         if en:
             desc = f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
@@ -491,8 +491,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         other_lang=other, other_lang_code='zh-CN' if en else 'en',
         lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',
         theme_label='Switch theme' if en else '切换主题', ui_href=prefix + '/docs/ui',
-        footer_text=('<a href="/LICENSE">MIT License</a> · Zero GC · Supersonic AOT' if en
-                     else '<a href="/LICENSE">MIT 开源协议</a> · 坚若磐石 · 零 GC 内存安全 · 超音速 AOT'),
+        footer_text=('<a href="/LICENSE">MIT License</a> · Zero GC · Inferred Ownership · Custom AOT' if en
+                     else '<a href="/LICENSE">MIT 开源协议</a> · 零 GC · 所有权推断 · 自研 AOT'),
         header_social=social_links(en, compact=True), footer_social=social_links(en),
         social_label='Official accounts' if en else '官方帐号',
         menu_label='Navigation menu' if en else '导航菜单',

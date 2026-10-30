@@ -7,28 +7,29 @@
   <details class="faq-item">
     <summary><h3>What is the Xu programming language?</h3></summary>
     <div class="faq-answer">
-      <p>Xu is a modern, statically typed, hypersonic AOT-compiled systems programming language designed for high-concurrency cloud-native backends, network infrastructure, and low-latency systems. Without garbage collection (Zero GC), Xu achieves memory safety and concurrency throughput through deterministic RAII ownership, first-class coroutines (<code>xu f()</code>), and channels (<code>chan T</code>).</p>
+      <p>Xu is a statically typed systems language with custom native and WebAssembly AOT backends. It combines inferred ownership, borrow checking, and deterministic cleanup without a garbage collector, plus built-in coroutines (<code>xu f()</code>) and typed channels (<code>chan T</code>).</p>
     </div>
   </details>
 
   <details class="faq-item">
     <summary><h3>Does the Xu compiler use LLVM? Why a custom native backend?</h3></summary>
     <div class="faq-answer">
-      <p><strong>No, Xu does not use LLVM</strong>. The compiler features a custom-built lightweight MIR (Middle Intermediate Representation), register allocator, and direct native code emitters targeting Mach-O, ELF, PE, and WebAssembly directly. LLVM's massive pass pipeline is a primary cause of slow C++/Rust builds; Xu targets Go-like sub-second compilation speeds with a self-contained zero-dependency binary.</p>
+      <p><strong>No, Xu does not use LLVM</strong>. The compiler uses its own MIR (Middle Intermediate Representation), register allocator, and code emitters for Mach-O, ELF, PE, and WebAssembly. Native modules and desktop builds can require host libraries and a matching C toolchain; see <a href="/docs/native">native modules</a> and the <a href="/docs/ui#build">desktop build requirements</a>.</p>
     </div>
   </details>
 
-  <details class="faq-item">
+  <details class="faq-item" id="memory-safety">
     <summary><h3>Does Xu use a garbage collector (GC)?</h3></summary>
     <div class="faq-answer">
-      <p><strong>No</strong>. Xu has zero runtime GC overhead and no Stop-The-World (STW) pauses. Memory is managed deterministically through compile-time single-ownership tracking and RAII scoping drops, complemented by static shared (<code>&amp;T</code>) and exclusive (<code>$&amp;T</code>) borrow checking that completely eliminates data races, memory leaks, and dangling pointers.</p>
+      <p><strong>No</strong>. Xu uses inferred ownership and RAII cleanup to release resources deterministically at scope exit, without a runtime garbage collector. Ownership and shared (<code>&amp;T</code>) / exclusive (<code>$&amp;T</code>) borrow checks prevent classes of lifetime and aliasing errors in checked Xu code.</p>
+      <p>Shared mutable state in concurrent code still requires appropriate synchronization. Native code, FFI, and concurrent libraries have their own safety requirements; these checks do not guarantee that every program is free of data races, leaks, or undefined behavior. Allocation, scheduling, and I/O can still cause latency variation. See <a href="/docs/lang/memory">Ownership &amp; Borrowing</a>, <a href="/docs/lang/concurrency">Concurrency</a>, and <a href="/docs/native">native module boundaries</a>.</p>
     </div>
   </details>
 
   <details class="faq-item">
     <summary><h3>How does Xu compare to Rust and Go?</h3></summary>
     <div class="faq-answer">
-      <p>Compared to Rust, Xu delivers deterministic zero-cost memory safety <strong>without complex lifetime annotations (such as <code>&lt;'a&gt;</code>)</strong>, offering first-class coroutines and channels without heavy async runtimes. Compared to Go, Xu compiles to true zero-GC native machine code without runtime STW latency, baseline memory bloat, or background GC threads.</p>
+      <p>Xu infers ownership and uses deterministic cleanup without explicit lifetime annotations such as <code>&lt;'a&gt;</code>. It offers Go-like coroutines and typed channels while using ownership and borrow checking instead of a garbage collector. See the <a href="#memory-safety">safety boundaries above</a> and the <a href="/benchmarks">benchmark dashboard</a> for measured runtime and memory results.</p>
     </div>
   </details>
 
@@ -105,7 +106,7 @@
   <details class="faq-item">
     <summary><h3>What operating systems and CPU architectures are supported?</h3></summary>
     <div class="faq-answer">
-      <p>Native multi-platform matrix: operating systems include macOS (Darwin), Linux, Windows (PE AOT), and WebAssembly; hardware architectures include ARM64 (Apple Silicon / AWS Graviton), x86-64 (Intel / AMD), LoongArch64, RISC-V 64/32, and Linux ARM32。</p>
+      <p>Code generation targets include macOS arm64/x64, Linux arm64/x64/loongarch64/riscv64/arm32, Windows x64/arm64, and WebAssembly (wasm32), with Thumb and RISC-V bare-metal targets listed in <a href="/docs/status">Status &amp; Limitations</a>. Downloadable SDK assets are listed on the <a href="/download">download page</a>. Emission support and an available SDK do not establish tested runtime or GUI behavior; paths without target-machine acceptance results remain unverified. Check status and <a href="/docs/packages">per-package limits</a> for the intended target.</p>
     </div>
   </details>
 
