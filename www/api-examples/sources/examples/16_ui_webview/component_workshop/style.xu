@@ -1,0 +1,200 @@
+@main
+
+#ui/widgets
+#ui/draw
+#ui/layout
+#time
+
+fn read_only(index int) bool { << index >= 38 ||(index >= 1 && index <= 26 && index != 8 && index != 25 && index != 26)}
+
+fn invalid(index int) bool { << index >= 40 || index >= 1 && index <= 30 && index != 7 && index != 8 && index != 12 && index != 24 && index != 25 && index != 26 && index != 28}
+
+fn animated(index int) bool { <<(index >= 38 && index <= 44) || index == 1 || index == 2 || index == 5 || index == 6 || index == 7 || index == 8 || index == 9 || index == 10 || index == 11 || index == 25}
+
+fn appearance(styles &widgets.Styles, index int) widgets.ControlStyle{
+    if index == 0 {$c := styles.input.clone()
+        c.padding = layout.Insets{left: 0.0, top: 0.0, right: 0.0, bottom: 0.0}
+        c.align_x = 0.0
+        c.align_y = 0.0
+        << c}
+    if index == 7 { << styles.tree_style()}
+    if index == 24 { << styles.table_style()}
+    if index == 9 || index == 10 || index == 11 || index == 12 { << styles.checkbox.clone()}
+    if index == 3 || index == 5 || index == 45 { << styles.input.clone()}
+    if index == 4 || index == 6 { << styles.text_area.clone()}
+    if index == 13 || index == 40 { << styles.slider_style()}
+    if index == 41 { << styles.card_style()}
+    if index == 14 { << styles.stepper_style()}
+    if index == 15 { << styles.select_style()}
+    if index == 21 || index == 22 { << styles.tabs_style()}
+    if index == 23 { << styles.list_box_style()}
+    if index == 27 { << styles.progress.clone()}
+    if index == 29 { << styles.divider_style()}
+    if index == 30 { << styles.badge_style()}
+    if index == 31 { << styles.card_style()}
+    if index == 32 { << styles.scroll.clone()}
+    << styles.button.clone()
+}
+
+fn (m $&Workshop) apply_appearance(s $&widgets.Screen) int {
+    theme := s.selected(m.theme) or >>
+    density := s.selected(m.density) or >>
+    scale := s.selected(m.scale) or >>
+    preset :=[widgets.THEME_LIGHT, widgets.THEME_DARK, widgets.THEME_CONTRAST][theme]
+    $styles := widgets.preset_styles(preset) or >>
+    styles.density =[1.0, 0.85, 1.25][density]
+    styles.text_scale =[1.0, 1.4, 2.0][scale]
+    sheet := widgets.screen_appearance(&styles, s.toggle_value(m.reduced) or >>) or >>
+    s.apply_appearance(&sheet) or >>
+    position := m.selected
+    pages := &m.pages
+    page := &pages[position]
+    id := page.ids[0]
+    if m.selected == 30 {$avatar := styles.button_variant(widgets.BUTTON_SUBTLE) or >>
+        avatar.radius = 999.0
+        s.set_control_style(page.ids[2], &avatar) or >> }
+    if m.selected <= 32 || m.selected >= 40 {
+        s.clear_control_style(id) or >>
+        if m.customized{$c := appearance(&styles, m.selected)
+            c.radius = 14.0
+            c.border_width = 1.5
+            c.padding.left += 4.0
+            c.padding.right += 4.0
+            s.set_control_style(id, &c) or >> }
+    }
+    $spec := widgets.motion_spec()
+    if m.slow{spec.change = time.milliseconds(420) or >>
+        spec.hover = time.milliseconds(320) or >>
+        spec.enter = time.milliseconds(360) or >>
+        spec.exit = time.milliseconds(240) or >>
+        spec.curve = widgets.EASE_OUT_QUINT}
+    if animated(m.selected) {s.set_motion(id, &spec) or >> }
+    if m.selected == 1 {
+        handles :=[page.ids[0], page.ids[1], page.ids[2], page.ids[3]]
+        placements :=[widgets.ICON_LEADING, widgets.ICON_TRAILING, widgets.ICON_ABOVE, widgets.ICON_BELOW]
+        for i in 0:4 {
+            icon_size := s.number_value(page.ids[9 + i]) or >>
+            s.set_text(page.ids[13 + i], "Icon 图标 · " + str(int(icon_size)) + " px") or >>
+            $c := styles.button_variant(widgets.BUTTON_OUTLINE) or >>
+            if i == 0 {c = styles.button_variant(widgets.BUTTON_PRIMARY) or >> }
+            c.icon_placement = placements[i]
+            c.icon_size = icon_size * styles.text_scale
+            if m.customized{c.radius = 14.0
+                c.border_width = 1.5}
+            s.set_control_style(handles[i], &c) or >>
+            s.set_motion(handles[i], &spec) or >>
+        }
+    }
+    if m.selected == 33 || m.selected == 34 || m.selected == 36 {s.set_motion(page.ids[1], &spec) or >>
+        $c := styles.overlay_style()
+        if m.customized{c.radius = 18.0
+            c.border_width = 2.0}
+        s.set_control_style(page.ids[1], &c) or >> }
+    if m.selected == 34 {
+        $placement := widgets.overlay_placement()
+        placement.side = m.tooltip_side
+        placement.align = widgets.OVERLAY_CENTER
+        s.set_tooltip_placement(page.ids[1], &placement) or >>
+    }
+    if m.selected == 35 {
+        s.set_notice_motion(&spec) or >>
+        if m.customized{$c := styles.overlay_style()
+            c.radius = 18.0
+            c.border_width = 2.0
+            s.set_notice_style(&c) or >> }
+        else {s.clear_notice_style() or >> }
+    }
+    if m.selected == 38 {
+        $group_appearance := widgets.button_group_appearance()
+        group_appearance.vertical = m.group_vertical
+        group_appearance.joined = m.group_joined
+        for i in 0:3 {s.set_button_group_appearance(page.ids[i], &group_appearance) or >>
+            s.clear_control_style(page.ids[i]) or >>
+            s.set_motion(page.ids[i], &spec) or >>
+            if m.customized{$c := styles.button_variant(widgets.BUTTON_OUTLINE) or >>
+                c.radius = 12.0
+                c.border_width = 1.5
+                s.set_control_style(page.ids[i], &c) or >> }}
+    }
+    if m.selected == 39 {
+        s.clear_control_style(id) or >>
+        $appearance := widgets.chart_appearance()
+        appearance.y_unit = " ms"
+        if m.chart_kind == widgets.CHART_DONUT{appearance.y_unit = ""}
+        if m.customized{appearance.grid = false
+            appearance.area_opacity = 0.26
+            appearance.inner_radius = 0.78
+            appearance.palette =[draw.rgb(41, 126, 178), draw.rgb(215, 146, 42), draw.rgb(56, 153, 124)]
+            $c := styles.card_style()
+            c.radius = 18.0
+            s.set_control_style(id, &c) or >> }
+        s.set_chart_appearance(id, &appearance) or >>
+        $options := widgets.animation_options()
+        options.duration = time.milliseconds(650) or >>
+        options.curve = widgets.EASE_IN_OUT_CUBIC
+        if m.slow{options.duration = time.milliseconds(1200) or >> }
+        s.set_chart_animation(id, &options) or >>
+        if m.chart_paused{s.pause_chart_animation(id) or >> }
+    }
+    if m.selected == 40 {
+        $options := widgets.range_slider_options()
+        options.step = 5.0
+        options.min_distance = 10.0
+        if m.range_push{options.collision = widgets.RANGE_PUSH}
+        options.vertical = m.range_vertical
+        options.commit_only = m.range_commit
+        s.set_range_options(id, &options) or >>
+        $appearance := widgets.slider_appearance()
+        appearance.ticks = 11
+        appearance.show_value = true
+        s.set_range_appearance(id, &appearance) or >>
+    }
+    if m.selected == 41 {
+        $options := widgets.split_view_options()
+        options.vertical = m.split_vertical
+        options.minimum_first = 120.0 * styles.text_scale
+        options.minimum_second = 140.0 * styles.text_scale
+        s.set_split_options(id, &options) or >>
+    }
+    if m.selected >= 42 && m.selected <= 44 {
+        $appearance := widgets.menu_appearance()
+        appearance.close_on_select = !m.menu_stays_open
+        s.set_menu_appearance(id, &appearance) or >>
+    }
+    if m.selected == 37 {$radius := 8.0
+        if m.customized{radius = 18.0}
+        s.set_webview_radius(id, radius) or >> }
+    << 0
+}
+
+// Business handlers set option flags. Appearance changes run only here.
+fn (m $&Workshop) apply_page_options(s $&widgets.Screen) int {
+    if m.tree_options_dirty{
+        $appearance := widgets.tree_appearance()
+        appearance.guides = m.guided
+        s.set_tree_appearance(m.pages[7].ids[0], &appearance) or >>
+        m.tree_options_dirty = false
+    }
+    if m.field_options_dirty{
+        $decoration := widgets.field_decoration(&"Project name 项目名称")
+        decoration.variant =(m.variant - 1) % 3
+        decoration.floating =(m.variant - 1) % 4
+        decoration.helper = "Floating / fixed label and stable helper area"
+        decoration.error = "Please enter a valid name."
+        decoration.clearable = true
+        s.set_field_decoration(m.pages[m.field_options_page].ids[0], &decoration) or >>
+        m.field_options_dirty = false
+    }
+    if m.spinner_options_dirty{
+        s.set_spinner_appearance(m.pages[28].ids[0], 48.0, 4.0, time.milliseconds(1200) or >>) or >>
+        m.spinner_options_dirty = false
+    }
+    if m.popover_options_dirty{
+        $placement := widgets.overlay_placement()
+        placement.side = m.variant
+        placement.align = widgets.OVERLAY_CENTER
+        s.set_popover_placement(m.pages[33].ids[1], &placement) or >>
+        m.popover_options_dirty = false
+    }
+    << 0
+}

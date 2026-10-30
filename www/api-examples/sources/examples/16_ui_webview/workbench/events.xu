@@ -1,0 +1,27 @@
+@main
+
+#ui
+#ui/widgets
+
+fn open_image(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    if m.pending.id != 0 { << ""}
+    $options := ui.file_dialog_options()
+    options.title = "Open an image"
+    options.filters =[ui.FileFilter{label: "Images", extensions:["png", "jpg", "jpeg"]}]
+    m.pending = ui.open_files_async(&m.identity, &options) or(err) { << err.msg()}
+    m.message = "Choose a PNG or JPEG in the native dialog."
+    m.progress_value(0.2) or(err) { << err.msg()}
+    screen.mark_paint(m.header_id) or(err) { << err.msg()}
+    screen.mark_paint(m.progress_id) or(err) { << err.msg()}
+    << ""
+}
+fn scroll(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    screen.set_scroll(m.scroll_id, 0.0, action.value) or(err) { << err.msg()}
+    << ""
+}
+fn register_actions(m &Model, screen &widgets.View) widgets.ActionDispatcher#Model, widgets.View, widgets.Action{
+    $d := widgets.action_dispatcher(m, screen)
+    d.on(m.button_id, widgets.ACTION_ACTIVATE, open_image) or >>
+    d.on(m.scroll_id, widgets.ACTION_SCROLL, scroll) or >>
+    << d
+}

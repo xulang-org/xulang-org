@@ -8,7 +8,7 @@ demo #"github.com/xulang-org/examples/ui_demo"
 
 // IDs follow the stable topology created below. All control bounds are local;
 // Editor.place receives the separate canvas rectangle for native IME geometry.
-struct Model {
+struct Model{
     theme widgets.Button
     scale widgets.Button
     density widgets.Button
@@ -29,6 +29,10 @@ struct Model {
     popup_motion widgets.Tween
     clock time.Instant
     reduced_motion bool
+    theme_index int
+    text_scale f64
+    density_scale f64
+    appearance_dirty bool
     badge widgets.Badge
     divider widgets.Divider
     card widgets.Card
@@ -67,436 +71,436 @@ struct Model {
     list_3_label widgets.StyledLabel
     list_4_label widgets.StyledLabel
 }
-fn (m $&Model) motion_style(id int,base &widgets.ControlStyle,state int) widgets.ControlStyle {
+fn (m $&Model) motion_style(id int, base &widgets.ControlStyle, state int) widgets.ControlStyle{
     now := m.clock
     reduced := m.reduced_motion
     motion := $&m.transitions[id]
-    << motion.style(base,state,now,reduced) or >>
+    << motion.style(base, state, now, reduced) or >>
 }
-fn (m $&Model) tick(view $&widgets.View,now time.Instant) int {
+fn (m $&Model) tick(view $&widgets.View, now time.Instant) int {
     m.clock = now
     reduced := m.reduced_motion
-    for id in 1:m.transitions.len {
+    for id in 1:m.transitions.len{
         motion := $&m.transitions[id]
-        if reduced && motion.is_animating() { motion.finish()
+        if reduced && motion.is_animating() {motion.finish()
             view.mark_paint(id) or >> }
-        else if motion.advance(now) or >> { view.mark_paint(id) or >> }
+        else if motion.advance(now) or >> {view.mark_paint(id) or >> }
     }
     $selected := 0.0
-    if m.toggle.value() { selected = 1.0 }
+    if m.toggle.value() {selected = 1.0}
     switch_motion := $&m.switch_motion
     before_switch := switch_motion.value()
-    switch_motion.retarget(selected,now,time.milliseconds(180) or >>,reduced) or >>
-    if before_switch != switch_motion.value() { view.mark_paint(32) or >> }
+    switch_motion.retarget(selected, now, time.milliseconds(180) or >>, reduced) or >>
+    if before_switch != switch_motion.value() {view.mark_paint(32) or >> }
     $opened := 0.0
-    if m.select_ctrl.is_open() { opened = 1.0 }
+    if m.select_ctrl.is_open() {opened = 1.0}
     popup_motion := $&m.popup_motion
     before_popup := popup_motion.value()
     $popup_duration := time.milliseconds(130) or >>
-    if opened == 0.0 { popup_duration = time.milliseconds(95) or >> }
-    popup_motion.retarget(opened,now,popup_duration,reduced) or >>
-    if before_popup != popup_motion.value() { view.mark_paint(1) or >> }
+    if opened == 0.0 {popup_duration = time.milliseconds(95) or >> }
+    popup_motion.retarget(opened, now, popup_duration, reduced) or >>
+    if before_popup != popup_motion.value() {view.mark_paint(1) or >> }
     input := $&m.input
-    if input.tick(now,reduced) or >> { view.mark_paint(12) or >> }
+    if input.tick(now, reduced) or >> {view.mark_paint(12) or >> }
     invalid := $&m.invalid
-    if invalid.tick(now,reduced) or >> { view.mark_paint(13) or >> }
+    if invalid.tick(now, reduced) or >> {view.mark_paint(13) or >> }
     read_only := $&m.read_only
-    if read_only.tick(now,reduced) or >> { view.mark_paint(14) or >> }
+    if read_only.tick(now, reduced) or >> {view.mark_paint(14) or >> }
     area := $&m.area
-    if area.tick(now,reduced) or >> { view.mark_paint(15) or >> }
+    if area.tick(now, reduced) or >> {view.mark_paint(15) or >> }
     << 0
 }
-fn (m &Model) next_frame(now time.Instant) time.Instant {
+fn (m &Model) next_frame(now time.Instant) time.Instant{
     if m.switch_motion.is_animating() || m.popup_motion.is_animating() { << now.add(time.milliseconds(16) or >>) or >> }
-    for motion in m.transitions { if motion.is_animating() { << now.add(time.milliseconds(16) or >>) or >> } }
+    for motion in m.transitions{if motion.is_animating() { << now.add(time.milliseconds(16) or >>) or >> }}
     $deadline := time.zero_instant()
-    for next in [m.input.next_caret_tick(now,m.reduced_motion) or >>,m.invalid.next_caret_tick(now,m.reduced_motion) or >>,
-        m.read_only.next_caret_tick(now,m.reduced_motion) or >>,m.area.next_caret_tick(now,m.reduced_motion) or >>] {
-        if !next.is_zero() && (deadline.is_zero() || next.before(deadline)) { deadline = next }
+    for next in[m.input.next_caret_tick(now, m.reduced_motion) or >>, m.invalid.next_caret_tick(now, m.reduced_motion) or >>,
+    m.read_only.next_caret_tick(now, m.reduced_motion) or >>, m.area.next_caret_tick(now, m.reduced_motion) or >>] {
+        if !next.is_zero() &&(deadline.is_zero() || next.before(deadline)) {deadline = next}
     }
     << deadline
 }
-fn (m &Model) next_event(ech chan ui.Event) ui.Event {
+fn (m &Model) next_event(ech chan ui.Event) ui.Event{
     deadline := m.next_frame(time.instant()) or >>
     while true {
         event := ui.poll_chan(ech)
-        if event.kind != ui.EV_NONE { << event }
-        if !deadline.is_zero() && !time.instant().before(deadline) { << event }
+        if event.kind != ui.EV_NONE{ << event}
+        if !deadline.is_zero() && !time.instant().before(deadline) { << event}
         pause := time.milliseconds(8) or >>
         pause.sleep()
     }
-    << ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: "",width: 0,height: 0}
+    << ui.Event{kind: ui.EV_NONE, window_id: 0, menu_id: "", width: 0, height: 0}
 }
-fn (m $&Model) measure_node(id int,s &widgets.Styles) layout.Size {
-    if id == 4 { control := m.theme.clone()
+fn (m $&Model) measure_node(id int, s &widgets.Styles) layout.Size{
+    if id == 4 {control := m.theme.clone()
         label := $&m.theme_label
-        << control.measure_styled(label,s) or >> }
-    if id == 5 { control := m.scale.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 5 {control := m.scale.clone()
         label := $&m.scale_label
-        << control.measure_styled(label,s) or >> }
-    if id == 6 { control := m.density.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 6 {control := m.density.clone()
         label := $&m.density_label
-        << control.measure_styled(label,s) or >> }
-    if id == 8 { control := m.brand.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 8 {control := m.brand.clone()
         label := $&m.brand_label
-        << control.measure_icon_styled(label,s) or >> }
-    if id == 9 { control := m.disabled.clone()
+        << control.measure_icon_styled(label, s) or >> }
+    if id == 9 {control := m.disabled.clone()
         label := $&m.disabled_label
-        << control.measure_styled(label,s) or >> }
-    if id == 10 { control := m.check.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 10 {control := m.check.clone()
         label := $&m.check_label
-        << control.measure_styled(label,s) or >> }
-    if id == 11 { control := m.progress.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 11 {control := m.progress.clone()
         << control.measure_styled(s) or >> }
-    if id == 12 { control := $&m.input
+    if id == 12 {control := $&m.input
         << control.measure_styled(s) or >> }
-    if id == 13 { control := $&m.invalid
+    if id == 13 {control := $&m.invalid
         << control.measure_styled(s) or >> }
-    if id == 14 { control := $&m.read_only
+    if id == 14 {control := $&m.read_only
         << control.measure_styled(s) or >> }
-    if id == 15 { control := $&m.area
+    if id == 15 {control := $&m.area
         << control.measure_styled(s) or >> }
-    if id == 32 { control := m.toggle.clone()
+    if id == 32 {control := m.toggle.clone()
         label := $&m.toggle_label
-        << control.measure_styled(label,s) or >> }
-    if id == 33 { control := m.radio_a.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 33 {control := m.radio_a.clone()
         label := $&m.radio_a_label
-        << control.measure_styled(label,s) or >> }
-    if id == 34 { control := m.radio_b.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 34 {control := m.radio_b.clone()
         label := $&m.radio_b_label
-        << control.measure_styled(label,s) or >> }
-    if id == 35 { control := m.slider.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 35 {control := m.slider.clone()
         << control.measure_styled(s) or >> }
-    if id == 36 { control := m.stepper.clone()
+    if id == 36 {control := m.stepper.clone()
         label := $&m.stepper_label
-        << control.measure_styled(label,s) or >> }
-    if id == 37 { control := m.badge.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 37 {control := m.badge.clone()
         label := $&m.badge_label
-        << control.measure_styled(label,s) or >> }
-    if id == 38 { control := m.divider.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 38 {control := m.divider.clone()
         label := $&m.divider_label
-        << control.measure_labeled_styled(label,s) or >> }
-    if id == 40 { control := m.tabs.clone()
+        << control.measure_labeled_styled(label, s) or >> }
+    if id == 40 {control := m.tabs.clone()
         label := $&m.tab_label
-        << control.measure_styled(label,s) or >> }
-    if id == 41 { control := m.select_ctrl.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 41 {control := m.select_ctrl.clone()
         label := $&m.select_label
-        << control.measure_styled(label,s) or >> }
-    if id == 42 { control := m.card.clone()
+        << control.measure_styled(label, s) or >> }
+    if id == 42 {control := m.card.clone()
         label := $&m.card_label
-        << control.measure_header_styled(label,s) or >> }
-    if id == 43 { control := m.list.clone()
+        << control.measure_header_styled(label, s) or >> }
+    if id == 43 {control := m.list.clone()
         label := $&m.list_label
-        << control.measure_styled(label,s) or >> }
-    << layout.Size{width: 0.0,height: 0.0}
+        << control.measure_styled(label, s) or >> }
+    << layout.Size{width: 0.0, height: 0.0}
 }
-fn (m $&Model) measure_styled(id int,s &widgets.Styles) layout.Size {
-    << m.measure_node(id,s) or (err) { eprintln(err.msg())
-        << layout.Size{width: -1.0,height: -1.0} }
+fn (m $&Model) measure_styled(id int, s &widgets.Styles) layout.Size{
+    << m.measure_node(id, s) or(err) {eprintln(err.msg())
+        << layout.Size{width: - 1.0, height: - 1.0}}
 }
-fn (m $&Model) draw_node(id int,b &layout.Rect,s &widgets.Styles,f $&draw.Frame) int {
-    if id == 4 { target := $&m.theme
+fn (m $&Model) draw_node(id int, b &layout.Rect, s &widgets.Styles, f $&draw.Frame) int {
+    if id == 4 {target := $&m.theme
         target.set_bounds(b) or >>
         $control := m.theme.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(4,&base,control.visual_state()) or >>
+        appearance := m.motion_style(4, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.theme_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 5 { target := $&m.scale
+        control.paint_styled(f, label, s) or >> }
+    if id == 5 {target := $&m.scale
         target.set_bounds(b) or >>
         $control := m.scale.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(5,&base,control.visual_state()) or >>
+        appearance := m.motion_style(5, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.scale_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 6 { target := $&m.density
+        control.paint_styled(f, label, s) or >> }
+    if id == 6 {target := $&m.density
         target.set_bounds(b) or >>
         $control := m.density.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(6,&base,control.visual_state()) or >>
+        appearance := m.motion_style(6, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.density_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 8 { target := $&m.brand
+        control.paint_styled(f, label, s) or >> }
+    if id == 8 {target := $&m.brand
         target.set_bounds(b) or >>
         $control := m.brand.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(8,&base,control.visual_state()) or >>
+        appearance := m.motion_style(8, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         icon := m.icon
         label := $&m.brand_label
-        control.paint_icon_styled(f,label,&icon,s) or >> }
-    if id == 9 { target := $&m.disabled
+        control.paint_icon_styled(f, label, &icon, s) or >> }
+    if id == 9 {target := $&m.disabled
         target.set_bounds(b) or >>
         $control := m.disabled.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(9,&base,control.visual_state()) or >>
+        appearance := m.motion_style(9, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.disabled_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 10 { target := $&m.check
+        control.paint_styled(f, label, s) or >> }
+    if id == 10 {target := $&m.check
         target.set_bounds(b) or >>
         $control := m.check.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(10,&base,control.visual_state()) or >>
+        appearance := m.motion_style(10, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.check_label
-        control.paint_styled(f,label,s) or >> }
+        control.paint_styled(f, label, s) or >> }
     if id == 12 {
         now := m.clock
         reduced := m.reduced_motion
         $motion := m.transitions[12]
         control := $&m.input
-        control.paint_motion_styled(f,s,$&motion,now,reduced) or >>
-        m.transitions[12] = motion }
+        control.paint_motion_styled(f, s, $&motion, now, reduced) or >>
+        m.transitions[12] = motion}
     if id == 13 {
         now := m.clock
         reduced := m.reduced_motion
         $motion := m.transitions[13]
         control := $&m.invalid
-        control.paint_motion_styled(f,s,$&motion,now,reduced) or >>
-        m.transitions[13] = motion }
+        control.paint_motion_styled(f, s, $&motion, now, reduced) or >>
+        m.transitions[13] = motion}
     if id == 14 {
         now := m.clock
         reduced := m.reduced_motion
         $motion := m.transitions[14]
         control := $&m.read_only
-        control.paint_motion_styled(f,s,$&motion,now,reduced) or >>
-        m.transitions[14] = motion }
+        control.paint_motion_styled(f, s, $&motion, now, reduced) or >>
+        m.transitions[14] = motion}
     if id == 15 {
         now := m.clock
         reduced := m.reduced_motion
         $motion := m.transitions[15]
         control := $&m.area
-        control.paint_motion_styled(f,s,$&motion,now,reduced) or >>
-        m.transitions[15] = motion }
-    if id == 11 { control := $&m.progress
+        control.paint_motion_styled(f, s, $&motion, now, reduced) or >>
+        m.transitions[15] = motion}
+    if id == 11 {control := $&m.progress
         control.set_bounds(b) or >>
-        control.paint_styled(f,s) or >> }
-    if id == 32 { target := $&m.toggle
+        control.paint_styled(f, s) or >> }
+    if id == 32 {target := $&m.toggle
         target.set_bounds(b) or >>
         $control := m.toggle.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(32,&base,control.visual_state()) or >>
+        appearance := m.motion_style(32, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         position := m.switch_motion.value()
         label := $&m.toggle_label
-        control.paint_position_styled(f,label,s,position) or >> }
-    if id == 33 { target := $&m.radio_a
+        control.paint_position_styled(f, label, s, position) or >> }
+    if id == 33 {target := $&m.radio_a
         target.set_bounds(b) or >>
         $control := m.radio_a.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(33,&base,control.visual_state()) or >>
+        appearance := m.motion_style(33, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.radio_a_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 34 { target := $&m.radio_b
+        control.paint_styled(f, label, s) or >> }
+    if id == 34 {target := $&m.radio_b
         target.set_bounds(b) or >>
         $control := m.radio_b.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(34,&base,control.visual_state()) or >>
+        appearance := m.motion_style(34, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.radio_b_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 35 { target := $&m.slider
+        control.paint_styled(f, label, s) or >> }
+    if id == 35 {target := $&m.slider
         target.set_bounds(b) or >>
         $control := m.slider.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(35,&base,control.visual_state()) or >>
+        appearance := m.motion_style(35, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
-        control.paint_styled(f,s) or >> }
-    if id == 36 { target := $&m.stepper
+        control.paint_styled(f, s) or >> }
+    if id == 36 {target := $&m.stepper
         target.set_bounds(b) or >>
         $control := m.stepper.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(36,&base,control.visual_state()) or >>
+        appearance := m.motion_style(36, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.stepper_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 37 { target := $&m.badge
+        control.paint_styled(f, label, s) or >> }
+    if id == 37 {target := $&m.badge
         target.set_bounds(b) or >>
         control := m.badge.clone()
         label := $&m.badge_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 38 { target := $&m.divider
+        control.paint_styled(f, label, s) or >> }
+    if id == 38 {target := $&m.divider
         target.set_bounds(b) or >>
         control := m.divider.clone()
         label := $&m.divider_label
-        control.paint_labeled_styled(f,label,s) or >> }
-    if id == 40 { target := $&m.tabs
+        control.paint_labeled_styled(f, label, s) or >> }
+    if id == 40 {target := $&m.tabs
         target.set_bounds(b) or >>
         control := m.tabs.clone()
-        control.paint_box_styled(f,s) or >>
+        control.paint_box_styled(f, s) or >>
         l0 := $&m.tab_label
-        control.paint_tab_styled(f,0,l0,s) or >>
+        control.paint_tab_styled(f, 0, l0, s) or >>
         l1 := $&m.tab_2_label
-        control.paint_tab_styled(f,1,l1,s) or >>
+        control.paint_tab_styled(f, 1, l1, s) or >>
         l2 := $&m.tab_3_label
-        control.paint_tab_styled(f,2,l2,s) or >> }
-    if id == 41 { target := $&m.select_ctrl
+        control.paint_tab_styled(f, 2, l2, s) or >> }
+    if id == 41 {target := $&m.select_ctrl
         target.set_bounds(b) or >>
         $control := m.select_ctrl.clone()
         base := control.style_or(s)
-        appearance := m.motion_style(41,&base,control.visual_state()) or >>
+        appearance := m.motion_style(41, &base, control.visual_state()) or >>
         control.set_style(&appearance) or >>
         label := $&m.select_label
-        control.paint_styled(f,label,s) or >> }
-    if id == 42 { target := $&m.card
+        control.paint_styled(f, label, s) or >> }
+    if id == 42 {target := $&m.card
         target.set_bounds(b) or >>
         control := m.card.clone()
         label := $&m.card_label
-        control.paint_header_styled(f,label,s) or >>
-        demo.text(&m.context,f,14.0 * s.density,42.0 * s.density,11.0 * s.text_scale,s.button.palette.muted,"Card body") or >> }
-    if id == 43 { target := $&m.list
+        control.paint_header_styled(f, label, s) or >>
+        demo.text(&m.context, f, 14.0 * s.density, 42.0 * s.density, 11.0 * s.text_scale, s.button.palette.muted, "Card body") or >> }
+    if id == 43 {target := $&m.list
         target.set_bounds(b) or >>
         control := m.list.clone()
-        control.paint_box_styled(f,s) or >>
+        control.paint_box_styled(f, s) or >>
         r0 := $&m.list_label
-        control.paint_item_styled(f,0,r0,s) or >>
+        control.paint_item_styled(f, 0, r0, s) or >>
         r1 := $&m.list_2_label
-        control.paint_item_styled(f,1,r1,s) or >>
+        control.paint_item_styled(f, 1, r1, s) or >>
         r2 := $&m.list_3_label
-        control.paint_item_styled(f,2,r2,s) or >>
+        control.paint_item_styled(f, 2, r2, s) or >>
         r3 := $&m.list_4_label
-        control.paint_item_styled(f,3,r3,s) or >> }
+        control.paint_item_styled(f, 3, r3, s) or >> }
     if id == 2 {
-        demo.text(&m.context,f,0.0,0.0,24.0,s.button.palette.foreground,"A theme that reaches every control") or >>
-        demo.text(&m.context,f,0.0,33.0,13.0,s.button.palette.muted,"Light / dark / contrast · typography · density · local overrides · no idle redraw") or >>
+        demo.text(&m.context, f, 0.0, 0.0, 24.0, s.button.palette.foreground, "A theme that reaches every control") or >>
+        demo.text(&m.context, f, 0.0, 33.0, 13.0, s.button.palette.muted, "Light / dark / contrast · typography · density · local overrides · no idle redraw") or >>
     }
     if id >= 18 && id <= 29 {
-        f.fill_rect(0.0,0.0,b.width,b.height,s.input.palette.normal) or >>
-        demo.text(&m.context,f,12.0,5.0,14.0,s.input.palette.foreground,"Scrollable item " + str(id - 17) + "   —   wheel, drag the thumb, or Page Down") or >>
+        f.fill_rect(0.0, 0.0, b.width, b.height, s.input.palette.normal) or >>
+        demo.text(&m.context, f, 12.0, 5.0, 14.0, s.input.palette.foreground, "Scrollable item " + str(id - 17) + "   —   wheel, drag the thumb, or Page Down") or >>
     }
     if id == 30 {
-        demo.text(&m.context,f,0.0,0.0,12.0,s.button.palette.muted,"The green button keeps its own font and palette. Error and read-only fields are distinct states.") or >>
-        demo.text(&m.context,f,0.0,21.0,12.0,s.button.palette.muted,"Tab / Shift+Tab to move focus · copy from read-only text · Escape to quit") or >>
+        demo.text(&m.context, f, 0.0, 0.0, 12.0, s.button.palette.muted, "The green button keeps its own font and palette. Error and read-only fields are distinct states.") or >>
+        demo.text(&m.context, f, 0.0, 21.0, 12.0, s.button.palette.muted, "Tab / Shift+Tab to move focus · copy from read-only text · Escape to quit") or >>
     }
     << 0
 }
-fn (m $&Model) paint_styled(id int,b &layout.Rect,s &widgets.Styles,f $&draw.Frame) bool {
-    m.draw_node(id,b,s,f) or (err) { eprintln(err.msg())
-        << false }
+fn (m $&Model) paint_styled(id int, b &layout.Rect, s &widgets.Styles, f $&draw.Frame) bool {
+    m.draw_node(id, b, s, f) or(err) {eprintln(err.msg())
+        << false}
     << true
 }
-fn (m $&Model) overlay_styled(id int,b &layout.Rect,s &widgets.Styles,f $&draw.Frame) bool {
-    if id == 16 { control := $&m.scroll
-        control.paint_scrollbar(f,s) or (err) { eprintln(err.msg())
-            << false } }
-    if id == 1 && (m.select_ctrl.is_open() || m.popup_motion.value() > 0.0) {
-        m.paint_select_popup(s,f) or (err) { eprintln(err.msg())
-            << false }
+fn (m $&Model) overlay_styled(id int, b &layout.Rect, s &widgets.Styles, f $&draw.Frame) bool {
+    if id == 16 {control := $&m.scroll
+        control.paint_scrollbar(f, s) or(err) {eprintln(err.msg())
+            << false}}
+    if id == 1 &&(m.select_ctrl.is_open() || m.popup_motion.value() > 0.0) {
+        m.paint_select_popup(s, f) or(err) {eprintln(err.msg())
+            << false}
     }
     << true
 }
 // Root overlay keeps the popup above every sibling and outside the button's box.
-fn (m $&Model) paint_select_popup(s &widgets.Styles,f $&draw.Frame) int {
+fn (m $&Model) paint_select_popup(s &widgets.Styles, f $&draw.Frame) int {
     $control := m.select_ctrl.clone()
     control.set_open(true)
     opacity := m.popup_motion.value()
-    if opacity <= 0.0 { << 0 }
+    if opacity <= 0.0 { << 0}
     base := control.style_or(s)
     appearance := base.with_opacity(opacity) or >>
     control.set_style(&appearance) or >>
     popup := control.popup_bounds(s)
-    $offset := -4.0 * (1.0 - opacity)
-    if popup.y < 0.0 { offset = 4.0 * (1.0 - opacity) }
+    $offset := - 4.0 *(1.0 - opacity)
+    if popup.y < 0.0 {offset = 4.0 *(1.0 - opacity)}
     f.push() or >>
-    f.translate(m.select_origin.x,m.select_origin.y + offset) or >>
-    control.paint_popup_box_styled(f,s) or >>
+    f.translate(m.select_origin.x, m.select_origin.y + offset) or >>
+    control.paint_popup_box_styled(f, s) or >>
     auto_label := $&m.option_auto
-    control.paint_option_styled(f,0,auto_label,s) or >>
+    control.paint_option_styled(f, 0, auto_label, s) or >>
     manual_label := $&m.option_manual
-    control.paint_option_styled(f,1,manual_label,s) or >>
+    control.paint_option_styled(f, 1, manual_label, s) or >>
     locked_label := $&m.option_locked
-    control.paint_option_styled(f,2,locked_label,s) or >>
+    control.paint_option_styled(f, 2, locked_label, s) or >>
     f.pop() or >>
     << 0
 }
 // The popup is an overlay, so route its pointer sequence before normal tree hits.
-fn (m $&Model) dispatch_input(view $&widgets.View,event &ui.InputEvent) []widgets.Action {
+fn (m $&Model) dispatch_input(view $&widgets.View, event &ui.InputEvent)[]widgets.Action{
     was_open := m.select_ctrl.is_open()
     pointer := event.kind == ui.EV_POINTER_DOWN || event.kind == ui.EV_POINTER_UP ||
-        event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_SCROLL
-    if pointer && (was_open || m.select_popup_armed) {
-        local := view.local_input(41,event) or >>
+    event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_SCROLL
+    if pointer &&(was_open || m.select_popup_armed) {
+        local := view.local_input(41, event) or >>
         styles := view.styles_for(41) or >>
         pop := m.select_ctrl.popup_bounds(&styles)
-        if pop.contains(local.x,local.y) || m.select_popup_armed {
-            if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT { m.select_popup_armed = true }
+        if pop.contains(local.x, local.y) || m.select_popup_armed{
+            if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT{m.select_popup_armed = true}
             control := $&m.select_ctrl
             action := control.input(&local) or >>
             view.set_pointer_cursor(ui.CURSOR_HAND) or >>
-            if event.kind == ui.EV_POINTER_UP { m.select_popup_armed = false }
+            if event.kind == ui.EV_POINTER_UP{m.select_popup_armed = false}
             view.mark_paint(41) or >>
             view.mark_paint(1) or >>
-            << [action]
+            <<[action]
         }
     }
-    if event.kind == ui.EV_POINTER_CANCEL { m.select_popup_armed = false }
-    actions := widgets.dispatch(view,event,m) or >>
-    if was_open || m.select_ctrl.is_open() { view.mark_paint(1) or >> }
+    if event.kind == ui.EV_POINTER_CANCEL{m.select_popup_armed = false}
+    actions := widgets.dispatch(view, event, m) or >>
+    if was_open || m.select_ctrl.is_open() {view.mark_paint(1) or >> }
     << actions
 }
-fn (m $&Model) dispatch_event(view $&widgets.View,event &ui.Event) []widgets.Action {
+fn (m $&Model) dispatch_event(view $&widgets.View, event &ui.Event)[]widgets.Action{
     if ui.is_input_event(event.kind) {
         input := ui.input_of(event) or >>
-        << m.dispatch_input(view,&input) or >>
+        << m.dispatch_input(view, &input) or >>
     }
     was_open := m.select_ctrl.is_open()
-    actions := widgets.dispatch_event(view,event,m) or >>
+    actions := widgets.dispatch_event(view, event, m) or >>
     m.select_popup_armed = false
-    if was_open && !m.select_ctrl.is_open() { view.mark_paint(1) or >> }
+    if was_open && !m.select_ctrl.is_open() {view.mark_paint(1) or >> }
     << actions
 }
-fn (m $&Model) input(id int,kind int,event &ui.InputEvent) widgets.Action {
-    if id == 4 { control := $&m.theme
-        << control.route(kind,event) or >> }
-    if id == 5 { control := $&m.scale
-        << control.route(kind,event) or >> }
-    if id == 6 { control := $&m.density
-        << control.route(kind,event) or >> }
-    if id == 8 { control := $&m.brand
-        << control.route(kind,event) or >> }
-    if id == 9 { control := $&m.disabled
-        << control.route(kind,event) or >> }
-    if id == 10 { control := $&m.check
-        << control.route(kind,event) or >> }
-    if id == 12 { control := $&m.input
-        << control.route(kind,event) or >> }
-    if id == 13 { control := $&m.invalid
-        << control.route(kind,event) or >> }
-    if id == 14 { control := $&m.read_only
-        << control.route(kind,event) or >> }
-    if id == 15 { control := $&m.area
-        << control.route(kind,event) or >> }
-    if id == 16 { control := $&m.scroll
-        << control.route(kind,event) or >> }
-    if id == 32 { control := $&m.toggle
-        << control.route(kind,event) or >> }
-    if id == 33 { control := $&m.radio_a
-        << control.route(kind,event) or >> }
-    if id == 34 { control := $&m.radio_b
-        << control.route(kind,event) or >> }
-    if id == 35 { control := $&m.slider
-        << control.route(kind,event) or >> }
-    if id == 36 { control := $&m.stepper
-        << control.route(kind,event) or >> }
-    if id == 40 { control := $&m.tabs
-        << control.route(kind,event) or >> }
-    if id == 41 { control := $&m.select_ctrl
-        << control.route(kind,event) or >> }
-    if id == 43 { control := $&m.list
-        << control.route(kind,event) or >> }
-    << widgets.Action{kind: 0,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
+fn (m $&Model) input(id int, kind int, event &ui.InputEvent) widgets.Action{
+    if id == 4 {control := $&m.theme
+        << control.route(kind, event) or >> }
+    if id == 5 {control := $&m.scale
+        << control.route(kind, event) or >> }
+    if id == 6 {control := $&m.density
+        << control.route(kind, event) or >> }
+    if id == 8 {control := $&m.brand
+        << control.route(kind, event) or >> }
+    if id == 9 {control := $&m.disabled
+        << control.route(kind, event) or >> }
+    if id == 10 {control := $&m.check
+        << control.route(kind, event) or >> }
+    if id == 12 {control := $&m.input
+        << control.route(kind, event) or >> }
+    if id == 13 {control := $&m.invalid
+        << control.route(kind, event) or >> }
+    if id == 14 {control := $&m.read_only
+        << control.route(kind, event) or >> }
+    if id == 15 {control := $&m.area
+        << control.route(kind, event) or >> }
+    if id == 16 {control := $&m.scroll
+        << control.route(kind, event) or >> }
+    if id == 32 {control := $&m.toggle
+        << control.route(kind, event) or >> }
+    if id == 33 {control := $&m.radio_a
+        << control.route(kind, event) or >> }
+    if id == 34 {control := $&m.radio_b
+        << control.route(kind, event) or >> }
+    if id == 35 {control := $&m.slider
+        << control.route(kind, event) or >> }
+    if id == 36 {control := $&m.stepper
+        << control.route(kind, event) or >> }
+    if id == 40 {control := $&m.tabs
+        << control.route(kind, event) or >> }
+    if id == 41 {control := $&m.select_ctrl
+        << control.route(kind, event) or >> }
+    if id == 43 {control := $&m.list
+        << control.route(kind, event) or >> }
+    << widgets.Action{kind: 0, id: id, needs_paint: false, request_focus: false, consumed: false, value: 0.0}
 }
 fn (m $&Model) place(view $&widgets.View) int {
     select_bounds := view.node_bounds(41) or >>
     m.select_origin = select_bounds
     select_styles := view.styles_for(41) or >>
     select_control := $&m.select_ctrl
-    select_control.set_bounds(&layout.Rect{x: 0.0,y: 0.0,width: select_bounds.width,height: select_bounds.height}) or >>
+    select_control.set_bounds(&layout.Rect{x: 0.0, y: 0.0, width: select_bounds.width, height: select_bounds.height}) or >>
     select_control.apply_styles(&select_styles) or >>
     popup := select_control.popup_bounds(&select_styles)
     window_bounds := view.node_bounds(1) or >>
@@ -506,37 +510,37 @@ fn (m $&Model) place(view $&widgets.View) int {
     list_bounds := view.node_bounds(43) or >>
     list_styles := view.styles_for(43) or >>
     list_control := $&m.list
-    list_control.set_bounds(&layout.Rect{x: 0.0,y: 0.0,width: list_bounds.width,height: list_bounds.height}) or >>
+    list_control.set_bounds(&layout.Rect{x: 0.0, y: 0.0, width: list_bounds.width, height: list_bounds.height}) or >>
     list_control.apply_styles(&list_styles) or >>
     input := $&m.input
-    widgets.place_editor(view,input) or >>
+    widgets.place_editor(view, input) or >>
     invalid := $&m.invalid
-    widgets.place_editor(view,invalid) or >>
+    widgets.place_editor(view, invalid) or >>
     read_only := $&m.read_only
-    widgets.place_editor(view,read_only) or >>
+    widgets.place_editor(view, read_only) or >>
     area := $&m.area
-    widgets.place_editor(view,area) or >>
+    widgets.place_editor(view, area) or >>
     bounds := view.node_bounds(16) or >>
     styles := view.styles_for(16) or >>
     control := $&m.scroll
-    control.set_bounds(&layout.Rect{x: 0.0,y: 0.0,width: bounds.width,height: bounds.height}) or >>
+    control.set_bounds(&layout.Rect{x: 0.0, y: 0.0, width: bounds.width, height: bounds.height}) or >>
     control.apply_styles(&styles) or >>
-    view.set_scroll(16,0.0,control.offset()) or >>
+    view.set_scroll(16, 0.0, control.offset()) or >>
     << 0
 }
-fn (m $&Model) native_event(view $&widgets.View,event &ui.Event) int {
+fn (m $&Model) native_event(view $&widgets.View, event &ui.Event) int {
     input := $&m.input
     action_12 := input.event(event) or >>
-    if action_12.needs_paint { view.mark_paint(12) or >> }
+    if action_12.needs_paint{view.mark_paint(12) or >> }
     invalid := $&m.invalid
     action_13 := invalid.event(event) or >>
-    if action_13.needs_paint { view.mark_paint(13) or >> }
+    if action_13.needs_paint{view.mark_paint(13) or >> }
     read_only := $&m.read_only
     action_14 := read_only.event(event) or >>
-    if action_14.needs_paint { view.mark_paint(14) or >> }
+    if action_14.needs_paint{view.mark_paint(14) or >> }
     area := $&m.area
     action_15 := area.event(event) or >>
-    if action_15.needs_paint { view.mark_paint(15) or >> }
+    if action_15.needs_paint{view.mark_paint(15) or >> }
     << 0
 }
 fn (m $&Model) acknowledge() {
@@ -589,7 +593,7 @@ fn (m $&Model) acknowledge() {
 }
 fn (m $&Model) cleanup() {
     icon := $&m.icon
-    icon.dispose() or (err) { eprintln(err.msg())
+    icon.dispose() or(err) {eprintln(err.msg())
         << }
     theme_label := $&m.theme_label
     theme_label.dispose()
@@ -648,16 +652,16 @@ fn (m $&Model) cleanup() {
     area := $&m.area
     area.dispose()
 }
-fn leaf(view $&widgets.View,parent int,width f64,height f64) int {
+fn leaf(view $&widgets.View, parent int, width f64, height f64) int {
     style := layout.box_style(layout.BOX_LEAF)
-    << view.add(parent,&style,&layout.Size{width: width,height: height}) or >>
+    << view.add(parent, &style, &layout.Size{width: width, height: height}) or >>
 }
 fn brand_scope(view $&widgets.View) int {
     $brand := widgets.light_styles()
-    brand.button.palette.normal = draw.rgb(10,91,69)
-    brand.button.palette.hovered = draw.rgb(17,120,90)
-    brand.button.palette.pressed = draw.rgb(7,65,49)
-    brand.button.palette.foreground = draw.rgb(255,255,255)
+    brand.button.palette.normal = draw.rgb(10, 91, 69)
+    brand.button.palette.hovered = draw.rgb(17, 120, 90)
+    brand.button.palette.pressed = draw.rgb(7, 65, 49)
+    brand.button.palette.foreground = draw.rgb(255, 255, 255)
     brand.button.font.size = 17.0
     brand.button.font.weight = 600
     brand.button.inherit_font = false
@@ -667,199 +671,109 @@ fn brand_scope(view $&widgets.View) int {
     $hover := widgets.state_paint(widgets.STATE_HOVERED)
     hover.unless = widgets.STATE_DISABLED
     hover.fields = widgets.PAINT_FOREGROUND | widgets.PAINT_BORDER
-    hover.foreground = draw.rgb(209,250,229)
-    hover.border = draw.rgb(110,231,183)
-    brand.button.states = [hover]
-    brand.button.shadow = draw.rgba(0,0,0,28)
+    hover.foreground = draw.rgb(209, 250, 229)
+    hover.border = draw.rgb(110, 231, 183)
+    brand.button.states =[hover]
+    brand.button.shadow = draw.rgba(0, 0, 0, 28)
     brand.button.shadow_y = 2.0
     brand.button.shadow_blur = 6.0
-    view.set_style_scope(8,&brand) or >>
-    << 0
-}
-fn (m $&Model) handle_action(view $&widgets.View,action &widgets.Action) int {
-    if action.kind == widgets.ACTION_ACTIVATE {
-        if action.id == 4 {
-            switcher := $&m.switcher
-            _ := switcher.cycle(view) or >>
-        }
-        if action.id == 5 {
-            switcher := $&m.switcher
-            $next_scale := 1.4
-            if switcher.text_scale() != 1.0 { next_scale = 1.0 }
-            switcher.set_text_scale(next_scale) or >>
-            switcher.apply(view) or >>
-        }
-        if action.id == 6 {
-            switcher := $&m.switcher
-            $next_density := 0.8
-            if switcher.density() != 1.0 { next_density = 1.0 }
-            switcher.set_density(next_density) or >>
-            switcher.apply(view) or >>
-        }
-        if action.id == 41 {
-            sel := $&m.select_ctrl
-            next_opt := (sel.selected() + 1) % 3
-            sel.set_selected(next_opt) or >>
-            lbl := $&m.select_label
-            if next_opt == 0 { lbl.set_text(&"Option: Auto") }
-            if next_opt == 1 { lbl.set_text(&"Option: Manual") }
-            if next_opt == 2 { lbl.set_text(&"Option: Locked") }
-            view.mark_measure(41) or >>
-            view.mark_paint(41) or >>
-        }
-    }
-    if action.id == 16 && action.kind == widgets.ACTION_SCROLL { view.set_scroll(16,0.0,action.value) or >> }
-    if action.kind == widgets.ACTION_CHANGE {
-        if action.id == 32 {
-            bdg := $&m.badge
-            bdg.set_selected(action.value > 0.5)
-            blbl := $&m.badge_label
-            if action.value > 0.5 { blbl.set_text(&"Active") } else { blbl.set_text(&"Paused") }
-            view.mark_measure(37) or >>
-            view.mark_paint(37) or >>
-        }
-        if action.id == 33 {
-            rb := $&m.radio_b
-            rb.set_value(false)
-            view.mark_paint(34) or >>
-        }
-        if action.id == 34 {
-            ra := $&m.radio_a
-            ra.set_value(false)
-            view.mark_paint(33) or >>
-        }
-        if action.id == 35 {
-            prog := $&m.progress
-            prog.set_value(action.value / 100.0) or >>
-            view.mark_paint(11) or >>
-        }
-        if action.id == 36 {
-            lbl := $&m.stepper_label
-            lbl.set_text(&str(int(action.value)))
-            view.mark_measure(36) or >>
-            prog := $&m.progress
-            prog.set_value(action.value / 100.0) or >>
-            view.mark_paint(11) or >>
-        }
-        if action.id == 40 {
-            clbl := $&m.card_label
-            if action.value == 0.0 { clbl.set_text(&"Card · Overview") }
-            if action.value == 1.0 { clbl.set_text(&"Card · Tokens") }
-            if action.value == 2.0 { clbl.set_text(&"Card · Segmented") }
-            view.mark_measure(42) or >>
-            view.mark_paint(42) or >>
-        }
-        if action.id == 41 {
-            lbl := $&m.select_label
-            if action.value == 0.0 { lbl.set_text(&"Option: Auto") }
-            if action.value == 1.0 { lbl.set_text(&"Option: Manual") }
-            if action.value == 2.0 { lbl.set_text(&"Option: Locked") }
-            view.mark_measure(41) or >>
-            view.mark_paint(41) or >>
-        }
-        if action.id == 43 {
-            clbl := $&m.card_label
-            clbl.set_text(&("Card · Row " + str(int(action.value) + 1)))
-            view.mark_measure(42) or >>
-            view.mark_paint(42) or >>
-        }
-    }
+    view.set_style_scope(8, &brand) or >>
     << 0
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.EV_EXIT { << 0 }
+    if ready.kind == ui.EV_EXIT{ << 0}
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
-    host := widgets.Host{context: context,identity: identity}
+    host := widgets.Host{context: context, identity: identity}
     $column := layout.box_style(layout.BOX_COLUMN)
     column.padding = layout.insets(22.0) or >>
     column.gap = 10.0
     column.cross_alignment = layout.CROSS_STRETCH
-    $view := host.view(&column,draw.rgb(20,25,34)) or >>
-    _ := leaf($&view,1,400.0,56.0) or >> // 2 header
+    $view := host.view(&column, draw.rgb(20, 25, 34)) or >>
+    _ := leaf($&view, 1, 400.0, 56.0) or >>  // 2 header
     $row := layout.box_style(layout.BOX_ROW)
     row.gap = 12.0
     row.cross_alignment = layout.CROSS_CENTER
-    _ := view.add(1,&row,&layout.Size{width: 0.0,height: 0.0}) or >> // 3 toolbar
-    for i in 0:3 { _ := leaf($&view,3,0.0,0.0) or >> } // 4..6
-    _ := view.add(1,&row,&layout.Size{width: 0.0,height: 0.0}) or >> // 7 controls
-    for i in 0:3 { _ := leaf($&view,7,0.0,0.0) or >> } // 8..10
-    _ := leaf($&view,1,300.0,12.0) or >> // 11 progress
-    for i in 0:4 { _ := leaf($&view,1,300.0,0.0) or >> } // 12..15 editors
+    _ := view.add(1, &row, &layout.Size{width: 0.0, height: 0.0}) or >>  // 3 toolbar
+    for i in 0:3 {_ := leaf($&view, 3, 0.0, 0.0) or >> }  // 4..6
+    _ := view.add(1, &row, &layout.Size{width: 0.0, height: 0.0}) or >>  // 7 controls
+    for i in 0:3 {_ := leaf($&view, 7, 0.0, 0.0) or >> }  // 8..10
+    _ := leaf($&view, 1, 300.0, 12.0) or >>  // 11 progress
+    for i in 0:4 {_ := leaf($&view, 1, 300.0, 0.0) or >> }  // 12..15 editors
     $viewport := layout.box_style(layout.BOX_COLUMN)
     viewport.height = 84.0
     viewport.clip = true
     viewport.cross_alignment = layout.CROSS_STRETCH
-    _ := view.add(1,&viewport,&layout.Size{width: 0.0,height: 0.0}) or >> // 16 scroll
+    _ := view.add(1, &viewport, &layout.Size{width: 0.0, height: 0.0}) or >>  // 16 scroll
     $items := layout.box_style(layout.BOX_COLUMN)
     items.gap = 6.0
     items.cross_alignment = layout.CROSS_STRETCH
-    _ := view.add(16,&items,&layout.Size{width: 0.0,height: 0.0}) or >> // 17 items
-    for i in 0:12 { _ := leaf($&view,17,300.0,28.0) or >> } // 18..29
-    _ := leaf($&view,1,400.0,42.0) or >> // 30 footer
-    _ := view.add(1,&row,&layout.Size{width: 0.0,height: 0.0}) or >> // 31 extended controls row 1
-    for i in 0:6 { _ := leaf($&view,31,0.0,0.0) or >> } // 32..37: switch, radio_a, radio_b, slider, stepper, badge
-    _ := leaf($&view,1,300.0,0.0) or >> // 38 labeled divider
-    _ := view.add(1,&row,&layout.Size{width: 0.0,height: 0.0}) or >> // 39 extended controls row 2
-    for i in 0:4 { _ := leaf($&view,39,0.0,0.0) or >> } // 40..43: tabs, select, card, list_box
-    for id in [2,4,5,6,8,9,10,11,12,13,14,15,16,30,32,33,34,35,36,37,38,40,41,42,43] { view.set_boundary(id,true) or >> }
-    for id in [4,5,6,8,10,12,13,14,15,16,32,33,34,35,36,40,41,43] { view.set_input(id,true,true) or >> }
-    view.set_capture_outside(16,true) or >>
-    view.set_capture_outside(35,true) or >>
-    for id in [4,5,6,8,9,10,11,12,13,14,15,32,33,34,35,36,37,38,40,41,42,43] { view.set_style_measure(id,true) or >> }
-    empty := layout.Rect{x: 0.0,y: 0.0,width: 0.0,height: 0.0}
-    $m := Model{theme: widgets.button(&identity,4,&empty) or >>,scale: widgets.button(&identity,5,&empty) or >>,
-        density: widgets.button(&identity,6,&empty) or >>,brand: widgets.button(&identity,8,&empty) or >>,
-        disabled: widgets.button(&identity,9,&empty) or >>,check: widgets.checkbox(&identity,10,&empty,true) or >>,
-        toggle: widgets.switch_control(&identity,32,&empty,true) or >>,
-        radio_a: widgets.radio(&identity,33,&empty,0,true) or >>,
-        radio_b: widgets.radio(&identity,34,&empty,1,false) or >>,
-        slider: widgets.slider(&identity,35,&empty,0.0,100.0,64.0) or >>,
-        stepper: widgets.stepper(&identity,36,&empty,0.0,100.0,5.0,65.0) or >>,
-        tabs: widgets.tabs(&identity,40,&empty,3,0) or >>,
-        select_ctrl: widgets.select_box(&identity,41,&empty,3,0) or >>,
-        select_origin: empty,select_popup_armed: false,
-        transitions: []widgets.PaintTransition{},switch_motion: widgets.tween(1.0) or >>,popup_motion: widgets.tween(0.0) or >>,
-        clock: time.zero_instant(),reduced_motion: false,
+    _ := view.add(16, &items, &layout.Size{width: 0.0, height: 0.0}) or >>  // 17 items
+    for i in 0:12 {_ := leaf($&view, 17, 300.0, 28.0) or >> }  // 18..29
+    _ := leaf($&view, 1, 400.0, 42.0) or >>  // 30 footer
+    _ := view.add(1, &row, &layout.Size{width: 0.0, height: 0.0}) or >>  // 31 extended controls row 1
+    for i in 0:6 {_ := leaf($&view, 31, 0.0, 0.0) or >> }  // 32..37: switch, radio_a, radio_b, slider, stepper, badge
+    _ := leaf($&view, 1, 300.0, 0.0) or >>  // 38 labeled divider
+    _ := view.add(1, &row, &layout.Size{width: 0.0, height: 0.0}) or >>  // 39 extended controls row 2
+    for i in 0:4 {_ := leaf($&view, 39, 0.0, 0.0) or >> }  // 40..43: tabs, select, card, list_box
+    for id in[2, 4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 16, 30, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43] {view.set_boundary(id, true) or >> }
+    for id in[4, 5, 6, 8, 10, 12, 13, 14, 15, 16, 32, 33, 34, 35, 36, 40, 41, 43] {view.set_input(id, true, true) or >> }
+    view.set_capture_outside(16, true) or >>
+    view.set_capture_outside(35, true) or >>
+    for id in[4, 5, 6, 8, 9, 10, 11, 12, 13, 14, 15, 32, 33, 34, 35, 36, 37, 38, 40, 41, 42, 43] {view.set_style_measure(id, true) or >> }
+    empty := layout.Rect{x: 0.0, y: 0.0, width: 0.0, height: 0.0}
+    $m := Model{theme: widgets.button(&identity, 4, &empty) or >>, scale: widgets.button(&identity, 5, &empty) or >>,
+        density: widgets.button(&identity, 6, &empty) or >>, brand: widgets.button(&identity, 8, &empty) or >>,
+        disabled: widgets.button(&identity, 9, &empty) or >>, check: widgets.checkbox(&identity, 10, &empty, true) or >>,
+        toggle: widgets.switch_control(&identity, 32, &empty, true) or >>,
+        radio_a: widgets.radio(&identity, 33, &empty, 0, true) or >>,
+        radio_b: widgets.radio(&identity, 34, &empty, 1, false) or >>,
+        slider: widgets.slider(&identity, 35, &empty, 0.0, 100.0, 64.0) or >>,
+        stepper: widgets.stepper(&identity, 36, &empty, 0.0, 100.0, 5.0, 65.0) or >>,
+        tabs: widgets.tabs(&identity, 40, &empty, 3, 0) or >>,
+        select_ctrl: widgets.select_box(&identity, 41, &empty, 3, 0) or >>,
+        select_origin: empty, select_popup_armed: false,
+        transitions:[]widgets.PaintTransition{}, switch_motion: widgets.tween(1.0) or >>, popup_motion: widgets.tween(0.0) or >>,
+        clock: time.zero_instant(), reduced_motion: false, theme_index: 0, text_scale: 1.0, density_scale: 1.0, appearance_dirty: true,
         badge: widgets.badge(&empty) or >>,
-        divider: widgets.divider(&empty,widgets.AXIS_HORIZONTAL) or >>,
+        divider: widgets.divider(&empty, widgets.AXIS_HORIZONTAL) or >>,
         card: widgets.card(&empty) or >>,
-        list: widgets.list_box(&identity,43,&empty,4,0) or >>,
-        input: widgets.input(&context,&identity,12,&empty,&"Editable input · 你好 Xu") or >>,
-        invalid: widgets.input(&context,&identity,13,&empty,&"Invalid value — custom error colors") or >>,
-        read_only: widgets.input(&context,&identity,14,&empty,&"Read-only · select and copy, edits are ignored") or >>,
-        area: widgets.text_area(&context,&identity,15,&empty,&"TextArea uses the same font, padding and selection theme.\nIME, preedit and caret geometry follow typography changes.") or >>,
-        progress: widgets.progress(&empty,0.64) or >>,scroll: widgets.scroll(&identity,16,&empty,widgets.AXIS_VERTICAL,402.0) or >>,
-        context: context,icon: context.load_embedded_image(&"logo.png") or >>,switcher: widgets.style_switcher(),
-        theme_label: widgets.styled_label(&context,&"Theme: dark / light / contrast"),
-        scale_label: widgets.styled_label(&context,&"Text: 100% / 140%"),
-        density_label: widgets.styled_label(&context,&"Density: normal / compact"),
-        brand_label: widgets.styled_label(&context,&"Local green"),
-        disabled_label: widgets.styled_label(&context,&"Disabled"),
-        check_label: widgets.styled_label(&context,&"Checkbox"),
-        toggle_label: widgets.styled_label(&context,&"Switch"),
-        radio_a_label: widgets.styled_label(&context,&"Radio A"),
-        radio_b_label: widgets.styled_label(&context,&"Radio B"),
-        stepper_label: widgets.styled_label(&context,&"65"),
-        badge_label: widgets.styled_label(&context,&"Active"),
-        divider_label: widgets.styled_label(&context,&"Navigation & Data Components"),
-        card_label: widgets.styled_label(&context,&"Card Panel"),
-        tab_label: widgets.styled_label(&context,&"Overview"),
-        tab_2_label: widgets.styled_label(&context,&"Tokens"),
-        tab_3_label: widgets.styled_label(&context,&"Themes"),
-        select_label: widgets.styled_label(&context,&"Option: Auto"),
-        option_auto: widgets.styled_label(&context,&"Auto"),
-        option_manual: widgets.styled_label(&context,&"Manual"),
-        option_locked: widgets.styled_label(&context,&"Locked"),
-        list_label: widgets.styled_label(&context,&"1 · Buttons"),
-        list_2_label: widgets.styled_label(&context,&"2 · Editors"),
-        list_3_label: widgets.styled_label(&context,&"3 · Surfaces"),
-        list_4_label: widgets.styled_label(&context,&"4 · Controls")}
-    for i in 0:44 { m.transitions.push(widgets.paint_transition() or >>) }
-    for id in [4,5,6,8,10,32,33,34,36,40,41,43] { view.set_cursor(id,ui.CURSOR_HAND) or >> }
-    for id in [12,13,14,15] { view.set_cursor(id,ui.CURSOR_TEXT) or >> }
-    view.set_cursor(35,ui.CURSOR_RESIZE_HORIZONTAL) or >>
+        list: widgets.list_box(&identity, 43, &empty, 4, 0) or >>,
+        input: widgets.input(&context, &identity, 12, &empty, &"Editable input · 你好 Xu") or >>,
+        invalid: widgets.input(&context, &identity, 13, &empty, &"Invalid value — custom error colors") or >>,
+        read_only: widgets.input(&context, &identity, 14, &empty, &"Read-only · select and copy, edits are ignored") or >>,
+        area: widgets.text_area(&context, &identity, 15, &empty, &"TextArea uses the same font, padding and selection theme.\nIME, preedit and caret geometry follow typography changes.") or >>,
+        progress: widgets.progress(&empty, 0.64) or >>, scroll: widgets.scroll(&identity, 16, &empty, widgets.AXIS_VERTICAL, 402.0) or >>,
+        context: context, icon: context.load_embedded_image(&"logo.png") or >>, switcher: widgets.style_switcher(),
+        theme_label: widgets.styled_label(&context, &"Theme: dark / light / contrast"),
+        scale_label: widgets.styled_label(&context, &"Text: 100% / 140%"),
+        density_label: widgets.styled_label(&context, &"Density: normal / compact"),
+        brand_label: widgets.styled_label(&context, &"Local green"),
+        disabled_label: widgets.styled_label(&context, &"Disabled"),
+        check_label: widgets.styled_label(&context, &"Checkbox"),
+        toggle_label: widgets.styled_label(&context, &"Switch"),
+        radio_a_label: widgets.styled_label(&context, &"Radio A"),
+        radio_b_label: widgets.styled_label(&context, &"Radio B"),
+        stepper_label: widgets.styled_label(&context, &"65"),
+        badge_label: widgets.styled_label(&context, &"Active"),
+        divider_label: widgets.styled_label(&context, &"Navigation & Data Components"),
+        card_label: widgets.styled_label(&context, &"Card Panel"),
+        tab_label: widgets.styled_label(&context, &"Overview"),
+        tab_2_label: widgets.styled_label(&context, &"Tokens"),
+        tab_3_label: widgets.styled_label(&context, &"Themes"),
+        select_label: widgets.styled_label(&context, &"Option: Auto"),
+        option_auto: widgets.styled_label(&context, &"Auto"),
+        option_manual: widgets.styled_label(&context, &"Manual"),
+        option_locked: widgets.styled_label(&context, &"Locked"),
+        list_label: widgets.styled_label(&context, &"1 · Buttons"),
+        list_2_label: widgets.styled_label(&context, &"2 · Editors"),
+        list_3_label: widgets.styled_label(&context, &"3 · Surfaces"),
+        list_4_label: widgets.styled_label(&context, &"4 · Controls")}
+    for i in 0:44 {m.transitions.push(widgets.paint_transition() or >>)}
+    for id in[4, 5, 6, 8, 10, 32, 33, 34, 36, 40, 41, 43] {view.set_cursor(id, ui.CURSOR_HAND) or >> }
+    for id in[12, 13, 14, 15] {view.set_cursor(id, ui.CURSOR_TEXT) or >> }
+    view.set_cursor(35, ui.CURSOR_RESIZE_HORIZONTAL) or >>
     badge_ref := $&m.badge
     badge_ref.set_selected(true)
     disabled := $&m.disabled
@@ -868,61 +782,63 @@ fn scene(ech chan ui.Event) int {
     invalid.set_invalid(true)
     read_only := $&m.read_only
     read_only.set_read_only(true) or >>
-    m.switcher.apply($&view) or >>
+    apply_appearance($&m, $&view) or >>
     brand_scope($&view) or >>
+    dispatcher := register_actions(&m, &view) or >>
     $width := 960.0
     $height := 820.0
-    $event := ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: "",width: 0,height: 0}
+    $event := ui.Event{kind: ui.EV_NONE, window_id: 0, menu_id: "", width: 0, height: 0}
     // Drain input bursts before painting. Native text snapshots already hold
     // the latest revision; rendering each queued key would fill the frame queue.
     ui.request_canvas_preferences(&identity) or >>
     while true {
-        if event.kind == ui.EV_NONE {
-            m.tick($&view,time.instant()) or >>
-            constraints := layout.tight(width,height) or >>
-            _ := widgets.layout_styled($&view,&constraints,$&m) or >>
+        if event.kind == ui.EV_NONE{
+            apply_appearance($&m, $&view) or >>
+            m.tick($&view, time.instant()) or >>
+            constraints := layout.tight(width, height) or >>
+            _ := widgets.layout_styled($&view, &constraints, $&m) or >>
             m.place($&view) or >>
-            if widgets.present_styled($&view,&constraints,$&m) or >> { m.acknowledge() }
+            if widgets.present_styled($&view, &constraints, $&m) or >> {m.acknowledge()}
             event = m.next_event(ech)
         }
-        if event.kind == ui.EV_EXIT { <- }
-        if event.window_id == identity.window_id {
-            if event.kind == ui.EV_CANVAS_CLOSED || event.kind == ui.EV_CLOSED { <- }
-            if event.kind == ui.EV_CANVAS_METRICS { metrics := ui.metrics_of(&event) or >>
+        if event.kind == ui.EV_EXIT{ <- }
+        if event.window_id == identity.window_id{
+            if event.kind == ui.EV_CANVAS_CLOSED || event.kind == ui.EV_CLOSED{ <- }
+            if event.kind == ui.EV_CANVAS_METRICS{metrics := ui.metrics_of(&event) or >>
                 width = metrics.width
-                height = metrics.height }
-            if event.kind == ui.EV_FOCUSED { ui.request_canvas_preferences(&identity) or >> }
-            if event.kind == ui.EV_CANVAS_PREFERENCES {
+                height = metrics.height}
+            if event.kind == ui.EV_FOCUSED{ui.request_canvas_preferences(&identity) or >> }
+            if event.kind == ui.EV_CANVAS_PREFERENCES{
                 preferences := ui.canvas_preferences_of(&event) or >>
-                if preferences.identity.canvas_id == identity.canvas_id && preferences.identity.generation == identity.generation {
+                if preferences.identity.canvas_id == identity.canvas_id && preferences.identity.generation == identity.generation{
                     m.reduced_motion = preferences.reduced_motion
                     view.mark_paint(1) or >>
                 }
             }
             popup_was_open := m.select_ctrl.is_open()
-            actions := m.dispatch_event($&view,&event) or >>
-            m.native_event($&view,&event) or >>
-            for action in actions { m.handle_action($&view,&action) or >> }
-            if ui.is_input_event(event.kind) { input := ui.input_of(&event) or >>
-                if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE && !popup_was_open {
+            actions := m.dispatch_event($&view, &event) or >>
+            m.native_event($&view, &event) or >>
+            for action in actions{_ := dispatcher.dispatch(&action, $&m, $&view) or >> }
+            if ui.is_input_event(event.kind) {input := ui.input_of(&event) or >>
+                if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE && !popup_was_open{
                     view.dispose()
-                    if demo.alive(&identity) { m.cleanup() }
+                    if demo.alive(&identity) {m.cleanup()}
                     demo.quit() or >>
                     << 0
-                } }
+                }}
         }
         event = ui.poll_chan(ech)
     }
     view.dispose()
-    if demo.alive(&identity) { m.cleanup() }
+    if demo.alive(&identity) {m.cleanup()}
     << 0
 }
-fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
-    << } }
+fn worker(ech chan ui.Event) {scene(ech) or(err) {demo.fail(err.msg())
+        << }}
 fn main() int {
-    $app := demo.app("Xu UI / Style Gallery",960,820) or (err) { eprintln(err.msg())
-        << 1 }
+    $app := demo.app("Xu UI / Style Gallery", 960, 820) or(err) {eprintln(err.msg())
+        << 1}
     xu worker(app.event_ch)
-    << app.run() or (err) { eprintln(err.msg())
-        << 1 }
+    << app.run() or(err) {eprintln(err.msg())
+        << 1}
 }

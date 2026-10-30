@@ -108,7 +108,7 @@ data:
 <p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
 <details class="api-example" id="example-79cd31b33432" open>
 <summary><code>16_ui_webview/xacp_screen/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/9bb00a880e262b37bd7624d8789264900e9cdf59/examples/16_ui_webview/xacp_screen">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/xacp_screen/main.xu" download>下载源码</a></p>
+<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/e6084a9b2e9094b6bef5429db49f9a9563fc7197/examples/16_ui_webview/xacp_screen">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/xacp_screen/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/xacp_screen/events.xu" download>events.xu</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/xacp_screen/main.xu"><code class="language-xu">@main
 
 <span class="syn-import"><span class="hash">#</span>ui</span>
@@ -118,55 +118,52 @@ data:
 
 demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
-<span class="syn-kw">struct</span> Model {
+<span class="syn-kw">struct</span> Model{
     label_id <span class="syn-type">int</span>
     count <span class="syn-type">int</span>
 }
 
 <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Model) layout(s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
-    s.place(m.label_id,32.0,36.0,540.0,44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-flow">&lt;&lt;</span> 0
-}
-
-<span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Model) update(s <span class="syn-borrow">$&amp;</span>widgets.Screen,action widgets.Action) <span class="syn-type">int</span> {
-    <span class="syn-kw">if</span> action.kind == widgets.ACTION_KEY &amp;&amp; <span class="syn-type">int</span>(action.value) == ui.KEY_ESCAPE {
-        s.close() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    }
-    <span class="syn-kw">if</span> action.kind == widgets.ACTION_ACTIVATE {
-        m.count += 1
-        s.set_text(m.label_id,<span class="syn-str">"Button actions: "</span> + str(m.count)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    }
+    s.place(m.label_id, 32.0, 36.0, 540.0, 44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-flow">&lt;&lt;</span> 0
 }
 
 <span class="syn-kw">fn</span> inspect_screen(s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
     $session <span class="syn-flow">:=</span> xacp.open_session()
+    <span class="syn-cmt">// The in-process adapter follows the current session lifecycle too.</span>
+    <span class="syn-cmt">// This token belongs only to this local demonstration; no listener is opened.</span>
     permissions <span class="syn-flow">:=</span> xacp.PERM_UI_READ | xacp.PERM_UI_MUTATE
-    <span class="syn-kw">if</span> !xacp.set_permissions(<span class="syn-borrow">$&amp;</span>session,permissions) {
-        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
-        <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"xacp_screen: failed to set least-privilege UI permissions"</span>)
-    }
     limits <span class="syn-flow">:=</span> xacp.default_limits()
-    nodes <span class="syn-flow">:=</span> xacp.ui_tree(&amp;*s,<span class="syn-borrow">$&amp;</span>session,1,false,32,&amp;limits) <span class="syn-kw">or</span> (err) {
+    $nonces <span class="syn-flow">:=</span> xacp.new_nonce_registry(8, true)
+    hello <span class="syn-flow">:=</span> xacp.parse_frame(<span class="syn-str">"id: !i 1\nop: xacp.hello\nargs:\n  ver: !ver 1.0.0\n  nonce: local-screen-demo\n  token: local-screen-demo\n  permissions: !i "</span> + str(permissions) + <span class="syn-str">"\n"</span>) <span class="syn-kw">or</span>(err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
-    println(<span class="syn-str">"XACP ui.tree: "</span> + str(nodes.len) + <span class="syn-str">" visible nodes"</span>)
-    <span class="syn-kw">for</span> node <span class="syn-kw">in</span> nodes {
+    opened <span class="syn-flow">:=</span> xacp.dispatch_with_token(<span class="syn-borrow">$&amp;</span>session, &amp;hello, &amp;limits, <span class="syn-str">"local-screen-demo"</span>, <span class="syn-borrow">$&amp;</span>nonces)
+    <span class="syn-kw">if</span> !opened.ok{
+        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"xacp_screen: "</span> + opened.err_msg)
+    }
+    tree <span class="syn-flow">:=</span> xacp.ui_tree(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 2, false, 0, 32, &amp;limits) <span class="syn-kw">or</span>(err) {
+        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> err
+    }
+    println(<span class="syn-str">"XACP ui.tree: "</span> + str(tree.nodes.len) + <span class="syn-str">" visible nodes"</span>)
+    <span class="syn-kw">for</span> node <span class="syn-kw">in</span> tree.nodes{
         println(<span class="syn-str">"  #"</span> + str(node.id) + <span class="syn-str">" kind="</span> + str(node.kind) + <span class="syn-str">" "</span> + node.text)
     }
 
-    $snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(&amp;*s,<span class="syn-borrow">$&amp;</span>session,2,1.0,&amp;limits) <span class="syn-kw">or</span> (err) {
+    $snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 3, 1.0, &amp;limits) <span class="syn-kw">or</span>(err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
     println(<span class="syn-str">"XACP ui.screenshot: "</span> + str(snapshot.pixel_width) + <span class="syn-str">"x"</span> + str(snapshot.pixel_height) + <span class="syn-str">" pixels"</span>)
-    snapshot.dispose() <span class="syn-kw">or</span> (err) {
+    snapshot.dispose() <span class="syn-kw">or</span>(err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
 
-    _ <span class="syn-flow">:=</span> xacp.ui_act(&amp;*s,<span class="syn-borrow">$&amp;</span>session,2,3,<span class="syn-str">"focus"</span>,<span class="syn-str">""</span>,false,&amp;limits) <span class="syn-kw">or</span> (err) {
+    _ <span class="syn-flow">:=</span> xacp.ui_act(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 2, 4, <span class="syn-str">"focus"</span>, <span class="syn-str">""</span>, false, &amp;limits) <span class="syn-kw">or</span>(err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -176,35 +173,38 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
 <span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
     ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
+    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT{ <span class="syn-flow">&lt;&lt;</span> 0}
     $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.resize(640.0,180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>,22.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.resize(640.0, 180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>, 22.0, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     button_id <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Activate locally or through ui.act"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.place(label_id,32.0,36.0,540.0,44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.place(button_id,32.0,96.0,360.0,40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    inspect_screen(<span class="syn-borrow">$&amp;</span>screen) <span class="syn-kw">or</span> (err) {
+    screen.place(label_id, 32.0, 36.0, 540.0, 44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(button_id, 32.0, 96.0, 360.0, 40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    inspect_screen(<span class="syn-borrow">$&amp;</span>screen) <span class="syn-kw">or</span>(err) {
         screen.dispose()
         <span class="syn-flow">&gt;&gt;</span> err
     }
-    $model <span class="syn-flow">:=</span> Model{label_id: label_id,count: 0}
-    <span class="syn-flow">&lt;&lt;</span> widgets.run_screen(<span class="syn-borrow">$&amp;</span>screen,events,<span class="syn-borrow">$&amp;</span>model) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $model <span class="syn-flow">:=</span> Model{label_id: label_id, count: 0}
+    $actions <span class="syn-flow">:=</span> widgets.action_dispatcher(&amp;model, &amp;screen)
+    actions.on(button_id, widgets.ACTION_ACTIVATE, activate) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    actions.set_fallback(global_key)
+    <span class="syn-flow">&lt;&lt;</span> widgets.run_screen_actions(<span class="syn-borrow">$&amp;</span>screen, events, <span class="syn-borrow">$&amp;</span>model, layout_action, &amp;actions) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
 
 <span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) {
-    scene(events) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+    scene(events) <span class="syn-kw">or</span>(err) {demo.fail(err.msg())
         <span class="syn-flow">&lt;&lt;</span> }
 }
 
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>,640,180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>, 640, 180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
 
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
-    <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
-        <span class="syn-flow">&lt;&lt;</span> 1 }
+    <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span>(err) {eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1}
 }</code></pre></div>
 </details>
 </section>
@@ -479,6 +479,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>NonceRegistry — 该类型的值</p>
+<p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Request">
 <h2><code>struct Request</code></h2>
@@ -619,7 +620,6 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>bool — 是否成立</p>
-<p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="development_permissions">
 <h2><code>development_permissions</code></h2>
@@ -654,6 +654,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>xun.Doc — 该类型的值</p>
+<p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="request_id_hint">
 <h2><code>request_id_hint</code></h2>
@@ -821,6 +822,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>Outcome — 该类型的值</p>
+<p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-ControlReply">
 <h2><code>struct ControlReply</code></h2>

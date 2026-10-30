@@ -7,55 +7,52 @@
 
 demo #"github.com/xulang-org/examples/ui_demo"
 
-struct Model {
+struct Model{
     label_id int
     count int
 }
 
 fn (m $&Model) layout(s $&widgets.Screen) int {
-    s.place(m.label_id,32.0,36.0,540.0,44.0) or >>
-    << 0
-}
-
-fn (m $&Model) update(s $&widgets.Screen,action widgets.Action) int {
-    if action.kind == widgets.ACTION_KEY && int(action.value) == ui.KEY_ESCAPE {
-        s.close() or >>
-    }
-    if action.kind == widgets.ACTION_ACTIVATE {
-        m.count += 1
-        s.set_text(m.label_id,"Button actions: " + str(m.count)) or >>
-    }
+    s.place(m.label_id, 32.0, 36.0, 540.0, 44.0) or >>
     << 0
 }
 
 fn inspect_screen(s $&widgets.Screen) int {
     $session := xacp.open_session()
+    // The in-process adapter follows the current session lifecycle too.
+    // This token belongs only to this local demonstration; no listener is opened.
     permissions := xacp.PERM_UI_READ | xacp.PERM_UI_MUTATE
-    if !xacp.set_permissions($&session,permissions) {
-        xacp.close_session($&session)
-        >> errors.new("xacp_screen: failed to set least-privilege UI permissions")
-    }
     limits := xacp.default_limits()
-    nodes := xacp.ui_tree(&*s,$&session,1,false,32,&limits) or (err) {
+    $nonces := xacp.new_nonce_registry(8, true)
+    hello := xacp.parse_frame("id: !i 1\nop: xacp.hello\nargs:\n  ver: !ver 1.0.0\n  nonce: local-screen-demo\n  token: local-screen-demo\n  permissions: !i " + str(permissions) + "\n") or(err) {
         xacp.close_session($&session)
         >> err
     }
-    println("XACP ui.tree: " + str(nodes.len) + " visible nodes")
-    for node in nodes {
+    opened := xacp.dispatch_with_token($&session, &hello, &limits, "local-screen-demo", $&nonces)
+    if !opened.ok{
+        xacp.close_session($&session)
+        >> errors.new("xacp_screen: " + opened.err_msg)
+    }
+    tree := xacp.ui_tree(& * s, $&session, 2, false, 0, 32, &limits) or(err) {
+        xacp.close_session($&session)
+        >> err
+    }
+    println("XACP ui.tree: " + str(tree.nodes.len) + " visible nodes")
+    for node in tree.nodes{
         println("  #" + str(node.id) + " kind=" + str(node.kind) + " " + node.text)
     }
 
-    $snapshot := xacp.ui_screenshot(&*s,$&session,2,1.0,&limits) or (err) {
+    $snapshot := xacp.ui_screenshot(& * s, $&session, 3, 1.0, &limits) or(err) {
         xacp.close_session($&session)
         >> err
     }
     println("XACP ui.screenshot: " + str(snapshot.pixel_width) + "x" + str(snapshot.pixel_height) + " pixels")
-    snapshot.dispose() or (err) {
+    snapshot.dispose() or(err) {
         xacp.close_session($&session)
         >> err
     }
 
-    _ := xacp.ui_act(&*s,$&session,2,3,"focus","",false,&limits) or (err) {
+    _ := xacp.ui_act(& * s, $&session, 2, 4, "focus", "", false, &limits) or(err) {
         xacp.close_session($&session)
         >> err
     }
@@ -65,33 +62,36 @@ fn inspect_screen(s $&widgets.Screen) int {
 
 fn scene(events chan ui.Event) int {
     ready := demo.ready(events) or >>
-    if ready.kind == ui.EV_EXIT { << 0 }
+    if ready.kind == ui.EV_EXIT{ << 0}
     $screen := widgets.screen(&ready) or >>
-    screen.resize(640.0,180.0) or >>
-    label_id := screen.label("XACP Screen adapter",22.0,false) or >>
+    screen.resize(640.0, 180.0) or >>
+    label_id := screen.label("XACP Screen adapter", 22.0, false) or >>
     button_id := screen.button("Activate locally or through ui.act") or >>
-    screen.place(label_id,32.0,36.0,540.0,44.0) or >>
-    screen.place(button_id,32.0,96.0,360.0,40.0) or >>
-    inspect_screen($&screen) or (err) {
+    screen.place(label_id, 32.0, 36.0, 540.0, 44.0) or >>
+    screen.place(button_id, 32.0, 96.0, 360.0, 40.0) or >>
+    inspect_screen($&screen) or(err) {
         screen.dispose()
         >> err
     }
-    $model := Model{label_id: label_id,count: 0}
-    << widgets.run_screen($&screen,events,$&model) or >>
+    $model := Model{label_id: label_id, count: 0}
+    $actions := widgets.action_dispatcher(&model, &screen)
+    actions.on(button_id, widgets.ACTION_ACTIVATE, activate) or >>
+    actions.set_fallback(global_key)
+    << widgets.run_screen_actions($&screen, events, $&model, layout_action, &actions) or >>
 }
 
 fn worker(events chan ui.Event) {
-    scene(events) or (err) { demo.fail(err.msg())
+    scene(events) or(err) {demo.fail(err.msg())
         << }
 }
 
 fn launch() int {
-    $app := demo.app("Xu / XACP Screen adapter",640,180) or >>
+    $app := demo.app("Xu / XACP Screen adapter", 640, 180) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }
 
 fn main() int {
-    << launch() or (err) { eprintln(err.msg())
-        << 1 }
+    << launch() or(err) {eprintln(err.msg())
+        << 1}
 }

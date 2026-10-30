@@ -1,0 +1,383 @@
+@main
+
+#ui/widgets
+#time
+#math
+
+// Each control ID has one owner-specific handler. No page-number update switch.
+fn register_events(m &Workshop, s &widgets.Screen) widgets.ActionDispatcher#Workshop, widgets.Screen, widgets.Action{
+    $d := widgets.action_dispatcher(m, s)
+    for page in m.pages{for id in page.ids{d.on_any(id, sample_action) or >> }}
+    d.on(m.navigation, widgets.ACTION_CHANGE, navigate) or >>
+    d.on(m.language, widgets.ACTION_CHANGE, language_changed) or >>
+    for id in[m.theme, m.density, m.scale, m.reduced] {d.on(id, widgets.ACTION_CHANGE, appearance_changed) or >> }
+    d.on(m.state, widgets.ACTION_CHANGE, state_changed) or >>
+    d.on(m.custom, widgets.ACTION_ACTIVATE, custom_clicked) or >>
+    d.on(m.motion, widgets.ACTION_ACTIVATE, motion_clicked) or >>
+    d.on(m.focus, widgets.ACTION_ACTIVATE, focus_clicked) or >>
+    for id in m.tools{d.on(id, widgets.ACTION_ACTIVATE, tool_clicked) or >> }
+    for i in 0:4 {d.on(m.pages[1].ids[9 + i], widgets.ACTION_CHANGE, appearance_changed) or >> }
+    d.on(m.pages[7].ids[1], widgets.ACTION_CHANGE, tree_filter_changed) or >>
+    d.on(m.pages[7].ids[0], widgets.ACTION_ITEM_ACTION, node_action) or >>
+    d.on(m.pages[8].ids[0], widgets.ACTION_ACTIVATE, task_clicked) or >>
+    for kind in[widgets.ACTION_CHANGE, widgets.ACTION_COMMIT] {
+        d.on(m.pages[13].ids[0], kind, slider_changed) or >>
+        d.on(m.pages[20].ids[0], kind, color_changed) or >>
+        d.on(m.pages[40].ids[0], kind, range_changed) or >>
+    }
+    d.on(m.pages[17].ids[1], widgets.ACTION_CHANGE, multi_filter_changed) or >>
+    d.on(m.pages[24].ids[0], widgets.ACTION_ACTIVATE, table_sorted) or >>
+    d.on(m.pages[25].ids[0], widgets.ACTION_CHANGE, pagination_changed) or >>
+    d.on(m.pages[25].ids[2], widgets.ACTION_CHANGE, page_size_changed) or >>
+    for kind in[widgets.ACTION_SUBMIT, widgets.ACTION_COMMIT] {d.on(m.pages[25].ids[1], kind, page_submitted) or >> }
+    d.on(m.pages[25].ids[4], widgets.ACTION_ACTIVATE, page_submitted) or >>
+    d.on(m.pages[30].ids[1], widgets.ACTION_ACTIVATE, inbox_clicked) or >>
+    d.on(m.pages[30].ids[2], widgets.ACTION_ACTIVATE, online_clicked) or >>
+    d.on(m.pages[33].ids[0], widgets.ACTION_ACTIVATE, preferences_open) or >>
+    d.on(m.pages[33].ids[6], widgets.ACTION_ACTIVATE, preferences_cancel) or >>
+    d.on(m.pages[33].ids[7], widgets.ACTION_ACTIVATE, preferences_apply) or >>
+    d.on(m.pages[35].ids[0], widgets.ACTION_ACTIVATE, notice_clicked) or >>
+    d.on(m.pages[36].ids[0], widgets.ACTION_ACTIVATE, modal_open) or >>
+    for i in 2:4 {d.on(m.pages[36].ids[i], widgets.ACTION_ACTIVATE, modal_close) or >> }
+    for id in m.pages[38].ids{for kind in[widgets.ACTION_ACTIVATE, widgets.ACTION_CHANGE] {d.on(id, kind, group_changed) or >> }}
+    d.on(m.pages[39].ids[1], widgets.ACTION_CHANGE, chart_kind_changed) or >>
+    for kind in[widgets.ACTION_CHART_HOVER, widgets.ACTION_CHART_SELECT] {d.on(m.pages[39].ids[0], kind, chart_hit) or >> }
+    d.on(m.pages[39].ids[0], widgets.ACTION_CHART_VIEWPORT, chart_viewport_changed) or >>
+    d.on(m.pages[41].ids[0], widgets.ACTION_COMMIT, split_committed) or >>
+    for page in 42:45 {for kind in[widgets.ACTION_ACTIVATE, widgets.ACTION_CHANGE] {d.on(m.pages[page].ids[0], kind, menu_action) or >> }}
+    d.on(m.pages[45].ids[1], widgets.ACTION_CHANGE, password_visibility_changed) or >>
+    for kind in[widgets.ACTION_WEB_LOADING, widgets.ACTION_WEB_LOADED, widgets.ACTION_WEB_FAILED, widgets.ACTION_WEB_PROGRESS] {
+        d.on(m.pages[37].ids[0], kind, webview_changed) or >>
+    }
+    << d
+}
+fn register_notice_events(s &widgets.Screen, d $&widgets.ActionDispatcher#Workshop, widgets.Screen, widgets.Action) int {
+    for id in s.notice_ids() {d.on(id, widgets.ACTION_NOTICE_ACTION, notice_action) or >> }
+    << 0
+}
+// Adapters catch Xu errors before crossing the function-value ABI.
+fn sample_action(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    sample_action_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn navigate(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    navigate_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn language_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    language_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn appearance_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    appearance_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn custom_clicked(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    custom_clicked_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn motion_clicked(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    motion_clicked_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn focus_clicked(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    focus_clicked_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn tree_filter_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    tree_filter_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn multi_filter_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    multi_filter_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn slider_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    slider_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn color_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    color_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn pagination_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    pagination_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn page_size_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    page_size_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn page_submitted(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    page_submitted_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn task_clicked(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    task_clicked_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn inbox_clicked(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    inbox_clicked_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn online_clicked(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    online_clicked_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn preferences_open(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    preferences_open_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn preferences_cancel(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    preferences_cancel_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn preferences_apply(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    preferences_apply_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn notice_clicked(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    notice_clicked_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn notice_action(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    notice_action_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn modal_open(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    modal_open_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn modal_close(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    modal_close_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn group_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    group_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn chart_kind_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    chart_kind_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn chart_hit(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    chart_hit_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn chart_viewport_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    chart_viewport_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn range_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    range_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn split_committed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    split_committed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn menu_action(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    menu_action_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn password_visibility_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    password_visibility_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn table_sorted(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    table_sorted_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn node_action(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    node_action_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn webview_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    webview_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn state_changed(m $&Workshop, s $&widgets.Screen, a &widgets.Action) string {
+    state_changed_update(m, s, a) or(err) { << err.msg()}
+    << ""
+}
+
+fn sample_action_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    if a.kind == widgets.ACTION_COMMIT{s.set_text(m.status, "Committed value · " + str(int(a.value))) or >> }
+    if a.kind == widgets.ACTION_ACTIVATE{s.set_text(m.status, "Activated / 已激活 · control " + str(a.id)) or >> }
+    << 0
+}
+fn navigate_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    old := m.page_snapshot(m.selected)
+    if m.selected == 33 || m.selected == 36 {s.close_overlay(old.ids[1]) or >> }
+    m.controls_dirty = true
+    m.selected = s.selected(m.navigation) or >>
+    s.set_scroll_offset(m.preview, 0.0) or >>
+    m.appearance_dirty = true
+    << 0
+}
+fn language_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int { << m.apply_locale(s) or >> }
+fn appearance_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {m.appearance_dirty = true
+    << 0}
+fn custom_clicked_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {m.customized = !m.customized
+    m.controls_dirty = true
+    m.appearance_dirty = true
+    << 0}
+fn motion_clicked_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {m.slow = !m.slow
+    m.controls_dirty = true
+    m.appearance_dirty = true
+    << 0}
+fn focus_clicked_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    page := m.page_snapshot(m.selected)
+    $target := page.ids[0]
+    if m.selected == 31 {target = page.ids[6]}
+    s.focus(target) or >>
+    << 0
+}
+fn tree_filter_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    s.set_tree_filter(m.pages[7].ids[0], s.text_value(a.id) or >>) or >>
+    << 0
+}
+fn multi_filter_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    s.set_multi_filter(m.pages[17].ids[0], s.text_value(a.id) or >>) or >>
+    << 0
+}
+fn slider_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    s.set_value(m.pages[13].ids[1], str(int(a.value))) or >>
+    << sample_action_update(m, s, a) or >>
+}
+fn color_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    s.set_value(m.pages[20].ids[1], s.color_hex(a.id) or >>) or >>
+    s.set_field_invalid(m.pages[20].ids[1], false) or >>
+    << sample_action_update(m, s, a) or >>
+}
+fn pagination_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int { << m.update_pagination(s, true) or >> }
+fn page_size_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    page := m.page_snapshot(25)
+    data := s.pagination_data(page.ids[0]) or >>
+    sizes :=[10, 20, 50, 100]
+    s.set_pagination_data(page.ids[0], max_int_local(0, data.total), sizes[s.selected(a.id) or >>]) or >>
+    << m.update_pagination(s, true) or >>
+}
+fn page_submitted_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int { << tool_25_update(m, s, 0) or >> }
+fn task_clicked_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    if m.running{ << 0}
+    m.revision += 1
+    m.completed = 0
+    m.checksum = 0
+    m.running = true
+    m.deadline = time.instant()
+    s.begin_task(a.id, m.revision) or >>
+    << 0
+}
+fn inbox_clicked_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {m.unread = 0
+    << m.update_badges(s) or >> }
+fn online_clicked_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {m.online = !m.online
+    << m.update_badges(s) or >> }
+fn preferences_open_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int { << m.open_preferences(s) or >> }
+fn preferences_cancel_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {s.close_overlay(m.pages[33].ids[1]) or >>
+    << 0}
+fn preferences_apply_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    page := m.page_snapshot(33)
+    name := s.text_value(page.ids[4]) or >>
+    if name.len == 0 {s.set_field_invalid(page.ids[4], true) or >>
+        << 0}
+    s.set_field_invalid(page.ids[4], false) or >>
+    $history := "off"
+    if s.toggle_value(page.ids[5]) or >> {history = "on"}
+    m.preferences_name = name
+    m.preferences_history = s.toggle_value(page.ids[5]) or >>
+    s.set_text(page.ids[8], "Current: " + m.preferences_name + " · history " + history) or >>
+    s.close_overlay(page.ids[1]) or >>
+    << 0
+}
+fn notice_clicked_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int { << tool_35_update(m, s, 0) or >> }
+fn notice_action_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {s.set_text(m.status, "Undo requested · business state can now be restored.") or >>
+    << 0}
+fn modal_open_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {s.open(m.pages[36].ids[1]) or >>
+    << 0}
+fn modal_close_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {s.close_overlay(m.pages[36].ids[1]) or >>
+    << 0}
+fn group_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    values := s.button_group_values(a.id) or >>
+    s.set_text(m.status, "ButtonGroup · key " + str(int(a.value)) + " · selected " + str(values.len)) or >>
+    << 0
+}
+fn chart_kind_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    m.controls_dirty = true
+    m.chart_kind = int(a.value) - 1
+    series := chart_data(m.chart_kind, m.revision)
+    s.set_chart_series(m.pages[39].ids[0], &series) or >>
+    s.reset_chart_viewport(m.pages[39].ids[0]) or >>
+    m.appearance_dirty = true
+    << 0
+}
+fn chart_hit_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    $hit := s.chart_hovered(a.id) or >>
+    if a.kind == widgets.ACTION_CHART_SELECT{hit = s.chart_selection(a.id) or >> }
+    if hit.valid{s.set_text(m.status, "Series " + str(hit.series_id) + " / point " + str(hit.point_id) + " · " + str(int(hit.y))) or >> }
+    << 0
+}
+fn chart_viewport_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {s.set_text(m.status, "Viewport updated · Double click / Home to reset") or >>
+    << 0}
+fn range_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int { << m.range_summary(s, a.kind == widgets.ACTION_COMMIT) or >> }
+fn split_committed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {s.set_text(m.status, "Split ratio / 分栏比例 · " + str(int(math.round(a.value * 100.0))) + "%") or >>
+    << 0}
+fn menu_action_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    for index in 42:45 {page := m.page_snapshot(index)
+        if page.ids[0] == a.id{s.set_text(page.ids[1], "Action / 操作 · " + str(int(a.value))) or >> }}
+    << 0
+}
+fn password_visibility_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {s.set_password_visible(m.pages[45].ids[0], s.toggle_value(a.id) or >>) or >>
+    << 0}
+fn table_sorted_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    $direction := "ascending / 升序"
+    if s.sort_descending(a.id) or >> {direction = "descending / 降序"}
+    selected := s.table_selected_row(a.id) or >>
+    s.set_text(m.status, "Sorted / 已排序 · " + direction + " · source row " + str(selected)) or >>
+    << 0
+}
+fn node_action_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {s.set_text(m.status, "Node action · " + str(int(a.value))) or >>
+    << 0}
+fn webview_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    if m.selected != 37 { << 0}s.set_text(m.status, "WebView · event " + str(a.kind) + " · " + str(int(a.value))) or >>
+    << 0}
+
+fn state_changed_update(m $&Workshop, s $&widgets.Screen, a &widgets.Action) int {
+    m.controls_dirty = true
+    << 0
+}

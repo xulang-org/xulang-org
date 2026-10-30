@@ -1,0 +1,270 @@
+@main
+
+#ui/widgets
+#time
+#strconv
+
+struct Page{group int
+    ids []int}
+// A state transition may reconfigure Workshop while these control IDs are in
+// use. Copy the IDs; Screen keeps ownership of the actual controls.
+
+fn (m &Workshop) page_snapshot(index int) Page{
+    group := m.pages[index].group
+    $ids :=[]int {}
+    for id in m.pages[index].ids{ids.push(id)}
+    << Page{group: group, ids: ids}
+}
+
+struct Workshop{
+    controls_dirty bool
+    field_options_page int
+    appearance_dirty bool
+    tree_options_dirty bool
+    field_options_dirty bool
+    spinner_options_dirty bool
+    popover_options_dirty bool
+    tooltip_side int
+    range_push bool
+    range_vertical bool
+    range_commit bool
+    split_vertical bool
+    split_collapsed bool
+    menu_stays_open bool
+    menu_export_disabled bool
+    chart_kind int
+    chart_paused bool
+    group_vertical bool
+    group_joined bool
+    group_disabled bool
+    pages []Page
+    names []string
+    navigation int
+    language int
+    preview int
+    title int
+    caption int
+    status int
+    theme int
+    density int
+    scale int
+    state int
+    custom int
+    reduced int
+    motion int
+    focus int
+    tools []int
+    selected int
+    customized bool
+    guided bool
+    slow bool
+    variant int
+    revision int
+    completed int
+    running bool
+    failure bool
+    pending_before bool
+    pagination_error bool
+    preferences_name string
+    preferences_history bool
+    unread int
+    online bool
+    checksum int
+    deadline time.Instant
+}
+
+fn create(s $&widgets.Screen) Workshop{
+    labels := names()
+    $pages :=[]Page{}
+    preview := s.scroll_area(widgets.AXIS_VERTICAL, 760.0) or >>
+    for index in 0:labels.len{page := new_page(s, index) or >>
+        s.set_parent(page.group, preview) or >>
+        pages.push(page)}
+    title := s.label("", 25.0, false) or >>
+    caption := s.label("", 13.0, true) or >>
+    s.set_label_wrapped(caption, true) or >>
+    status := s.label("Hover · press · Tab · arrows · Escape / 使用真实鼠标与键盘状态", 12.0, true) or >>
+    s.set_label_wrapped(status, true) or >>
+    navigation := s.list_box(&labels, 5) or >>
+    language := s.select_box(&["中文", "English", "Custom"], 1) or >>
+    _ := s.tooltip(language, "Component language · 组件默认文案与格式") or >>
+    tools :=[s.button("Option 1") or >>, s.button("Option 2") or >>, s.button("Option 3") or >>]
+    for tool in tools{s.set_parent(tool, preview) or >> }
+    << Workshop{controls_dirty: true, field_options_page: 5, appearance_dirty: true, tree_options_dirty: false, field_options_dirty: false, spinner_options_dirty: false, popover_options_dirty: false, tooltip_side: widgets.OVERLAY_TOP, range_push: false, range_vertical: false, range_commit: false, split_vertical: false, split_collapsed: false, menu_stays_open: false, menu_export_disabled: false, chart_kind: 0, chart_paused: false, group_vertical: false, group_joined: true, group_disabled: false, language: language, pages: pages, names: labels, navigation: navigation, preview: preview, title: title, caption: caption, status: status,
+        theme: s.select_box(&["Light 亮色", "Dark 暗色", "Contrast 对比"], 1) or >>,
+        density: s.select_box(&["Normal 常规", "Compact 紧凑", "Touch 触控"], 0) or >>,
+        scale: s.select_box(&["Text 100%", "Text 140%", "Text 200%"], 0) or >>,
+        state: s.select_box(&["Normal 普通", "Disabled 禁用", "Read only 只读", "Invalid 错误"], 0) or >>,
+        custom: s.button("Default 默认") or >>, reduced: s.checkbox("Reduce 减少动效", false) or >>,
+        motion: s.button("Motion 160ms") or >>, focus: s.button("Focus sample") or >>,
+        tools: tools, selected: 5, customized: false, guided: true, slow: false,
+        variant: 0, revision: 0, completed: 0, running: false, failure: false, pending_before: false, pagination_error: false, preferences_name: "XU workspace", preferences_history: true, unread: 12, online: true, checksum: 0, deadline: time.zero_instant()}
+}
+
+fn (m $&Workshop) apply_locale(s $&widgets.Screen) int {
+    index := s.selected(m.language) or >>
+    $locale := widgets.locale_en_us()
+    if index != 1 {locale = widgets.locale_zh_cn()}
+    if index == 2 {
+        locale.set_text(widgets.TEXT_TODAY, "回到今天") or >>
+        locale.set_text(widgets.TEXT_CLEAR, "移除日期") or >>
+        locale.set_text(widgets.TEXT_DATE_PLACEHOLDER, "预约日期") or >>
+        locale.set_text(widgets.TEXT_DATE_PATTERN, "{day}.{month}.{year}") or >>
+        locale.set_text(widgets.TEXT_DECIMAL_SEPARATOR, ",") or >>
+        locale.set_text(widgets.TEXT_GROUP_SEPARATOR, " ") or >>
+        locale.set_weekdays(&["周日", "周一", "周二", "周三", "周四", "周五", "周六"]) or >>
+    }
+    s.set_locale(&locale) or >>
+    pages := &m.pages
+    pagination := &pages[25]
+    sizes :=[10, 20, 50, 100]
+    for i in 0:4 {s.set_option_text(pagination.ids[2], i, locale.count_text(widgets.TEXT_ITEMS_PER_PAGE, sizes[i]) or >>) or >> }
+    m.update_pagination(s, false) or >>
+    // Business copy is supplied by the app, never silently translated by the widget.
+    page := &m.pages[8]
+    if index == 1 {s.set_task_labels(page.ids[0], "Building", "Built · run again", "Retry build", "Build again") or >> }
+    else {s.set_task_labels(page.ids[0], "正在构建", "已构建 · 再次运行", "重试构建", "再次构建") or >> }
+    $group_labels :=[["Undo", "Redo", "Save"],["Day", "Week", "Month"],["Bold", "Italic", "Underline"]]
+    $type_labels :=["Line", "Area", "Bar", "Scatter", "Donut"]
+    if index != 1 {group_labels =[["撤销", "重做", "保存"],["日", "周", "月"],["加粗", "斜体", "下划线"]]
+        type_labels =["折线", "面积", "柱状", "散点", "环形"]}
+    for mode in 0:3 {for i in 0:3 {s.set_button_group_label(m.pages[38].ids[mode],(i + 1) * 10, group_labels[mode][i]) or >> }}
+    for i in 0:5 {s.set_button_group_label(m.pages[39].ids[1], i + 1, type_labels[i]) or >> }
+    translated := workshop_menu_items(index == 1)
+    for page_index in 42:45 {for item in translated{s.set_menu_item_label(m.pages[page_index].ids[0], item.key, item.label) or >> }}
+    $menu_labels :=["Actions", "Right click here", "Save"]
+    if index != 1 {menu_labels =["操作", "右键打开菜单", "保存"]}
+    for page_index in 42:45 {s.set_menu_label(m.pages[page_index].ids[0], menu_labels[page_index - 42]) or >> }
+
+    << 0
+}
+
+fn max_int_local(a int, b int) int {if a > b{ << a}
+    << b}
+
+fn (m &Workshop) open_preferences(s $&widgets.Screen) int {
+    pages := &m.pages
+    page := &pages[33]
+    s.set_value(page.ids[4], m.preferences_name) or >>
+    s.set_toggle_value(page.ids[5], m.preferences_history) or >>
+    s.set_field_invalid(page.ids[4], false) or >>
+    s.open(page.ids[1]) or >>
+    << 0
+}
+
+fn (m $&Workshop) pagination_invalid(s $&widgets.Screen) int {
+    m.pagination_error = true
+    page := m.page_snapshot(25)
+    data := s.pagination_data(page.ids[0]) or >>
+    s.set_field_invalid(page.ids[1], true) or >>
+    $message := "Enter a page from 1 to " + str(data.pages) + "."
+    if(s.selected(m.language) or >>) != 1 {message = "请输入 1 至 " + str(data.pages) + " 之间的页码。"}
+    if data.pages == 0 {message = "No pages / 暂无数据，无法跳页。"}
+    s.set_text(page.ids[5], message) or >>
+    << 0
+}
+
+fn (m $&Workshop) update_pagination(s $&widgets.Screen, sync_input bool) int {
+    page := m.page_snapshot(25)
+    data := s.pagination_data(page.ids[0]) or >>
+    s.set_text(page.ids[3], s.pagination_summary(page.ids[0]) or >>) or >>
+    s.set_enabled(page.ids[1], data.pages > 0) or >>
+    s.set_enabled(page.ids[4], data.pages > 0) or >>
+    if sync_input{
+        m.pagination_error = false
+        s.set_field_invalid(page.ids[1], false) or >>
+        $text := ""
+        if data.current >= 0 {text = str(data.current + 1)}
+        s.set_value(page.ids[1], text) or >> }
+    if m.pagination_error{m.pagination_invalid(s) or >> }
+    else {$hint := "Enter ↵ · 1–" + str(data.pages)
+        if data.pages == 0 {hint = "No data / 暂无数据"}
+        s.set_text(page.ids[5], hint) or >> }
+    << 0
+}
+
+fn (m &Workshop) update_badges(s $&widgets.Screen) int {
+    pages := &m.pages
+    page := &pages[30]
+    s.set_badge_count(page.ids[0], m.unread, 99, false) or >>
+    s.set_text(page.ids[6], str(m.unread) + " unread · 点击收件箱清零，徽标随数字收紧。") or >>
+    s.set_visible(page.ids[3], m.online) or >>
+    $name := "林文 · Away 离线"
+    if m.online{name = "林文 · Available 在线"}
+    s.set_text(page.ids[7], name) or >>
+    << 0
+}
+
+fn (m $&Workshop) work(s $&widgets.Screen, now time.Instant) int {
+    if !m.running || now.before(m.deadline) { << 0}
+    for i in 0:5000 {m.checksum =(m.checksum + i *(m.completed + 1)) % 1000003}
+    m.completed += 1
+    id := m.pages[8].ids[0]
+    _ := s.set_task_progress(id, m.revision, f64(m.completed) / 48.0) or >>
+    m.deadline = now.add(time.milliseconds(35) or >>) or >>
+    if m.failure && m.completed == 18 {_ := s.complete_task(id, m.revision, widgets.TASK_ERROR) or >>
+        m.running = false
+        m.failure = false
+        if m.selected == 8 {s.set_selected_button(m.tools[1], false) or >> }}
+    else if m.completed == 48 {_ := s.complete_task(id, m.revision, widgets.TASK_SUCCESS) or >>
+        m.running = false}
+    << 0
+}
+
+fn (m &Workshop) range_summary(s $&widgets.Screen, committed bool) int {
+    pages := &m.pages
+    page := &pages[40]
+    values := s.range_values(page.ids[0]) or >>
+    $prefix := "Preview / 预览"
+    if committed{prefix = "Committed / 已提交"}
+    text := strconv.format_float(values.lower, 102, 0) or >>
+    upper := strconv.format_float(values.upper, 102, 0) or >>
+    s.set_text(page.ids[1], prefix + " · " + text + " – " + upper) or >>
+    << 0
+}
+
+fn (m $&Workshop) configure_controls(s $&widgets.Screen) int {
+    position := m.selected
+    page := m.page_snapshot(position)
+    s.set_text(m.title, "XUUI  /  " + m.names[position]) or >>
+    s.set_selected(m.navigation, position) or >>
+    id := page.ids[0]
+    state := s.selected(m.state) or >>
+    s.set_enabled(id, state != 1) or >>
+    if position == 45 {s.set_enabled(page.ids[1], state != 1) or >> }
+    if position == 25 {s.set_enabled(page.group, state != 1) or >> }
+    if read_only(m.selected) {s.set_read_only(id, state == 2) or >> }
+    if invalid(m.selected) || m.selected == 31 || m.selected == 32 {s.set_invalid(id, state == 3) or >> }
+    if position == 1 {for i in 0:9 {s.set_enabled(page.ids[i], state != 1) or >> }}
+    if position == 38 {for i in 0:3 {
+            s.set_button_group_item_enabled(page.ids[i], 20, !m.group_disabled) or >>
+            s.set_enabled(page.ids[i], state != 1) or >>
+            s.set_read_only(page.ids[i], state == 2) or >>
+        }}
+    if position == 39 {
+        s.set_button_group_checked(page.ids[1], m.chart_kind + 1, true) or >>
+        s.set_enabled(page.ids[1], state != 1) or >>
+        s.set_read_only(page.ids[1], state == 2) or >>
+    }
+    s.set_enabled(m.motion, animated(m.selected) ||(m.selected >= 33 && m.selected <= 36)) or >>
+    s.set_selected_button(m.custom, m.customized) or >>
+    $custom_text := "Default 默认"
+    if m.customized{custom_text = "Custom 自定义"}
+    s.set_text(m.custom, custom_text) or >>
+    $motion_text := "Motion 160ms"
+    if m.slow{motion_text = "Motion 420ms"}
+    s.set_text(m.motion, motion_text) or >>
+    caption := description(m.selected)
+    s.set_text(m.caption, caption) or >>
+    $state_text := "Hover · press · Tab · arrows · Escape / 使用真实鼠标与键盘状态"
+    if(state == 2 && !read_only(m.selected)) ||(state == 3 && !invalid(m.selected) && m.selected != 31 && m.selected != 32) {state_text = "此组件没有该状态。预览保持其实际语义。"}
+    s.set_text(m.status, state_text) or >>
+    labels := tool_labels(m.selected)
+    for i in 0:3 {s.set_text(m.tools[i], labels[i]) or >>
+        s.set_selected_button(m.tools[i], false) or >>
+        s.set_enabled(m.tools[i], labels[i].len > 0) or >>
+        s.set_visible(m.tools[i], labels[i].len > 0) or >> }
+    if m.selected == 8 {s.set_selected_button(m.tools[1], m.failure) or >> }
+    s.set_visible(m.focus, focusable_sample(m.selected)) or >>
+    << 0
+}
