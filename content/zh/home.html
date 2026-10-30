@@ -1,41 +1,53 @@
 <!--title: XU — 零 GC · 所有权推断 · 原生与 WebAssembly AOT-->
-<div class="hero">
-  <img src="/xu_classic.svg" alt="XU" width="120" height="120">
+<div class="hero home-hero">
   <div>
-    <p class="banner"><i class="xi xi-bolt xi-brand"></i> <span>XU v{{xu_version}} · MIT 开源 · 编译器命令行工具为 <code>xu</code></span></p>
     <h1>XU</h1>
-    <p class="lead">无需 GC 的内存安全：所有权推断、借用检查与确定性资源释放，加上内建协程和自研原生 / WASM AOT 后端。</p>
+    <p class="banner"><i class="xi xi-bolt xi-brand"></i> <span>XU v{{xu_version}} · MIT 开源</span></p>
+    <p class="lead">零 GC 的系统编程语言：所有权推断、内建协程与信道，以及自研原生 / WebAssembly AOT 后端。</p>
     <div class="ctas">
-      <a class="btn pri" href="/download"><i class="xi xi-download"></i> 下载编译器</a>
-      <a class="btn ghost" href="/docs/start"><i class="xi xi-book"></i> 快速起步</a>
-      <a class="btn ghost" href="https://github.com/xulang-org/xu" target="_blank" rel="noopener noreferrer"><svg class="social-icon" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="vertical-align: text-bottom; margin-right: 4px;"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38l-.01-1.49c-2.23.48-2.7-1.08-2.7-1.08-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.33.67.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.96 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.08-1.87 3.75-3.65 3.95.29.25.54.74.54 1.48l-.01 2.34c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>GitHub</a>
-      <a class="btn ghost" href="https://x.com/xulang_org" target="_blank" rel="noopener noreferrer"><svg class="social-icon" viewBox="0 0 16 16" width="16" height="16" fill="currentColor" style="vertical-align: text-bottom; margin-right: 4px;"><path d="M12.6 1h2.3L9.9 6.7 15.8 15h-4.6L7.6 10 3.2 15H.9l5.6-6.4L.8 1h4.7l3.3 4.6L12.6 1ZM11.8 13.5h1.3L4.8 2.4H3.4l8.4 11.1Z"/></svg>X (@xulang_org)</a>
-    </div>
-
-    <div class="hero-install">
-      <div class="hero-install-header">
-        <span class="hero-install-title"><i class="xi xi-bolt xi-brand"></i> <strong>终端一行命令极速安装</strong></span>
-        <div class="hero-install-tabs" role="tablist">
-          <button type="button" role="tab" class="hero-install-tab is-active" data-tab="unix" aria-selected="true"><i class="xi xi-terminal"></i> macOS / Linux</button>
-          <button type="button" role="tab" class="hero-install-tab" data-tab="win" aria-selected="false"><i class="xi xi-terminal"></i> Windows (PowerShell)</button>
-        </div>
-      </div>
-      <div class="hero-install-body">
-        <div class="hero-install-pane is-active" data-pane="unix">
-          <pre><code>curl -fsSL https://xulang.org/install.sh | bash -s -- --online --version {{xu_version}} --yes</code></pre>
-        </div>
-        <div class="hero-install-pane" data-pane="win">
-          <pre><code class="language-shell">&amp; ([scriptblock]::Create((irm https://xulang.org/install.ps1))) -Online -Version "{{xu_version}}"</code></pre>
-        </div>
-      </div>
-      <div class="hero-install-meta">
-        <span><i class="xi xi-check xi-green"></i> 自动适配系统架构</span>
-        <span><i class="xi xi-check xi-green"></i> 自动持久化配置 PATH</span>
-        <span><i class="xi xi-check xi-green"></i> 内置完整标准库与 SDK</span>
-      </div>
+      <a class="btn pri" href="/playground?example=chan-workers"><i class="xi xi-play"></i> 在线运行此例</a>
+      <a class="btn ghost" href="/docs/start"><i class="xi xi-terminal"></i> 安装并在本机运行</a>
     </div>
   </div>
 </div>
+
+<section class="home-example xu-project-example" id="quick-example" data-playground-example="chan-workers" aria-labelledby="quick-example-title">
+  <h2 id="quick-example-title">三个 worker，汇总一个结果</h2>
+  <p>三个协程通过类型化信道传值；以下两个完整文件与演练场项目源码一致。</p>
+  <div class="home-example-files">
+    <div>
+      <h3><code>main.xu</code></h3>
+      <pre><code class="language-xu" data-source-file="main.xu">@main
+
+fn main() int {
+    results := chan int{cap: 3}
+    xu worker(1, results)
+    xu worker(2, results)
+    xu worker(3, results)
+
+    $total := 0
+    for i in 0:3 {
+        value := &lt;-results
+        total += value
+    }
+    println(total)
+    &lt;&lt; 0
+}
+</code></pre>
+    </div>
+    <div>
+      <h3><code>worker.xu</code></h3>
+      <pre><code class="language-xu" data-source-file="worker.xu">@main
+
+fn worker(id int, results chan int) {
+    results &lt;- id * 10
+}
+</code></pre>
+    </div>
+  </div>
+  <p><strong>输出：</strong> <samp>60</samp> · 退出码： <samp>0</samp></p>
+  <p class="note">演练场运行 WASM 解释器子集，与原生 AOT 分开。此例展示协程调度和信道通信，不衡量 CPU 并行吞吐。要在本机运行，将两个文件保存在同一目录，先执行 <code>xu check main.xu worker.xu</code>，再执行 <code>xu run main.xu worker.xu</code>。详见<a href="/docs/lang/concurrency">并发边界</a>。</p>
+</section>
 
 <section class="pillars">
   <article class="pillar">
@@ -76,11 +88,39 @@
   </article>
 </section>
 
-<h2><i class="xi xi-play xi-brand"></i> 在线体验 XU</h2>
-<p>无需安装，在独立演练场中编辑、编译与运行 XU 示例。</p>
-<div class="ctas">
-  <a class="btn pri" href="/playground"><i class="xi xi-play"></i> 打开在线演练场</a>
-</div>
+<section id="tasks" aria-labelledby="tasks-title">
+  <h2 id="tasks-title">从一个具体任务开始</h2>
+  <div class="task-cards">
+    <article class="task-card" data-task="cli">
+      <h3>CLI · 本机可执行程序</h3>
+      <p><strong>结果：</strong>打印问候语，以退出码 0 结束。</p>
+      <ol><li>按<a href="/docs/start">快速起步</a>安装 SDK。</li><li>将完整的<a href="/docs/tutorial/01">第一个程序</a>保存为 <code>main.xu</code>。</li><li>执行 <code>xu check main.xu</code>、<code>xu run main.xu</code>，再用 <code>xu build main.xu -o hello</code> 构建。</li></ol>
+      <p><strong>API：</strong><a href="/api/os">os</a> · <a href="/api/flag">flag</a> · <a href="/api/fmt">fmt</a></p>
+      <p><strong>支持 / 限制：</strong>原生构建需要匹配宿主的 SDK；文件系统与进程访问须在本机执行。详见<a href="/download#platform-boundaries">平台边界</a>。</p>
+    </article>
+    <article class="task-card" data-task="http">
+      <h3>HTTP · 文本接口</h3>
+      <p><strong>结果：</strong>回环地址上的服务返回 <code>hello</code> 及换行。</p>
+      <ol><li>将完整的 <a href="/api/net/http#quickstart">HTTP 起步示例</a>复制到 <code>main.xu</code>。</li><li>先检查，再在本机执行 <code>xu run main.xu</code>。</li><li>在另一个终端执行 <code>curl http://127.0.0.1:8080/</code>；按 Ctrl-C 停止服务。</li></ol>
+      <p><strong>API：</strong><a href="/api/net/http">net/http</a> · <a href="/api/net">net</a></p>
+      <p><strong>支持 / 限制：</strong>需要原生套接字；浏览器沙箱不能监听端口。此例使用明文回环 HTTP。处理器可重叠运行，共享可变状态需要同步。</p>
+    </article>
+    <article class="task-card" data-task="db">
+      <h3>DB · 插入一行 SQLite 数据</h3>
+      <p><strong>结果：</strong>通过 <code>database/sql</code> 创建内存表，插入一条笔记。</p>
+      <ol><li>声明 <a href="/docs/packages">packages 依赖</a>，为目标构建 <a href="/docs/packages#sqlite-native">SQLite 原生桥接</a>。</li><li>将<a href="/api/database/sql#quickstart">完整插入示例</a>保存为 <code>main.xu</code>。</li><li>执行 <code>xu check main.xu</code>，在受支持的原生目标上构建运行；检查错误并关闭连接池。</li></ol>
+      <p><strong>API：</strong><a href="/api/database/sql">database/sql</a> · <a href="/api/packages/sqlite">SQLite</a> · <a href="/api/packages/mysql">MySQL 替代路径</a></p>
+      <p><strong>支持 / 限制：</strong>仅限本机 SDK，需要 C 工具链和匹配的桥接切片。一站式原生链接路径为 macOS ARM64 / x64，其他目标需要外部链接。此处运行验收仍待验证。</p>
+    </article>
+    <article class="task-card" data-task="ui">
+      <h3>UI · 绘图与交互</h3>
+      <p><strong>结果：</strong>先体验交互画布计数器，再沿桌面路径创建原生窗口或承载 WebView 网页。</p>
+      <ol><li>打开<a href="/playground?example=ui-counter">浏览器计数器项目</a>并运行。</li><li>在演练场修改状态和绘图调用。</li><li>需要桌面应用时，安装 SDK 并按<a href="/docs/ui#build">原生 / WebView 构建步骤</a>操作。</li></ol>
+      <p><strong>API：</strong><a href="/api/ui/draw">ui/draw</a> · <a href="/api/ui/widgets">ui/widgets</a> · <a href="/api/ui">ui</a> · <a href="/api/ui/webview">ui/webview</a></p>
+      <p><strong>支持 / 限制：</strong>浏览器画布是 WASM 子集，不提供原生桌面服务或 WebView 宿主。原生 / WebView 需要系统库和目标机实测，详见 <a href="/docs/ui#platform-boundaries">UI 平台边界</a>。</p>
+    </article>
+  </div>
+</section>
 
 <h2>探索更多核心特性</h2>
 <p>使用本机编译器继续体验完整标准库和原生运行能力。</p>

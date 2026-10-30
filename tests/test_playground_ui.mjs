@@ -65,7 +65,7 @@ async function mount({blocks, en = false, available = true, supported = true, ui
   const pres = [];
   if (blocks) {
     const main = new Element('main');
-    for (const {source, api, local, signature, codeClass = '', preClass = ''} of blocks) {
+    for (const {source, api, local, project, signature, codeClass = '', preClass = ''} of blocks) {
       const pre = new Element('pre');
       const code = new Element('code');
       pre.className = preClass;
@@ -74,9 +74,9 @@ async function mount({blocks, en = false, available = true, supported = true, ui
       pre.appendChild(code);
       pres.push(pre);
       // API pages already have wrappers; docs can contain plain pre elements.
-      if (api || signature || local) {
+      if (api || signature || local || project) {
         const wrapper = new Element('div');
-        wrapper.className = 'code-block-wrapper' + (local ? ' xu-local-only' : '');
+        wrapper.className = 'code-block-wrapper' + (local ? ' xu-local-only' : '') + (project ? ' xu-project-example' : '');
         const header = new Element('div');
         header.className = 'code-block-header';
         wrapper.appendChild(header);
@@ -338,6 +338,20 @@ test('Shell commands retain Copy without a Run action and show terminal controls
   assert.match(wrapper.querySelector('.code-copy-btn').innerHTML, /复制命令/);
   assert.equal(wrapper.querySelector('.code-run-btn'), null);
   assert.equal(wrapper.querySelector('.code-edit-btn'), null);
+});
+
+test('multi-file catalog previews keep Copy and use their full-project CTA for execution', async () => {
+  const catalog = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url), 'utf8'));
+  for (const en of [false, true]) {
+    const {pres, workers} = await mount({en, blocks: Object.values(catalog.projects['chan-workers'].files).map(source => ({source, project: true}))});
+    for (const pre of pres) {
+      const wrapper = pre.closest('.code-block-wrapper');
+      assert.ok(wrapper.querySelector('.code-copy-btn'));
+      assert.equal(wrapper.querySelector('.code-run-btn'), null);
+      assert.equal(wrapper.querySelector('.code-edit-btn'), null);
+    }
+    assert.equal(workers.length, 0);
+  }
 });
 
 test('CLI help blocks retain Copy without Run action and show help badge', async () => {

@@ -2,7 +2,7 @@
 <p class="crumb"><a href="/en/docs/start">Docs</a></p>
 <h1>Official External Packages</h1>
 <p class="banner">Official module: <code>github.com/xulang-org/packages</code> · SDK module version 1.0.0 · 29 service integrations and the shared transport package</p>
-<p>The Xu {{xu_version}} SDK bundles the external drivers and their native source resources. The API is generated from that bundle. Drivers cover databases, caches, messaging, object storage and service discovery; check each package for protocol and platform limits.</p>
+<p>The Xu {{xu_version}} SDK bundles the external drivers and their native source resources. The matrix below is scoped to that bundle; API pages display their own package source identity (currently 1.0.2), which differs from the SDK bundle’s 1.0.0 manifest. Do not infer bundled capabilities from a newer API declaration. Drivers cover databases, caches, messaging, object storage and service discovery; check each package for protocol and platform limits.</p>
 <h2>1. Select the SDK bundle or a fixed source commit</h2>
 <p>Place your project beside the extracted SDK and declare its bundled packages using a local source locator. Adjust the relative path if you installed the SDK elsewhere:</p>
 <pre><code class="language-xun">module: my_app
@@ -21,7 +21,7 @@ xu build main.xu -o my_app</code></pre>
 <h2>2. Importing Packages in Source Code</h2>
 <p>Xu enforces an <strong>explicit namespace alias convention</strong> for all external packages: <code>alias #full/module/path/pkg</code>. This eliminates global namespace pollution and makes all external dependencies visible directly at the top of the file.</p>
 
-<pre><code class="language-xu">@main
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 
 // 1. Standard library modules have no alias; prefixed with #
 #database/sql
@@ -35,7 +35,7 @@ fn main() int {
     // Access APIs directly through the declared alias
     println("Drivers loaded successfully")
     << 0
-}</code></pre>
+}</code></pre></div>
 
 <p class="note"><strong>Important:</strong> Do not write <code>#mysql</code> or <code>#redis</code>. External module imports require an explicit alias and full module path. Standard library imports and local package imports (such as <code>#util</code>) follow their own resolution rules. The integrations listed here belong to <code>github.com/xulang-org/packages</code>; other external modules have their own identities.</p>
 
@@ -43,7 +43,7 @@ fn main() int {
 
 <h3>Example 1: Using the MySQL Driver with <code>database/sql</code></h3>
 <p>The standard library <code>database/sql</code> provides connection pooling, transactions, and result row abstractions; the concrete MySQL driver is implemented by <code>packages/mysql</code>:</p>
-<pre><code class="language-xu">@main
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 #database/sql
 mysql #github.com/xulang-org/packages/mysql
 
@@ -57,10 +57,10 @@ fn main() int {
     println("Connected to MySQL successfully!")
     db.close() or (err) { << 1 }
     << 0
-}</code></pre>
+}</code></pre></div>
 
 <h3>Example 2: Redis Client Operations</h3>
-<pre><code class="language-xu">@main
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 redis #github.com/xulang-org/packages/redis
 
 fn main() int {
@@ -73,10 +73,10 @@ fn main() int {
     println("Key 'app_version': " + val)
     client.close()
     << 0
-}</code></pre>
+}</code></pre></div>
 
 <h3>Example 3: Object Storage with S3 / MinIO</h3>
-<pre><code class="language-xu">@main
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 s3 #github.com/xulang-org/packages/s3
 
 fn main() int {
@@ -87,13 +87,17 @@ fn main() int {
     }
     println("Object uploaded successfully")
     << 0
-}</code></pre>
+}</code></pre></div>
 
 <h2>4. Package Catalog &amp; One-Line Import Snippets</h2>
 <p>The <code>packages</code> repository contains 29 service integrations and a shared transport package. You can copy-paste the exact import snippet into your code:</p>
 
-<div class="doc-table-wrap">
-<table>
+<p id="matrix-scope">The status columns below describe code paths inspected in the selected SDK’s bundled <code>packages/*.xu</code> sources, including <code>client.xu</code>, authentication files, <code>tls.xu</code> helpers and <code>transport/mod.xu</code>. They are source evidence, not service interoperability or platform acceptance results. <strong>unknown</strong> means the capability has not been proven here.</p>
+<p class="note"><strong>TLS paths:</strong> HTTPS business requests use the shared TLS connection path; their legacy manual fd pools remain plaintext. A <em>TLS byte-stream helper</em> only provides <code>tls_connect</code> / <code>tls_connect_config</code> and raw reads / writes; it does not establish that the package’s ordinary authenticated client or pool runs over TLS. That integration is explicitly unknown. SMTP STARTTLS and DNS-over-TLS query integration are unknown. The default TLS configuration verifies certificates and hostnames; these source paths have not been exercised against every service here.</p>
+<p><strong>Platform:</strong> Network drivers use native sockets and are local SDK paths, outside the browser playground subset. Per-OS / architecture acceptance is unknown for every row. SQLite needs a matching C bridge slice; its one-step link workflow is limited to macOS ARM64 / x64, with other targets requiring external linking. See <a href="/download#platform-boundaries">download boundaries</a> and <a href="/docs/status">status</a>.</p>
+
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="Integration support matrix">
+<table id="integration-matrix" class="package-matrix">
   <thead>
     <tr>
       <th>Category</th>
@@ -101,38 +105,43 @@ fn main() int {
       <th>Service</th>
       <th>One-Line Import Snippet</th>
       <th>API Reference</th>
+      <th>Protocol scope</th>
+      <th>Authentication</th>
+      <th>TLS path</th>
+      <th>Platform / acceptance</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td>Databases</td><td><code>mysql</code></td><td>MySQL / MariaDB</td><td><code>mysql #github.com/xulang-org/packages/mysql</code></td><td><a href="/en/api/packages/mysql">API Reference</a></td></tr>
-    <tr><td>Databases</td><td><code>postgres</code></td><td>PostgreSQL</td><td><code>postgres #github.com/xulang-org/packages/postgres</code></td><td><a href="/en/api/packages/postgres">API Reference</a></td></tr>
-    <tr><td>Databases</td><td><code>sqlite</code></td><td>SQLite Embedded</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/en/api/packages/sqlite">API Reference</a></td></tr>
-    <tr><td>Databases</td><td><code>clickhouse</code></td><td>ClickHouse Columnar</td><td><code>clickhouse #github.com/xulang-org/packages/clickhouse</code></td><td><a href="/en/api/packages/clickhouse">API Reference</a></td></tr>
-    <tr><td>Databases</td><td><code>mongodb</code></td><td>MongoDB Document DB</td><td><code>mongodb #github.com/xulang-org/packages/mongodb</code></td><td><a href="/en/api/packages/mongodb">API Reference</a></td></tr>
-    <tr><td>Databases</td><td><code>cassandra</code></td><td>Apache Cassandra</td><td><code>cassandra #github.com/xulang-org/packages/cassandra</code></td><td><a href="/en/api/packages/cassandra">API Reference</a></td></tr>
-    <tr><td>Databases</td><td><code>neo4j</code></td><td>Neo4j Graph Database</td><td><code>neo4j #github.com/xulang-org/packages/neo4j</code></td><td><a href="/en/api/packages/neo4j">API Reference</a></td></tr>
-    <tr><td>Caches</td><td><code>redis</code></td><td>Redis High-Speed Cache</td><td><code>redis #github.com/xulang-org/packages/redis</code></td><td><a href="/en/api/packages/redis">API Reference</a></td></tr>
-    <tr><td>Caches</td><td><code>memcached</code></td><td>Memcached</td><td><code>memcached #github.com/xulang-org/packages/memcached</code></td><td><a href="/en/api/packages/memcached">API Reference</a></td></tr>
-    <tr><td>Messaging</td><td><code>kafka</code></td><td>Apache Kafka</td><td><code>kafka #github.com/xulang-org/packages/kafka</code></td><td><a href="/en/api/packages/kafka">API Reference</a></td></tr>
-    <tr><td>Messaging</td><td><code>rabbitmq</code></td><td>RabbitMQ / AMQP</td><td><code>rabbitmq #github.com/xulang-org/packages/rabbitmq</code></td><td><a href="/en/api/packages/rabbitmq">API Reference</a></td></tr>
-    <tr><td>Messaging</td><td><code>nats</code></td><td>NATS High Throughput</td><td><code>nats #github.com/xulang-org/packages/nats</code></td><td><a href="/en/api/packages/nats">API Reference</a></td></tr>
-    <tr><td>Messaging</td><td><code>mqtt</code></td><td>MQTT IoT Protocol</td><td><code>mqtt #github.com/xulang-org/packages/mqtt</code></td><td><a href="/en/api/packages/mqtt">API Reference</a></td></tr>
-    <tr><td>Coordination</td><td><code>etcd</code></td><td>etcd v3 Distributed KV</td><td><code>etcd #github.com/xulang-org/packages/etcd</code></td><td><a href="/en/api/packages/etcd">API Reference</a></td></tr>
-    <tr><td>Coordination</td><td><code>consul</code></td><td>HashiCorp Consul</td><td><code>consul #github.com/xulang-org/packages/consul</code></td><td><a href="/en/api/packages/consul">API Reference</a></td></tr>
-    <tr><td>Coordination</td><td><code>zookeeper</code></td><td>Apache ZooKeeper</td><td><code>zookeeper #github.com/xulang-org/packages/zookeeper</code></td><td><a href="/en/api/packages/zookeeper">API Reference</a></td></tr>
-    <tr><td>Coordination</td><td><code>nacos</code></td><td>Alibaba Nacos</td><td><code>nacos #github.com/xulang-org/packages/nacos</code></td><td><a href="/en/api/packages/nacos">API Reference</a></td></tr>
-    <tr><td>Search</td><td><code>elasticsearch</code></td><td>Elasticsearch / OpenSearch</td><td><code>elasticsearch #github.com/xulang-org/packages/elasticsearch</code></td><td><a href="/en/api/packages/elasticsearch">API Reference</a></td></tr>
-    <tr><td>Search</td><td><code>meilisearch</code></td><td>Meilisearch Engine</td><td><code>meilisearch #github.com/xulang-org/packages/meilisearch</code></td><td><a href="/en/api/packages/meilisearch">API Reference</a></td></tr>
-    <tr><td>Observability</td><td><code>prometheus</code></td><td>Prometheus Metrics</td><td><code>prometheus #github.com/xulang-org/packages/prometheus</code></td><td><a href="/en/api/packages/prometheus">API Reference</a></td></tr>
-    <tr><td>Observability</td><td><code>influxdb</code></td><td>InfluxDB Time Series</td><td><code>influxdb #github.com/xulang-org/packages/influxdb</code></td><td><a href="/en/api/packages/influxdb">API Reference</a></td></tr>
-    <tr><td>Vectors &amp; AI</td><td><code>milvus</code></td><td>Milvus Vector DB</td><td><code>milvus #github.com/xulang-org/packages/milvus</code></td><td><a href="/en/api/packages/milvus">API Reference</a></td></tr>
-    <tr><td>Vectors &amp; AI</td><td><code>qdrant</code></td><td>Qdrant Vector Engine</td><td><code>qdrant #github.com/xulang-org/packages/qdrant</code></td><td><a href="/en/api/packages/qdrant">API Reference</a></td></tr>
-    <tr><td>Vectors &amp; AI</td><td><code>chroma</code></td><td>Chroma Embeddings DB</td><td><code>chroma #github.com/xulang-org/packages/chroma</code></td><td><a href="/en/api/packages/chroma">API Reference</a></td></tr>
-    <tr><td>Storage</td><td><code>s3</code></td><td>AWS S3 / MinIO Protocol</td><td><code>s3 #github.com/xulang-org/packages/s3</code></td><td><a href="/en/api/packages/s3">API Reference</a></td></tr>
-    <tr><td>Protocols</td><td><code>grpc</code></td><td>gRPC / HTTP/2 Client</td><td><code>grpc #github.com/xulang-org/packages/grpc</code></td><td><a href="/en/api/packages/grpc">API Reference</a></td></tr>
-    <tr><td>Protocols</td><td><code>websocket</code></td><td>WebSocket Full-Duplex</td><td><code>websocket #github.com/xulang-org/packages/websocket</code></td><td><a href="/en/api/packages/websocket">API Reference</a></td></tr>
-    <tr><td>Protocols</td><td><code>dns</code></td><td>DNS Custom Resolver</td><td><code>dns #github.com/xulang-org/packages/dns</code></td><td><a href="/en/api/packages/dns">API Reference</a></td></tr>
-    <tr><td>Protocols</td><td><code>smtp</code></td><td>SMTP Mail Delivery</td><td><code>smtp #github.com/xulang-org/packages/smtp</code></td><td><a href="/en/api/packages/smtp">API Reference</a></td></tr>
+    <tr data-package="mysql"><td>Databases</td><td><code>mysql</code></td><td>MySQL / MariaDB</td><td><code>mysql #github.com/xulang-org/packages/mysql</code></td><td><a href="/en/api/packages/mysql">API Reference</a></td><td>MySQL text protocol</td><td>mysql_native_password; caching_sha2_password rejected</td><td>DSN TLS upgrade with certificate / hostname checks</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="postgres"><td>Databases</td><td><code>postgres</code></td><td>PostgreSQL</td><td><code>postgres #github.com/xulang-org/packages/postgres</code></td><td><a href="/en/api/packages/postgres">API Reference</a></td><td>PostgreSQL wire 3.0</td><td>Trust / cleartext / MD5 / SCRAM-SHA-256</td><td>SSLRequest upgrade; require / verify-ca / verify-full</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="sqlite"><td>Databases</td><td><code>sqlite</code></td><td>SQLite Embedded</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/en/api/packages/sqlite">API Reference</a></td><td>Embedded SQLite C API</td><td>Not applicable (embedded)</td><td>Not applicable (no network transport)</td><td>C bridge; macOS one-step link; target acceptance unknown</td></tr>
+    <tr data-package="clickhouse"><td>Databases</td><td><code>clickhouse</code></td><td>ClickHouse Columnar</td><td><code>clickhouse #github.com/xulang-org/packages/clickhouse</code></td><td><a href="/en/api/packages/clickhouse">API Reference</a></td><td>HTTP SQL requests</td><td>X-ClickHouse-User / Key headers</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="mongodb"><td>Databases</td><td><code>mongodb</code></td><td>MongoDB Document DB</td><td><code>mongodb #github.com/xulang-org/packages/mongodb</code></td><td><a href="/en/api/packages/mongodb">API Reference</a></td><td>OP_MSG subset; no compression / topology discovery</td><td>unknown</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="cassandra"><td>Databases</td><td><code>cassandra</code></td><td>Apache Cassandra</td><td><code>cassandra #github.com/xulang-org/packages/cassandra</code></td><td><a href="/en/api/packages/cassandra">API Reference</a></td><td>CQL binary v4; startup / queries</td><td>unknown</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="neo4j"><td>Databases</td><td><code>neo4j</code></td><td>Neo4j Graph Database</td><td><code>neo4j #github.com/xulang-org/packages/neo4j</code></td><td><a href="/en/api/packages/neo4j">API Reference</a></td><td>HTTP Cypher transactions; no Bolt claim</td><td>HTTP Basic</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="redis"><td>Caches</td><td><code>redis</code></td><td>Redis High-Speed Cache</td><td><code>redis #github.com/xulang-org/packages/redis</code></td><td><a href="/en/api/packages/redis">API Reference</a></td><td>RESP2 and bounded RESP3 types</td><td>Password AUTH; ACL username support unknown</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="memcached"><td>Caches</td><td><code>memcached</code></td><td>Memcached</td><td><code>memcached #github.com/xulang-org/packages/memcached</code></td><td><a href="/en/api/packages/memcached">API Reference</a></td><td>Text commands</td><td>unknown</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="kafka"><td>Messaging</td><td><code>kafka</code></td><td>Apache Kafka</td><td><code>kafka #github.com/xulang-org/packages/kafka</code></td><td><a href="/en/api/packages/kafka">API Reference</a></td><td>Produce v3 / Fetch v4 subset; uncompressed records</td><td>unknown</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="rabbitmq"><td>Messaging</td><td><code>rabbitmq</code></td><td>RabbitMQ / AMQP</td><td><code>rabbitmq #github.com/xulang-org/packages/rabbitmq</code></td><td><a href="/en/api/packages/rabbitmq">API Reference</a></td><td>AMQP 0-9-1 subset</td><td>SASL PLAIN</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="nats"><td>Messaging</td><td><code>nats</code></td><td>NATS High Throughput</td><td><code>nats #github.com/xulang-org/packages/nats</code></td><td><a href="/en/api/packages/nats">API Reference</a></td><td>NATS text protocol</td><td>User / password CONNECT</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="mqtt"><td>Messaging</td><td><code>mqtt</code></td><td>MQTT IoT Protocol</td><td><code>mqtt #github.com/xulang-org/packages/mqtt</code></td><td><a href="/en/api/packages/mqtt">API Reference</a></td><td>MQTT 3.1.1; QoS 0 / 1</td><td>CONNECT username / password</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="etcd"><td>Coordination</td><td><code>etcd</code></td><td>etcd v3 Distributed KV</td><td><code>etcd #github.com/xulang-org/packages/etcd</code></td><td><a href="/en/api/packages/etcd">API Reference</a></td><td>v3 HTTP/JSON gateway; not native gRPC</td><td>unknown</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="consul"><td>Coordination</td><td><code>consul</code></td><td>HashiCorp Consul</td><td><code>consul #github.com/xulang-org/packages/consul</code></td><td><a href="/en/api/packages/consul">API Reference</a></td><td>HTTP API</td><td>X-Consul-Token header</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="zookeeper"><td>Coordination</td><td><code>zookeeper</code></td><td>Apache ZooKeeper</td><td><code>zookeeper #github.com/xulang-org/packages/zookeeper</code></td><td><a href="/en/api/packages/zookeeper">API Reference</a></td><td>Four-letter admin commands; not a session client</td><td>unknown</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="nacos"><td>Coordination</td><td><code>nacos</code></td><td>Alibaba Nacos</td><td><code>nacos #github.com/xulang-org/packages/nacos</code></td><td><a href="/en/api/packages/nacos">API Reference</a></td><td>HTTP OpenAPI subset</td><td>unknown</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="elasticsearch"><td>Search</td><td><code>elasticsearch</code></td><td>Elasticsearch / OpenSearch</td><td><code>elasticsearch #github.com/xulang-org/packages/elasticsearch</code></td><td><a href="/en/api/packages/elasticsearch">API Reference</a></td><td>HTTP/JSON API subset</td><td>unknown</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="meilisearch"><td>Search</td><td><code>meilisearch</code></td><td>Meilisearch Engine</td><td><code>meilisearch #github.com/xulang-org/packages/meilisearch</code></td><td><a href="/en/api/packages/meilisearch">API Reference</a></td><td>HTTP/JSON; integer document IDs</td><td>Bearer API key</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="prometheus"><td>Observability</td><td><code>prometheus</code></td><td>Prometheus Metrics</td><td><code>prometheus #github.com/xulang-org/packages/prometheus</code></td><td><a href="/en/api/packages/prometheus">API Reference</a></td><td>Text metrics / HTTP Pushgateway</td><td>unknown</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="influxdb"><td>Observability</td><td><code>influxdb</code></td><td>InfluxDB Time Series</td><td><code>influxdb #github.com/xulang-org/packages/influxdb</code></td><td><a href="/en/api/packages/influxdb">API Reference</a></td><td>HTTP API / line protocol</td><td>Authorization: Token</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="milvus"><td>Vectors &amp; AI</td><td><code>milvus</code></td><td>Milvus Vector DB</td><td><code>milvus #github.com/xulang-org/packages/milvus</code></td><td><a href="/en/api/packages/milvus">API Reference</a></td><td>REST v2 search; integer IDs</td><td>Bearer token field</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="qdrant"><td>Vectors &amp; AI</td><td><code>qdrant</code></td><td>Qdrant Vector Engine</td><td><code>qdrant #github.com/xulang-org/packages/qdrant</code></td><td><a href="/en/api/packages/qdrant">API Reference</a></td><td>HTTP/JSON API subset</td><td>api-key header</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="chroma"><td>Vectors &amp; AI</td><td><code>chroma</code></td><td>Chroma Embeddings DB</td><td><code>chroma #github.com/xulang-org/packages/chroma</code></td><td><a href="/en/api/packages/chroma">API Reference</a></td><td>HTTP/JSON API subset</td><td>unknown</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="s3"><td>Storage</td><td><code>s3</code></td><td>AWS S3 / MinIO Protocol</td><td><code>s3 #github.com/xulang-org/packages/s3</code></td><td><a href="/en/api/packages/s3">API Reference</a></td><td>S3 HTTP object API subset</td><td>AWS SigV4</td><td>HTTPS request path; fd pools remain plaintext</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="grpc"><td>Protocols</td><td><code>grpc</code></td><td>gRPC / HTTP/2 Client</td><td><code>grpc #github.com/xulang-org/packages/grpc</code></td><td><a href="/en/api/packages/grpc">API Reference</a></td><td>HTTP/2 unary; no streaming / compression</td><td>unknown</td><td>HTTPS unary with ALPN h2; fd pool is h2c</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="websocket"><td>Protocols</td><td><code>websocket</code></td><td>WebSocket Full-Duplex</td><td><code>websocket #github.com/xulang-org/packages/websocket</code></td><td><a href="/en/api/packages/websocket">API Reference</a></td><td>HTTP Upgrade / WebSocket frames</td><td>unknown</td><td>wss via connect_secure; retain transport.Conn</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="dns"><td>Protocols</td><td><code>dns</code></td><td>DNS Custom Resolver</td><td><code>dns #github.com/xulang-org/packages/dns</code></td><td><a href="/en/api/packages/dns">API Reference</a></td><td>TCP DNS A-record queries; not UDP</td><td>unknown</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="smtp"><td>Protocols</td><td><code>smtp</code></td><td>SMTP Mail Delivery</td><td><code>smtp #github.com/xulang-org/packages/smtp</code></td><td><a href="/en/api/packages/smtp">API Reference</a></td><td>SMTP mail delivery</td><td>AUTH LOGIN</td><td>TLS byte-stream helper; client TLS unknown</td><td>Native sockets; acceptance unknown</td></tr>
+    <tr data-package="transport"><td>Shared transport</td><td><code>transport</code></td><td>TCP / TLS / HTTP framing</td><td><code>transport #github.com/xulang-org/packages/transport</code></td><td><a href="/api/packages/transport">API Reference</a></td><td>TCP / TLS; HTTP/1.x response framing</td><td>Application-level authentication unknown</td><td>crypto/tls via dial; custom tls.Config</td><td>Native sockets; acceptance unknown</td></tr>
   </tbody>
 </table>
 </div>

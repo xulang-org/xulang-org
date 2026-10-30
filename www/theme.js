@@ -252,7 +252,10 @@
 
       var kind = detectBlockKind(pre, rawCode);
       var isLocalOnly = kind === 'xu' && !!pre.closest('.xu-local-only');
-      var isRunnable = kind === 'xu' && !isLocalOnly && isCompleteProgram(rawCode);
+      // Project previews need every file; their explicit catalog link opens the
+      // complete workspace. Running just the entry file would lose its helpers.
+      var isProjectPreview = !!pre.closest('.xu-project-example');
+      var isRunnable = kind === 'xu' && !isLocalOnly && !isProjectPreview && isCompleteProgram(rawCode);
 
       var kindMeta = {
         xu: { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: isRunnable ? '<span class="code-badge">' + (isEn ? 'WASM subset' : 'WASM 子集') + '</span>' : '' },
