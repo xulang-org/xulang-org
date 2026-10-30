@@ -118,26 +118,27 @@
     var copyText = isEn ? 'Copy' : '复制';
     var copiedText = isEn ? '✓ Copied' : '✓ 已复制';
     var runText = isEn ? 'Run' : '运行';
-    var runTitle = isEn ? 'Run code on this page' : '在当前页面运行代码';
+    var runTitle = isEn ? 'Run in the browser WASM subset (MIR interpreter)' : '在浏览器 WASM 子集中运行（MIR 解释器）';
     var resultId = 0;
     var editorId = 0;
 
+    function isCompleteProgram(value) {
+      // Ignore comments and literals: mentioning an entry point is not defining it.
+      var source = value.replace(/\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\[\s\S]|[^"\\])*"|'(?:\\[\s\S]|[^'\\])*'|`[^`]*`/g, ' ');
+      var entry = /(?:^|\n)\s*(?:pub\s+)?fn\s+main\s*\(\s*\)\s*(?:int\s*)?\{/.exec(source);
+      if (!entry) return false;
+      var mainBrace = entry.index + entry[0].length - 1;
+      var depth = 0;
+      for (var i = 0; i < source.length; i++) {
+        if (i === mainBrace && depth !== 0) return false;
+        if (source[i] === '{') depth++;
+        if (source[i] === '}' && --depth < 0) return false;
+      }
+      return depth === 0;
+    }
+
     function prepareCode(value) {
-      if (/fn\s+main\s*\(/.test(value)) {
-        return /(?:^|\n)\s*@main\b/.test(value) ? value : '@main\n\n' + value;
-      }
-      // Keep leading imports outside the generated entry point for snippets.
-      var lines = value.split('\n');
-      var imports = [];
-      var start = 0;
-      while (start < lines.length) {
-        var line = lines[start].trim();
-        if (line && line !== '@main' && !/^#(?:[A-Za-z_]|")/.test(line) && !/^\/\//.test(line)) break;
-        if (line && line !== '@main') imports.push(lines[start]);
-        start++;
-      }
-      return '@main\n\n' + (imports.length ? imports.join('\n') + '\n\n' : '') +
-        'fn main() int {\n    ' + lines.slice(start).join('\n    ') + '\n    << 0\n}\n';
+      return /(?:^|\n)\s*@main\b/.test(value) ? value : '@main\n\n' + value;
     }
 
     function detectBlockKind(pre, rawCode) {
@@ -250,10 +251,11 @@
       function currentCode() { return editor ? editor.value : rawCode; }
 
       var kind = detectBlockKind(pre, rawCode);
-      var isRunnable = kind === 'xu' && !pre.closest('.xu-local-only');
+      var isLocalOnly = kind === 'xu' && !!pre.closest('.xu-local-only');
+      var isRunnable = kind === 'xu' && !isLocalOnly && isCompleteProgram(rawCode);
 
       var kindMeta = {
-        xu: { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: '' },
+        xu: { icon: 'xi-code xi-brand', title: isEn ? 'Xu Source' : 'Xu 代码', badge: isRunnable ? '<span class="code-badge">' + (isEn ? 'WASM subset' : 'WASM 子集') + '</span>' : '' },
         api: { icon: 'xi-interface xi-brand', title: isEn ? 'API Signature' : 'API 声明', badge: '<span class="code-badge">Xu</span>' },
         shell: { icon: 'xi-terminal', title: isEn ? 'Terminal' : '终端命令', badge: '<span class="code-badge terminal-badge">SHELL</span>' },
         help: { icon: 'xi-help-circle', title: isEn ? 'Command Help & Options' : '命令帮助与参数说明', badge: '<span class="code-badge help-badge">' + (isEn ? 'HELP' : '帮助') + '</span>' },
@@ -307,6 +309,15 @@
 
       if (header.querySelector('.code-actions')) return;
 
+      if (isLocalOnly) {
+        var localHelp = document.createElement('div');
+        localHelp.className = 'code-editor-help code-local-help';
+        localHelp.innerHTML = isEn
+          ? '<span>Use the local Xu SDK with the complete project and its dependencies. From the project directory, run <code>xu run main.xu</code> (replace main.xu with the entry file).</span>'
+          : '<span>使用本地 Xu SDK，保留完整工程及其依赖。在工程目录运行 <code>xu run main.xu</code>（将 main.xu 替换为入口文件）。</span>';
+        wrapper.insertBefore(localHelp, pre);
+      }
+
       var actions = document.createElement('div');
       actions.className = 'code-actions';
 
@@ -332,7 +343,7 @@
       });
       actions.appendChild(copyBtn);
 
-      // 执行按钮（针对可执行 Xu 代码与 API 沙盒）
+      // Only complete browser examples receive edit and run actions.
       if (isRunnable) {
         var editBtn = document.createElement('button');
         editBtn.type = 'button';
