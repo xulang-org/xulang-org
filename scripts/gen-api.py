@@ -107,10 +107,19 @@ def parse_receiver(recv: str) -> tuple[str, str]:
     return "self", recv
 
 
-def placeholder_name(typ: str) -> str:
+def borrow_type(typ: str) -> tuple[str, str]:
+    """Return the underlying type and borrow kind without changing source signatures."""
     t = typ.strip()
-    t = re.sub(r"^(?:\$&|&mut\s+)", "", t)
-    t = re.sub(r"^&\s*", "", t)
+    exclusive = re.match(r'^(?:\$&\s*|&mut\s+)', t)
+    if exclusive:
+        return t[exclusive.end():].strip(), 'exclusive'
+    if t.startswith('&'):
+        return t[1:].strip(), 'shared'
+    return t, 'value'
+
+
+def placeholder_name(typ: str) -> str:
+    t, _ = borrow_type(typ)
     t = re.sub(r"^\[\]", "", t)
     t = t.split(".")[-1]
     t = re.sub(r"[^A-Za-z0-9_].*", "", t)
@@ -1556,10 +1565,11 @@ def param_meaning(pkg, fn: str, p: Param, lang: str) -> str:
     pkg = pkg_id(pkg)
     zh = lang == "zh"
     if p.is_recv:
+        _, kind = borrow_type(p.typ)
         if zh:
-            mut = "可变借用" if p.typ.startswith(("$&", "&mut")) else ("借用" if p.typ.startswith("&") else "值接收者")
+            mut = {'exclusive': '独占借用', 'shared': '借用', 'value': '值接收者'}[kind]
             return f"接收者 {p.typ}（{mut}）"
-        mut = "exclusive borrow" if p.typ.startswith(("$&", "&mut")) else ("borrow" if p.typ.startswith("&") else "value receiver")
+        mut = {'exclusive': 'exclusive borrow', 'shared': 'borrow', 'value': 'value receiver'}[kind]
         return f"receiver {p.typ} ({mut})"
     if p.variadic or p.typ.startswith("<->"):
         inner = p.typ.replace("<->", "").strip()
@@ -1604,14 +1614,12 @@ def param_meaning(pkg, fn: str, p: Param, lang: str) -> str:
 
 
 def type_note(typ: str, zh: bool) -> str:
-    t = typ.strip()
+    t, kind = borrow_type(typ)
     bits = []
-    if t.startswith("$&") or t.startswith("&mut "):
+    if kind == 'exclusive':
         bits.append("独占借用" if zh else "exclusive borrow")
-        t = t[2:] if t.startswith("$&") else t[5:]
-    elif t.startswith("&"):
+    elif kind == 'shared':
         bits.append("借用，调用方仍持有" if zh else "borrowed; caller keeps it")
-        t = t[1:].lstrip()
     if t.startswith("<->"):
         bits.append("可变参" if zh else "variadic")
     if t.startswith("fn(") or t.startswith("fn ("):
@@ -1647,7 +1655,7 @@ def pkg_id(pkg) -> str:
 
 def lookup_override(pkg, item: Item, lang: str):
     p = pkg_id(pkg)
-    receiver = re.sub(r'^(?:\$&|&(?:mut\s+)?)', '', item.recv_type).strip()
+    receiver, _ = borrow_type(item.recv_type)
     keys = [(p, item.recv_type, item.name), (p, receiver, item.name)]
     # A widget factory named input/scroll/etc. does not document the method
     # with the same name on every control type.
@@ -1891,7 +1899,7 @@ if _widget_catalog.is_file():
 
 
 def widget_constructor(item: Item) -> str:
-    receiver = re.sub(r'^&(?:mut\s+)?', '', item.recv_type).strip()
+    receiver, _ = borrow_type(item.recv_type)
     return ' / '.join(_widget_factories.get(item.name, [])) if receiver == 'Screen' else ''
 
 
@@ -2774,15 +2782,52 @@ def render_index(packages: list[Package], lang: str, xu_version: str, examples: 
     return "\n".join(body) + "\n"
 
 
-def write_packages(site: str, packages: list[Package], xu_version: str = "", preview_digest: str = "") -> None:
+def read_contracts(site: str, preview: bool = False) -> list[dict]:
+    name = 'api-preview-contracts.json' if preview else 'api-contracts.json'
+    path = Path(site, 'templates', name)
+    return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else []
+
+
+def validate_contracts(contracts: list[dict], packages: list[Package]) -> None:
+    """Resolve every contract to one declaration, then check its documented names."""
+    declarations: dict[tuple[str, str, str], list[Item]] = {}
+    for package in packages:
+        for item in package.items:
+            receiver, _ = borrow_type(item.recv_type)
+            declarations.setdefault((package.path, receiver, item.name), []).append(item)
+    seen = set()
+    errors = []
+    for entry in contracts:
+        receiver, _ = borrow_type(entry.get('receiver', ''))
+        key = (entry['package'], receiver, entry['name'])
+        label = '.'.join(part for part in key if part)
+        if key in seen:
+            errors.append(f'{label}: duplicate contract')
+        seen.add(key)
+        matches = declarations.get(key, [])
+        if len(matches) != 1:
+            errors.append(f'{label}: resolves to {len(matches)} declarations (expected exactly one)')
+            continue
+        item = matches[0]
+        names = {param.name for param in item.params} | {field.name for field in item.fields}
+        names.update(method.name for method in item.methods)
+        for lang in ('zh', 'en'):
+            for name in sorted(set(entry[lang].get('params', {})) - names):
+                errors.append(f'{label} [{lang}]: unknown parameter/field {name!r}')
+    if errors:
+        raise ValueError('invalid API contracts:\n  ' + '\n  '.join(errors))
+
+
+def write_packages(site: str, packages: list[Package], xu_version: str = "", preview_digest: str = "",
+                   contract_packages: Optional[list[Package]] = None) -> None:
+    contracts = read_contracts(site, bool(preview_digest))
+    validate_contracts(contracts, packages if contract_packages is None else contract_packages)
     previous = OVERRIDES.copy()
     try:
-        contract_name = 'api-preview-contracts.json' if preview_digest else 'api-contracts.json'
-        contracts = Path(site, 'templates', contract_name)
-        if contracts.is_file():
-            for entry in json.loads(contracts.read_text(encoding='utf-8')):
-                key = (entry['package'], entry['receiver'], entry['name']) if entry.get('receiver') else (entry['package'], entry['name'])
-                OVERRIDES[key] = {lang: entry[lang] for lang in ('zh', 'en')}
+        for entry in contracts:
+            receiver, _ = borrow_type(entry.get('receiver', ''))
+            key = (entry['package'], receiver, entry['name']) if receiver else (entry['package'], entry['name'])
+            OVERRIDES[key] = {lang: entry[lang] for lang in ('zh', 'en')}
         _write_packages(site, packages, xu_version, preview_digest)
     finally:
         OVERRIDES.clear()
@@ -2962,7 +3007,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"src not found: {src}", file=sys.stderr)
         return 1
 
-    names = list_packages(src)
+    all_names = list_packages(src)
+    names = all_names
     if args.package:
         for name in args.package:
             if name not in names:
@@ -2985,6 +3031,14 @@ def main(argv: list[str] | None = None) -> int:
             pkg.import_path = name.rsplit("/", 1)[-1] + " #" + module + "/" + name
             pkg.module, pkg.version = module, module_version
             packages.append(pkg)
+    # A scoped preview still validates every key in its contract file against
+    # the selected SDK, including declarations outside the rendered subtree.
+    contract_packages = packages + [load_package(src, n) for n in all_names if n not in names]
+    try:
+        validate_contracts(read_contracts(site, args.preview), contract_packages)
+    except (ValueError, KeyError, TypeError) as error:
+        print(f'gen-api: {error}', file=sys.stderr)
+        return 1
     missing_docs = []
     for pkg in packages:
         for it in pkg.items:
@@ -3023,7 +3077,7 @@ def main(argv: list[str] | None = None) -> int:
         for source in sources:
             digest.update((source.relative_to(src).as_posix() + '\n').encode())
             digest.update(source.read_bytes())
-        write_packages(site, packages, xu_version, digest.hexdigest())
+        write_packages(site, packages, xu_version, digest.hexdigest(), contract_packages)
         ensure_css(site)
         print(f'  wrote preview API for {len(packages)} packages; selected release unchanged')
         return 0

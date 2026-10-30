@@ -5,7 +5,27 @@
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#bufio</code></p>
 <p class="meta">counts: 18 函数, 61 方法, 9 类型, 4 常量, 0 方法集</p>
-<p class="lead">Reader/Writer、Scanner（行/词/字节）与泛型借用流包装。</p>
+<h2 id="quickstart">逐行读取直到 EOF</h2>
+<p>使用 <code>bufio</code> 从其持有的内存 <code>io.Buffer</code> 中缓冲读取文本行。</p>
+<p>缓冲区移入 reader。<code>read_line</code> 去除 LF 或 CRLF，先返回末尾无换行的数据，耗尽后抛出 <code>EOF</code>；其他错误以状态码 1 退出。</p>
+<p>将完整程序保存为 <code>main.xu</code>，在本机运行 <code>xu run main.xu</code>。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#bufio
+#io
+
+fn main() int {
+    $reader := bufio.new_reader(io.buffer_from("first\nlast"))
+    while true {
+        line := reader.read_line() or (err) {
+            if err.msg() == "EOF" { &lt;&lt; 0 }
+            println(err.msg())
+            &lt;&lt; 1
+        }
+        println(line)
+    }
+    &lt;&lt; 0
+}</code></pre></div>
+<p>预期依次输出：<code>first</code> 与 <code>last</code>。</p>
 <article class="api-item" id="struct-Reader">
 <h2><code>struct Reader</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Reader {
@@ -119,7 +139,7 @@
 <p>`$&amp;Reader` 上的操作：读一个 UTF-8 rune。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>RuneRead — 该类型的值</p>
@@ -131,7 +151,7 @@
 <p>`$&amp;Reader` 上的操作：读一个字节；失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -143,7 +163,7 @@
 <p>`$&amp;Reader` 上的操作：读取字符串。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 <dt><code>delim</code> <span class="type">int</span></dt><dd>delim（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -156,7 +176,7 @@
 <p>`$&amp;Reader` 上的操作：执行 read line 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
@@ -168,7 +188,7 @@
 <p>`$&amp;Reader` 上的操作：预看。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -181,7 +201,7 @@
 <p>`$&amp;Writer` 上的操作：刷出缓冲。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -193,7 +213,7 @@
 <p>`$&amp;Writer` 上的操作：写入字符串，返回写入的字节数。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（独占借用）</dd>
 <dt><code>s</code> <span class="type">string</span></dt><dd>源字符串（string）</dd>
 </dl>
 <h3>返回</h3>
@@ -206,7 +226,7 @@
 <p>`$&amp;Writer` 上的操作：返回已缓冲的字节串。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
@@ -218,7 +238,7 @@
 <p>`$&amp;Reader` 上的操作：已缓冲量。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -230,7 +250,7 @@
 <p>`$&amp;Reader` 上的操作：丢弃。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -243,7 +263,7 @@
 <p>`$&amp;Reader` 上的操作：读到 delim（含 delim）。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 <dt><code>delim</code> <span class="type">int</span></dt><dd>delim（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -256,7 +276,7 @@
 <p>`$&amp;Reader` 上的操作：把最近读出的一字节退回。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -268,7 +288,7 @@
 <p>`$&amp;Reader` 上的操作：把最近读出的 rune 退回。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -280,7 +300,7 @@
 <p>`$&amp;Reader` 上的操作：读取切片。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 <dt><code>delim</code> <span class="type">int</span></dt><dd>delim（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -293,7 +313,7 @@
 <p>`$&amp;Reader` 上的操作：清空内部状态，可再写入或读取。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>接收者 $&amp;Reader（独占借用）</dd>
 <dt><code>src</code> <span class="type">io.Buffer</span></dt><dd>源数据（io.Buffer）</dd>
 </dl>
 </article>
@@ -304,7 +324,7 @@
 <p>`$&amp;Writer` 上的操作：写入一个字节。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（独占借用）</dd>
 <dt><code>c</code> <span class="type">int</span></dt><dd>字节或字符码（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -317,7 +337,7 @@
 <p>`$&amp;Writer` 上的操作：写入一个 rune 的 UTF-8 编码。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（独占借用）</dd>
 <dt><code>r</code> <span class="type">int</span></dt><dd>rune（Unicode 码点）（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -330,7 +350,7 @@
 <p>`$&amp;Writer` 上的操作：已缓冲量。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -378,7 +398,7 @@
 <p>`$&amp;Writer` 上的操作：清空内部状态，可再写入或读取。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;Writer</span></dt><dd>接收者 $&amp;Writer（独占借用）</dd>
 <dt><code>dst</code> <span class="type">io.Buffer</span></dt><dd>目标（io.Buffer）</dd>
 </dl>
 </article>
@@ -498,7 +518,7 @@
 <p>`$&amp;Scanner` 上的操作：按分隔符切开。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（可变借用）</dd>
+<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（独占借用）</dd>
 <dt><code>mode</code> <span class="type">int</span></dt><dd>模式（int）</dd>
 </dl>
 </article>
@@ -509,7 +529,7 @@
 <p>`$&amp;Scanner` 上的操作：拆分回调。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（可变借用）</dd>
+<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（独占借用）</dd>
 <dt><code>f</code> <span class="type">fn(string, int) SplitResult</span></dt><dd>字节回调：参数为字节值 0..255，返回是否命中</dd>
 </dl>
 </article>
@@ -559,7 +579,7 @@
 <p>在 `$&amp;Scanner` 上执行 `scan` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（可变借用）</dd>
+<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>bool — 是否成立</p>
@@ -571,7 +591,7 @@
 <p>`$&amp;Scanner` 上的操作：返回当前文本。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（可变借用）</dd>
+<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
@@ -583,7 +603,7 @@
 <p>`$&amp;Scanner` 上的操作：执行 err text 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（可变借用）</dd>
+<dt><code>s</code> <span class="type">$&amp;Scanner</span></dt><dd>接收者 $&amp;Scanner（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
@@ -669,7 +689,7 @@
 <p>`$&amp;ResultReader#R` 上的操作：读取结果。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;ResultReader#R</span></dt><dd>接收者 $&amp;ResultReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;ResultReader#R</span></dt><dd>接收者 $&amp;ResultReader#R（独占借用）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -694,7 +714,7 @@
 <p>`$&amp;ResultReader#R` 上的操作：清空内部状态，可再写入或读取。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;ResultReader#R</span></dt><dd>接收者 $&amp;ResultReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;ResultReader#R</span></dt><dd>接收者 $&amp;ResultReader#R（独占借用）</dd>
 <dt><code>src</code> <span class="type">R</span></dt><dd>源数据（R）</dd>
 </dl>
 </article>
@@ -705,7 +725,7 @@
 <p>`$&amp;ResultReader#R` 上的操作：最多读 n 字节；到末尾可返回更短或空串。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;ResultReader#R</span></dt><dd>接收者 $&amp;ResultReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;ResultReader#R</span></dt><dd>接收者 $&amp;ResultReader#R（独占借用）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -718,7 +738,7 @@
 <p>`$&amp;ResultWriter#W` 上的操作：刷出结果。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>io.WriteResult — 该类型的值</p>
@@ -730,7 +750,7 @@
 <p>`$&amp;ResultWriter#W` 上的操作：写入结果。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（独占借用）</dd>
 <dt><code>data</code> <span class="type">string</span></dt><dd>数据（string）</dd>
 </dl>
 <h3>返回</h3>
@@ -767,7 +787,7 @@
 <p>`$&amp;ResultWriter#W` 上的操作：清空内部状态，可再写入或读取。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（独占借用）</dd>
 <dt><code>dst</code> <span class="type">W</span></dt><dd>目标（W）</dd>
 </dl>
 </article>
@@ -778,7 +798,7 @@
 <p>`$&amp;ResultWriter#W` 上的操作：刷出缓冲。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -790,7 +810,7 @@
 <p>`$&amp;ResultWriter#W` 上的操作：写入字符串。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;ResultWriter#W</span></dt><dd>接收者 $&amp;ResultWriter#W（独占借用）</dd>
 <dt><code>data</code> <span class="type">string</span></dt><dd>数据（string）</dd>
 </dl>
 <h3>返回</h3>
@@ -895,7 +915,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：读一个 UTF-8 rune。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>RuneRead — 该类型的值</p>
@@ -907,7 +927,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：读一个字节；失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -919,7 +939,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：读取字符串。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 <dt><code>delim</code> <span class="type">int</span></dt><dd>delim（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -932,7 +952,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：执行 read line 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
@@ -944,7 +964,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：预看。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -957,7 +977,7 @@
 <p>`$&amp;BufferedWriter#W` 上的操作：刷出缓冲。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -969,7 +989,7 @@
 <p>`$&amp;BufferedWriter#W` 上的操作：写入字符串，返回写入的字节数。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（独占借用）</dd>
 <dt><code>s</code> <span class="type">string</span></dt><dd>源字符串（string）</dd>
 </dl>
 <h3>返回</h3>
@@ -982,7 +1002,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：已缓冲量。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -994,7 +1014,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：丢弃。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -1007,7 +1027,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：读到 delim（含 delim）。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 <dt><code>delim</code> <span class="type">int</span></dt><dd>delim（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -1020,7 +1040,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：把最近读出的一字节退回。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -1032,7 +1052,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：把最近读出的 rune 退回。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -1044,7 +1064,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：读取切片。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 <dt><code>delim</code> <span class="type">int</span></dt><dd>delim（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -1057,7 +1077,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：清空内部状态，可再写入或读取。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 <dt><code>src</code> <span class="type">R</span></dt><dd>源数据（R）</dd>
 </dl>
 </article>
@@ -1068,7 +1088,7 @@
 <p>`$&amp;BufferedWriter#W` 上的操作：写入一个字节。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（独占借用）</dd>
 <dt><code>c</code> <span class="type">int</span></dt><dd>字节或字符码（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -1081,7 +1101,7 @@
 <p>`$&amp;BufferedWriter#W` 上的操作：写入一个 rune 的 UTF-8 编码。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（独占借用）</dd>
 <dt><code>r</code> <span class="type">int</span></dt><dd>rune（Unicode 码点）（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -1094,7 +1114,7 @@
 <p>`$&amp;BufferedWriter#W` 上的操作：已缓冲量。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -1142,7 +1162,7 @@
 <p>`$&amp;BufferedWriter#W` 上的操作：清空内部状态，可再写入或读取。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（独占借用）</dd>
 <dt><code>dst</code> <span class="type">W</span></dt><dd>目标（W）</dd>
 </dl>
 </article>
@@ -1153,7 +1173,7 @@
 <p>`$&amp;BufferedReader#R` 上的操作：最多读 n 字节；到末尾可返回更短或空串。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;BufferedReader#R</span></dt><dd>接收者 $&amp;BufferedReader#R（独占借用）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -1166,7 +1186,7 @@
 <p>`$&amp;BufferedWriter#W` 上的操作：写入字符串。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（可变借用）</dd>
+<dt><code>w</code> <span class="type">$&amp;BufferedWriter#W</span></dt><dd>接收者 $&amp;BufferedWriter#W（独占借用）</dd>
 <dt><code>data</code> <span class="type">string</span></dt><dd>数据（string）</dd>
 </dl>
 <h3>返回</h3>

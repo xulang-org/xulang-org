@@ -5,6 +5,28 @@
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#net/http</code></p>
 <p class="meta">counts: 21 函数, 49 方法, 9 类型, 0 常量, 0 方法集</p>
+<h2 id="quickstart">提供文本响应</h2>
+<p>使用 <code>net/http</code> 在请求处理函数中返回 HTTP 文本响应。</p>
+<p>此原生示例监听本机回环地址；按 Ctrl-C 停止。在另一终端运行 <code>curl http://127.0.0.1:8080/</code>。</p>
+<p>将完整程序保存为 <code>main.xu</code>，在本机运行 <code>xu run main.xu</code>。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#net/http
+
+fn hello(c http.Context) {
+    c.text(200, "hello\n") or (err) {
+        println(err.msg())
+        &lt;&lt;
+    }
+}
+
+fn main() int {
+    http.listen_and_serve_handler("127.0.0.1:8080", hello) or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre></div>
+<p>预期响应正文：<code>hello</code>，末尾有换行。</p>
 <p>服务端在连接接收、缓冲区和超时限额内并发派发完整请求。处理器可以重叠执行，共享可变状态须同步，并显式传递请求所有权。使用 <code>server_options()</code> 获取默认值，通过 <code>serve_with_options</code> 配置限额；响应短写会重试，空闲或不完整请求不会无限占用处理器。</p>
 <p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
 <section class="api-examples" id="examples">
@@ -387,7 +409,7 @@
 <p>`$&amp;Server` 上的操作：开始监听。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">$&amp;Server</span></dt><dd>接收者 $&amp;Server（可变借用）</dd>
+<dt><code>s</code> <span class="type">$&amp;Server</span></dt><dd>接收者 $&amp;Server（独占借用）</dd>
 <dt><code>addr</code> <span class="type">string</span></dt><dd>地址（string）</dd>
 </dl>
 <h3>返回</h3>
@@ -412,7 +434,7 @@
 <p>`$&amp;Server` 上的操作：关闭资源。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">$&amp;Server</span></dt><dd>接收者 $&amp;Server（可变借用）</dd>
+<dt><code>s</code> <span class="type">$&amp;Server</span></dt><dd>接收者 $&amp;Server（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -436,7 +458,7 @@
 <p>在 `$&amp;Response` 上执行 `get` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Response</span></dt><dd>接收者 $&amp;Response（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Response</span></dt><dd>接收者 $&amp;Response（独占借用）</dd>
 <dt><code>url</code> <span class="type">string</span></dt><dd>url（string）</dd>
 </dl>
 <h3>返回</h3>
@@ -449,7 +471,7 @@
 <p>在 `$&amp;Response` 上执行 `post` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Response</span></dt><dd>接收者 $&amp;Response（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Response</span></dt><dd>接收者 $&amp;Response（独占借用）</dd>
 <dt><code>url</code> <span class="type">string</span></dt><dd>url（string）</dd>
 <dt><code>body</code> <span class="type">&amp;string</span></dt><dd>正文（借用，调用方仍持有；类型 &amp;string）</dd>
 </dl>
@@ -505,7 +527,7 @@
 <p>`$&amp;Client` 上的操作：设置 jar。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（可变借用）</dd>
+<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（独占借用）</dd>
 <dt><code>j</code> <span class="type">cookiejar.Jar</span></dt><dd>下标（cookiejar.Jar）</dd>
 </dl>
 </article>
@@ -516,7 +538,7 @@
 <p>`$&amp;Client` 上的操作：设置 timeout。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（可变借用）</dd>
+<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（独占借用）</dd>
 <dt><code>ns</code> <span class="type">int</span></dt><dd>ns（int）</dd>
 </dl>
 </article>
@@ -527,7 +549,7 @@
 <p>`$&amp;Client` 上的操作：执行一次。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（可变借用）</dd>
+<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（独占借用）</dd>
 <dt><code>method</code> <span class="type">string</span></dt><dd>method（string）</dd>
 <dt><code>raw_url</code> <span class="type">string</span></dt><dd>raw_url（string）</dd>
 <dt><code>body</code> <span class="type">&amp;string</span></dt><dd>正文（借用，调用方仍持有；类型 &amp;string）</dd>
@@ -542,7 +564,7 @@
 <p>在 `$&amp;Client` 上执行 `get` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（可变借用）</dd>
+<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（独占借用）</dd>
 <dt><code>raw_url</code> <span class="type">string</span></dt><dd>raw_url（string）</dd>
 </dl>
 <h3>返回</h3>
@@ -555,7 +577,7 @@
 <p>在 `$&amp;Client` 上执行 `post` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（可变借用）</dd>
+<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（独占借用）</dd>
 <dt><code>raw_url</code> <span class="type">string</span></dt><dd>raw_url（string）</dd>
 <dt><code>body</code> <span class="type">&amp;string</span></dt><dd>正文（借用，调用方仍持有；类型 &amp;string）</dd>
 </dl>
@@ -569,7 +591,7 @@
 <p>`$&amp;Request` 上的操作：读出最多 max 字节。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>req</code> <span class="type">$&amp;Request</span></dt><dd>接收者 $&amp;Request（可变借用）</dd>
+<dt><code>req</code> <span class="type">$&amp;Request</span></dt><dd>接收者 $&amp;Request（独占借用）</dd>
 <dt><code>fd</code> <span class="type">int</span></dt><dd>文件描述符（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -582,7 +604,7 @@
 <p>`$&amp;Request` 上的操作：读取超时。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>req</code> <span class="type">$&amp;Request</span></dt><dd>接收者 $&amp;Request（可变借用）</dd>
+<dt><code>req</code> <span class="type">$&amp;Request</span></dt><dd>接收者 $&amp;Request（独占借用）</dd>
 <dt><code>fd</code> <span class="type">int</span></dt><dd>文件描述符（int）</dd>
 <dt><code>timeout_ns</code> <span class="type">int</span></dt><dd>超时（纳秒）（int）</dd>
 </dl>
@@ -996,7 +1018,7 @@
 <p>`$&amp;Header` 上的操作：相加。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>h</code> <span class="type">$&amp;Header</span></dt><dd>接收者 $&amp;Header（可变借用）</dd>
+<dt><code>h</code> <span class="type">$&amp;Header</span></dt><dd>接收者 $&amp;Header（独占借用）</dd>
 <dt><code>key</code> <span class="type">&amp;string</span></dt><dd>键（借用，调用方仍持有；类型 &amp;string）</dd>
 <dt><code>value</code> <span class="type">&amp;string</span></dt><dd>value（借用，调用方仍持有；类型 &amp;string）</dd>
 </dl>
@@ -1008,7 +1030,7 @@
 <p>删除指定键或标识对应的数据项。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>h</code> <span class="type">$&amp;Header</span></dt><dd>接收者 $&amp;Header（可变借用）</dd>
+<dt><code>h</code> <span class="type">$&amp;Header</span></dt><dd>接收者 $&amp;Header（独占借用）</dd>
 <dt><code>key</code> <span class="type">&amp;string</span></dt><dd>键（借用，调用方仍持有；类型 &amp;string）</dd>
 </dl>
 </article>
@@ -1019,7 +1041,7 @@
 <p>在 `$&amp;Header` 上执行 `set` 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>h</code> <span class="type">$&amp;Header</span></dt><dd>接收者 $&amp;Header（可变借用）</dd>
+<dt><code>h</code> <span class="type">$&amp;Header</span></dt><dd>接收者 $&amp;Header（独占借用）</dd>
 <dt><code>key</code> <span class="type">&amp;string</span></dt><dd>键（借用，调用方仍持有；类型 &amp;string）</dd>
 <dt><code>value</code> <span class="type">&amp;string</span></dt><dd>value（借用，调用方仍持有；类型 &amp;string）</dd>
 </dl>
@@ -1105,7 +1127,7 @@
 <p>`$&amp;Client` 上的操作：设置 download progress。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（可变借用）</dd>
+<dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>接收者 $&amp;Client（独占借用）</dd>
 <dt><code>report</code> <span class="type">fn(int, int)</span></dt><dd>report（函数值；类型 fn(int, int)）</dd>
 </dl>
 </article>

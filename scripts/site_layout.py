@@ -30,7 +30,7 @@ DOC_GROUPS = [
         ('vscode', 'VS Code', 'VS Code'), ('status', '限制与现状', 'Limitations'),
     ]),
 ]
-API_GROUPS = [
+_CURATED_API_GROUPS = [
     ('xi-api', 'API', 'API', ['']),
     ('xi-cpu', '核心', 'Core', 'errors fmt flag cmp context sync time runtime maps slices sort testing testing/fstest xacp'.split()),
     ('xi-file', '文本', 'Text', 'strings bytes strconv unicode regexp html'.split()),
@@ -44,6 +44,36 @@ API_GROUPS = [
         'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite websocket zookeeper'.split()]),
     ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/widgets ui/webview'.split()),
 ]
+
+
+def api_groups(root: Path | None = None) -> list[tuple[str, str, str, list[str]]]:
+    """Discover released API pages while preserving curated groups and order."""
+    api_root = (root or Path(__file__).resolve().parents[1]) / 'content/en/api'
+    on_disk = {
+        page.relative_to(api_root).with_suffix('').as_posix()
+        for page in api_root.rglob('*.html')
+        if page.name != 'index.html' and 'preview' not in page.relative_to(api_root).parts
+    }
+    groups = [
+        (icon, zh, en, [package for package in packages if not package or package in on_disk])
+        for icon, zh, en, packages in _CURATED_API_GROUPS
+    ]
+    namespaces = {
+        package.partition('/')[0]: index
+        for index, (_icon, _zh, _en, packages) in enumerate(_CURATED_API_GROUPS)
+        for package in packages if package
+    }
+    listed = {package for _icon, _zh, _en, packages in groups for package in packages}
+    other = []
+    for package in sorted(on_disk - listed):
+        index = namespaces.get(package.partition('/')[0])
+        (groups[index][3] if index is not None else other).append(package)
+    if other:
+        groups.append(('xi-package', '其他', 'Other', other))
+    return [group for group in groups if group[3]]
+
+
+API_GROUPS = api_groups()
 
 SOCIAL_PROFILES = [
     ('GitHub', 'xulang-org', 'https://github.com/xulang-org', 'github'),
@@ -106,10 +136,10 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
                     for c in catalog['components'] if c['group'] == category
                 ]))
     elif rest == '/api' or rest.startswith('/api/'):
-        for icon, zh, english, packages in API_GROUPS:
+        for icon, zh, english, packages in api_groups(root):
             groups.append((icon, english if en else zh, [
                 (prefix + '/api' + ('/' + package if package else ''),
-                 '#' + package.removeprefix('packages/') if package else 'Index')
+                 '#' + package.removeprefix('packages/') if package else ('Index' if en else '索引'))
                 for package in packages
             ]))
     elif rest == '/blog' or rest.startswith('/blog/'):

@@ -1,16 +1,134 @@
 <!--title: Memory-->
-<p class='crumb'><a href='/en/docs/start'>Docs</a> / Language</p><h1>Memory</h1>
-<p>An owning value has one owner. Pass/return/store by value <strong>moves</strong>. Drop is deterministic at end of scope. Use-after-move is a compile error.</p>
+<p class="crumb"><a href="/en/docs/start">Docs</a> / Language</p>
+<h1>Memory</h1>
+<p>Xu uses ownership inference and deterministic scope cleanup, without a garbage collector. An owning value has one owner; a borrow grants temporary access without transferring that ownership. These rules do not prove that foreign code or native host resources are leak-free.</p>
+<p>The examples below were checked with the official SDK v0.10.12. Save each block as a separate <code>.xu</code> file. Use <code>xu check</code> for complete programs and <code>xu check --lib</code> for function-only examples. Diagnostic text below is a substring of actual compiler output. Run examples with <code>fn main</code>; the file example requires the local SDK.</p>
 <table>
-<tr><th>Form</th><th>Meaning</th></tr>
-<tr><td>by-value <code>string</code> / <code>[]T</code></td><td>move</td></tr>
-<tr><td><code>&amp;x</code></td><td>shared borrow</td></tr>
-<tr><td><code>$&amp;x</code> (<code>x</code> must be declared <code>$x</code>)</td><td>exclusive borrow</td></tr>
-<tr><td><code>*r</code></td><td>deref a scalar (writes need <code>$&amp;</code>)</td></tr>
+<tr><th>Form</th><th>Permission / lifetime</th></tr>
+<tr><td>Owning <code>string</code> / <code>[]T</code> by value</td><td>Moves ownership; the old binding becomes unavailable.</td></tr>
+<tr><td><code>&amp;x</code></td><td>Shared, read-only access; several shared borrows may coexist.</td></tr>
+<tr><td><code>$x</code>, then <code>$&amp;x</code></td><td>Writable binding, then exclusive writable access.</td></tr>
+<tr><td><code>*r</code></td><td>Read a scalar through a reference; writing requires an exclusive reference.</td></tr>
 </table>
-<p>While a shared borrow is live you cannot write / move / take <code>$&amp;</code>. There is no <code>unsafe</code> keyword. Hosted targets reject volatile stores to arbitrary addresses.</p>
-<h2>Borrow Diagnostics in 0.9.4</h2>
-<p>Borrow checking traverses nested expressions. For example, <code>f($&amp;v, &amp;v)</code> takes exclusive and shared borrows of <code>v</code> simultaneously and is rejected even inside <code>int(f64(f($&amp;v, &amp;v)) * 32.0)</code>. Pass separate values, or split the operations so mutable use ends before taking a shared borrow.</p>
-<p>Borrows taken inside a loop remain live across its back edge; a later iteration that conflicts with a still-live borrow is rejected. If upgrading exposes these diagnostics, adjust borrow scopes or ownership transfers. See the <a href="/en/blog/xu-0-9-4">0.9.4 release announcement</a> for migration details.</p>
-<p>File and Conn are affine resources: moves transfer ownership and scope exit closes them. Their native handles are package-private. Borrow the resource for I/O and observe explicit EOF/error data and write-progress results when using the progress APIs.</p>
-<p><a href="/en/api/io">I/O API</a> · <a href="/en/api/os">OS API</a></p>
+<p>Scalar values such as <code>int</code> copy. Channel values are shared handles to the same runtime channel; passing a channel does not consume its sender's handle. See <a href="/en/docs/lang/concurrency">Concurrency</a> for the boundary between borrowing and sending.</p>
+
+<h2 id="move">Move: use the new owner</h2>
+<p>Assignment, by-value arguments, returns and stores into owning slots transfer an owning value. Use the destination after the move. Clone only through an API that explicitly provides a copy.</p>
+<pre id="move-pass"><code class="language-xu">@main
+
+fn main() int {
+    text := &quot;owned&quot;
+    next := text
+    println(next)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>owned</code>.</p>
+<pre id="move-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    text := &quot;owned&quot;
+    next := text
+    println(text)
+    println(next)
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>use of moved value &#x27;text&#x27;</code>.</p>
+
+<h2 id="shared">Share: read without changing the owner</h2>
+<p>Shared references may coexist. While a shared loan is live, the owner cannot be changed, moved or exclusively borrowed. A loan can end at its last use, before the enclosing scope ends: the assignment below follows both reads.</p>
+<pre id="shared-pass"><code class="language-xu">@main
+
+fn main() int {
+    $value := 1
+    first := &amp;value
+    second := &amp;value
+    println(*first + *second)
+    value = 2
+    println(value)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>2</code>, then <code>2</code>.</p>
+<pre id="shared-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    $value := 1
+    view := &amp;value
+    value = 2
+    println(*view)
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>cannot assign to &#x27;value&#x27; because it is borrowed</code>.</p>
+
+<h2 id="exclusive">Exclusive: one writer at a time</h2>
+<p>Declare a writable owner with <code>$value</code>, then take <code>$&amp;value</code>. A live exclusive loan excludes other access to the owner. After the writer's last use, a shared read is allowed. Two overlapping writers are rejected.</p>
+<pre id="exclusive-pass"><code class="language-xu">@main
+
+fn main() int {
+    $value := 1
+    writer := $&amp;value
+    *writer = 2
+    println(*writer)
+    view := &amp;value
+    println(*view)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>2</code>, then <code>2</code>.</p>
+<pre id="exclusive-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    $value := 1
+    first := $&amp;value
+    second := $&amp;value
+    println(*first)
+    println(*second)
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>cannot borrow &#x27;value&#x27; as mutable because it is also borrowed</code>.</p>
+
+<h2 id="scope-release">Scope release: the owner ends, its borrows cannot escape</h2>
+<p>Ordinary owned values are released on scope exit, including normal returns. Moving transfers that cleanup responsibility. Resource types with a compiler-managed drop hook, such as <code>os.File</code>, close their resource as a fallback; call <code>File.close()</code> explicitly when you need to observe a close error. The fallback suppresses close errors.</p>
+<p><strong>Local SDK only.</strong> This program creates <code>scope-release.txt</code> in the current directory. <code>write_once</code> borrows the file for writing; its local file owner is cleaned up when the function returns.</p>
+<pre id="scope-pass" class="xu-local-only"><code class="language-xu">@main
+
+#os
+fn write_once() int {
+    file := os.create(&quot;scope-release.txt&quot;) or &gt;&gt;
+    file.write(&quot;scope&quot;) or &gt;&gt;
+    &lt;&lt; 0
+}
+fn main() int {
+    write_once() or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println(&quot;scope ended&quot;)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>scope ended</code>.</p>
+<p>A returned reference must be tied to a borrowed input. It cannot refer to a local value that ends on return, even if the function also has a reference parameter.</p>
+<pre id="scope-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn dangling(seed &amp;int) &amp;int {
+    value := 1
+    &lt;&lt; &amp;value
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>cannot return a reference to local data</code>.</p>
+
+<h2 id="native-dispose">Native handles: follow the explicit disposal contract</h2>
+<p>Scope cleanup of Xu values does not replace every native resource API. For example, the caller must explicitly dispose a <code>ui/draw.Surface</code> when it is no longer needed, including error and cancellation paths. Accepted frames retain their immutable pixels across disposal; retiring the caller's handle does not erase an accepted frame.</p>
+<p><strong>Native integration fragment; no browser Run.</strong> Given a live surface from the host, propagate disposal errors. The helper needs exclusive access because disposal updates the handle.</p>
+<pre id="dispose-pass" class="xu-local-only"><code class="language-xu">@main
+
+#ui/draw
+fn retire(surface $&amp;draw.Surface) int {
+    &lt;&lt; surface.dispose() or &gt;&gt;
+}</code></pre>
+<p><strong>Expected xu check --lib: pass.</strong></p>
+<p>A shared reference cannot call this writable method:</p>
+<pre id="dispose-fail" class="xu-local-only"><code class="language-xu">@main
+
+#ui/draw
+fn retire(surface &amp;draw.Surface) int {
+    &lt;&lt; surface.dispose() or &gt;&gt;
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>through a shared reference</code>.</p>
+<p>Omitting disposal is not necessarily a compile error: <code>xu check</code> is not a native leak detector. <strong>To be verified:</strong> this helper is type checked, but allocation and disposal against a live native renderer, including error/cancellation cleanup, have not been run here.</p>
+<p>The hosted scheduler's coroutine stacks and channel metadata have a separate process-lifetime policy. Scope exit does not promise immediate reclamation of every runtime allocation. FFI callers must also follow each foreign API's ownership contract.</p>
+<p><a href="/en/api/os">OS API</a> · <a href="/en/api/io">I/O API</a> · <a href="/en/api/ui/draw">Drawing API</a> · <a href="/en/docs/lang/concurrency">Concurrency</a></p>

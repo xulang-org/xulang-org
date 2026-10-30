@@ -5,7 +5,36 @@
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#database/sql</code></p>
 <p class="meta">counts: 9 fns, 63 methods, 18 types, 8 consts, 0 ifaces</p>
-<p class="lead">Database API: open, pooling, Conn, transactions, Stmt, and Rows; concrete drivers come from external packages.</p>
+<h2 id="quickstart">Insert a row with SQLite</h2>
+<p>Use <code>database/sql</code> with a concrete driver to manage a connection pool and execute SQL.</p>
+<p><code>open</code> takes a driver object and a driver-specific DSN; it opens connections lazily. This example uses SQLite in memory, checks operation errors and closes the pool explicitly.</p>
+<p>Prerequisite: use the official packages checkout and build the <a href="/en/docs/packages#sqlite-native">SQLite native bridge</a> for your target. Add this dependency to your project’s <code>xu.xun</code>, replacing the path with that checkout:</p>
+<pre><code class="language-xun">require:
+  "github.com/xulang-org/packages": file:/path/to/packages</code></pre>
+<p>See the <a href="/en/docs/packages">MySQL quickstart</a> for a server-backed driver and its DSN. MySQL service integration here: 待验 (not verified).</p>
+<p>Save the complete program as <code>main.xu</code> and check it with <code>xu check main.xu</code>. One-step linking of native static libraries is supported on macOS arm64/x64, where you can use <code>xu run main.xu</code>; Linux requires object emission and a separate linker step. This example passed the SDK check; native execution is 待验 (not verified).</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#database/sql
+sqlite #github.com/xulang-org/packages/sqlite
+
+fn main() int {
+    $db := sql.open(sqlite.driver(), ":memory:")
+    db.exec("CREATE TABLE notes (body TEXT)") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    result := db.exec("INSERT INTO notes VALUES ('hello')") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println(result.rows_affected())
+    db.close() or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre></div>
+<p>Expected output: <code>1</code> (the inserted row count).</p>
 <p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
 <section class="api-examples" id="examples">
 <h2>Examples</h2>
@@ -235,7 +264,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_DEFAULT</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_DEFAULT = 0</code></pre></div>
 <h3>Purpose</h3>
-<p>Constant `LEVEL_DEFAULT`, defining protocol or algorithm parameters.</p>
+<p>Default transaction isolation level determined by the driver or server.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
@@ -243,7 +272,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_READ_UNCOMMITTED</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_READ_UNCOMMITTED = 1</code></pre></div>
 <h3>Purpose</h3>
-<p>Constant `LEVEL_READ_UNCOMMITTED`, defining protocol or algorithm parameters.</p>
+<p>Read Uncommitted transaction isolation level permitting dirty reads.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
@@ -251,7 +280,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_READ_COMMITTED</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_READ_COMMITTED = 2</code></pre></div>
 <h3>Purpose</h3>
-<p>Constant `LEVEL_READ_COMMITTED`, defining protocol or algorithm parameters.</p>
+<p>Read Committed transaction isolation level preventing dirty reads.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
@@ -267,7 +296,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_REPEATABLE_READ</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_REPEATABLE_READ = 4</code></pre></div>
 <h3>Purpose</h3>
-<p>Constant `LEVEL_REPEATABLE_READ`, defining protocol or algorithm parameters.</p>
+<p>Repeatable Read transaction isolation level preventing non-repeatable reads.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
@@ -283,7 +312,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_SERIALIZABLE</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_SERIALIZABLE = 6</code></pre></div>
 <h3>Purpose</h3>
-<p>Constant `LEVEL_SERIALIZABLE`, defining protocol or algorithm parameters.</p>
+<p>Serializable transaction isolation level; support depends on the driver and database.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
@@ -670,11 +699,11 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(d driver.Driver, name <span class="syn-type">string</span>) DB</code></pre></div>
 <h3>Purpose</h3>
-<p>Initialize database connection pool DB with driver name and DSN; does not dial immediately.</p>
+<p>Create a database pool DB from a driver object and DSN; open connections lazily on first use.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>d</code> <span class="type">driver.Driver</span></dt><dd>d (driver.Driver)</dd>
-<dt><code>name</code> <span class="type">string</span></dt><dd>name (string)</dd>
+<dt><code>d</code> <span class="type">driver.Driver</span></dt><dd>concrete driver object, such as sqlite.driver() or mysql.driver()</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>data source name (DSN) interpreted by the driver</dd>
 </dl>
 <h3>Returns</h3>
 <p>database pool instance DB</p>
