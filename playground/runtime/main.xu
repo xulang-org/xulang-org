@@ -6,51 +6,63 @@
 #xu/types
 
 pub fn xu_eval(ptr int, length int) int {
-    mut source := make_string(length)
+    m := xu_prepare(ptr, length)
+    << vm_run(&m)
+}
+
+// Separate host entry points let the worker retain checked MIR between inputs
+// and measure compiler time independently from interpreted execution.
+pub fn xu_prepare(ptr int, length int) types.Mir {
+    $source := make_string(length)
     for i in 0:length{source[i] = wasm_mem_load8(ptr + i)}
-    mut tokens :=[]ast.Token{}
-    mut prepared := source + ""
-    mut first := 0
+    $tokens :=[]ast.Token{}
+    $prepared := source + ""
+    $first := 0
     if source.len >= 3 && source[0] == 239 && source[1] == 187 && source[2] == 191 { first = 3 }
     while first < source.len && (source[first] == 32 || source[first] == 10 || source[first] == 13 || source[first] == 9) { first += 1 }
     prepared = source[first:source.len]
     if first >= source.len || source[first] != 64 { prepared = "@main\n" + prepared }
-    scanner.lex(prepared, mut &tokens, "playground.xu")
+    scanner.lex(prepared, $&tokens, "playground.xu")
     widget_flags := playground_widget_flags(&tokens)
-    mut p := parser.new_parser(tokens)
+    $p := parser.new_parser(tokens)
     p.file_name = "playground.xu"
     p.parse_module()
     p.file_names.push("playground.xu")
     p.next_file = 1
-    playground_merge(mut &p, playground_std_errors(), "errors.xu")
-    playground_merge(mut &p, playground_std_runtime(), "runtime.xu")
-    playground_merge(mut &p, playground_std_draw(), "ui/draw.xu")
-    playground_merge(mut &p, playground_std_browser(), "browser.xu")
-    playground_merge(mut &p, playground_std_text_input(), "ui/browser_text_input.xu")
-    playground_merge(mut &p, playground_std_frame(), "ui/frame.xu")
-    playground_merge(mut &p, playground_std_desktop_draw_types(), "ui/draw_types.xu")
-    playground_merge(mut &p, playground_std_desktop_ui(), "ui/input.xu")
-    playground_merge(mut &p, playground_std_desktop_math(), "math.xu")
-    playground_merge(mut &p, playground_std_desktop_time(), "time.xu")
-    playground_merge(mut &p, playground_std_clock(), "browser_clock.xu")
-    playground_merge(mut &p, playground_std_desktop_layout(), "ui/layout.xu")
-    playground_merge(mut &p, playground_std_desktop_utf8(), "unicode/utf8.xu")
-    playground_merge(mut &p, playground_std_desktop_codec(), "ui/codec.xu")
-    playground_merge_widget_extensions(mut &p,&widget_flags)
-    mut c := types.Checker{}
-    mut m := types.empty_mir()
+    playground_merge($&p, playground_std_errors(), "errors.xu")
+    playground_merge($&p, playground_std_runtime(), "runtime.xu")
+    playground_merge($&p, playground_std_draw(), "ui/draw.xu")
+    playground_merge($&p, playground_std_browser(), "browser.xu")
+    playground_merge($&p, playground_std_text_input(), "ui/browser_text_input.xu")
+    playground_merge($&p, playground_std_frame(), "ui/frame.xu")
+    playground_merge($&p, playground_std_desktop_draw_types(), "ui/draw_types.xu")
+    playground_merge($&p, playground_std_desktop_ui(), "ui/input.xu")
+    playground_merge($&p, playground_std_desktop_math(), "math.xu")
+    playground_merge($&p, playground_std_desktop_time(), "time.xu")
+    playground_merge($&p, playground_std_clock(), "browser_clock.xu")
+    playground_merge($&p, playground_std_desktop_layout(), "ui/layout.xu")
+    playground_merge($&p, playground_std_desktop_utf8(), "unicode/utf8.xu")
+    playground_merge($&p, playground_std_desktop_codec(), "ui/codec.xu")
+    playground_merge_widget_extensions($&p, &widget_flags)
+    $c := types.Checker{}
+    $m := types.empty_mir()
     m.opt_level = 0
-    mut fns :=[]types.CFn{}
-    types.run_checker(mut &c, &p, 11, 0, 0,[]string {},[]string {}, 1, mut &m,[]string {}, "", false, false, 1, false, mut &fns)
-    << vm_run(&m)
+    $fns :=[]types.CFn{}
+    types.run_checker($&c, &p, 11, 0, 0,[]string {},[]string {}, 1, $&m,[]string {}, "", false, false, 1, false, $&fns)
+    vm_prepare(&m)
+    << m
 }
+
+pub fn xu_execute(m &types.Mir) int { << vm_run(m) }
+pub fn xu_start(m &types.Mir) Eval { << vm_start(m) }
+pub fn xu_drive(m &types.Mir, e $&Eval) int { << vm_drive(m, e) }
 
 fn main() int { << 0}
 
-fn playground_merge(p &mut parser.Parser, source string, name string) {
-    mut tokens := []ast.Token{}
-    scanner.lex(source, mut &tokens, name + "")
-    mut part := parser.new_parser(tokens)
+fn playground_merge(p $&parser.Parser, source string, name string) {
+    $tokens := []ast.Token{}
+    scanner.lex(source, $&tokens, name + "")
+    $part := parser.new_parser(tokens)
     part.file_name = name + ""
     part.parse_module()
     p.file_names.push(name + "")

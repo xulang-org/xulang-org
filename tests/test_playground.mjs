@@ -147,7 +147,7 @@ test('IEEE scalar arithmetic, casts, comparisons, NaN, and infinity run in WASM'
   const runtime = await createRuntime(bytes);
   const result = runtime.run(`@main
 fn main() int {
-    mut x := 1.5
+    $x := 1.5
     x += 2.25
     assert(x == 3.75)
     assert(-x < 0.0)
@@ -161,7 +161,7 @@ fn main() int {
     assert(inf > 1000000000.0)
     assert(nan != nan)
     assert(!(nan < 1.0) && !(nan >= 1.0))
-    mut values := [1.25, 2.5]
+    $values := [1.25, 2.5]
     values[0] += 0.75
     assert(values[0] == 2.0)
     println(x)
@@ -201,12 +201,12 @@ fn main() int {
 test('tutorial 06 ownership and string push_str', async () => {
   const runtime = await createRuntime(bytes);
   const result = runtime.run(`@main
-fn append_bang(s &mut string) {
+fn append_bang(s $&string) {
     s.push_str("!")
 }
 fn main() int {
-    mut owned := "hi"
-    append_bang(mut &owned)
+    $owned := "hi"
+    append_bang($&owned)
     println(owned)
     << 0
 }`);

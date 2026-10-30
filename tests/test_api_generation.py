@@ -61,8 +61,61 @@ class APIGenerationTests(unittest.TestCase):
             self.assertTrue(examples.get(name), name)
         collected = {ex.path for group in examples.values() for ex in group}
         for name in ('draw_gallery', 'widgets', 'text_input', 'desktop_services', 'multiwindow',
-                     'workbench', 'editor_workbench', 'style_gallery', 'webview_requests', 'controls_gallery'):
+                     'workbench', 'editor_workbench', 'style_gallery', 'webview_requests', 'controls_gallery',
+                     'component_workshop', 'component_catalog', 'interaction_gallery', 'webview_component', 'xacp_screen'):
             self.assertIn(f'examples/16_ui_webview/{name}/main.xu', collected)
+
+    def test_multifile_examples_show_registration_sources_after_inline_limit(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            checkout, site = root / 'examples', root / 'site'
+            project = 'examples/16_ui_webview/component_workshop/'
+            sources = {
+                project + 'main.xu': '@main\n#ui/widgets\nfn main() { widgets.screen() }\n',
+                project + 'events.xu': '@main\n#ui/widgets\nfn register() { d.on(1, widgets.ACTION_ACTIVATE, save) }\n',
+                project + 'style.xu': '@main\n#ui/widgets\nfn appearance() { widgets.dark_styles() }\n',
+            }
+            for path, source in sources.items():
+                target = checkout / path
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_text(source)
+            (checkout / project / 'xu.xun').write_text('xu: !ver 0.10.13-dev.1\n')
+            (site / 'templates').mkdir(parents=True)
+            (site / 'templates/api-examples.json').write_text(json.dumps(list(sources)))
+            api.refresh_examples(str(site), str(checkout), 'a' * 40, '0.10.12')
+            package = api.Package('ui/widgets', '#ui/widgets')
+            examples = api.load_examples(str(site), [package], '0.10.12')['ui/widgets']
+            self.assertEqual(len(examples), 1)
+            self.assertIn('ACTION_ACTIVATE', examples[0].uses['ui/widgets'])
+            self.assertEqual(examples[0].required_sdk, '0.10.13-dev.1')
+            plain = api.Example('examples/plain/main.xu', '#ui/widgets\n', 'a' * 40, {})
+            for lang in ('en', 'zh'):
+                for group in (examples, [plain] * 3 + examples):
+                    page = api.render_examples(group, lang)
+                    self.assertIn('0.10.13-dev.1', page)
+                    self.assertIn('d.on(', page)
+                    self.assertIn('events.xu', page)
+                    self.assertIn('style.xu', page)
+                    self.assertIn('Complete project' if lang == 'en' else '完整工程', page)
+            asset = site / 'www/api-examples/sources' / (project + 'events.xu')
+            asset.write_text('tampered companion')
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                api.load_examples(str(site), [package], '0.10.12')
+
+    def test_working_tree_examples_label_sdk_and_link_companions(self):
+        main = api.Example('examples/ui/main.xu', '#ui/widgets\n', 'b' * 40,
+                           {'ui/widgets': {'action_dispatcher'}}, 'working-tree',
+                           ('examples/ui/events.xu', 'examples/ui/style.xu'))
+        committed = api.Example('examples/other/main.xu', '#ui/widgets\n', 'a' * 40,
+                                {'ui/widgets': {'button'}})
+        for lang in ('en', 'zh'):
+            # Cover inline and overflow downloads without assuming snapshots stay uncommitted forever.
+            for group in ([main], [committed] * 3 + [main]):
+                page = api.render_examples(group, lang)
+                self.assertIn('ActionDispatcher', page)
+                self.assertNotIn(main.project_url, page)
+                for companion in main.companions:
+                    self.assertIn('href="/api-examples/sources/' + companion + '" download', page)
 
     def test_example_import_aliases_ignore_comments_and_strings(self):
         uses = api.example_uses('''@main
@@ -80,6 +133,36 @@ fn main() {
 }
 ''')
         self.assertEqual(uses, {'io': {'read'}, 'github.com/xulang-org/packages/mysql': {'driver'}})
+
+    def test_scoped_refresh_preserves_other_sources_and_immutable_refs(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            site, checkout = root / 'site', root / 'checkout'
+            paths = ['examples/one/main.xu', 'examples/two/main.xu', 'examples/one/tokens/mod.xu']
+            (site / 'templates').mkdir(parents=True)
+            (site / 'templates/api-examples.json').write_text(json.dumps(paths))
+            for path in paths:
+                source = checkout / path
+                source.parent.mkdir(parents=True, exist_ok=True)
+                source.write_text('@main\n#io\nfn main() { io.read() }\n')
+            api.refresh_examples(str(site), str(checkout), 'a' * 40, '0.10.12')
+            (checkout / paths[0]).write_text('@main\n#io\nfn main() { io.write() }\n')
+            # A scoped refresh must not read the other project from the checkout.
+            (checkout / paths[1]).unlink()
+            api.refresh_examples(str(site), str(checkout), 'b' * 40, '0.10.12', ['examples/one'])
+            examples = api.load_examples(str(site), [api.Package('io', '#io')], '0.10.12')['io']
+            by_path = {example.path: example for example in examples}
+            self.assertEqual(by_path[paths[0]].ref, 'b' * 40)
+            self.assertEqual(by_path[paths[1]].ref, 'a' * 40)
+            self.assertEqual(by_path[paths[2]].ref, 'b' * 40)
+            self.assertIn('io.read()', by_path[paths[1]].source)
+            with self.assertRaisesRegex(ValueError, 'unknown example project'):
+                api.refresh_examples(str(site), str(checkout), 'b' * 40, '0.10.12', ['examples/missing'])
+            with self.assertRaisesRegex(ValueError, 'selected SDK'):
+                api.refresh_examples(str(site), str(checkout), 'b' * 40, '0.10.13', ['examples/one'])
+            (site / 'www/api-examples/sources' / paths[1]).write_text('tampered')
+            with self.assertRaisesRegex(ValueError, 'checksum mismatch'):
+                api.refresh_examples(str(site), str(checkout), 'b' * 40, '0.10.12', ['examples/one'])
 
     def test_bundled_examples_preserve_code_and_survive_without_checkout(self):
         class Code(HTMLParser):
@@ -174,7 +257,7 @@ pub struct Options {
     pub:
     size int
 }
-pub fn read#T: Reader(src &mut T) string {
+pub fn read#T: Reader(src $&T) string {
     << src.read_n(1)
 }
 fn private_helper() {}

@@ -12,21 +12,12 @@
 #unicode/utf8
 #ui/internal/codec
 
-// Upstream: src/ui/widgets/breadcrumbs.xu
-fn (crumbs &Breadcrumbs) hit(x f64,y f64) int {
-    if !crumbs.bounds().contains(x,y) || crumbs.widths.len != crumbs.items.len { << -1 }
-    if crumbs.collapsed && crumbs.overflow_bounds().contains(x,y) { << -2 }
-    for i in 0:crumbs.items.len - 1 { rect := crumbs.item_bounds(i) or >>
-        if rect.contains(x,y) { << i } }
-    << -1
-}
-
 // Upstream: src/ui/widgets/breadcrumb_overflow.xu
-fn (crumbs &mut Breadcrumbs) paint_overflow(frame &mut draw.Frame,styles &Styles,c &ControlStyle) int {
+fn (crumbs $&Breadcrumbs) paint_overflow(frame $&draw.Frame,styles &Styles,c &ControlStyle) int {
     if !crumbs.collapsed { << 0 }
     b := crumbs.overflow_bounds()
     if crumbs.hot == -2 { rounded_fill(frame,&b,4.0*styles.density,c.palette.hovered) or >> }
-    labels := mut &crumbs.labels
+    labels := $&crumbs.labels
     labels.paint_text(512,&"…",frame,&b,styles,c,0) or >>
     x := b.x+b.width+crumbs.gap*0.5
     y := b.y+b.height*0.5
@@ -36,7 +27,7 @@ fn (crumbs &mut Breadcrumbs) paint_overflow(frame &mut draw.Frame,styles &Styles
 }
 
 // Upstream: src/ui/widgets/breadcrumb_overflow.xu
-fn (crumbs &mut Breadcrumbs) update_overflow(styles &Styles,c &ControlStyle) int {
+fn (crumbs $&Breadcrumbs) update_overflow(styles &Styles,c &ControlStyle) int {
     b := crumbs.bounds()
     crumbs.collapsed=crumbs.extent>b.width && crumbs.items.len>2
     crumbs.first_visible=0
@@ -44,21 +35,187 @@ fn (crumbs &mut Breadcrumbs) update_overflow(styles &Styles,c &ControlStyle) int
         root_width := math.min(crumbs.widths[0],b.width*0.25)
         available := math.max(0.0,b.width-root_width-crumbs.gap*2.0-28.0)
         first := crumbs.items.len-1
-        mut used := crumbs.widths[first]
-        mut start := first
+        $used := crumbs.widths[first]
+        $start := first
         while start>1 && used+crumbs.gap+crumbs.widths[start-1]<=available {
             used=used+crumbs.gap+crumbs.widths[start-1]
             start-=1
         }
         crumbs.first_visible=start
     }
-    mut shown := []int{}
+    $shown := []int{}
     for i in 0:crumbs.items.len-1 { shown.push(i) }
     crumbs.history.shown=shown
     crumbs.history.anchor=copy_rect(&b)
-    history := mut &crumbs.history
+    history := $&crumbs.history
     history.metrics(styles,c) or >>
     << 0
+}
+
+// Upstream: src/ui/widgets/breadcrumbs.xu
+fn (crumbs &Breadcrumbs) hit(x f64,y f64) int {
+    if !crumbs.bounds().contains(x,y) || crumbs.widths.len != crumbs.items.len { << -1 }
+    if crumbs.collapsed && crumbs.overflow_bounds().contains(x,y) { << -2 }
+    for i in 0:crumbs.items.len - 1 { rect := crumbs.item_bounds(i) or >>
+        if rect.contains(x,y) { << i } }
+    << -1
+}
+
+// Upstream: src/ui/widgets/breadcrumbs.xu
+pub fn (crumbs $&Breadcrumbs) apply_styles(styles &Styles) int {
+    styles.validate() or >>
+    c := crumbs.style_or(styles)
+    $widths := []f64{}
+    $extent := 0.0
+    $height := c.min_height * styles.density
+    for i in 0:crumbs.items.len {
+        value := crumbs.items[i] + ""
+        labels := $&crumbs.labels
+        size := labels.measure(i,&value,styles,&c) or >>
+        width := size.width + 12.0 * styles.density
+        widths.push(width)
+        extent = extent + width
+        height = math.max(height,size.height + 8.0 * styles.density)
+    }
+    gap := 18.0 * styles.density
+    extent = extent + f64(crumbs.items.len - 1) * gap
+    if extent != crumbs.extent || height != crumbs.height || gap != crumbs.gap { crumbs.control.dirty = true
+        crumbs.armed = -1 }
+    crumbs.widths = widths
+    crumbs.extent = extent
+    crumbs.height = height
+    crumbs.gap = gap
+    crumbs.update_overflow(styles,&c) or >>
+    << 0
+}
+
+// Upstream: src/ui/widgets/breadcrumbs.xu
+pub fn (crumbs $&Breadcrumbs) dispose() {
+    labels := $&crumbs.labels
+    labels.dispose()
+    history := $&crumbs.history
+    cache := $&history.labels
+    cache.dispose()
+    crumbs.control.closed = true
+}
+
+// Upstream: src/ui/widgets/breadcrumbs.xu
+pub fn (crumbs $&Breadcrumbs) input(event &ui.InputEvent) Action {
+    if !belongs(&crumbs.control.identity,event) || !crumbs.control.is_enabled() { << no_action(crumbs.id(),false) }
+    if crumbs.history.open {
+        focused := crumbs.control.focused
+        id := crumbs.id()
+        history := $&crumbs.history
+        $action := history.input(id,event,focused,false) or >>
+        if action.kind == ACTION_CHANGE { action.kind=ACTION_ACTIVATE
+            crumbs.active=int(action.value)
+            crumbs.history.open=false
+            << action }
+        if action.consumed { << action }
+    }
+    overflow_hit := crumbs.collapsed && crumbs.overflow_bounds().contains(event.x,event.y)
+    if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && overflow_hit { crumbs.overflow_armed=true
+        << Action{kind:ACTION_NONE,id:crumbs.id(),needs_paint:true,request_focus:true,consumed:true,value:0.0} }
+    if event.kind == ui.EV_POINTER_UP && event.button == ui.BUTTON_LEFT && crumbs.overflow_armed {
+        crumbs.overflow_armed=false
+        if overflow_hit { history := $&crumbs.history
+            history.set_open(true) }
+        << Action{kind:ACTION_NONE,id:crumbs.id(),needs_paint:true,request_focus:false,consumed:true,value:0.0} }
+    if event.kind == ui.EV_POINTER_CANCEL { crumbs.overflow_armed=false
+        crumbs.history.open=false
+        crumbs.set_focus(false)
+        crumbs.hot = -1
+        << no_action(crumbs.id(),true) }
+    hit := crumbs.hit(event.x,event.y) or >>
+    $activate := -1
+    $consumed := false
+    $focus := false
+    if event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_LEAVE {
+        $hot := hit
+        if event.kind == ui.EV_POINTER_LEAVE { hot = -1 }
+        if hot != crumbs.hot { crumbs.hot = hot
+            crumbs.control.dirty = true }
+    } else if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && hit >= 0 {
+        if !crumbs.control.read_only { crumbs.armed = hit }
+        crumbs.active = hit
+        crumbs.control.dirty = true
+        focus = true
+        consumed = true
+    } else if event.kind == ui.EV_POINTER_UP && event.button == ui.BUTTON_LEFT && crumbs.armed >= 0 {
+        if hit == crumbs.armed && !crumbs.control.read_only { activate = hit }
+        crumbs.armed = -1
+        crumbs.control.dirty = true
+        consumed = true
+    } else if event.kind == ui.EV_KEY_DOWN && crumbs.control.focused && crumbs.items.len > 1 {
+        consumed = true
+        if event.key == ui.KEY_LEFT || event.key == ui.KEY_UP { if crumbs.active > 0 { crumbs.active = crumbs.active - 1 } }
+        else if event.key == ui.KEY_RIGHT || event.key == ui.KEY_DOWN { if crumbs.active < crumbs.items.len - 2 { crumbs.active = crumbs.active + 1 } }
+        else if event.key == ui.KEY_HOME { crumbs.active = 0 }
+        else if event.key == ui.KEY_END { crumbs.active = crumbs.items.len - 2 }
+        else if (event.key == ui.KEY_ENTER || event.key == 32) && !crumbs.control.read_only { activate = crumbs.active }
+        else { consumed = false }
+        if consumed { crumbs.control.dirty = true
+            if crumbs.collapsed && crumbs.active > 0 && crumbs.active < crumbs.first_visible {
+                crumbs.history.cursor=crumbs.active
+                history := $&crumbs.history
+                history.set_open(true)
+                history.reveal() } }
+    }
+    $kind := ACTION_NONE
+    if activate >= 0 { kind = ACTION_ACTIVATE }
+    << Action{kind: kind,id: crumbs.id(),needs_paint: crumbs.needs_paint(),request_focus: focus,consumed: consumed,value: f64(activate)}
+}
+
+// Upstream: src/ui/widgets/breadcrumbs.xu
+pub fn (crumbs $&Breadcrumbs) paint_styled(frame $&draw.Frame,styles &Styles) int {
+    if crumbs.control.closed { >> errors.new("widgets: breadcrumbs disposed") }
+    crumbs.apply_styles(styles) or >>
+    $c := crumbs.style_or(styles)
+    c.padding = layout.insets(0.0) or >>
+    c.align_x = 0.5
+    c.align_y = 0.5
+    c.shadow = c.shadow.with_alpha(0)
+    b := crumbs.bounds()
+    frame.push() or >>
+    frame.clip_rect(b.x,b.y,b.width,b.height) or >>
+    for i in 0:crumbs.items.len {
+        rect := crumbs.item_bounds(i) or >>
+        if rect.width <= 0.0 { -> }
+        $state := 0
+        if !crumbs.control.is_enabled() { state = STATE_DISABLED }
+        else if crumbs.control.read_only { state = STATE_READ_ONLY }
+        else if i < crumbs.items.len - 1 {
+            if crumbs.hot == i { state = state | STATE_HOVERED
+                rounded_fill(frame,&rect,c.radius * styles.density,c.resolve(state).background) or >> }
+            if crumbs.control.focused && crumbs.active == i { state = state | STATE_FOCUSED
+                frame.stroke_rect(rect.x + 1.0,rect.y + 1.0,math.max(0.0,rect.width - 2.0),math.max(0.0,rect.height - 2.0),c.palette.focus,1.5) or >> }
+        }
+        $ink := c.clone()
+        ink.states = []StatePaint{}
+        if i < crumbs.items.len - 1 { ink.palette.foreground = c.palette.accent }
+        value := crumbs.items[i] + ""
+        labels := $&crumbs.labels
+        labels.paint_text(i,&value,frame,&rect,styles,&ink,state) or >>
+        if i < crumbs.items.len - 1 {
+            x := rect.x + rect.width + crumbs.gap * 0.5
+            y := rect.y + rect.height * 0.5
+            frame.line(x - 2.0,y - 4.0,x + 2.0,y,c.palette.muted,1.5) or >>
+            frame.line(x + 2.0,y,x - 2.0,y + 4.0,c.palette.muted,1.5) or >>
+        }
+    }
+    crumbs.paint_overflow(frame,styles,&c) or >>
+    frame.pop() or >>
+    crumbs.control.dirty = false
+    << 0
+}
+
+// Upstream: src/ui/widgets/breadcrumbs.xu
+pub fn (crumbs $&Breadcrumbs) set_focus(focused bool) {
+    control := $&crumbs.control
+    control.set_focus(focused)
+    if !focused { crumbs.armed = -1
+        crumbs.history.open=false
+        crumbs.overflow_armed=false }
 }
 
 // Upstream: src/ui/widgets/breadcrumbs.xu
@@ -71,8 +228,8 @@ pub fn (crumbs &Breadcrumbs) id() int { << crumbs.control.id }
 pub fn (crumbs &Breadcrumbs) item_bounds(index int) layout.Rect {
     if index < 0 || index >= crumbs.items.len || crumbs.widths.len != crumbs.items.len { >> errors.new("widgets: breadcrumb styles not applied or index out of range") }
     b := crumbs.bounds()
-    mut x := b.x
-    mut width := crumbs.widths[index]
+    $x := b.x
+    $width := crumbs.widths[index]
     if crumbs.collapsed {
         root_width := math.min(crumbs.widths[0],b.width*0.25)
         if index == 0 { width=root_width }
@@ -102,167 +259,10 @@ pub fn (crumbs &Breadcrumbs) style_or(styles &Styles) ControlStyle {
 }
 
 // Upstream: src/ui/widgets/breadcrumbs.xu
-pub fn (crumbs &mut Breadcrumbs) apply_styles(styles &Styles) int {
-    styles.validate() or >>
-    c := crumbs.style_or(styles)
-    mut widths := []f64{}
-    mut extent := 0.0
-    mut height := c.min_height * styles.density
-    for i in 0:crumbs.items.len {
-        value := crumbs.items[i] + ""
-        labels := mut &crumbs.labels
-        size := labels.measure(i,&value,styles,&c) or >>
-        width := size.width + 12.0 * styles.density
-        widths.push(width)
-        extent = extent + width
-        height = math.max(height,size.height + 8.0 * styles.density)
-    }
-    gap := 18.0 * styles.density
-    extent = extent + f64(crumbs.items.len - 1) * gap
-    if extent != crumbs.extent || height != crumbs.height || gap != crumbs.gap { crumbs.control.dirty = true
-        crumbs.armed = -1 }
-    crumbs.widths = widths
-    crumbs.extent = extent
-    crumbs.height = height
-    crumbs.gap = gap
-    crumbs.update_overflow(styles,&c) or >>
-    << 0
-}
-
-// Upstream: src/ui/widgets/breadcrumbs.xu
-pub fn (crumbs &mut Breadcrumbs) dispose() {
-    labels := mut &crumbs.labels
-    labels.dispose()
-    history := mut &crumbs.history
-    cache := mut &history.labels
-    cache.dispose()
-    crumbs.control.closed = true
-}
-
-// Upstream: src/ui/widgets/breadcrumbs.xu
-pub fn (crumbs &mut Breadcrumbs) input(event &ui.InputEvent) Action {
-    if !belongs(&crumbs.control.identity,event) || !crumbs.control.is_enabled() { << no_action(crumbs.id(),false) }
-    if crumbs.history.open {
-        focused := crumbs.control.focused
-        id := crumbs.id()
-        history := mut &crumbs.history
-        mut action := history.input(id,event,focused,false) or >>
-        if action.kind == ACTION_CHANGE { action.kind=ACTION_ACTIVATE
-            crumbs.active=int(action.value)
-            crumbs.history.open=false
-            << action }
-        if action.consumed { << action }
-    }
-    overflow_hit := crumbs.collapsed && crumbs.overflow_bounds().contains(event.x,event.y)
-    if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && overflow_hit { crumbs.overflow_armed=true
-        << Action{kind:ACTION_NONE,id:crumbs.id(),needs_paint:true,request_focus:true,consumed:true,value:0.0} }
-    if event.kind == ui.EV_POINTER_UP && event.button == ui.BUTTON_LEFT && crumbs.overflow_armed {
-        crumbs.overflow_armed=false
-        if overflow_hit { history := mut &crumbs.history
-            history.set_open(true) }
-        << Action{kind:ACTION_NONE,id:crumbs.id(),needs_paint:true,request_focus:false,consumed:true,value:0.0} }
-    if event.kind == ui.EV_POINTER_CANCEL { crumbs.overflow_armed=false
-        crumbs.history.open=false
-        crumbs.set_focus(false)
-        crumbs.hot = -1
-        << no_action(crumbs.id(),true) }
-    hit := crumbs.hit(event.x,event.y) or >>
-    mut activate := -1
-    mut consumed := false
-    mut focus := false
-    if event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_LEAVE {
-        mut hot := hit
-        if event.kind == ui.EV_POINTER_LEAVE { hot = -1 }
-        if hot != crumbs.hot { crumbs.hot = hot
-            crumbs.control.dirty = true }
-    } else if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && hit >= 0 {
-        if !crumbs.control.read_only { crumbs.armed = hit }
-        crumbs.active = hit
-        crumbs.control.dirty = true
-        focus = true
-        consumed = true
-    } else if event.kind == ui.EV_POINTER_UP && event.button == ui.BUTTON_LEFT && crumbs.armed >= 0 {
-        if hit == crumbs.armed && !crumbs.control.read_only { activate = hit }
-        crumbs.armed = -1
-        crumbs.control.dirty = true
-        consumed = true
-    } else if event.kind == ui.EV_KEY_DOWN && crumbs.control.focused && crumbs.items.len > 1 {
-        consumed = true
-        if event.key == ui.KEY_LEFT || event.key == ui.KEY_UP { if crumbs.active > 0 { crumbs.active = crumbs.active - 1 } }
-        else if event.key == ui.KEY_RIGHT || event.key == ui.KEY_DOWN { if crumbs.active < crumbs.items.len - 2 { crumbs.active = crumbs.active + 1 } }
-        else if event.key == ui.KEY_HOME { crumbs.active = 0 }
-        else if event.key == ui.KEY_END { crumbs.active = crumbs.items.len - 2 }
-        else if (event.key == ui.KEY_ENTER || event.key == 32) && !crumbs.control.read_only { activate = crumbs.active }
-        else { consumed = false }
-        if consumed { crumbs.control.dirty = true
-            if crumbs.collapsed && crumbs.active > 0 && crumbs.active < crumbs.first_visible {
-                crumbs.history.cursor=crumbs.active
-                history := mut &crumbs.history
-                history.set_open(true)
-                history.reveal() } }
-    }
-    mut kind := ACTION_NONE
-    if activate >= 0 { kind = ACTION_ACTIVATE }
-    << Action{kind: kind,id: crumbs.id(),needs_paint: crumbs.needs_paint(),request_focus: focus,consumed: consumed,value: f64(activate)}
-}
-
-// Upstream: src/ui/widgets/breadcrumbs.xu
-pub fn (crumbs &mut Breadcrumbs) paint_styled(frame &mut draw.Frame,styles &Styles) int {
-    if crumbs.control.closed { >> errors.new("widgets: breadcrumbs disposed") }
-    crumbs.apply_styles(styles) or >>
-    mut c := crumbs.style_or(styles)
-    c.padding = layout.insets(0.0) or >>
-    c.align_x = 0.5
-    c.align_y = 0.5
-    c.shadow = c.shadow.with_alpha(0)
-    b := crumbs.bounds()
-    frame.push() or >>
-    frame.clip_rect(b.x,b.y,b.width,b.height) or >>
-    for i in 0:crumbs.items.len {
-        rect := crumbs.item_bounds(i) or >>
-        if rect.width <= 0.0 { -> }
-        mut state := 0
-        if !crumbs.control.is_enabled() { state = STATE_DISABLED }
-        else if crumbs.control.read_only { state = STATE_READ_ONLY }
-        else if i < crumbs.items.len - 1 {
-            if crumbs.hot == i { state = state | STATE_HOVERED
-                rounded_fill(frame,&rect,c.radius * styles.density,c.resolve(state).background) or >> }
-            if crumbs.control.focused && crumbs.active == i { state = state | STATE_FOCUSED
-                frame.stroke_rect(rect.x + 1.0,rect.y + 1.0,math.max(0.0,rect.width - 2.0),math.max(0.0,rect.height - 2.0),c.palette.focus,1.5) or >> }
-        }
-        mut ink := c.clone()
-        ink.states = []StatePaint{}
-        if i < crumbs.items.len - 1 { ink.palette.foreground = c.palette.accent }
-        value := crumbs.items[i] + ""
-        labels := mut &crumbs.labels
-        labels.paint_text(i,&value,frame,&rect,styles,&ink,state) or >>
-        if i < crumbs.items.len - 1 {
-            x := rect.x + rect.width + crumbs.gap * 0.5
-            y := rect.y + rect.height * 0.5
-            frame.line(x - 2.0,y - 4.0,x + 2.0,y,c.palette.muted,1.5) or >>
-            frame.line(x + 2.0,y,x - 2.0,y + 4.0,c.palette.muted,1.5) or >>
-        }
-    }
-    crumbs.paint_overflow(frame,styles,&c) or >>
-    frame.pop() or >>
-    crumbs.control.dirty = false
-    << 0
-}
-
-// Upstream: src/ui/widgets/breadcrumbs.xu
-pub fn (crumbs &mut Breadcrumbs) set_focus(focused bool) {
-    control := mut &crumbs.control
-    control.set_focus(focused)
-    if !focused { crumbs.armed = -1
-        crumbs.history.open=false
-        crumbs.overflow_armed=false }
-}
-
-// Upstream: src/ui/widgets/breadcrumbs.xu
 pub fn breadcrumbs(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,items &[]string) Breadcrumbs {
     if !context.matches_canvas(identity) { >> errors.new("widgets: breadcrumb context mismatch") }
     if items.len < 1 || items.len > 32 { >> errors.new("widgets: breadcrumb path must contain 1..32 items") }
-    mut values := []string{}
+    $values := []string{}
     for item in items {
         if item.len > 4096 || !utf8.valid(&item) { >> errors.new("widgets: invalid breadcrumb text") }
         values.push(item + "")

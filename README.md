@@ -150,6 +150,19 @@ make api XU_ROOT=/path/to/selected-sdk XU_PACKAGES_ROOT=/path/to/selected-sdk/pa
 
 Selected files must match that commit. Without the two examples variables, `make api` reuses and verifies bundled snapshots. Native examples run locally with the SDK.
 
+Multi-file projects bundle their curated `main.xu`, event handlers and style sources together. Each project can be expanded on the API page, including those under “More related examples”; companion files also have individual downloads. The catalog records a project's required SDK when it differs from the website's selected release, so examples that use a development API do not imply that API is available in the selected release.
+
+To update individual projects without replacing other release snapshots, run the generator with the selected release sources and repeat `--examples-project` for each curated directory:
+
+```sh
+python3 scripts/gen-api.py --src /path/to/selected-sdk/src --packages /path/to/selected-sdk/packages \
+  --examples ../examples --examples-ref FULL_EXAMPLES_COMMIT_SHA \
+  --examples-project examples/16_ui_webview/component_workshop \
+  --examples-project examples/16_ui_webview/style_gallery
+```
+
+Scoped refreshes preserve other projects' source bytes, checksums and immutable commit references. Register every source file of each updated project in `templates/api-examples.json` before refreshing it.
+
 ### WebAssembly playground
 
 Use the matching SDK to compile the XU runtime to WebAssembly. Execution checks additionally require Node.js.

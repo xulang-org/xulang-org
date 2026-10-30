@@ -12,6 +12,17 @@
 #unicode/utf8
 #ui/internal/codec
 
+// Upstream: src/ui/widgets/pagination_motion.xu
+fn (p $&Pagination) ensure_hover_motions() int {
+    count := p.slot_count()
+    if p.hover_motions.len >= count { << 0 }
+    for i in p.hover_motions.len:count {
+        $motion := paint_transition()
+        motion.set_spec(&p.motion) or >>
+        p.hover_motions.push(motion) }
+    << 0
+}
+
 // Upstream: src/ui/widgets/pagination.xu
 fn (p &Pagination) hit_slot(x f64,y f64) int {
     for slot in 0:p.slot_count() { if p.item_bounds(slot).contains(x,y) { << slot } }
@@ -20,7 +31,7 @@ fn (p &Pagination) hit_slot(x f64,y f64) int {
 
 // Upstream: src/ui/widgets/pagination.xu
 fn (p &Pagination) page_slots() []int {
-    mut slots := [p.current - 1]
+    $slots := [p.current - 1]
     if p.pages > 7 && p.bounds().width > 0.0 && p.bounds().width < 7.0 * p.item_width + 6.0 * p.item_gap {
         slots.push(p.current)
         slots.push(p.current + 1)
@@ -55,7 +66,7 @@ fn (p &Pagination) slot_page(slot int) int {
 // Upstream: src/ui/widgets/pagination_motion.xu
 fn (p &Pagination) slot_state(i int) int {
     page := p.slot_page(i)
-    mut state := p.control.visual_state() & (0 - 1 - STATE_HOVERED - STATE_PRESSED - STATE_FOCUSED)
+    $state := p.control.visual_state() & (0 - 1 - STATE_HOVERED - STATE_PRESSED - STATE_FOCUSED)
     if page < 0 || page >= p.pages { << state | STATE_DISABLED }
     if i == p.hot { state = state | STATE_HOVERED }
     if i == p.armed && i == p.hot && !p.control.read_only { state = state | STATE_PRESSED }
@@ -66,65 +77,12 @@ fn (p &Pagination) slot_state(i int) int {
     << state
 }
 
-// Upstream: src/ui/widgets/pagination_motion.xu
-fn (p &mut Pagination) ensure_hover_motions() int {
-    count := p.slot_count()
-    if p.hover_motions.len >= count { << 0 }
-    for i in p.hover_motions.len:count {
-        mut motion := paint_transition()
-        motion.set_spec(&p.motion) or >>
-        p.hover_motions.push(motion) }
-    << 0
-}
-
 // Upstream: src/ui/widgets/pagination.xu
-pub fn (p &Pagination) bounds() layout.Rect { << p.control.bounds() }
-
-// Upstream: src/ui/widgets/pagination.xu
-pub fn (p &Pagination) id() int { << p.control.id }
-
-// Upstream: src/ui/widgets/pagination.xu
-pub fn (p &Pagination) is_enabled() bool { << p.control.is_enabled() }
-
-// Upstream: src/ui/widgets/pagination.xu
-pub fn (p &Pagination) item_bounds(slot int) layout.Rect {
-    b := p.bounds()
-    if slot < 0 || slot >= p.slot_count() { << layout.Rect{x: b.x,y: b.y,width: 0.0,height: 0.0} }
-    count := f64(p.slot_count())
-    gap := math.min(p.item_gap,b.width / math.max(1.0,count * 2.0))
-    available := math.max(0.0,b.width - gap * (count - 1.0))
-    mut w := math.min(p.item_width,available / count)
-    if p.appearance.stretch { w = available / count }
-    h := math.min(b.height,p.item_height)
-    << layout.Rect{x: b.x + f64(slot) * (w + gap),y: b.y + (b.height - h) * 0.5,width: w,height: h}
-}
-
-// Upstream: src/ui/widgets/pagination.xu
-pub fn (p &Pagination) needs_paint() bool { << p.control.dirty }
-
-// Upstream: src/ui/widgets/pagination.xu
-pub fn (p &Pagination) selected() int { << p.current }
-
-// Upstream: src/ui/widgets/pagination.xu
-pub fn (p &Pagination) style_or(styles &Styles) ControlStyle {
-    if p.control.has_style() { << p.control.style_or(styles) }
-    mut c := styles.button.clone()
-    c.border_width = 0.0
-    c.radius = 6.0
-    c.min_width = 36.0
-    c.min_height = 36.0
-    c.padding = layout.Insets{left: 8.0,top: 6.0,right: 8.0,bottom: 6.0}
-    c.palette.normal = styles.background
-    c.palette.disabled = styles.background
-    << c
-}
-
-// Upstream: src/ui/widgets/pagination.xu
-pub fn (p &mut Pagination) apply_styles(styles &Styles) int {
+pub fn (p $&Pagination) apply_styles(styles &Styles) int {
     styles.validate() or >>
     c := p.style_or(styles)
     text := p.locale.integer(max_int(1,p.pages))
-    cache := mut &p.labels
+    cache := $&p.labels
     size := cache.measure(100,&text,styles,&c) or >>
     d := styles.density
     width := math.max(p.appearance.min_item_width * d,size.width + (c.padding.left + c.padding.right) * d)
@@ -141,32 +99,32 @@ pub fn (p &mut Pagination) apply_styles(styles &Styles) int {
 }
 
 // Upstream: src/ui/widgets/pagination.xu
-pub fn (p &mut Pagination) cancel() {
+pub fn (p $&Pagination) cancel() {
     p.hot = -1
     p.armed = -1
-    c := mut &p.control
+    c := $&p.control
     c.cancel()
 }
 
 // Upstream: src/ui/widgets/pagination.xu
-pub fn (p &mut Pagination) dispose() {
+pub fn (p $&Pagination) dispose() {
     if p.control.closed { << }
-    cache := mut &p.labels
+    cache := $&p.labels
     cache.dispose()
     p.cancel()
     p.control.closed = true
 }
 
 // Upstream: src/ui/widgets/pagination.xu
-pub fn (p &mut Pagination) input(input &ui.InputEvent) Action {
+pub fn (p $&Pagination) input(input &ui.InputEvent) Action {
     if p.control.closed || !belongs(&p.control.identity,input) { << no_action(p.id(),p.needs_paint()) }
     if input.kind == ui.EV_POINTER_CANCEL { p.cancel()
         << no_action(p.id(),p.needs_paint()) }
     if !p.is_enabled() { << no_action(p.id(),p.needs_paint()) }
-    mut slot := p.hit_slot(input.x,input.y)
-    mut candidate := p.current
-    mut consumed := false
-    mut focus := false
+    $slot := p.hit_slot(input.x,input.y)
+    $candidate := p.current
+    $consumed := false
+    $focus := false
     if input.kind == ui.EV_POINTER_MOVE || input.kind == ui.EV_POINTER_ENTER || input.kind == ui.EV_POINTER_LEAVE {
         if input.kind == ui.EV_POINTER_LEAVE { slot = -1 }
         if p.hot != slot { p.hot = slot
@@ -193,7 +151,7 @@ pub fn (p &mut Pagination) input(input &ui.InputEvent) Action {
         else if input.key == ui.KEY_END { candidate = p.pages - 1
             consumed = true }
     }
-    mut kind := ACTION_NONE
+    $kind := ACTION_NONE
     if candidate >= 0 && candidate < p.pages && candidate != p.current {
         p.current = candidate
         p.control.dirty = true
@@ -203,7 +161,7 @@ pub fn (p &mut Pagination) input(input &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/pagination.xu
-pub fn (p &mut Pagination) paint_styled(frame &mut draw.Frame,styles &Styles) int {
+pub fn (p $&Pagination) paint_styled(frame $&draw.Frame,styles &Styles) int {
     if p.control.closed { >> errors.new("widgets: pagination is disposed") }
     p.apply_styles(styles) or >>
     c := p.style_or(styles)
@@ -213,7 +171,7 @@ pub fn (p &mut Pagination) paint_styled(frame &mut draw.Frame,styles &Styles) in
         b := p.item_bounds(i)
         page := p.slot_page(i)
         state := p.slot_state(i)
-        mut transition := p.hover_motions[i]
+        $transition := p.hover_motions[i]
         animated := transition.style(&c,state,p.now,p.reduced) or >>
         p.hover_motions[i] = transition
         selected := i > 0 && i < count - 1 && page == p.current
@@ -226,11 +184,11 @@ pub fn (p &mut Pagination) paint_styled(frame &mut draw.Frame,styles &Styles) in
             frame.scale(scale,scale) or >>
             frame.translate(0.0-cx,0.0-cy) or >> }
         style_box(frame,&b,&animated,styles.density,state) or >>
-        mut text := p.locale.integer(page + 1)
+        $text := p.locale.integer(page + 1)
         if i == 0 { text = "‹" }
         else if i == count - 1 { text = "›" }
         else if page == -2 { text = "…" }
-        cache := mut &p.labels
+        cache := $&p.labels
         cache.paint_text(i,&text,frame,&b,styles,&animated,state) or >>
         if selected { frame.pop() or >> }
     }
@@ -238,8 +196,50 @@ pub fn (p &mut Pagination) paint_styled(frame &mut draw.Frame,styles &Styles) in
 }
 
 // Upstream: src/ui/widgets/pagination.xu
-pub fn (p &mut Pagination) set_focus(focused bool) { c := mut &p.control
+pub fn (p $&Pagination) set_focus(focused bool) { c := $&p.control
     c.set_focus(focused) }
+
+// Upstream: src/ui/widgets/pagination.xu
+pub fn (p &Pagination) bounds() layout.Rect { << p.control.bounds() }
+
+// Upstream: src/ui/widgets/pagination.xu
+pub fn (p &Pagination) id() int { << p.control.id }
+
+// Upstream: src/ui/widgets/pagination.xu
+pub fn (p &Pagination) is_enabled() bool { << p.control.is_enabled() }
+
+// Upstream: src/ui/widgets/pagination.xu
+pub fn (p &Pagination) item_bounds(slot int) layout.Rect {
+    b := p.bounds()
+    if slot < 0 || slot >= p.slot_count() { << layout.Rect{x: b.x,y: b.y,width: 0.0,height: 0.0} }
+    count := f64(p.slot_count())
+    gap := math.min(p.item_gap,b.width / math.max(1.0,count * 2.0))
+    available := math.max(0.0,b.width - gap * (count - 1.0))
+    $w := math.min(p.item_width,available / count)
+    if p.appearance.stretch { w = available / count }
+    h := math.min(b.height,p.item_height)
+    << layout.Rect{x: b.x + f64(slot) * (w + gap),y: b.y + (b.height - h) * 0.5,width: w,height: h}
+}
+
+// Upstream: src/ui/widgets/pagination.xu
+pub fn (p &Pagination) needs_paint() bool { << p.control.dirty }
+
+// Upstream: src/ui/widgets/pagination.xu
+pub fn (p &Pagination) selected() int { << p.current }
+
+// Upstream: src/ui/widgets/pagination.xu
+pub fn (p &Pagination) style_or(styles &Styles) ControlStyle {
+    if p.control.has_style() { << p.control.style_or(styles) }
+    $c := styles.button.clone()
+    c.border_width = 0.0
+    c.radius = 6.0
+    c.min_width = 36.0
+    c.min_height = 36.0
+    c.padding = layout.Insets{left: 8.0,top: 6.0,right: 8.0,bottom: 6.0}
+    c.palette.normal = styles.background
+    c.palette.disabled = styles.background
+    << c
+}
 
 // Upstream: src/ui/widgets/pagination.xu
 pub fn pagination(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,pages int,current int) Pagination {

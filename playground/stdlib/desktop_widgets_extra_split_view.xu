@@ -13,12 +13,12 @@
 #ui/internal/codec
 
 // Upstream: src/ui/widgets/split_view_input.xu
-fn (v &mut SplitView) begin_edit() { if !v.pending { v.saved_ratio = v.ratio
+fn (v $&SplitView) begin_edit() { if !v.pending { v.saved_ratio = v.ratio
     v.saved_collapsed = v.collapsed
     v.pending = true } }
 
 // Upstream: src/ui/widgets/split_view_input.xu
-fn (v &mut SplitView) move_ratio(value f64) {
+fn (v $&SplitView) move_ratio(value f64) {
     v.collapsed = 0
     v.ratio = math.max(0.0,math.min(1.0,value))
     actual := v.layout()
@@ -27,71 +27,26 @@ fn (v &mut SplitView) move_ratio(value f64) {
 }
 
 // Upstream: src/ui/widgets/split_view.xu
-pub fn (v &SplitView) bounds() layout.Rect { << v.control.bounds() }
-
-// Upstream: src/ui/widgets/split_view.xu
-pub fn (v &SplitView) geometry(bounds &layout.Rect,density f64) SplitLayout {
-    mut length := bounds.width
-    if v.options.vertical { length = bounds.height }
-    handle := math.min(length,v.options.handle_size * density)
-    available := math.max(0.0,length - handle)
-    mut minimum := math.min(available,v.options.minimum_first * density)
-    mut maximum := math.max(0.0,available - v.options.minimum_second * density)
-    if minimum > maximum {
-        sum := math.max(1.0,v.options.minimum_first + v.options.minimum_second)
-        minimum = available * v.options.minimum_first / sum
-        maximum = minimum }
-    mut first := math.max(minimum,math.min(maximum,available * v.ratio))
-    if v.collapsed == 1 { first = 0.0 }
-    if v.collapsed == 2 { first = available }
-    mut a := layout.Rect{x: bounds.x,y: bounds.y,width: first,height: bounds.height}
-    mut h := layout.Rect{x: bounds.x + first,y: bounds.y,width: handle,height: bounds.height}
-    mut b := layout.Rect{x: bounds.x + first + handle,y: bounds.y,width: available - first,height: bounds.height}
-    if v.options.vertical {
-        a = layout.Rect{x: bounds.x,y: bounds.y,width: bounds.width,height: first}
-        h = layout.Rect{x: bounds.x,y: bounds.y + first,width: bounds.width,height: handle}
-        b = layout.Rect{x: bounds.x,y: bounds.y + first + handle,width: bounds.width,height: available - first} }
-    mut ratio := 0.0
-    if available > 0.0 { ratio = first / available }
-    << SplitLayout{first: a,second: b,handle: h,ratio: ratio,collapsed: v.collapsed}
-}
-
-// Upstream: src/ui/widgets/split_view.xu
-pub fn (v &SplitView) id() int { << v.control.id }
-
-// Upstream: src/ui/widgets/split_view.xu
-pub fn (v &SplitView) is_enabled() bool { << v.control.is_enabled() }
-
-// Upstream: src/ui/widgets/split_view.xu
-pub fn (v &SplitView) layout() SplitLayout { << v.geometry(&v.bounds(),v.density) }
-
-// Upstream: src/ui/widgets/split_view.xu
-pub fn (v &SplitView) needs_paint() bool { << v.control.dirty }
-
-// Upstream: src/ui/widgets/split_view.xu
-pub fn (v &SplitView) value() f64 { << v.ratio }
-
-// Upstream: src/ui/widgets/split_view.xu
-pub fn (v &mut SplitView) apply_styles(styles &Styles) int {
+pub fn (v $&SplitView) apply_styles(styles &Styles) int {
     if v.density != styles.density { v.density = styles.density
         v.control.dirty = true }
     << 0
 }
 
 // Upstream: src/ui/widgets/split_view.xu
-pub fn (v &mut SplitView) cancel() {
+pub fn (v $&SplitView) cancel() {
     if v.pending { v.ratio = v.saved_ratio
         v.collapsed = v.saved_collapsed
         v.control.dirty = true }
     v.pending = false
     v.key_pending = 0
     v.dragging = false
-    item := mut &v.control
+    item := $&v.control
     item.cancel()
 }
 
 // Upstream: src/ui/widgets/split_view_input.xu
-pub fn (v &mut SplitView) input(event &ui.InputEvent) Action {
+pub fn (v $&SplitView) input(event &ui.InputEvent) Action {
     if !belongs(&v.control.identity,event) || v.control.closed { << no_action(v.id(),false) }
     if event.kind == ui.EV_POINTER_CANCEL { v.cancel()
         << no_action(v.id(),true) }
@@ -100,16 +55,16 @@ pub fn (v &mut SplitView) input(event &ui.InputEvent) Action {
     inside := layout.handle.contains(event.x,event.y)
     old := v.ratio
     old_collapsed := v.collapsed
-    mut action := no_action(v.id(),v.needs_paint())
-    mut commit := false
+    $action := no_action(v.id(),v.needs_paint())
+    $commit := false
     if event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_ENTER || event.kind == ui.EV_POINTER_LEAVE {
         hot := inside && event.kind != ui.EV_POINTER_LEAVE
         if v.control.hovered != hot { v.control.hovered = hot
             v.control.dirty = true }
         if v.dragging && !v.control.read_only {
             bounds := v.bounds()
-            mut position := event.x - bounds.x - layout.handle.width * 0.5
-            mut length := bounds.width - layout.handle.width
+            $position := event.x - bounds.x - layout.handle.width * 0.5
+            $length := bounds.width - layout.handle.width
             if v.options.vertical { position = event.y - bounds.y - layout.handle.height * 0.5
                 length = bounds.height - layout.handle.height }
             v.move_ratio(position / math.max(1.0,length))
@@ -136,14 +91,14 @@ pub fn (v &mut SplitView) input(event &ui.InputEvent) Action {
             v.control.focused = true
             action.consumed = true }
         else if !v.control.read_only {
-            mut delta := 0.0
+            $delta := 0.0
             if (!v.options.vertical && event.key == ui.KEY_LEFT) || (v.options.vertical && event.key == ui.KEY_UP) { delta = 0.0 - v.options.keyboard_step }
             if (!v.options.vertical && event.key == ui.KEY_RIGHT) || (v.options.vertical && event.key == ui.KEY_DOWN) { delta = v.options.keyboard_step }
             if (event.modifiers & ui.MOD_SHIFT) != 0 { delta = delta * 10.0 }
             if delta != 0.0 || event.key == ui.KEY_HOME || event.key == ui.KEY_END {
                 v.begin_edit()
                 v.key_pending = event.key
-                mut candidate := v.layout().ratio + delta
+                $candidate := v.layout().ratio + delta
                 if event.key == ui.KEY_HOME { candidate = 0.0 }
                 if event.key == ui.KEY_END { candidate = 1.0 }
                 v.move_ratio(candidate)
@@ -167,15 +122,15 @@ pub fn (v &mut SplitView) input(event &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/split_view_paint.xu
-pub fn (v &mut SplitView) paint_styled(frame &mut draw.Frame,styles &Styles) int {
-    mut style := styles.card_style()
+pub fn (v $&SplitView) paint_styled(frame $&draw.Frame,styles &Styles) int {
+    $style := styles.card_style()
     if v.control.has_style() { style = v.control.style_or(styles) }
     bounds := v.bounds()
     style_box(frame,&bounds,&style,styles.density,0) or >>
     handle := v.layout().handle
-    mut opacity := v.hover.value() * 0.14
+    $opacity := v.hover.value() * 0.14
     if v.dragging { opacity = 0.22 }
-    mut color := style.palette.border
+    $color := style.palette.border
     if v.control.focused { color = style.palette.focus }
     if !v.is_enabled() { color = style.palette.muted }
     if opacity > 0.0 { rounded_fill(frame,&handle,math.min(handle.width,handle.height) * 0.35,fade_color(color,opacity)) or >> }
@@ -190,9 +145,54 @@ pub fn (v &mut SplitView) paint_styled(frame &mut draw.Frame,styles &Styles) int
 }
 
 // Upstream: src/ui/widgets/split_view.xu
-pub fn (v &mut SplitView) set_focus(value bool) { if !value { v.cancel() }
-    item := mut &v.control
+pub fn (v $&SplitView) set_focus(value bool) { if !value { v.cancel() }
+    item := $&v.control
     item.set_focus(value) }
+
+// Upstream: src/ui/widgets/split_view.xu
+pub fn (v &SplitView) bounds() layout.Rect { << v.control.bounds() }
+
+// Upstream: src/ui/widgets/split_view.xu
+pub fn (v &SplitView) geometry(bounds &layout.Rect,density f64) SplitLayout {
+    $length := bounds.width
+    if v.options.vertical { length = bounds.height }
+    handle := math.min(length,v.options.handle_size * density)
+    available := math.max(0.0,length - handle)
+    $minimum := math.min(available,v.options.minimum_first * density)
+    $maximum := math.max(0.0,available - v.options.minimum_second * density)
+    if minimum > maximum {
+        sum := math.max(1.0,v.options.minimum_first + v.options.minimum_second)
+        minimum = available * v.options.minimum_first / sum
+        maximum = minimum }
+    $first := math.max(minimum,math.min(maximum,available * v.ratio))
+    if v.collapsed == 1 { first = 0.0 }
+    if v.collapsed == 2 { first = available }
+    $a := layout.Rect{x: bounds.x,y: bounds.y,width: first,height: bounds.height}
+    $h := layout.Rect{x: bounds.x + first,y: bounds.y,width: handle,height: bounds.height}
+    $b := layout.Rect{x: bounds.x + first + handle,y: bounds.y,width: available - first,height: bounds.height}
+    if v.options.vertical {
+        a = layout.Rect{x: bounds.x,y: bounds.y,width: bounds.width,height: first}
+        h = layout.Rect{x: bounds.x,y: bounds.y + first,width: bounds.width,height: handle}
+        b = layout.Rect{x: bounds.x,y: bounds.y + first + handle,width: bounds.width,height: available - first} }
+    $ratio := 0.0
+    if available > 0.0 { ratio = first / available }
+    << SplitLayout{first: a,second: b,handle: h,ratio: ratio,collapsed: v.collapsed}
+}
+
+// Upstream: src/ui/widgets/split_view.xu
+pub fn (v &SplitView) id() int { << v.control.id }
+
+// Upstream: src/ui/widgets/split_view.xu
+pub fn (v &SplitView) is_enabled() bool { << v.control.is_enabled() }
+
+// Upstream: src/ui/widgets/split_view.xu
+pub fn (v &SplitView) layout() SplitLayout { << v.geometry(&v.bounds(),v.density) }
+
+// Upstream: src/ui/widgets/split_view.xu
+pub fn (v &SplitView) needs_paint() bool { << v.control.dirty }
+
+// Upstream: src/ui/widgets/split_view.xu
+pub fn (v &SplitView) value() f64 { << v.ratio }
 
 // Upstream: src/ui/widgets/split_view.xu
 pub fn split_view(identity &ui.CanvasEvent,id int,bounds &layout.Rect,ratio f64) SplitView {

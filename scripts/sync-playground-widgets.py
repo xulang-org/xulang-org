@@ -35,28 +35,28 @@ def selected(path, sig):
         return (' Host' not in sig and 'attach(' not in sig and ') event(' not in sig)
     if path == 'ui/widgets/controls_basic.xu':
         return (sig.startswith(('pub struct Switch', 'pub fn switch_control', 'pub struct Slider', 'pub fn slider(', 'fn clamp_slider_value', 'pub struct Radio', 'pub fn radio(')) or
-                (('&Switch)' in sig or '&mut Switch)' in sig or '&Slider)' in sig or '&mut Slider)' in sig or '&Radio)' in sig or '&mut Radio)' in sig) and
+                (('&Switch)' in sig or '$&Switch)' in sig or '&Slider)' in sig or '$&Slider)' in sig or '&Radio)' in sig or '$&Radio)' in sig) and
                 not any(x in sig for x in ('_styled(', 'paint_position', 'style(', 'style_or(', 'has_style(', 'visual_state(', ') event(', 'set_motion(', 'tick(', 'next_tick(', 'apply_styles('))))
     if path == 'ui/widgets/editor.xu':
         return sig.startswith(('pub const ACTION_SUBMIT', 'const EDITOR_', 'pub const EDITOR_', 'pub struct Editor', 'fn new_editor(', 'pub fn input(',
             'fn (editor &Editor) is_multiline(', 'fn (editor &Editor) layout_value(',
-            'pub fn (editor &Editor)', 'fn (editor &Editor) caret_rect(', 'fn (editor &mut Editor) read_state(',
-            'fn (editor &mut Editor) drop_layout(', 'fn (editor &mut Editor) stash(', 'fn (editor &mut Editor) stop_session(',
-            'pub fn (editor &mut Editor) focus_session(', 'pub fn (editor &mut Editor) paint(',
-            'fn (editor &mut Editor) paint_editor(', 'fn (editor &mut Editor) bind_geometry('))
+            'pub fn (editor &Editor)', 'fn (editor &Editor) caret_rect(', 'fn (editor $&Editor) read_state(',
+            'fn (editor $&Editor) drop_layout(', 'fn (editor $&Editor) stash(', 'fn (editor $&Editor) stop_session(',
+            'pub fn (editor $&Editor) focus_session(', 'pub fn (editor $&Editor) paint(',
+            'fn (editor $&Editor) paint_editor(', 'fn (editor $&Editor) bind_geometry('))
     if path == 'ui/widgets/editor_styles.xu':
         return sig.startswith(('fn (editor &Editor)', 'pub fn (editor &Editor) visual_state(',
-            'pub fn (editor &Editor) is_read_only(', 'pub fn (editor &mut Editor) set_read_only('))
+            'pub fn (editor &Editor) is_read_only(', 'pub fn (editor $&Editor) set_read_only('))
     if path == 'ui/widgets/editor_input.xu':
-        return sig.startswith('fn (editor &mut Editor) cancel_clipboard(')
+        return sig.startswith('fn (editor $&Editor) cancel_clipboard(')
     if path == 'ui/widgets/editor_motion.xu':
-        return sig.startswith('fn (editor &mut Editor) restart_caret(')
+        return sig.startswith('fn (editor $&Editor) restart_caret(')
     if path == 'ui/widgets/screen.xu':
         return sig.startswith('fn screen_empty(')
     if path == 'ui/widgets/scroll.xu':
         return (sig.startswith('pub const AXIS_') or (basic(sig) and not any(x in sig for x in ('visible_items(', 'layout_items('))))
     if path == 'ui/widgets/scroll_styles.xu':
-        return sig.startswith(('pub fn (scroll &Scroll) scrollbar_', 'fn (scroll &mut Scroll) bar_input('))
+        return sig.startswith(('pub fn (scroll &Scroll) scrollbar_', 'fn (scroll $&Scroll) bar_input('))
     if path == 'ui/widgets/controls_data.xu':
         return basic(sig) and ('ListBox)' in sig or sig.startswith(('pub struct ListBox', 'pub fn list_box(')))
     if path == 'ui/widgets/controls_nav.xu':
@@ -72,7 +72,7 @@ def selected(path, sig):
     if path == 'ui/widgets/badge_attachment.xu':
         return sig.startswith('pub const BADGE_')
     if path == 'ui/widgets/styled_controls.xu':
-        return (('progress &Progress)' in sig or 'progress &mut Progress)' in sig) and 'set_style(' not in sig) or sig.startswith(('pub fn (button &Button) is_', 'pub fn (button &mut Button) set_invalid(', 'pub fn (button &mut Button) set_read_only('))
+        return (('progress &Progress)' in sig or 'progress $&Progress)' in sig) and 'set_style(' not in sig) or sig.startswith(('pub fn (button &Button) is_', 'pub fn (button $&Button) set_invalid(', 'pub fn (button $&Button) set_read_only('))
     if path == 'ui/widgets/state_style.xu':
         return sig.startswith(('pub const PAINT_', 'pub struct StatePaint', 'pub struct ResolvedStyle', 'pub fn state_paint(', 'pub fn (c &ControlStyle) resolve(', 'fn validate_states(', 'fn copy_states(', 'fn states_equal(', 'fn read_style_color(', 'fn read_style_f64(', 'fn decode_control_style(', 'struct ScalarControlStyle', 'fn empty_scalar_style', 'fn unpack_scalar_style('))
     if path == 'ui/widgets/selection_motion.xu':

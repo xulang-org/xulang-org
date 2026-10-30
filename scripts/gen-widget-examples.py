@@ -57,17 +57,17 @@ def source(name, slug):
         bounds = 'box(32.0,86.0,550.0,160.0)'
     if kind == 'progress':
         bounds = 'box(32.0,116.0,550.0,22.0)'
-    code = PREFIX + f'    bounds := {bounds}\n    mut control := widgets.{constructor}' + ('' if kind == 'styled-label' else ' or >>') + '\n'
+    code = PREFIX + f'    bounds := {bounds}\n    $control := widgets.{constructor}' + ('' if kind == 'styled-label' else ' or >>') + '\n'
     if not static:
         labels = {'button': 'Count +1 / 计数 +1', 'checkbox': 'Receive updates / 接收更新',
                   'switch': 'Live preview / 实时预览', 'radio': 'Stable / 稳定版',
                   'progress': 'Advance / 增加进度', 'badge': '+1'}
-        code += '    mut count := ' + ('4' if kind == 'progress' else '0') + '\n    label := context.layout_text(&"' + labels.get(slug, 'Value / 数值') + '",&draw.text_options(16.0)) or >>\n'
+        code += '    $count := ' + ('4' if kind == 'progress' else '0') + '\n    label := context.layout_text(&"' + labels.get(slug, 'Value / 数值') + '",&draw.text_options(16.0)) or >>\n'
     if kind in ('tabs', 'list', 'scroll'):
-        code += '    mut labels := []draw.TextLayout{}\n    for value in ["Overview","Activity","Settings"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n'
+        code += '    $labels := []draw.TextLayout{}\n    for value in ["Overview","Activity","Settings"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n'
     if not interactive and not static:
-        code += '    mut trigger := widgets.button(&identity,2,&box(32.0,260.0,220.0,40.0)) or >>\n'
-    event_code = f'    mut focus := widgets.focus_group(&identity,[{1 if interactive else 2}]) or >>\n'
+        code += '    $trigger := widgets.button(&identity,2,&box(32.0,260.0,220.0,40.0)) or >>\n'
+    event_code = f'    $focus := widgets.focus_group(&identity,[{1 if interactive else 2}]) or >>\n'
     event_code += '''    while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -95,28 +95,28 @@ def source(name, slug):
         message = '"Offset: " + str(int(control.offset()))'
     else:
         message = '"Count: " + str(count)'
-    code += '    mut frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n'
+    code += '    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n'
     code += f'    draw.text(32,24,24,"#f8fafc","{name}")\n'
     if kind == 'badge':
-        code += '    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) or >>\n    control.paint(mut &frame,&badge_label,&theme) or >>\n'
+        code += '    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) or >>\n    control.paint($&frame,&badge_label,&theme) or >>\n'
     elif kind in ('button', 'label'):
-        code += '    control.paint(mut &frame,&label,&theme) or >>\n'
+        code += '    control.paint($&frame,&label,&theme) or >>\n'
     elif kind in ('tabs', 'list'):
-        code += '    control.paint(mut &frame,&labels,&theme) or >>\n'
+        code += '    control.paint($&frame,&labels,&theme) or >>\n'
     elif kind == 'scroll':
-        code += '''    control.begin(mut &frame) or >>
+        code += '''    control.begin($&frame) or >>
     for i in 0:9 { text := labels[i % 3]
         frame.text_layout(&text,12.0,12.0 + f64(i) * 42.0,theme.foreground) or >> }
-    control.end(mut &frame) or >>
+    control.end($&frame) or >>
 '''
     elif kind == 'styled-label':
-        code += '    control.paint_text_styled(mut &frame,&bounds,&styles,&styles.button,0) or >>\n'
+        code += '    control.paint_text_styled($&frame,&bounds,&styles,&styles.button,0) or >>\n'
     else:
-        code += '    control.paint(mut &frame,&theme) or >>\n'
+        code += '    control.paint($&frame,&theme) or >>\n'
     if kind == 'card':
         code += '    draw.text(48,110,20,"#f8fafc","Xu workspace")\n    draw.text(48,146,16,"#cbd5e1","A place for your next idea.")\n'
     if not interactive and not static:
-        code += '    trigger.paint(mut &frame,&label,&theme) or >>\n'
+        code += '    trigger.paint($&frame,&label,&theme) or >>\n'
     code += '    draw.text(32,320,16,"#e2e8f0",' + message + ')\n    println(' + message + ')\n'
     return code + SUFFIX, initial + '\n'
 

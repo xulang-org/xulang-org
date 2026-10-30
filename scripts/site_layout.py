@@ -115,6 +115,15 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
     elif rest == '/blog' or rest.startswith('/blog/'):
         groups.append(('xi-chat', 'Blog', [
             (prefix + '/blog', 'Index' if en else '博客索引'),
+            (prefix + '/blog/xu-0-10-12', 'Xu 0.10.12'),
+            (prefix + '/blog/xu-0-10-11', 'Xu 0.10.11'),
+            (prefix + '/blog/xu-0-10-7', 'Xu 0.10.7'),
+            (prefix + '/blog/xu-0-10-6', 'Xu 0.10.6'),
+            (prefix + '/blog/xu-0-10-5', 'Xu 0.10.5'),
+            (prefix + '/blog/xu-0-10-2', 'Xu 0.10.2'),
+            (prefix + '/blog/xu-0-10-1', 'Xu 0.10.1'),
+            (prefix + '/blog/xu-0-9-4', 'Xu 0.9.4'),
+            (prefix + '/blog/xu-0-9-3', 'Xu 0.9.3'),
             (prefix + '/blog/xu-lsp-and-vscode', 'Xu LSP & vscode-xu' if en else 'Xu LSP 与 vscode-xu'),
             (prefix + '/blog/xu-0-8-13', 'Xu 0.8.13'),
             (prefix + '/blog/xu-0-8-12', 'Xu 0.8.12'),

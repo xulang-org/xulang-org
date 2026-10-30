@@ -1,7 +1,7 @@
 # Browser UI playground
 
 Xu's scanner, parser, borrow checker, MIR interpreter, and cooperative scheduler
-execute inside a disposable WASM instance. User source is never translated into
+execute inside a worker-owned WASM instance. User source is never translated into
 JavaScript. Canvas is the pixel host for both drawing and real widgets.
 
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
@@ -101,7 +101,7 @@ The original text is never included in the masked layout's Canvas paint command.
 ## Floating-point VM support
 
 Widget geometry uses real IEEE binary64 values. The development wasm32 backend
-supports typed f64 arithmetic; the selected 0.10.11 SDK predates that support.
+supports typed f64 arithmetic; the selected 0.10.12 SDK predates that support.
 The MIR interpreter represents VM values as
 integer bit patterns. Its `vm_fp_*` functions are still trap stubs: numeric
 `f64(int)` / `int(f64)` casts convert values and cannot reinterpret those bits.
@@ -122,9 +122,18 @@ This does not claim general native floating-point formatting compatibility.
 
 ## Interaction and resource limits
 
-Every input replays the program and its bounded history in a fresh WASM
-instance. State, measurement, hit testing, focus, activation, and painting all
-execute in Xu. Only the final committed frame is displayed. The gallery paints
+Identical source reuses its checked MIR, slot-offset tables, decoded instructions,
+and resolved call targets in one WASM instance. Single-task programs pause before
+an exhausted input read. The host retains an execution-arena snapshot and resumes
+it for appended input; it runs the exhaustion/painting tail on a temporary branch.
+History rewrites replay from zero. Spawned tasks/channels use complete replay to
+preserve scheduler behavior. Snapshots are capped at 8 MiB of execution memory
+plus the three bounded output buffers; larger programs use complete replay too.
+Edits and traps discard the instance. Execution allocations are rewound to the
+compile boundary or restored checkpoint, so repeated replays do not leak arenas.
+State, measurement, hit testing, focus, activation, and painting all execute in
+Xu. Draw color/text byte formatting runs in the AOT Xu host adapter. Only the
+final committed frame is displayed. The gallery paints
 once after consuming history, which bounds draw output independently of event
 count. Run Code, source edits, and example changes reset the session.
 
@@ -169,12 +178,13 @@ python3 -m http.server 18110 --bind 127.0.0.1 --directory dist
 ```
 
 The build invokes the scalar link step automatically, including adjustment of
-the SDK memory section to a fixed 256 MiB limit. The disposable arena starts at
-16 MiB and retains parser/checker/MIR/UI allocations until evaluation ends.
-Styled tables and charts exceed the original 128 MiB budget even after loading
-only their dependencies. The allocator, linker, build metadata and memory test
-share the 256 MiB contract; programs cannot grow beyond it. The source size,
-VM step count, input history and worker deadlines remain bounded.
+the SDK memory section to a fixed 256 MiB limit. The arena starts at
+16 MiB and retains parser/checker/MIR allocations for the checked source;
+execution memory after that boundary is recycled. Styled tables and charts
+exceed the original 128 MiB budget even after loading only their dependencies.
+The allocator, linker, build metadata and memory test share the 256 MiB contract;
+programs cannot grow beyond it. The source size, VM step count, input history
+and worker deadlines remain bounded.
 Native SDK methods can emit conservative division warnings; warnings remain
 visible, and a later WASM trap is appended rather than hidden by those warnings.
 The VM supports the scalar maps needed by these controls (int/string keys,
@@ -201,6 +211,35 @@ XU_ROOT=/path/to/xu XU_STDLIB_ROOT=/path/to/xu/src \
 XU_UI_SIM=1 /tmp/xu-widget-contract
 ```
 
+## Performance reproduction
+
+After building with a matching SDK, run the production worker in Node:
+
+```sh
+node scripts/bench-playground.mjs --rounds=3 > /tmp/playground-timing.json
+node scripts/bench-playground.mjs --example=ui-counter --rounds=3
+node scripts/bench-playground.mjs --clicks=31 --rounds=3
+# Disable reuse to measure compiler cost on the same artifact:
+node scripts/bench-playground.mjs --cache=false --checkpoints=false --rounds=3
+```
+
+`--wasm=/absolute/path/to/artifact.wasm` selects an artifact. Each round creates a
+fresh runtime, then measures press/release redraws and histories of 16, 63 and 64
+records. The 63-record batch and the final single record are reported separately.
+JSON includes raw samples and stage medians for instance setup, source-to-MIR
+compilation, execution (including bounded snapshot copies), UTF-8 output decoding,
+worker input/output serialization and transit, command validation, Canvas calls,
+and input-to-mock-paint latency. It also records frame commands, transport bytes,
+Canvas method counts, cache/resume hits, replayed events and arena high-water marks.
+Canvas uses a counting mock; GPU rasterization, browser event dispatch, downloading
+over a real network, and screen presentation are outside this measurement.
+`tests/test_playground_cache.mjs` compares snapshots against complete replay and
+checks edits, history resets, compiler diagnostics, wasm traps and arena reuse.
+For a comparison with a pre-change revision, `scripts/build-playground-baseline.py`
+extracts that revision into a new directory and adds only the compile/execute
+timing entry points. Build it with the candidate's SDK, then benchmark its WASM
+with `--cache=false --checkpoints=false`; the old interpreter stays intact.
+
 ## Linear-memory ABI
 
 Controls are little-endian i64. Existing source/stdout/stderr buffers and the
@@ -213,6 +252,11 @@ Controls are little-endian i64. Existing source/stdout/stderr buffers and the
 | 1072 | Next input index |
 | 1080 | An input driver was called (interactive) |
 | 1088 | `next_input` was called (typed input mode) |
+| 1104 | Immutable interpreter plan table pointer (with numeric call-target caches) |
+| 1112 | Deliver input exhaustion instead of pausing (1 = finish branch) |
+| 1120 | Interpreter paused before an exhausted input read |
+| 140000 | Checked MIR descriptor, descending frame slots |
+| 145904–146007 | Eval checkpoint descriptor: three slices and four scalars |
 | 720000–982143 | UTF-8 newline-delimited drawing commands |
 | 1000000–1005119 | 64 input records of 80 bytes each |
 
@@ -222,3 +266,6 @@ canvas identity is `(window_id:1, canvas_id:1, generation:1)`. Legacy
 `next_click()` consumes x/y from the same record and returns `(x,y,ok)`.
 Failures return no UI frame. ABI or intrinsic changes must be updated in both
 the Xu interpreter and JS bridge and exercised with the actual built WASM.
+The legacy `xu_eval_frame` entry point remains a complete compile/run operation.
+The host splits it into `xu_prepare_frame`, `xu_start_frame`, and `xu_drive_frame`;
+`xu_execute_frame` performs complete replay of prepared MIR.

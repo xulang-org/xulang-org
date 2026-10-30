@@ -16,7 +16,7 @@ fn decode_case_rune(s &string, i int) int {
 // Upstream: src/strings/mod.xu
 fn index_from(s &string, sub &string, start int) int {
     n := s.len
-    mut off := start
+    $off := start
     if off < 0 {
         off = 0
     }
@@ -37,7 +37,7 @@ fn index_from(s &string, sub &string, start int) int {
 // Upstream: src/strings/mod.xu
 fn map_text_case(s &string, upper bool) string {
     // Fast path: scan for non-ASCII or need-to-convert characters.
-    mut has_change := false
+    $has_change := false
     if upper {
         for i in 0:s.len {
             c := s[i]
@@ -54,7 +54,7 @@ fn map_text_case(s &string, upper bool) string {
     if !has_change {
         << s + ""
     }
-    mut out := make_string(s.len)
+    $out := make_string(s.len)
     if upper {
         for i in 0:s.len {
             c := s[i]
@@ -79,10 +79,10 @@ fn map_text_case(s &string, upper bool) string {
 
 // Upstream: src/strings/mod.xu
 fn map_unicode_case(s &string, upper bool) string {
-    mut out := new_byte_builder(s.len)
-    mut i := 0
+    $out := new_byte_builder(s.len)
+    $i := 0
     while i < s.len {
-        mut r := s[i]
+        $r := s[i]
         if r < 128 {
             i += 1
         } else {
@@ -123,8 +123,8 @@ fn replace_one_byte(src &string, oldb int, newb int, n int) string {
     if n < 0 {
         << replace_one_byte_all(src, ob, nb)
     }
-    mut i := 0
-    mut found := 0
+    $i := 0
+    $found := 0
     while i < src.len {
         if (src[i] & 255) == ob {
             found = 1
@@ -135,9 +135,9 @@ fn replace_one_byte(src &string, oldb int, newb int, n int) string {
     if found == 0 {
         << src + ""
     }
-    mut b := make_string(src.len)
+    $b := make_string(src.len)
     i = 0
-    mut replaced := 0
+    $replaced := 0
     while i < src.len {
         c := src[i] & 255
         if c == ob && replaced < n {
@@ -156,8 +156,8 @@ fn replace_one_byte_all(src &string, ob int, nb int) string {
     // Equality select: `((c ^ (ob & 255)) - 1) >> 63` is -1 on a match.
     // The mask keeps the compare inside one byte, which is the 16-byte
     // NEON replace shape. The limited-count path stays branched.
-    mut i := 0
-    mut found := 0
+    $i := 0
+    $found := 0
     while i < src.len {
         if (src[i] & 255) == ob {
             found = 1
@@ -168,7 +168,7 @@ fn replace_one_byte_all(src &string, ob int, nb int) string {
     if found == 0 {
         << src + ""
     }
-    mut b := make_string(src.len)
+    $b := make_string(src.len)
     i = 0
     while i < src.len {
         c := src[i] & 255
@@ -198,7 +198,7 @@ pub fn (v &ByteView) index(s &string, sub &string) int {
             << p - base
         }
         c := sub[0]
-        mut i := 0
+        $i := 0
         while i < n {
             if s[base + i] == c {
                 << i
@@ -208,7 +208,7 @@ pub fn (v &ByteView) index(s &string, sub &string) int {
         << -1
     }
     last := m - 1
-    mut i := 0
+    $i := 0
     if n >= 48 {
         // For short needles, screen a bounded number of first-byte candidates
         // with the runtime NEON/SWAR scan before preparing the skip table.
@@ -218,14 +218,14 @@ pub fn (v &ByteView) index(s &string, sub &string) int {
         if m <= 32 && base >= 0 && base <= s.len && n == s.len - base {
             first := sub[0]
             tail := sub[last]
-            mut pos := base
-            mut attempts := 0
+            $pos := base
+            $attempts := 0
             while attempts < 8 {
                 p := find_byte(s, first, pos)
                 if p < 0 { << -1 }
                 if p - base > n - m { << -1 }
                 if s[p + last] == tail {
-                    mut j := 1
+                    $j := 1
                     while j < last {
                         if s[p + j] != sub[j] { <- }
                         j += 1
@@ -240,8 +240,8 @@ pub fn (v &ByteView) index(s &string, sub &string) int {
         << index_window_prepared(s, sub, base, n, &bc)
     }
     while i + m <= n {
-        mut j := last
-        mut ok := 1
+        $j := last
+        $ok := 1
         while j >= 0 {
             if s[base + i + j] != sub[j] {
                 ok = 0
@@ -253,8 +253,8 @@ pub fn (v &ByteView) index(s &string, sub &string) int {
             << i
         }
         c := s[base + i + last]
-        mut skip := m
-        mut k := last - 1
+        $skip := m
+        $k := last - 1
         while k >= 0 {
             if sub[k] == c {
                 skip = last - k
@@ -286,9 +286,9 @@ pub fn replace(s &string, old string, new string, n int) string {
     }
     if old.len == 0 {
         src := s + ""
-        mut out := ""
-        mut i := 0
-        mut replaced := 0
+        $out := ""
+        $i := 0
+        $replaced := 0
         while i <= src.len {
             if n < 0 || replaced < n {
                 out.push_str(new)
@@ -319,10 +319,10 @@ pub fn replace(s &string, old string, new string, n int) string {
         if p0 < 0 {
             << s + ""
         }
-        mut out := ""
-        mut start := 0
-        mut replaced := 0
-        mut p := p0
+        $out := ""
+        $start := 0
+        $replaced := 0
+        $p := p0
         while p >= 0 {
             if n >= 0 && replaced >= n {
                 <-
@@ -347,10 +347,10 @@ pub fn replace(s &string, old string, new string, n int) string {
     if p0 < 0 {
         << s + ""
     }
-    mut out := ""
-    mut start := 0
-    mut replaced := 0
-    mut p := p0
+    $out := ""
+    $start := 0
+    $replaced := 0
+    $p := p0
     bc := search_skip(&old, s.len)
     while p >= 0 {
         if n >= 0 && replaced >= n {

@@ -3,7 +3,7 @@
 
 // Bounded VM map storage, independent of native container pointers. Keys and
 // scalar values retain the checked MIR descriptor/scalar calling ABI.
-fn vm_map(e &mut Eval,m &types.Mir,fp int,ii int,args &[]int) {
+fn vm_map(e $&Eval,m &types.Mir,fp int,ii int,args &[]int) {
     fi := wasm_mem_load(fp)
     kind := types.mir_ib(m,fi,ii)
     dest := types.mir_ia(m,fi,ii)
@@ -32,23 +32,23 @@ fn vm_map(e &mut Eval,m &types.Mir,fp int,ii int,args &[]int) {
         vm_error(e,"unsupported playground map operation: " + str(kind))
         << }
     scalar := types.mir_id(m,fi,ii) != 0
-    mut key := vm_value(m,fp,args[1],0)
+    $key := vm_value(m,fp,args[1],0)
     if !scalar { key = wasm_mem_load(key) }
     string_key := wasm_mem_load(handle + 8) == 1
     slots := wasm_mem_load(handle + 16)
-    mut entry := wasm_mem_load(handle + 24)
-    mut found := 0
+    $entry := wasm_mem_load(handle + 24)
+    $found := 0
     while entry != 0 {
         if wasm_mem_load(entry + 16) != 0 {
             stored := wasm_mem_load(entry + 8)
-            mut equal := key == stored
+            $equal := key == stored
             if string_key { equal = vm_text(&*e,key) == vm_text(&*e,stored) }
             if equal { found = entry
                 <- }
         }
         entry = wasm_mem_load(entry)
     }
-    if kind == 87 { mut present := 0
+    if kind == 87 { $present := 0
         if found != 0 { present = 1 }
         vm_put(m,fp,dest,0,present)
         << }
@@ -69,7 +69,7 @@ fn vm_map(e &mut Eval,m &types.Mir,fp int,ii int,args &[]int) {
         }
         value := vm_value(m,fp,args[2],0)
         for s in 0:slots {
-            mut word := value
+            $word := value
             if !scalar { word = wasm_mem_load(value - s * 8) }
             wasm_mem_store(found + 24 + s * 8,word)
         }
@@ -77,10 +77,10 @@ fn vm_map(e &mut Eval,m &types.Mir,fp int,ii int,args &[]int) {
     }
     if found == 0 && kind == 85 { vm_error(e,"map key not found")
         << }
-    mut fallback := 0
+    $fallback := 0
     if found == 0 { fallback = vm_value(m,fp,args[2],0) }
     for s in 0:slots {
-        mut word := fallback
+        $word := fallback
         if found != 0 { word = wasm_mem_load(found + 24 + s * 8) }
         else if !scalar { word = wasm_mem_load(fallback - s * 8) }
         vm_put(m,fp,dest,s,word)

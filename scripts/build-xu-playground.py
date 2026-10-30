@@ -16,7 +16,6 @@ def xu_literal(value):
     # interpolates '$', including inside embedded upstream Unicode tables.
     return json.dumps(value, ensure_ascii=False).replace('$', '\\$')
 
-
 def build(root: Path, xu: Path, compiler: Path):
     version = (xu / 'VERSION').read_text(encoding='utf-8').strip()
     expected = os.environ.get('XU_RELEASE_VERSION', version)
@@ -63,11 +62,11 @@ def build(root: Path, xu: Path, compiler: Path):
         source = root / 'playground/stdlib' / ('desktop_' + name + '.xu')
         content = re.sub(r'(?m)^[@#][^\n]*\n', '', source.read_text(encoding='utf-8'))
         embedded += f'fn playground_std_{name}() string {{\n    << ' + xu_literal(content) + '\n}\n\n'
-    embedded += 'fn playground_widget_flags(tokens &[]ast.Token) []bool {\n    mut flags := []bool{}\n'
+    embedded += 'fn playground_widget_flags(tokens &[]ast.Token) []bool {\n    $flags := []bool{}\n'
     for family, names in families.items():
         condition = ' || '.join('token.sval == ' + json.dumps(name) for name in names)
-        embedded += f'    mut want_{family} := false\n    for token in tokens {{ if token.kind == ast.TOK_IDENT && ({condition}) {{ want_{family} = true }} }}\n    flags.push(want_{family})\n'
-    embedded += '    mut native_maps := false\n    for token in tokens { if token.kind == ast.TOK_MAP { native_maps = true } }\n    flags.push(native_maps)\n    << flags\n}\nfn playground_merge_widget_extensions(p &mut parser.Parser, flags &[]bool) {\n    mut needed := false\n    for flag in flags { if flag { needed = true } }\n    if !needed { playground_merge(p,playground_std_desktop_widgets(),"ui/widgets.xu")\n        << }\n    playground_merge(p,playground_std_maps(),"runtime/map_algo.xu")\n'
+        embedded += f'    $want_{family} := false\n    for token in tokens {{ if token.kind == ast.TOK_IDENT && ({condition}) {{ want_{family} = true }} }}\n    flags.push(want_{family})\n'
+    embedded += '    $native_maps := false\n    for token in tokens { if token.kind == ast.TOK_MAP { native_maps = true } }\n    flags.push(native_maps)\n    << flags\n}\nfn playground_merge_widget_extensions(p $&parser.Parser, flags &[]bool) {\n    $needed := false\n    for flag in flags { if flag { needed = true } }\n    if !needed { playground_merge(p,playground_std_desktop_widgets(),"ui/widgets.xu")\n        << }\n    playground_merge(p,playground_std_maps(),"runtime/map_algo.xu")\n'
     indexes = {family:i for i,family in enumerate(families)}
     def condition(names):
         return ' || '.join('flags[' + str(indexes[name]) + ']' for name in families if name in names) or 'false'
@@ -76,7 +75,7 @@ def build(root: Path, xu: Path, compiler: Path):
         parts = [chunk for chunk in chunks if chunk['module'] == module]
         name = 'source_' + module.replace('/','_')
         header = '@' + module + '\n' + '\n'.join('#' + p for p in ('ui','ui/draw','ui/layout','errors','math','time','unicode/utf8','ui/internal/codec') if p != module) + '\n'
-        embedded += '    mut ' + name + ' := ' + xu_literal(header) + '\n'
+        embedded += '    $' + name + ' := ' + xu_literal(header) + '\n'
         for external in ('strings','strconv','unicode'):
             if external == module: continue
             required = {family for chunk in chunks if chunk['module'] == external for family in chunk['families']}

@@ -31,7 +31,7 @@ def identity(sig):
     match = re.match(r'(?:pub )?(struct|const) (\w+)', sig)
     if match:
         return match[1], '', match[2]
-    match = re.match(r'(?:pub )?fn (?:\(\w+ &?(?:mut )?(\w+)\) )?(\w+)\(', sig)
+    match = re.match(r'(?:pub )?fn (?:\(\w+ (?:(?:\$&)|&?(?:mut )?)(\w+)\) )?(\w+)\(', sig)
     return ('fn', match[1] or '', match[2]) if match else ('', '', '')
 
 
@@ -100,7 +100,7 @@ def extensions(xu, base, declarations):
                         if symbol and pool[symbol][2] == 'struct': types[module].add(word)
             for key, body in bodies.items():
                 module = key[0]
-                variables = {var:type_of(ty,module) for var,ty in re.findall(r'(\w+)\s+&?(?:mut )?(?:\[\])?([\w.]+)', key[1])}
+                variables = {var:type_of(ty,module) for var,ty in re.findall(r'(\w+)\s+(?:(?:\$&)|&?(?:mut )?)(?:\[\])?([\w.]+)', key[1])}
                 def resolve(expression):
                     parts = expression.split('.')
                     current = variables.get(parts[0])
@@ -111,7 +111,7 @@ def extensions(xu, base, declarations):
                         current = type_of(target, current[0])
                     return current
                 for _ in range(3):
-                    for var,expression,call in re.findall(r'\b(\w+)\s*:=\s*(?:mut )?&?([\w.]+)\s*([({]?)', body):
+                    for var,expression,call in re.findall(r'\$?\b(\w+)\s*:=\s*(?:(?:\$&)|(?:mut )?&?)?([\w.]+)\s*([({]?)', body):
                         inferred = resolve(expression)
                         if not inferred and call:
                             if call == '{': inferred = type_of(expression,module)

@@ -47,7 +47,7 @@ fn demo() int {
         code += '    items := [widgets.button_group_item(1,"Design"),widgets.button_group_item(2,"Develop"),widgets.button_group_item(3,"Review")]\n'
     elif slug in ('menu', 'context-menu', 'split-button'):
         code += '    items := [widgets.menu_item(1,"Save"),widgets.menu_item(2,"Export"),widgets.menu_item(3,"Duplicate")]\n'
-    code += '    mut control := widgets.' + constructor + ' or >>\n    mut last := 0\n'
+    code += '    $control := widgets.' + constructor + ' or >>\n    $last := 0\n'
     if slug in ('menu', 'context-menu', 'split-button'):
         code += '    control.set_viewport(&box(0.0,0.0,640.0,360.0)) or >>\n'
     if slug == 'table':
@@ -59,7 +59,7 @@ fn demo() int {
     control.set_local_sort(true) or >>
 '''
     if slug == 'chart':
-        code += '''    mut series := widgets.chart_series(1,"Workspace",widgets.CHART_BAR)
+        code += '''    $series := widgets.chart_series(1,"Workspace",widgets.CHART_BAR)
     series.points = [widgets.chart_point(1,1.0,12.0),widgets.chart_point(2,2.0,8.0),widgets.chart_point(3,3.0,5.0)]
     control.set_series(&[series]) or >>
     _ := control.tick(&styles,time.instant_from_ns(1) or >>,true) or >>
@@ -69,7 +69,7 @@ fn demo() int {
     apply = styled and slug not in ('radio-group',)
     if apply:
         code += '    control.apply_styles(&styles) or >>\n'
-    code += '''    mut focus := widgets.focus_group(&identity,[1]) or >>
+    code += '''    $focus := widgets.focus_group(&identity,[1]) or >>
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -83,19 +83,19 @@ fn demo() int {
     if slug in ('menu', 'context-menu', 'split-button'):
         code += '        _ := control.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>\n'
     code += '''    }
-    mut frame := context.new_frame(8192)
+    $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(draw.rgb(16,24,39)) or >>
 '''
     code += f'    draw.text(32,24,24,"#f8fafc","{name}")\n'
     if paint == 'basic-label':
-        code += '    value := str(int(control.value()))\n    label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n    control.paint(mut &frame,&label,&theme) or >>\n'
+        code += '    value := str(int(control.value()))\n    label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n    control.paint($&frame,&label,&theme) or >>\n'
     elif paint == 'basic-options':
-        code += '    mut labels := []draw.TextLayout{}\n    for value in options { label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(label) }\n    control.paint(mut &frame,&labels,&theme) or >>\n'
+        code += '    $labels := []draw.TextLayout{}\n    for value in options { label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(label) }\n    control.paint($&frame,&labels,&theme) or >>\n'
     else:
-        code += '    control.paint_styled(mut &frame,&styles) or >>\n'
+        code += '    control.paint_styled($&frame,&styles) or >>\n'
     if slug in ('menu', 'context-menu', 'split-button'):
-        code += '    control.paint_popup_styled(mut &frame,&styles) or >>\n'
+        code += '    control.paint_popup_styled($&frame,&styles) or >>\n'
     if slug == 'split-view':
         code += '''    panes := control.layout()
     frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(39,60,85)) or >>

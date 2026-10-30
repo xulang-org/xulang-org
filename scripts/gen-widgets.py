@@ -15,7 +15,7 @@ START, END = '<!--widget-directory:start-->', '<!--widget-directory:end-->'
 def native_source(c):
     """Small Screen setup fragments; complete lifecycle is in the linked workshop."""
     if c['slug'] == 'toast-host':
-        return '#ui/widgets\n\nfn notifications() widgets.ToastHost {\n    mut host := widgets.toast_host()\n    value := widgets.notice(&"Workspace saved")\n    host.enqueue(&value) or >>\n    << host\n}'
+        return '#ui/widgets\n\nfn notifications() widgets.ToastHost {\n    $host := widgets.toast_host()\n    value := widgets.notice(&"Workspace saved")\n    host.enqueue(&value) or >>\n    << host\n}'
     args = {
         'styled-label': '"Make room for ideas.",20.0,false', 'button': '"Save"',
         'icon-button': '"www/logo.png","Favorite"', 'input': '"Xu workspace"',
@@ -62,7 +62,7 @@ def native_source(c):
     if slug not in ('popover', 'tooltip', 'modal'):
         setup.append('screen.place(id,24.0,24.0,320.0,80.0) or >>')
     setup.append('<< id')
-    return '\n'.join(imports) + '\n\nfn configure(screen &mut widgets.Screen) int {\n    ' + '\n    '.join(setup) + '\n}'
+    return '\n'.join(imports) + '\n\nfn configure(screen $&widgets.Screen) int {\n    ' + '\n    '.join(setup) + '\n}'
 
 
 def generate(root: Path = ROOT, check: bool = False) -> list[Path]:
@@ -102,10 +102,10 @@ def generate(root: Path = ROOT, check: bool = False) -> list[Path]:
         at = original.find('</p>', original.find(marker)) + 4
         outputs[source] = original[:at] + '\n' + directory + original[at:]
         for index, c in enumerate(components):
-            factory = c['factory'] if c.get('factory_kind') == 'fn' else '-mut-Screen-' + c['factory']
+            factory = c['factory'] if c.get('factory_kind') == 'fn' else '--Screen-' + c['factory']
             if factory not in articles:
                 raise ValueError(f'{c["name"]}: missing released constructor {factory}')
-            kind = re.compile(r'^(?:struct-' + re.escape(c['type']) + r'$|-?(?:mut-)?' + re.escape(c['type']) + r'-)')
+            kind = re.compile(r'^(?:struct-' + re.escape(c['type']) + r'$|--?(?:mut-)?' + re.escape(c['type']) + r'-)')
             related = [anchor for anchor in articles if kind.match(anchor) or anchor == factory]
             label = '在演练场运行 Xu 示例' if zh else 'Run the Xu example'
             query = 'example=' + c['project'] if c['project'] else 'widget=' + c['slug']
@@ -125,7 +125,7 @@ def generate(root: Path = ROOT, check: bool = False) -> list[Path]:
                         '<h2 id="lifecycle">' + ('放置、状态与事件' if zh else 'Placement, state and events') + '</h2>',
                         '<p>' + ('组件由应用拥有。Screen.place 放置节点，Screen.set_enabled 和 Screen.set_visible 管理可用性与显示。状态变化后重新呈现；创建和修改时处理 <code>or</code> 错误，不在绘制回调中修改拓扑。ToastHost 使用自己的队列接口。' if zh else 'The application owns the component. Screen.place positions nodes; Screen.set_enabled and Screen.set_visible control availability and visibility. Present again after state changes, handle <code>or</code> errors, and keep topology changes outside paint callbacks. ToastHost uses its own queue API.') + '</p>',
                         f'<p><a href="{base}#struct-Action">Action</a> · <a href="{base}#struct-Styles">Styles</a> · <a href="{prefix}/docs/ui">' + ('界面生命周期与样式指南' if zh else 'UI lifecycle and styling guide') + '</a></p>',
-                        f'<p><a href="{base}#-mut-Screen-place">Screen.place</a> · <a href="{base}#-mut-Screen-set_enabled">Screen.set_enabled</a> · <a href="{base}#-mut-Screen-set_visible">Screen.set_visible</a></p>' if c['slug'] != 'toast-host' else '',
+                        f'<p><a href="{base}#--Screen-place">Screen.place</a> · <a href="{base}#--Screen-set_enabled">Screen.set_enabled</a> · <a href="{base}#--Screen-set_visible">Screen.set_visible</a></p>' if c['slug'] != 'toast-host' else '',
                         '<h2 id="api">' + ('独立控件对象 API' if zh else 'Standalone control object API') + '</h2>',
                         '<p>' + ('以下类型与方法用于自行管理控件、输入和绘制的进阶用法。接收者是控件对象，不是 Screen 返回的节点 ID；普通 Screen 用法请使用上面的创建接口及 Widgets 模块中的 Screen 方法。' if zh else 'These types and methods support applications that manage control objects, input and painting directly. Their receiver is a control object, not a Screen node ID. For Screen usage, use the constructor above and the Screen methods in the Widgets module.') + '</p>' if c['slug'] != 'toast-host' else '',
                         *[articles[a] for a in related if a != factory],

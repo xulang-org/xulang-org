@@ -5,12 +5,12 @@
 <tr><th>写法</th><th>含义</th></tr>
 <tr><td>按值 <code>string</code> / <code>[]T</code></td><td>move</td></tr>
 <tr><td><code>&amp;x</code></td><td>共享借用</td></tr>
-<tr><td><code>mut &amp;x</code>（<code>x</code> 须 <code>mut</code>）</td><td>独占借用</td></tr>
-<tr><td><code>*r</code></td><td>解引用标量（写需 <code>&amp;mut</code>）</td></tr>
+<tr><td><code>$&amp;x</code>（<code>x</code> 须以 <code>$x</code> 声明）</td><td>独占借用</td></tr>
+<tr><td><code>*r</code></td><td>解引用标量（写需 <code>$&amp;</code>）</td></tr>
 </table>
-<p>共享借用存活期间不可写 / move / 再取 <code>&amp;mut</code>。没有 <code>unsafe</code> 关键字。托管目标拒绝任意地址的 volatile 写。</p>
+<p>共享借用存活期间不可写 / move / 再取 <code>$&amp;</code>。没有 <code>unsafe</code> 关键字。托管目标拒绝任意地址的 volatile 写。</p>
 <h2>0.9.4 的借用诊断</h2>
-<p>借用检查会遍历嵌套表达式。例如 <code>f(mut &amp;v, &amp;v)</code> 同时对 <code>v</code> 取得独占与共享借用，即使放在 <code>int(f64(f(mut &amp;v, &amp;v)) * 32.0)</code> 中也会报错。应传入不同的值，或拆开操作，先结束可变使用再取得共享借用。</p>
+<p>借用检查会遍历嵌套表达式。例如 <code>f($&amp;v, &amp;v)</code> 同时对 <code>v</code> 取得独占与共享借用，即使放在 <code>int(f64(f($&amp;v, &amp;v)) * 32.0)</code> 中也会报错。应传入不同的值，或拆开操作，先结束可变使用再取得共享借用。</p>
 <p>循环体内产生的借用会在回边上保持活跃；下一轮迭代若与仍然活跃的借用冲突，也会被拒绝。升级后出现这类诊断时，应调整借用的作用域或所有权传递。完整迁移说明见 <a href="/blog/xu-0-9-4">0.9.4 发布公告</a>。</p>
 <p>File、Conn 等资源采用 affine 所有权：move 转移资源，作用域退出时自动关闭，原生句柄保持包内可见。I/O 通过借用访问资源，使用进度 API 时须处理 EOF/错误携带的数据和明确的写入进度结果。</p>
 <p><a href="/api/io">I/O API</a> · <a href="/api/os">OS API</a></p>

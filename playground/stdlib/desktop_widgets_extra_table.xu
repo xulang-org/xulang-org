@@ -13,19 +13,129 @@
 #ui/internal/codec
 
 // Upstream: src/ui/widgets/data_scrollbar.xu
-fn (lb &ListBox) paint_data_scrollbar(frame &mut draw.Frame,c &ControlStyle) int {
+fn (lb &ListBox) paint_data_scrollbar(frame $&draw.Frame,c &ControlStyle) int {
     if lb.max_scroll() <= 0.0 { << 0 }
     thumb := lb.scrollbar_thumb()
-    mut color := fade_color(c.palette.muted,0.6)
+    $color := fade_color(c.palette.muted,0.6)
     if lb.scroll_dragging { color = c.palette.muted }
     << rounded_fill(frame,&thumb,thumb.width * 0.5,color) or >>
+}
+
+// Upstream: src/ui/widgets/table_sort.xu
+fn (t $&Table) apply_sort(column int,descending bool,reset_scroll bool) int {
+    if t.rows.closed || column < -1 || column >= t.column_count() { >> errors.new("widgets: invalid table sort column") }
+    selected := t.selected_row() or >>
+    $order := []int{}
+    if column < 0 || !t.local_sort { for row in 0:t.count() { order.push(row) } }
+    else {
+        for row in t.order { order.push(row) }
+        keys := t.sort_keys(column)
+        $scratch := []int{}
+        for row in 0:t.count() { scratch.push(0) }
+        $width := 1
+        while width < order.len {
+            $start := 0
+            while start < order.len {
+                middle := min_int(order.len,start+width)
+                end := min_int(order.len,middle+width)
+                $left := start
+                $right := middle
+                $out := start
+                while left < middle || right < end {
+                    $take_left := right >= end
+                    if left < middle && right < end { take_left = t.compare_rows(&keys,order[left],order[right],column,descending) <= 0 }
+                    if take_left { scratch[out] = order[left]
+                        left += 1 }
+                    else { scratch[out] = order[right]
+                        right += 1 }
+                    out += 1
+                }
+                start = end
+            }
+            for i in 0:order.len { order[i] = scratch[i] }
+            width = width*2
+        }
+    }
+    t.order = order
+    t.sort_col = column
+    t.descending = column >= 0 && descending
+    t.rows.selected_val = t.view_row(selected) or >>
+    t.rows.hovered_idx = -1
+    t.rows.armed_idx = -1
+    if reset_scroll { t.rows.scroll_y = 0.0 }
+    t.rows.dirty = true
+    << 0
+}
+
+// Upstream: src/ui/widgets/table_appearance.xu
+fn (t $&Table) column_input(input &ui.InputEvent) Action {
+    $consumed := false
+    if input.kind == ui.EV_POINTER_SCROLL && t.outer.contains(input.x,input.y) && input.dx != 0.0 {
+        t.set_horizontal_offset(t.scroll_x + input.dx) or >>
+        consumed = true
+    }
+    if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT {
+        if !t.rows.read_only && input.y >= t.outer.y && input.y < t.outer.y + t.header_h && t.outer.contains(input.x,input.y) {
+            for i in 0:t.column_count() {
+                r := t.header_bounds(i)
+                if math.abs(input.x - r.x - r.width) <= 4.0 * t.density {
+                    t.resize_column = i
+                    t.resize_x = input.x
+                    t.resize_width = r.width / math.max(0.5,t.density)
+                    t.armed_header = -1
+                    t.rows.armed_idx = -1
+                    consumed = true
+                    <-
+                }
+            }
+        }
+        if t.content_width() > t.outer.width && t.horizontal_track().contains(input.x,input.y) {
+            thumb := t.horizontal_thumb() or >>
+            if input.x >= thumb.x && input.x < thumb.x + thumb.width { t.horizontal_drag = true
+                t.horizontal_grab = input.x - thumb.x }
+            else { $direction := 1.0
+                if input.x < thumb.x { direction = -1.0 }
+                t.set_horizontal_offset(t.scroll_x + direction * t.outer.width) or >> }
+            consumed = true
+        }
+    }
+    if input.kind == ui.EV_POINTER_MOVE && t.resize_column >= 0 {
+        width := math.max(t.minima[t.resize_column],math.min(4096.0,t.resize_width + (input.x - t.resize_x) / math.max(0.5,t.density)))
+        t.set_column_width(t.resize_column,width) or >>
+        consumed = true
+    }
+    if input.kind == ui.EV_POINTER_MOVE && t.horizontal_drag {
+        track := t.horizontal_track()
+        thumb := t.horizontal_thumb() or >>
+        ratio := (input.x - track.x - t.horizontal_grab) / math.max(1.0,track.width - thumb.width)
+        t.set_horizontal_offset(ratio * math.max(0.0,t.content_width() - t.outer.width)) or >>
+        consumed = true
+    }
+    if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT && (t.resize_column >= 0 || t.horizontal_drag) {
+        t.resize_column = -1
+        t.horizontal_drag = false
+        consumed = true
+    }
+    $action := no_action(t.id(),t.needs_paint())
+    if consumed { t.rows.dirty = true
+        action.kind = ACTION_SCROLL
+        action.needs_paint = true
+        action.consumed = true
+        action.request_focus = input.kind == ui.EV_POINTER_DOWN }
+    << action
+}
+
+// Upstream: src/ui/widgets/table_sort.xu
+fn (t $&Table) toggle_sort(column int) int {
+    descending := column == t.sort_col && !t.descending
+    << t.sort_by(column,descending) or >>
 }
 
 // Upstream: src/ui/widgets/table_appearance.xu
 fn (t &Table) column_extent(column int) f64 {
     if t.widths[column] > 0.0 { << t.widths[column] * t.density }
-    mut fixed := 0.0
-    mut automatic := 0
+    $fixed := 0.0
+    $automatic := 0
     for width in t.widths { if width > 0.0 { fixed = fixed + width * t.density }
         else { automatic = automatic + 1 } }
     << math.max(t.minima[column] * t.density,(t.outer.width - fixed) / f64(max_int(1,automatic)))
@@ -37,7 +147,7 @@ fn (t &Table) compare_rows(keys &TableSortKeys,left int,right int,column int,des
     if keys.valid[left] != keys.valid[right] { if keys.valid[left] { << -1 }
         << 1 }
     if !keys.valid[left] { << 0 }
-    mut result := 0
+    $result := 0
     if t.sort_kinds[column] == TABLE_SORT_NUMBER {
         if keys.numbers[left] < keys.numbers[right] { result = -1 }
         if keys.numbers[left] > keys.numbers[right] { result = 1 }
@@ -55,7 +165,7 @@ fn (t &Table) compare_rows(keys &TableSortKeys,left int,right int,column int,des
 
 // Upstream: src/ui/widgets/table_appearance.xu
 fn (t &Table) content_width() f64 {
-    mut width := 0.0
+    $width := 0.0
     for i in 0:t.column_count() { width = width + t.column_extent(i) }
     << width
 }
@@ -83,128 +193,18 @@ fn (t &Table) horizontal_track() layout.Rect {
 
 // Upstream: src/ui/widgets/table_sort.xu
 fn (t &Table) sort_keys(column int) TableSortKeys {
-    mut numbers := []f64{}
-    mut valid := []bool{}
+    $numbers := []f64{}
+    $valid := []bool{}
     cells := &t.cells
     for row in 0:t.count() {
         index := row*t.column_count()+column
         text := &cells[index]
-        mut number := TableSortNumber{value: 0.0,valid: text.len > 0}
+        $number := TableSortNumber{value: 0.0,valid: text.len > 0}
         if t.sort_kinds[column] == TABLE_SORT_NUMBER { number = table_sort_number(text) }
         numbers.push(number.value)
         valid.push(number.valid)
     }
     << TableSortKeys{numbers: numbers,valid: valid}
-}
-
-// Upstream: src/ui/widgets/table_sort.xu
-fn (t &mut Table) apply_sort(column int,descending bool,reset_scroll bool) int {
-    if t.rows.closed || column < -1 || column >= t.column_count() { >> errors.new("widgets: invalid table sort column") }
-    selected := t.selected_row() or >>
-    mut order := []int{}
-    if column < 0 || !t.local_sort { for row in 0:t.count() { order.push(row) } }
-    else {
-        for row in t.order { order.push(row) }
-        keys := t.sort_keys(column)
-        mut scratch := []int{}
-        for row in 0:t.count() { scratch.push(0) }
-        mut width := 1
-        while width < order.len {
-            mut start := 0
-            while start < order.len {
-                middle := min_int(order.len,start+width)
-                end := min_int(order.len,middle+width)
-                mut left := start
-                mut right := middle
-                mut out := start
-                while left < middle || right < end {
-                    mut take_left := right >= end
-                    if left < middle && right < end { take_left = t.compare_rows(&keys,order[left],order[right],column,descending) <= 0 }
-                    if take_left { scratch[out] = order[left]
-                        left += 1 }
-                    else { scratch[out] = order[right]
-                        right += 1 }
-                    out += 1
-                }
-                start = end
-            }
-            for i in 0:order.len { order[i] = scratch[i] }
-            width = width*2
-        }
-    }
-    t.order = order
-    t.sort_col = column
-    t.descending = column >= 0 && descending
-    t.rows.selected_val = t.view_row(selected) or >>
-    t.rows.hovered_idx = -1
-    t.rows.armed_idx = -1
-    if reset_scroll { t.rows.scroll_y = 0.0 }
-    t.rows.dirty = true
-    << 0
-}
-
-// Upstream: src/ui/widgets/table_appearance.xu
-fn (t &mut Table) column_input(input &ui.InputEvent) Action {
-    mut consumed := false
-    if input.kind == ui.EV_POINTER_SCROLL && t.outer.contains(input.x,input.y) && input.dx != 0.0 {
-        t.set_horizontal_offset(t.scroll_x + input.dx) or >>
-        consumed = true
-    }
-    if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT {
-        if !t.rows.read_only && input.y >= t.outer.y && input.y < t.outer.y + t.header_h && t.outer.contains(input.x,input.y) {
-            for i in 0:t.column_count() {
-                r := t.header_bounds(i)
-                if math.abs(input.x - r.x - r.width) <= 4.0 * t.density {
-                    t.resize_column = i
-                    t.resize_x = input.x
-                    t.resize_width = r.width / math.max(0.5,t.density)
-                    t.armed_header = -1
-                    t.rows.armed_idx = -1
-                    consumed = true
-                    <-
-                }
-            }
-        }
-        if t.content_width() > t.outer.width && t.horizontal_track().contains(input.x,input.y) {
-            thumb := t.horizontal_thumb() or >>
-            if input.x >= thumb.x && input.x < thumb.x + thumb.width { t.horizontal_drag = true
-                t.horizontal_grab = input.x - thumb.x }
-            else { mut direction := 1.0
-                if input.x < thumb.x { direction = -1.0 }
-                t.set_horizontal_offset(t.scroll_x + direction * t.outer.width) or >> }
-            consumed = true
-        }
-    }
-    if input.kind == ui.EV_POINTER_MOVE && t.resize_column >= 0 {
-        width := math.max(t.minima[t.resize_column],math.min(4096.0,t.resize_width + (input.x - t.resize_x) / math.max(0.5,t.density)))
-        t.set_column_width(t.resize_column,width) or >>
-        consumed = true
-    }
-    if input.kind == ui.EV_POINTER_MOVE && t.horizontal_drag {
-        track := t.horizontal_track()
-        thumb := t.horizontal_thumb() or >>
-        ratio := (input.x - track.x - t.horizontal_grab) / math.max(1.0,track.width - thumb.width)
-        t.set_horizontal_offset(ratio * math.max(0.0,t.content_width() - t.outer.width)) or >>
-        consumed = true
-    }
-    if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT && (t.resize_column >= 0 || t.horizontal_drag) {
-        t.resize_column = -1
-        t.horizontal_drag = false
-        consumed = true
-    }
-    mut action := no_action(t.id(),t.needs_paint())
-    if consumed { t.rows.dirty = true
-        action.kind = ACTION_SCROLL
-        action.needs_paint = true
-        action.consumed = true
-        action.request_focus = input.kind == ui.EV_POINTER_DOWN }
-    << action
-}
-
-// Upstream: src/ui/widgets/table_sort.xu
-fn (t &mut Table) toggle_sort(column int) int {
-    descending := column == t.sort_col && !t.descending
-    << t.sort_by(column,descending) or >>
 }
 
 // Upstream: src/ui/widgets/table_sort.xu
@@ -215,12 +215,12 @@ fn table_sort_number(value &string) TableSortNumber {
 }
 
 // Upstream: src/ui/widgets/tree_appearance.xu
-fn tree_chevron(frame &mut draw.Frame,x f64,y f64,size f64,angle f64,color draw.Color) int {
-    mut path := draw.new_path(80)
+fn tree_chevron(frame $&draw.Frame,x f64,y f64,size f64,angle f64,color draw.Color) int {
+    $path := draw.new_path(80)
     path.move_to(0.0 - size * 0.22,0.0 - size * 0.36) or >>
     path.line_to(size * 0.18,0.0) or >>
     path.line_to(0.0 - size * 0.22,size * 0.36) or >>
-    mut stroke := draw.stroke_options(math.max(1.0,size * 0.13))
+    $stroke := draw.stroke_options(math.max(1.0,size * 0.13))
     stroke.cap = draw.CAP_ROUND
     stroke.join = draw.JOIN_ROUND
     frame.push() or >>
@@ -249,7 +249,7 @@ pub fn (lb &ListBox) has_style() bool { << lb.custom.active }
 
 // Upstream: src/ui/widgets/controls_data.xu
 pub fn (lb &ListBox) item_visual_state(index int) int {
-    mut state := 0
+    $state := 0
     if lb.invalid { state = state | STATE_INVALID }
     if lb.read_only { state = state | STATE_READ_ONLY }
     if !lb.is_enabled() { state = state | STATE_DISABLED }
@@ -267,7 +267,7 @@ pub fn (lb &ListBox) style_or(styles &Styles) ControlStyle {
 
 // Upstream: src/ui/widgets/controls_data.xu
 pub fn (lb &ListBox) visual_state() int {
-    mut state := 0
+    $state := 0
     if lb.invalid { state = state | STATE_INVALID }
     if lb.read_only { state = state | STATE_READ_ONLY }
     if !lb.is_enabled() { state = state | STATE_DISABLED }
@@ -278,7 +278,7 @@ pub fn (lb &ListBox) visual_state() int {
 
 // Upstream: src/ui/widgets/appearance.xu
 pub fn (styles &Styles) table_style() ControlStyle {
-    mut c := styles.tree_style()
+    $c := styles.tree_style()
     c.border_width = styles.input.border_width
     c.padding = layout.Insets{left: 8.0,top: 6.0,right: 8.0,bottom: 6.0}
     c.indicator_size = 36.0
@@ -287,7 +287,7 @@ pub fn (styles &Styles) table_style() ControlStyle {
 
 // Upstream: src/ui/widgets/appearance.xu
 pub fn (styles &Styles) tree_style() ControlStyle {
-    mut c := styles.list_box_style()
+    $c := styles.list_box_style()
     c.border_width = 0.0
     c.palette.normal = styles.background
     c.padding = layout.Insets{left: 4.0,top: 4.0,right: 4.0,bottom: 4.0}
@@ -296,7 +296,7 @@ pub fn (styles &Styles) tree_style() ControlStyle {
     c.align_y = 0.5
     c.radius = 6.0
     c.states = []StatePaint{}
-    mut selected := state_paint(STATE_SELECTED)
+    $selected := state_paint(STATE_SELECTED)
     selected.unless = STATE_DISABLED
     selected.fields = PAINT_BACKGROUND | PAINT_FOREGROUND
     selected.background = mix_color(styles.background,c.palette.accent,0.14)
@@ -311,6 +311,267 @@ pub fn (styles &Styles) tree_style() ControlStyle {
 }
 
 // Upstream: src/ui/widgets/table.xu
+pub fn (t $&Table) apply_styles(styles &Styles) int {
+    if t.rows.closed { >> errors.new("widgets: table is disposed") }
+    styles.validate() or >>
+    c := t.style_or(styles)
+    cache := $&t.labels
+    sample := cache.measure(1023,&"Ag国",styles,&c) or >>
+    d := styles.density
+    t.density = d
+    height := math.max(c.indicator_size * d,sample.height + (c.padding.top + c.padding.bottom) * d)
+    padding := layout.Insets{left: c.padding.left * d,top: c.padding.top * d,right: c.padding.right * d,bottom: c.padding.bottom * d}
+    changed := t.rows.row_h != height || t.header_h != height || t.rows.padding.left != padding.left || t.rows.padding.top != padding.top ||
+        t.rows.padding.right != padding.right || t.rows.padding.bottom != padding.bottom
+    rows := $&t.rows
+    rows.padding = padding
+    rows.row_h = height
+    rows.scroll_y = math.max(0.0,math.min(rows.max_scroll(),rows.scroll_y))
+    t.header_h = height
+    if changed { b := t.bounds()
+        t.hot_header = -1
+        t.armed_header = -1
+        t.set_bounds(&b) or >>
+        t.rows.dirty = true }
+    << 0
+}
+
+// Upstream: src/ui/widgets/table.xu
+pub fn (t $&Table) cancel() {
+    t.sort_key_armed = 0
+    t.resize_column = -1
+    t.horizontal_drag = false t.hot_header = -1
+    t.armed_header = -1
+    rows := $&t.rows
+    rows.cancel() }
+
+// Upstream: src/ui/widgets/table.xu
+pub fn (t $&Table) dispose() {
+    cache := $&t.labels
+    cache.dispose()
+    t.cancel()
+    t.rows.closed = true
+}
+
+// Upstream: src/ui/widgets/table.xu
+pub fn (t $&Table) input(input &ui.InputEvent) Action {
+    if t.rows.closed || !belongs(&t.rows.identity,input) { << no_action(t.id(),t.needs_paint()) }
+    if input.kind == ui.EV_POINTER_CANCEL { t.cancel()
+        << no_action(t.id(),t.needs_paint()) }
+    if !t.is_enabled() { << no_action(t.id(),t.needs_paint()) }
+    resized := t.column_input(input) or >>
+    if resized.consumed { << resized }
+    header := t.hit_header(input.x,input.y)
+    if input.kind == ui.EV_POINTER_MOVE || input.kind == ui.EV_POINTER_ENTER || input.kind == ui.EV_POINTER_LEAVE {
+        $hot := header
+        if input.kind == ui.EV_POINTER_LEAVE { hot = -1 }
+        if hot != t.hot_header { t.hot_header = hot
+            t.rows.dirty = true }
+    }
+    if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT && header >= 0 {
+        t.header_cursor = header
+        t.rows.armed_idx = -1
+        if !t.rows.read_only { t.armed_header = header }
+        t.rows.dirty = true
+        << Action{kind: ACTION_NONE,id: t.id(),needs_paint: true,request_focus: true,consumed: true,value: f64(header)}
+    }
+    if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT { t.armed_header = -1 }
+    if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT && t.armed_header >= 0 {
+        $kind := ACTION_NONE
+        if !t.rows.read_only && header == t.armed_header {
+            t.toggle_sort(header) or >>
+            kind = ACTION_ACTIVATE
+        }
+        t.armed_header = -1
+        t.rows.dirty = true
+        << Action{kind: kind,id: t.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(header)}
+    }
+    // Left/right choose a header; Enter/Space request sorting. Up/down, Home,
+    // End and Page Up/Down continue to navigate the data rows.
+    if input.kind == ui.EV_KEY_DOWN && t.rows.focused && !t.rows.read_only {
+        if input.key == ui.KEY_LEFT || input.key == ui.KEY_RIGHT {
+            t.sort_key_armed = 0
+            if input.key == ui.KEY_LEFT { t.header_cursor = max_int(0,t.header_cursor - 1) }
+            else { t.header_cursor = min_int(t.column_count() - 1,t.header_cursor + 1) }
+            t.rows.dirty = true
+            << Action{kind: ACTION_NONE,id: t.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(t.header_cursor)}
+        }
+        if input.key == ui.KEY_ENTER || input.key == 32 {
+            if input.repeat == 0 { t.sort_key_armed = input.key }
+            t.rows.dirty = true
+            << Action{kind: ACTION_NONE,id: t.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(t.header_cursor)}
+        }
+    }
+    if input.kind == ui.EV_KEY_UP && input.key == t.sort_key_armed && t.sort_key_armed != 0 {
+        t.sort_key_armed = 0
+        if t.rows.focused && !t.rows.read_only { column := t.header_cursor
+            t.toggle_sort(column) or >>
+            << Action{kind: ACTION_ACTIVATE,id: t.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(column)} }
+    }
+    rows := $&t.rows
+    << rows.input(input) or >>
+}
+
+// Upstream: src/ui/widgets/table_appearance.xu
+pub fn (t $&Table) paint_styled(frame $&draw.Frame,styles &Styles) int {
+    t.apply_styles(styles) or >>
+    c := t.style_or(styles)
+    d := styles.density
+    cols := t.column_count()
+    outer := t.bounds()
+    style_box(frame,&outer,&c,d,t.rows.visual_state() & (STATE_DISABLED | STATE_INVALID | STATE_READ_ONLY)) or >>
+    frame.push() or >>
+    frame.clip_rect(outer.x,outer.y,outer.width,outer.height) or >>
+    header := layout.Rect{x: outer.x,y: outer.y,width: outer.width,height: math.min(outer.height,t.header_h)}
+    rounded_fill(frame,&header,c.radius * d,mix_color(c.palette.normal,c.palette.foreground,0.035)) or >>
+    frame.line(header.x,header.y + header.height,header.x + header.width,header.y + header.height,c.palette.border,d) or >>
+    for i in 0:cols {
+        b := t.header_bounds(i)
+        $text_style := c.clone()
+        text_style.align_x = t.alignments[i]
+        if i == t.hot_header { rounded_fill(frame,&b,0.0,c.palette.hovered) or >> }
+        if t.rows.focused && i == t.header_cursor { rounded_stroke(frame,&b,4.0 * d,c.palette.focus,c.focus_width * d) or >> }
+        text := t.headers[i] + ""
+        $rect := copy_rect(&b)
+        if i == t.sort_col { rect.width = math.max(0.0,rect.width - 18.0 * d)
+            $angle := -90.0
+            if t.descending { angle = 90.0 }
+            tree_chevron(frame,b.x + b.width - 12.0 * d,b.y + b.height * 0.5,8.0 * d,angle,c.palette.muted) or >> }
+        cache := $&t.labels
+        cache.paint_text(i,&text,frame,&rect,styles,&text_style,0) or >>
+    }
+    body := t.rows.bounds()
+    viewport := layout.Rect{x: body.x + t.rows.padding.left,y: body.y + t.rows.padding.top,
+        width: math.max(0.0,body.width - t.rows.padding.left - t.rows.padding.right),height: math.max(0.0,body.height - t.rows.padding.top - t.rows.padding.bottom)}
+    $row_width := viewport.width
+    if t.rows.max_scroll() > 0.0 { row_width = math.max(0.0,row_width - 16.0 * d) }
+    first := max_int(0,int(t.rows.scroll_y / t.rows.row_h))
+    last := min_int(t.count(),first + int(viewport.height / t.rows.row_h) + 2)
+    frame.push() or >>
+    frame.clip_rect(viewport.x,viewport.y,row_width,viewport.height) or >>
+    if t.status_text.len > 0 || t.count() == 0 {
+        $message := t.status_text + ""
+        if message.len == 0 { message = t.locale.text(TEXT_NO_RECORDS) or >> }
+        $muted := c.clone()
+        muted.palette.foreground = c.palette.muted
+        muted.align_x = 0.5
+        rect := layout.Rect{x: viewport.x,y: viewport.y,width: row_width,height: math.max(40.0 * d,viewport.height)}
+        cache := $&t.labels
+        cache.paint_text(1022,&message,frame,&rect,styles,&muted,0) or >>
+    } else {
+        for row in first:last {
+            r := layout.Rect{x: viewport.x,y: viewport.y + f64(row) * t.rows.row_h - t.rows.scroll_y,width: row_width,height: t.rows.row_h}
+            state := t.rows.item_visual_state(row)
+            if row == t.rows.selected_val || row == t.rows.hovered_idx { rounded_fill(frame,&r,4.0 * d,c.resolve(state).background) or >> }
+            for column in 0:cols {
+                source := t.row_at(row) or >>
+                text := t.cells[source * cols + column] + ""
+                grid := t.header_bounds(column)
+                cell := layout.Rect{x: grid.x,y: r.y,width: grid.width,height: r.height}
+                $text_style := c.clone()
+                text_style.align_x = t.alignments[column]
+                slot := 16 + (row - first) * cols + column
+                cache := $&t.labels
+                cache.paint_text(slot,&text,frame,&cell,styles,&text_style,state) or >>
+            }
+        }
+    }
+    frame.pop() or >>
+    t.rows.paint_data_scrollbar(frame,&c) or >>
+    if t.content_width() > outer.width {
+        thumb := t.horizontal_thumb() or >>
+        rounded_fill(frame,&thumb,3.0 * d,fade_color(c.palette.muted,0.65)) or >>
+    }
+    frame.pop() or >>
+    << 0
+}
+
+// Upstream: src/ui/widgets/table_sort.xu
+pub fn (t $&Table) refresh_sort() int {
+    if t.local_sort && t.sort_col >= 0 { column := t.sort_col
+        descending := t.descending
+        t.apply_sort(column,descending,false) or >> }
+    << 0
+}
+
+// Upstream: src/ui/widgets/table.xu
+pub fn (t $&Table) set_bounds(bounds &layout.Rect) int {
+    if t.rows.closed { >> errors.new("widgets: table is disposed") }
+    validate_bounds(bounds) or >>
+    if t.outer.x != bounds.x || t.outer.y != bounds.y || t.outer.width != bounds.width || t.outer.height != bounds.height {
+        t.hot_header = -1
+        t.armed_header = -1
+    }
+    t.outer = copy_rect(bounds)
+    header := math.min(t.header_h,bounds.height)
+    $bottom := 0.0
+    if t.content_width() > bounds.width { bottom = 16.0 * t.density }
+    body := layout.Rect{x: bounds.x,y: bounds.y + header,width: bounds.width,height: math.max(0.0,bounds.height - header - bottom)}
+    rows := $&t.rows
+    << rows.set_bounds(&body) or >>
+}
+
+// Upstream: src/ui/widgets/table.xu
+pub fn (t $&Table) set_cell(row int,column int,text &string) int {
+    if t.rows.closed || row < 0 || row >= t.count() || column < 0 || column >= t.column_count() { >> errors.new("widgets: invalid table cell") }
+    validate_table_text(text) or >>
+    index := row * t.column_count() + column
+    if t.cells[index] != text + "" { t.cells[index] = text + ""
+        t.rows.dirty = true
+        if column == t.sort_col { t.refresh_sort() or >> } }
+    << 0
+}
+
+// Upstream: src/ui/widgets/table_appearance.xu
+pub fn (t $&Table) set_column_width(column int,width f64) int {
+    if t.rows.closed || column < 0 || column >= t.column_count() || !finite_metric(width,4096.0) || (width > 0.0 && width < t.minima[column]) {
+        >> errors.new("widgets: invalid table column width")
+    }
+    t.widths[column] = width
+    b := t.bounds()
+    t.set_bounds(&b) or >>
+    t.set_horizontal_offset(t.scroll_x) or >>
+    t.rows.dirty = true
+    << 0
+}
+
+// Upstream: src/ui/widgets/table.xu
+pub fn (t $&Table) set_focus(focused bool) { if !focused { t.sort_key_armed = 0
+        t.armed_header = -1 }
+    rows := $&t.rows
+    rows.set_focus(focused) }
+
+// Upstream: src/ui/widgets/table_appearance.xu
+pub fn (t $&Table) set_horizontal_offset(offset f64) int {
+    if math.is_nan(offset) || math.is_inf(offset) { >> errors.new("widgets: invalid table scroll offset") }
+    next := math.max(0.0,math.min(math.max(0.0,t.content_width() - t.outer.width),offset))
+    if t.scroll_x != next { t.scroll_x = next
+        t.rows.dirty = true }
+    << 0
+}
+
+// Upstream: src/ui/widgets/table_sort.xu
+pub fn (t $&Table) set_local_sort(enabled bool) int {
+    if t.rows.closed { >> errors.new("widgets: table is disposed") }
+    if t.local_sort == enabled { << 0 }
+    t.local_sort = enabled
+    column := t.sort_col
+    descending := t.descending
+    << t.apply_sort(column,descending,false) or >>
+}
+
+// Upstream: src/ui/widgets/table_sort.xu
+pub fn (t $&Table) set_sort_kind(column int,kind int) int {
+    if t.rows.closed || column < 0 || column >= t.column_count() || kind < TABLE_SORT_TEXT || kind > TABLE_SORT_NUMBER { >> errors.new("widgets: invalid table sort kind") }
+    if t.sort_kinds[column] != kind { t.sort_kinds[column] = kind
+        if column == t.sort_col { t.refresh_sort() or >> } }
+    << 0
+}
+
+// Upstream: src/ui/widgets/table_sort.xu
+pub fn (t $&Table) sort_by(column int,descending bool) int { << t.apply_sort(column,descending,true) or >> }
+
+// Upstream: src/ui/widgets/table.xu
 pub fn (t &Table) bounds() layout.Rect { << copy_rect(&t.outer) }
 
 // Upstream: src/ui/widgets/table.xu
@@ -323,7 +584,7 @@ pub fn (t &Table) count() int { << t.rows.count_val }
 pub fn (t &Table) header_bounds(column int) layout.Rect {
     b := t.bounds()
     if column < 0 || column >= t.column_count() { << layout.Rect{x: b.x,y: b.y,width: 0.0,height: 0.0} }
-    mut x := b.x - t.scroll_x
+    $x := b.x - t.scroll_x
     for i in 0:column { x = x + t.column_extent(i) }
     << layout.Rect{x: x,y: b.y,width: t.column_extent(column),height: math.min(t.header_h,b.height)}
 }
@@ -365,279 +626,18 @@ pub fn (t &Table) view_row(source_row int) int {
 }
 
 // Upstream: src/ui/widgets/table.xu
-pub fn (t &mut Table) apply_styles(styles &Styles) int {
-    if t.rows.closed { >> errors.new("widgets: table is disposed") }
-    styles.validate() or >>
-    c := t.style_or(styles)
-    cache := mut &t.labels
-    sample := cache.measure(1023,&"Ag国",styles,&c) or >>
-    d := styles.density
-    t.density = d
-    height := math.max(c.indicator_size * d,sample.height + (c.padding.top + c.padding.bottom) * d)
-    padding := layout.Insets{left: c.padding.left * d,top: c.padding.top * d,right: c.padding.right * d,bottom: c.padding.bottom * d}
-    changed := t.rows.row_h != height || t.header_h != height || t.rows.padding.left != padding.left || t.rows.padding.top != padding.top ||
-        t.rows.padding.right != padding.right || t.rows.padding.bottom != padding.bottom
-    rows := mut &t.rows
-    rows.padding = padding
-    rows.row_h = height
-    rows.scroll_y = math.max(0.0,math.min(rows.max_scroll(),rows.scroll_y))
-    t.header_h = height
-    if changed { b := t.bounds()
-        t.hot_header = -1
-        t.armed_header = -1
-        t.set_bounds(&b) or >>
-        t.rows.dirty = true }
-    << 0
-}
-
-// Upstream: src/ui/widgets/table.xu
-pub fn (t &mut Table) cancel() {
-    t.sort_key_armed = 0
-    t.resize_column = -1
-    t.horizontal_drag = false t.hot_header = -1
-    t.armed_header = -1
-    rows := mut &t.rows
-    rows.cancel() }
-
-// Upstream: src/ui/widgets/table.xu
-pub fn (t &mut Table) dispose() {
-    cache := mut &t.labels
-    cache.dispose()
-    t.cancel()
-    t.rows.closed = true
-}
-
-// Upstream: src/ui/widgets/table.xu
-pub fn (t &mut Table) input(input &ui.InputEvent) Action {
-    if t.rows.closed || !belongs(&t.rows.identity,input) { << no_action(t.id(),t.needs_paint()) }
-    if input.kind == ui.EV_POINTER_CANCEL { t.cancel()
-        << no_action(t.id(),t.needs_paint()) }
-    if !t.is_enabled() { << no_action(t.id(),t.needs_paint()) }
-    resized := t.column_input(input) or >>
-    if resized.consumed { << resized }
-    header := t.hit_header(input.x,input.y)
-    if input.kind == ui.EV_POINTER_MOVE || input.kind == ui.EV_POINTER_ENTER || input.kind == ui.EV_POINTER_LEAVE {
-        mut hot := header
-        if input.kind == ui.EV_POINTER_LEAVE { hot = -1 }
-        if hot != t.hot_header { t.hot_header = hot
-            t.rows.dirty = true }
-    }
-    if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT && header >= 0 {
-        t.header_cursor = header
-        t.rows.armed_idx = -1
-        if !t.rows.read_only { t.armed_header = header }
-        t.rows.dirty = true
-        << Action{kind: ACTION_NONE,id: t.id(),needs_paint: true,request_focus: true,consumed: true,value: f64(header)}
-    }
-    if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT { t.armed_header = -1 }
-    if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT && t.armed_header >= 0 {
-        mut kind := ACTION_NONE
-        if !t.rows.read_only && header == t.armed_header {
-            t.toggle_sort(header) or >>
-            kind = ACTION_ACTIVATE
-        }
-        t.armed_header = -1
-        t.rows.dirty = true
-        << Action{kind: kind,id: t.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(header)}
-    }
-    // Left/right choose a header; Enter/Space request sorting. Up/down, Home,
-    // End and Page Up/Down continue to navigate the data rows.
-    if input.kind == ui.EV_KEY_DOWN && t.rows.focused && !t.rows.read_only {
-        if input.key == ui.KEY_LEFT || input.key == ui.KEY_RIGHT {
-            t.sort_key_armed = 0
-            if input.key == ui.KEY_LEFT { t.header_cursor = max_int(0,t.header_cursor - 1) }
-            else { t.header_cursor = min_int(t.column_count() - 1,t.header_cursor + 1) }
-            t.rows.dirty = true
-            << Action{kind: ACTION_NONE,id: t.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(t.header_cursor)}
-        }
-        if input.key == ui.KEY_ENTER || input.key == 32 {
-            if input.repeat == 0 { t.sort_key_armed = input.key }
-            t.rows.dirty = true
-            << Action{kind: ACTION_NONE,id: t.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(t.header_cursor)}
-        }
-    }
-    if input.kind == ui.EV_KEY_UP && input.key == t.sort_key_armed && t.sort_key_armed != 0 {
-        t.sort_key_armed = 0
-        if t.rows.focused && !t.rows.read_only { column := t.header_cursor
-            t.toggle_sort(column) or >>
-            << Action{kind: ACTION_ACTIVATE,id: t.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(column)} }
-    }
-    rows := mut &t.rows
-    << rows.input(input) or >>
-}
-
-// Upstream: src/ui/widgets/table_appearance.xu
-pub fn (t &mut Table) paint_styled(frame &mut draw.Frame,styles &Styles) int {
-    t.apply_styles(styles) or >>
-    c := t.style_or(styles)
-    d := styles.density
-    cols := t.column_count()
-    outer := t.bounds()
-    style_box(frame,&outer,&c,d,t.rows.visual_state() & (STATE_DISABLED | STATE_INVALID | STATE_READ_ONLY)) or >>
-    frame.push() or >>
-    frame.clip_rect(outer.x,outer.y,outer.width,outer.height) or >>
-    header := layout.Rect{x: outer.x,y: outer.y,width: outer.width,height: math.min(outer.height,t.header_h)}
-    rounded_fill(frame,&header,c.radius * d,mix_color(c.palette.normal,c.palette.foreground,0.035)) or >>
-    frame.line(header.x,header.y + header.height,header.x + header.width,header.y + header.height,c.palette.border,d) or >>
-    for i in 0:cols {
-        b := t.header_bounds(i)
-        mut text_style := c.clone()
-        text_style.align_x = t.alignments[i]
-        if i == t.hot_header { rounded_fill(frame,&b,0.0,c.palette.hovered) or >> }
-        if t.rows.focused && i == t.header_cursor { rounded_stroke(frame,&b,4.0 * d,c.palette.focus,c.focus_width * d) or >> }
-        text := t.headers[i] + ""
-        mut rect := copy_rect(&b)
-        if i == t.sort_col { rect.width = math.max(0.0,rect.width - 18.0 * d)
-            mut angle := -90.0
-            if t.descending { angle = 90.0 }
-            tree_chevron(frame,b.x + b.width - 12.0 * d,b.y + b.height * 0.5,8.0 * d,angle,c.palette.muted) or >> }
-        cache := mut &t.labels
-        cache.paint_text(i,&text,frame,&rect,styles,&text_style,0) or >>
-    }
-    body := t.rows.bounds()
-    viewport := layout.Rect{x: body.x + t.rows.padding.left,y: body.y + t.rows.padding.top,
-        width: math.max(0.0,body.width - t.rows.padding.left - t.rows.padding.right),height: math.max(0.0,body.height - t.rows.padding.top - t.rows.padding.bottom)}
-    mut row_width := viewport.width
-    if t.rows.max_scroll() > 0.0 { row_width = math.max(0.0,row_width - 16.0 * d) }
-    first := max_int(0,int(t.rows.scroll_y / t.rows.row_h))
-    last := min_int(t.count(),first + int(viewport.height / t.rows.row_h) + 2)
-    frame.push() or >>
-    frame.clip_rect(viewport.x,viewport.y,row_width,viewport.height) or >>
-    if t.status_text.len > 0 || t.count() == 0 {
-        mut message := t.status_text + ""
-        if message.len == 0 { message = t.locale.text(TEXT_NO_RECORDS) or >> }
-        mut muted := c.clone()
-        muted.palette.foreground = c.palette.muted
-        muted.align_x = 0.5
-        rect := layout.Rect{x: viewport.x,y: viewport.y,width: row_width,height: math.max(40.0 * d,viewport.height)}
-        cache := mut &t.labels
-        cache.paint_text(1022,&message,frame,&rect,styles,&muted,0) or >>
-    } else {
-        for row in first:last {
-            r := layout.Rect{x: viewport.x,y: viewport.y + f64(row) * t.rows.row_h - t.rows.scroll_y,width: row_width,height: t.rows.row_h}
-            state := t.rows.item_visual_state(row)
-            if row == t.rows.selected_val || row == t.rows.hovered_idx { rounded_fill(frame,&r,4.0 * d,c.resolve(state).background) or >> }
-            for column in 0:cols {
-                source := t.row_at(row) or >>
-                text := t.cells[source * cols + column] + ""
-                grid := t.header_bounds(column)
-                cell := layout.Rect{x: grid.x,y: r.y,width: grid.width,height: r.height}
-                mut text_style := c.clone()
-                text_style.align_x = t.alignments[column]
-                slot := 16 + (row - first) * cols + column
-                cache := mut &t.labels
-                cache.paint_text(slot,&text,frame,&cell,styles,&text_style,state) or >>
-            }
-        }
-    }
-    frame.pop() or >>
-    t.rows.paint_data_scrollbar(frame,&c) or >>
-    if t.content_width() > outer.width {
-        thumb := t.horizontal_thumb() or >>
-        rounded_fill(frame,&thumb,3.0 * d,fade_color(c.palette.muted,0.65)) or >>
-    }
-    frame.pop() or >>
-    << 0
-}
-
-// Upstream: src/ui/widgets/table_sort.xu
-pub fn (t &mut Table) refresh_sort() int {
-    if t.local_sort && t.sort_col >= 0 { column := t.sort_col
-        descending := t.descending
-        t.apply_sort(column,descending,false) or >> }
-    << 0
-}
-
-// Upstream: src/ui/widgets/table.xu
-pub fn (t &mut Table) set_bounds(bounds &layout.Rect) int {
-    if t.rows.closed { >> errors.new("widgets: table is disposed") }
-    validate_bounds(bounds) or >>
-    if t.outer.x != bounds.x || t.outer.y != bounds.y || t.outer.width != bounds.width || t.outer.height != bounds.height {
-        t.hot_header = -1
-        t.armed_header = -1
-    }
-    t.outer = copy_rect(bounds)
-    header := math.min(t.header_h,bounds.height)
-    mut bottom := 0.0
-    if t.content_width() > bounds.width { bottom = 16.0 * t.density }
-    body := layout.Rect{x: bounds.x,y: bounds.y + header,width: bounds.width,height: math.max(0.0,bounds.height - header - bottom)}
-    rows := mut &t.rows
-    << rows.set_bounds(&body) or >>
-}
-
-// Upstream: src/ui/widgets/table.xu
-pub fn (t &mut Table) set_cell(row int,column int,text &string) int {
-    if t.rows.closed || row < 0 || row >= t.count() || column < 0 || column >= t.column_count() { >> errors.new("widgets: invalid table cell") }
-    validate_table_text(text) or >>
-    index := row * t.column_count() + column
-    if t.cells[index] != text + "" { t.cells[index] = text + ""
-        t.rows.dirty = true
-        if column == t.sort_col { t.refresh_sort() or >> } }
-    << 0
-}
-
-// Upstream: src/ui/widgets/table_appearance.xu
-pub fn (t &mut Table) set_column_width(column int,width f64) int {
-    if t.rows.closed || column < 0 || column >= t.column_count() || !finite_metric(width,4096.0) || (width > 0.0 && width < t.minima[column]) {
-        >> errors.new("widgets: invalid table column width")
-    }
-    t.widths[column] = width
-    b := t.bounds()
-    t.set_bounds(&b) or >>
-    t.set_horizontal_offset(t.scroll_x) or >>
-    t.rows.dirty = true
-    << 0
-}
-
-// Upstream: src/ui/widgets/table.xu
-pub fn (t &mut Table) set_focus(focused bool) { if !focused { t.sort_key_armed = 0
-        t.armed_header = -1 }
-    rows := mut &t.rows
-    rows.set_focus(focused) }
-
-// Upstream: src/ui/widgets/table_appearance.xu
-pub fn (t &mut Table) set_horizontal_offset(offset f64) int {
-    if math.is_nan(offset) || math.is_inf(offset) { >> errors.new("widgets: invalid table scroll offset") }
-    next := math.max(0.0,math.min(math.max(0.0,t.content_width() - t.outer.width),offset))
-    if t.scroll_x != next { t.scroll_x = next
-        t.rows.dirty = true }
-    << 0
-}
-
-// Upstream: src/ui/widgets/table_sort.xu
-pub fn (t &mut Table) set_local_sort(enabled bool) int {
-    if t.rows.closed { >> errors.new("widgets: table is disposed") }
-    if t.local_sort == enabled { << 0 }
-    t.local_sort = enabled
-    column := t.sort_col
-    descending := t.descending
-    << t.apply_sort(column,descending,false) or >>
-}
-
-// Upstream: src/ui/widgets/table_sort.xu
-pub fn (t &mut Table) set_sort_kind(column int,kind int) int {
-    if t.rows.closed || column < 0 || column >= t.column_count() || kind < TABLE_SORT_TEXT || kind > TABLE_SORT_NUMBER { >> errors.new("widgets: invalid table sort kind") }
-    if t.sort_kinds[column] != kind { t.sort_kinds[column] = kind
-        if column == t.sort_col { t.refresh_sort() or >> } }
-    << 0
-}
-
-// Upstream: src/ui/widgets/table_sort.xu
-pub fn (t &mut Table) sort_by(column int,descending bool) int { << t.apply_sort(column,descending,true) or >> }
-
-// Upstream: src/ui/widgets/table.xu
 pub fn table(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,headers &[]string,rows int,selected int) Table {
     if headers.len < 1 || headers.len > 16 || rows < 0 || rows > 512 || rows * headers.len > 768 || (rows == 0 && selected != -1) {
         >> errors.new("widgets: table exceeds 16 columns, 512 rows or 768 cells")
     }
     if !context.matches_canvas(identity) { >> errors.new("widgets: table context mismatch") }
-    mut titles := []string{}
+    $titles := []string{}
     for title in headers { validate_table_text(&title) or >>
         titles.push(title + "") }
-    mut cells := []string{}
+    $cells := []string{}
     for i in 0:rows * headers.len { cells.push("") }
     control := list_box(identity,id,bounds,rows,selected) or >>
-    mut result := Table{locale: locale_default(),rows: control,outer: copy_rect(bounds),headers: titles,cells: cells,order: []int{},sort_kinds: []int{},local_sort: true,sort_key_armed: 0,labels: text_cache(context),
+    $result := Table{locale: locale_default(),rows: control,outer: copy_rect(bounds),headers: titles,cells: cells,order: []int{},sort_kinds: []int{},local_sort: true,sort_key_armed: 0,labels: text_cache(context),
         header_h: 32.0,sort_col: -1,header_cursor: 0,descending: false,hot_header: -1,armed_header: -1,minima: []f64{},widths: []f64{},alignments: []f64{},density: 1.0,scroll_x: 0.0,
         resize_column: -1,resize_x: 0.0,resize_width: 0.0,horizontal_drag: false,horizontal_grab: 0.0,status_text: ""}
     for i in 0:rows { result.order.push(i) }

@@ -13,6 +13,19 @@
 #ui/internal/codec
 
 // Upstream: src/ui/widgets/button_group.xu
+fn (g $&ButtonGroup) activate(index int) Action {
+    if index < 0 || !g.item_enabled(index) || g.control.read_only { << no_action(g.id(),g.needs_paint()) }
+    key := g.items[index].key
+    $kind := ACTION_ACTIVATE
+    if g.mode != BUTTON_GROUP_ACTIONS { $selected := !((g.checked_items & (1 << index)) != 0)
+        if g.mode == BUTTON_GROUP_SINGLE && !g.appearance.allow_empty { selected = true }
+        g.set_checked(key,selected) or >>
+        kind = ACTION_CHANGE }
+    g.control.dirty = true
+    << Action{kind: kind,id: g.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(key)}
+}
+
+// Upstream: src/ui/widgets/button_group.xu
 fn (g &ButtonGroup) hit(x f64,y f64) int { for i in 0:g.boxes.len { if g.boxes[i].contains(x,y) { << i } }
     << -1 }
 
@@ -25,7 +38,7 @@ fn (g &ButtonGroup) item_enabled(index int) bool { << index >= 0 && index < g.it
 
 // Upstream: src/ui/widgets/button_group.xu
 fn (g &ButtonGroup) item_state(index int) int {
-    mut state := g.control.visual_state() & (STATE_DISABLED | STATE_READ_ONLY)
+    $state := g.control.visual_state() & (STATE_DISABLED | STATE_READ_ONLY)
     if !g.item_enabled(index) { state = state | STATE_DISABLED }
     if ((g.checked_items & (1 << index)) != 0) { state = state | STATE_SELECTED }
     if index == g.hot && g.item_enabled(index) { state = state | STATE_HOVERED }
@@ -48,7 +61,7 @@ fn (g &ButtonGroup) next_enabled(start int,direction int) int {
 }
 
 // Upstream: src/ui/widgets/button_group_paint.xu
-fn (g &ButtonGroup) paint_joined(frame &mut draw.Frame,index int,b &layout.Rect,style &ControlStyle,density f64,state int) int {
+fn (g &ButtonGroup) paint_joined(frame $&draw.Frame,index int,b &layout.Rect,style &ControlStyle,density f64,state int) int {
     paint := style.resolve(state)
     path := group_corner_path(b,style.radius * density,index == 0,index == g.items.len - 1,g.appearance.vertical) or >>
     frame.fill_path(&path,paint.background,draw.FILL_NONZERO) or >>
@@ -61,26 +74,13 @@ fn (g &ButtonGroup) paint_joined(frame &mut draw.Frame,index int,b &layout.Rect,
     << 0
 }
 
-// Upstream: src/ui/widgets/button_group.xu
-fn (g &mut ButtonGroup) activate(index int) Action {
-    if index < 0 || !g.item_enabled(index) || g.control.read_only { << no_action(g.id(),g.needs_paint()) }
-    key := g.items[index].key
-    mut kind := ACTION_ACTIVATE
-    if g.mode != BUTTON_GROUP_ACTIONS { mut selected := !((g.checked_items & (1 << index)) != 0)
-        if g.mode == BUTTON_GROUP_SINGLE && !g.appearance.allow_empty { selected = true }
-        g.set_checked(key,selected) or >>
-        kind = ACTION_CHANGE }
-    g.control.dirty = true
-    << Action{kind: kind,id: g.id(),needs_paint: true,request_focus: false,consumed: true,value: f64(key)}
-}
-
 // Upstream: src/ui/widgets/button_group_paint.xu
 fn group_corner_path(b &layout.Rect,radius f64,first bool,last bool,vertical bool) draw.Path {
     r := math.min(radius,math.min(b.width,b.height) * 0.5)
-    mut tl := 0.0
-    mut tr := 0.0
-    mut bl := 0.0
-    mut br := 0.0
+    $tl := 0.0
+    $tr := 0.0
+    $bl := 0.0
+    $br := 0.0
     if first { tl = r
         if vertical { tr = r } else { bl = r } }
     if last { br = r
@@ -90,7 +90,7 @@ fn group_corner_path(b &layout.Rect,radius f64,first bool,last bool,vertical boo
     right := x + b.width
     bottom := y + b.height
     k := 0.5522847498307936
-    mut p := draw.new_path(400)
+    $p := draw.new_path(400)
     p.move_to(x + tl,y) or >>
     p.line_to(right - tr,y) or >>
     p.cubic_to(right - tr + tr * k,y,right,y + tr - tr * k,right,y + tr) or >>
@@ -132,49 +132,28 @@ pub const BUTTON_SECONDARY = 1
 pub const BUTTON_SUBTLE = 5
 
 // Upstream: src/ui/widgets/button_group.xu
-pub fn (g &ButtonGroup) active_key() int { if g.active < 0 { << 0 }
-    << g.items[g.active].key }
-
-// Upstream: src/ui/widgets/button_group.xu
-pub fn (g &ButtonGroup) bounds() layout.Rect { << g.control.bounds() }
-
-// Upstream: src/ui/widgets/button_group.xu
-pub fn (g &ButtonGroup) id() int { << g.control.id }
-
-// Upstream: src/ui/widgets/button_group.xu
-pub fn (g &ButtonGroup) is_enabled() bool { << g.control.is_enabled() }
-
-// Upstream: src/ui/widgets/button_group.xu
-pub fn (g &ButtonGroup) needs_paint() bool { << g.control.dirty }
-
-// Upstream: src/ui/widgets/button_group.xu
-pub fn (g &ButtonGroup) values() []int { mut keys := []int{}
-    for i in 0:g.items.len { if (g.checked_items & (1 << i)) != 0 { keys.push(g.items[i].key) } }
-    << keys }
-
-// Upstream: src/ui/widgets/button_group.xu
-pub fn (g &mut ButtonGroup) apply_styles(styles &Styles) int {
+pub fn (g $&ButtonGroup) apply_styles(styles &Styles) int {
     b := g.bounds()
     count := g.items.len
-    mut widths := []f64{}
-    mut total := 0.0
+    $widths := []f64{}
+    $total := 0.0
     for i in 0:count { style := g.item_style(i,styles) or >>
         label := g.items[i].label + ""
-        cache := mut &g.labels
+        cache := $&g.labels
         size := cache.measure(i,&label,styles,&style) or >>
         width := math.max(g.appearance.min_item_width * styles.density,size.width + (style.padding.left + style.padding.right) * styles.density)
         widths.push(width)
         total = total + width }
-    mut gap := g.appearance.gap * styles.density
+    $gap := g.appearance.gap * styles.density
     if g.appearance.joined { gap = 0.0 }
     available := math.max(0.0,b.width - gap * f64(count - 1))
     g.boxes = []layout.Rect{}
-    mut x := b.x
+    $x := b.x
     for i in 0:count {
-        mut width := widths[i]
+        $width := widths[i]
         if total > available { width = available * widths[i] / math.max(1.0,total) }
         if g.appearance.equal_width { width = available / f64(max_int(1,count)) }
-        mut box := layout.Rect{x: x,y: b.y,width: width,height: b.height}
+        $box := layout.Rect{x: x,y: b.y,width: width,height: b.height}
         if g.appearance.vertical { height := math.max(0.0,b.height - gap * f64(count - 1)) / f64(max_int(1,count))
             box = layout.Rect{x: b.x,y: b.y + f64(i) * (height + gap),width: b.width,height: height} }
         g.boxes.push(box)
@@ -183,28 +162,28 @@ pub fn (g &mut ButtonGroup) apply_styles(styles &Styles) int {
 }
 
 // Upstream: src/ui/widgets/button_group.xu
-pub fn (g &mut ButtonGroup) cancel() { item := mut &g.control
+pub fn (g $&ButtonGroup) cancel() { item := $&g.control
     item.cancel()
     g.hot = -1
     g.armed = -1
     g.key_armed = 0 }
 
 // Upstream: src/ui/widgets/button_group.xu
-pub fn (g &mut ButtonGroup) dispose() { if g.control.closed { << }
-    labels := mut &g.labels
+pub fn (g $&ButtonGroup) dispose() { if g.control.closed { << }
+    labels := $&g.labels
     labels.dispose()
     g.cancel()
     g.control.closed = true }
 
 // Upstream: src/ui/widgets/button_group.xu
-pub fn (g &mut ButtonGroup) input(event &ui.InputEvent) Action {
+pub fn (g $&ButtonGroup) input(event &ui.InputEvent) Action {
     if g.mode < BUTTON_GROUP_ACTIONS || g.mode > BUTTON_GROUP_MULTIPLE { >> errors.new("widgets: invalid button group mode") }
     if g.control.closed || !belongs(&g.control.identity,event) { << no_action(g.id(),g.needs_paint()) }
     if event.kind == ui.EV_POINTER_CANCEL { g.cancel()
         << no_action(g.id(),g.needs_paint()) }
     if !g.is_enabled() { << no_action(g.id(),g.needs_paint()) }
     index := g.hit(event.x,event.y)
-    mut action := no_action(g.id(),g.needs_paint())
+    $action := no_action(g.id(),g.needs_paint())
     if event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_ENTER { if g.hot != index { g.hot = index
         g.control.dirty = true } }
     else if event.kind == ui.EV_POINTER_LEAVE { g.hot = -1
@@ -222,7 +201,7 @@ pub fn (g &mut ButtonGroup) input(event &ui.InputEvent) Action {
         action.consumed = true
         g.control.dirty = true }
     else if event.kind == ui.EV_KEY_DOWN && g.control.focused {
-        mut direction := 0
+        $direction := 0
         if (!g.appearance.vertical && event.key == ui.KEY_RIGHT) || (g.appearance.vertical && event.key == ui.KEY_DOWN) { direction = 1 }
         if (!g.appearance.vertical && event.key == ui.KEY_LEFT) || (g.appearance.vertical && event.key == ui.KEY_UP) { direction = -1 }
         if direction != 0 { g.active = g.next_enabled(g.active,direction)
@@ -251,26 +230,26 @@ pub fn (g &mut ButtonGroup) input(event &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/button_group.xu
-pub fn (g &mut ButtonGroup) paint_styled(frame &mut draw.Frame,styles &Styles) int {
+pub fn (g $&ButtonGroup) paint_styled(frame $&draw.Frame,styles &Styles) int {
     g.apply_styles(styles) or >>
     for i in 0:g.items.len {
         b := g.boxes[i]
         base := g.item_style(i,styles) or >>
         state := g.item_state(i)
-        mut transition := g.transitions[i]
-        mut style := transition.style(&base,state,g.now,g.reduced) or >>
+        $transition := g.transitions[i]
+        $style := transition.style(&base,state,g.now,g.reduced) or >>
         g.transitions[i] = transition
         if g.appearance.joined { g.paint_joined(frame,i,&b,&style,styles.density,state) or >> }
         else { style_box(frame,&b,&style,styles.density,state) or >> }
         text := g.items[i].label + ""
-        labels := mut &g.labels
+        labels := $&g.labels
         labels.paint_text(i,&text,frame,&b,styles,&style,state) or >>
     }
     << 0
 }
 
 // Upstream: src/ui/widgets/button_group.xu
-pub fn (g &mut ButtonGroup) set_checked(key int,selected bool) int {
+pub fn (g $&ButtonGroup) set_checked(key int,selected bool) int {
     index := g.index_of(key) or >>
     if g.mode == BUTTON_GROUP_ACTIONS { >> errors.new("widgets: action buttons have no checked state") }
     if g.mode == BUTTON_GROUP_SINGLE && !selected && !g.appearance.allow_empty && ((g.checked_items & (1 << index)) != 0) {
@@ -284,21 +263,21 @@ pub fn (g &mut ButtonGroup) set_checked(key int,selected bool) int {
 }
 
 // Upstream: src/ui/widgets/button_group.xu
-pub fn (g &mut ButtonGroup) set_focus(value bool) { item := mut &g.control
+pub fn (g $&ButtonGroup) set_focus(value bool) { item := $&g.control
     item.set_focus(value)
     if !value { g.armed = -1
         g.key_armed = 0 } }
 
 // Upstream: src/ui/widgets/button_group.xu
-pub fn (g &mut ButtonGroup) set_items(items &[]ButtonGroupItem) int {
+pub fn (g $&ButtonGroup) set_items(items &[]ButtonGroupItem) int {
     if g.control.closed || items.len < 1 || items.len > 32 || g.mode < BUTTON_GROUP_ACTIONS || g.mode > BUTTON_GROUP_MULTIPLE {
         >> errors.new("widgets: invalid button group") }
-    mut keys := map[int]bool{}
-    mut selected := 0
-    mut copies := []ButtonGroupItem{}
-    mut active := -1
-    mut checked_items := 0
-    mut disabled_items := 0
+    $keys := map[int]bool{}
+    $selected := 0
+    $copies := []ButtonGroupItem{}
+    $active := -1
+    $checked_items := 0
+    $disabled_items := 0
     // Copy indexed fields before helper calls; no element borrow survives an allocation.
     for i in 0:items.len {
         key := items[i].key
@@ -327,26 +306,47 @@ pub fn (g &mut ButtonGroup) set_items(items &[]ButtonGroupItem) int {
     g.armed = -1
     g.key_armed = 0
     g.transitions = []PaintTransition{}
-    for i in 0:items.len { mut transition := paint_transition()
+    for i in 0:items.len { $transition := paint_transition()
         transition.set_spec(&g.motion) or >>
         g.transitions.push(transition) }
     g.control.dirty = true
     << 0
 }
 
+// Upstream: src/ui/widgets/button_group.xu
+pub fn (g &ButtonGroup) active_key() int { if g.active < 0 { << 0 }
+    << g.items[g.active].key }
+
+// Upstream: src/ui/widgets/button_group.xu
+pub fn (g &ButtonGroup) bounds() layout.Rect { << g.control.bounds() }
+
+// Upstream: src/ui/widgets/button_group.xu
+pub fn (g &ButtonGroup) id() int { << g.control.id }
+
+// Upstream: src/ui/widgets/button_group.xu
+pub fn (g &ButtonGroup) is_enabled() bool { << g.control.is_enabled() }
+
+// Upstream: src/ui/widgets/button_group.xu
+pub fn (g &ButtonGroup) needs_paint() bool { << g.control.dirty }
+
+// Upstream: src/ui/widgets/button_group.xu
+pub fn (g &ButtonGroup) values() []int { $keys := []int{}
+    for i in 0:g.items.len { if (g.checked_items & (1 << i)) != 0 { keys.push(g.items[i].key) } }
+    << keys }
+
 // Upstream: src/ui/widgets/appearance.xu
 pub fn (styles &Styles) button_variant(variant int) ControlStyle {
     if variant < BUTTON_PRIMARY || variant > BUTTON_SUBTLE { >> errors.new("widgets: invalid button variant") }
-    mut c := styles.button.clone()
+    $c := styles.button.clone()
     if variant == BUTTON_PRIMARY || variant == BUTTON_DANGER {
-        mut ink := c.palette.accent
+        $ink := c.palette.accent
         if variant == BUTTON_DANGER { ink = c.palette.invalid }
         c.palette.normal = ink
         c.palette.hovered = mix_color(ink,c.palette.foreground,0.12)
         c.palette.pressed = mix_color(ink,styles.background,0.18)
         c.palette.foreground = c.palette.on_accent
         c.palette.border = ink
-        mut read_only := state_paint(STATE_READ_ONLY)
+        $read_only := state_paint(STATE_READ_ONLY)
         read_only.unless = STATE_DISABLED | STATE_INVALID
         read_only.fields = PAINT_FOREGROUND
         read_only.foreground = styles.button.palette.foreground
@@ -365,7 +365,7 @@ pub fn (styles &Styles) button_variant(variant int) ControlStyle {
 // Upstream: src/ui/widgets/button_group.xu
 pub fn button_group(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,items &[]ButtonGroupItem,mode int) ButtonGroup {
     control := button(identity,id,bounds) or >>
-    mut group := ButtonGroup{control: control,items: []ButtonGroupItem{},boxes: []layout.Rect{},transitions: []PaintTransition{},
+    $group := ButtonGroup{control: control,items: []ButtonGroupItem{},boxes: []layout.Rect{},transitions: []PaintTransition{},
         labels: text_cache(context),appearance: button_group_appearance(),motion: motion_spec(),mode: mode,checked_items: 0,disabled_items: 0,active: -1,hot: -1,
         armed: -1,key_armed: 0,now: time.zero_instant(),reduced: false}
     group.set_items(items) or >>

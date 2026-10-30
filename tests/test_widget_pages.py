@@ -37,7 +37,7 @@ class WidgetPages(unittest.TestCase):
                     self.assertIn('<!--xu-api-version: ' + (ROOT / 'VERSION').read_text().strip(), page)
                     self.assertIn(c['description'][lang], page)
                     self.assertIn(html.escape(generator('gen-widgets').native_source(c)), page)
-                    factory = c['factory'] if c.get('factory_kind') == 'fn' else '-mut-Screen-' + c['factory']
+                    factory = c['factory'] if c.get('factory_kind') == 'fn' else '--Screen-' + c['factory']
                     self.assertIn('id="' + factory + '"', page)
                     if c['project']:
                         self.assertIn('example=' + c['project'], page)

@@ -1,7 +1,8 @@
 @main
 
 // Runtime support is Xu too; wasm_mem_* are lowered to memory instructions.
-// Arena/control memory is private to a disposable WebAssembly instance.
+// Arena/control memory is private to a worker-owned WebAssembly instance.
+// JS retains checked MIR and rewinds/restores only the execution region.
 fn wasm_rt_alloc(n int) int {
     p := wasm_mem_load(1040)
     next := (p + n + 7) & -8
@@ -18,11 +19,11 @@ fn wasm_rt_copy(to int, from int, n int) {
 }
 
 fn wasm_rt_push(desc int, src int, width int) {
-    mut data := wasm_mem_load(desc)
+    $data := wasm_mem_load(desc)
     n := wasm_mem_load(desc - 8)
     cap := wasm_mem_load(desc - 16)
     if n >= cap {
-        mut next := cap * 2
+        $next := cap * 2
         if next < 8 { next = 8 }
         fresh := wasm_rt_alloc(next * width)
         wasm_rt_copy(fresh, data, n * width)
@@ -35,28 +36,28 @@ fn wasm_rt_push(desc int, src int, width int) {
 }
 
 fn wasm_rt_byte(c int) string {
-    mut s := make_string(1)
+    $s := make_string(1)
     s[0] = c
     << s
 }
 fn wasm_rt_from_bytes(a []int) string {
-    mut s := make_string(a.len)
+    $s := make_string(a.len)
     for i in 0:a.len { s[i] = a[i] }
     << s
 }
 fn wasm_rt_bytes(s string) []int {
-    mut a := make_ints(s.len)
+    $a := make_ints(s.len)
     for i in 0:s.len { a[i] = s[i] }
     << a
 }
 fn wasm_rt_slice(s string, start int, end int) string {
     if start < 0 || end < start || end > s.len { <<< 1 }
-    mut out := make_string(end - start)
+    $out := make_string(end - start)
     for i in start:end { out[i - start] = s[i] }
     << out
 }
 fn wasm_rt_concat(a string, b string) string {
-    mut out := make_string(a.len + b.len)
+    $out := make_string(a.len + b.len)
     for i in 0:a.len { out[i] = a[i] }
     for i in 0:b.len { out[a.len + i] = b[i] }
     << out
@@ -66,21 +67,21 @@ fn wasm_rt_eq(a string, b string) bool {
     for i in 0:a.len { if a[i] != b[i] { << false } }
     << true
 }
-fn wasm_rt_push_str(s &mut string, b string) { *s = wasm_rt_concat(*s, b) }
-fn wasm_rt_push_byte(s &mut string, c int) { *s = wasm_rt_concat(*s, wasm_rt_byte(c)) }
+fn wasm_rt_push_str(s $&string, b string) { *s = wasm_rt_concat(*s, b) }
+fn wasm_rt_push_byte(s $&string, c int) { *s = wasm_rt_concat(*s, wasm_rt_byte(c)) }
 fn wasm_rt_bool(v bool) string { if v { << "true" }
     << "false" }
 fn wasm_rt_str(v int) string {
     if v == (-9223372036854775807 - 1) { << "-9223372036854775808" }
-    mut n := v
+    $n := v
     if n < 0 { n = -n }
-    mut count := 1
-    mut k := n
+    $count := 1
+    $k := n
     while k >= 10 { count += 1
         k = k / 10 }
     if v < 0 { count += 1 }
-    mut s := make_string(count)
-    mut i := count - 1
+    $s := make_string(count)
+    $i := count - 1
     while i >= 0 {
         s[i] = 48 + n % 10
         n = n / 10
@@ -90,11 +91,11 @@ fn wasm_rt_str(v int) string {
     << s
 }
 fn wasm_rt_output(s string, err int, nl int) {
-    mut slot := 1024
-    mut base := 150000
+    $slot := 1024
+    $base := 150000
     if err != 0 { slot = 1032
         base = 450000 }
-    mut n := wasm_mem_load(slot)
+    $n := wasm_mem_load(slot)
     for i in 0:s.len {
         if n < 262144 { wasm_mem_store8(base + n, s[i])
             n += 1 }

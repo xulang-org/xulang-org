@@ -20,6 +20,63 @@ fn choice_copy_input(event &ui.InputEvent) ui.InputEvent {
 }
 
 // Upstream: src/ui/widgets/radio_group.xu
+pub fn (g $&RadioGroup) dispose() { labels := $&g.labels
+    labels.dispose()
+    g.control.closed = true }
+
+// Upstream: src/ui/widgets/radio_group.xu
+pub fn (g $&RadioGroup) input(event &ui.InputEvent) Action {
+    $translated := choice_copy_input(event)
+    if !g.horizontal && event.kind != ui.EV_KEY_DOWN && event.kind != ui.EV_KEY_UP {
+        b := g.bounds()
+        if b.height > 0.0 && b.contains(event.x,event.y) {
+            translated.x = b.x + (event.y - b.y) / b.height * b.width
+            translated.y = b.y + b.height * 0.5
+        } else { translated.x = b.x - 1.0
+            translated.y = b.y - 1.0 }
+    }
+    control := $&g.control
+    << control.input(&translated) or >>
+}
+
+// Upstream: src/ui/widgets/radio_group.xu
+pub fn (g $&RadioGroup) paint_styled(frame $&draw.Frame,styles &Styles) int {
+    $c := g.style_or(styles)
+    c.padding = layout.Insets{left: 36.0,top: 4.0,right: 8.0,bottom: 4.0}
+    c.align_x = 0.0
+    c.align_y = 0.5
+    d := styles.density
+    for i in 0:g.count() {
+        b := g.item_bounds(i) or >>
+        state := g.control.item_visual_state(i)
+        paint := c.resolve(state)
+        if i == g.control.hovered_idx { rounded_fill(frame,&b,4.0 * d,fade_color(c.palette.accent,0.06)) or >> }
+        cx := b.x + 16.0 * d
+        cy := b.y + b.height * 0.5
+        side := math.min(16.0 * d,b.height - 4.0 * d)
+        if side > 0.0 {
+            ring := layout.Rect{x: cx - side * 0.5,y: cy - side * 0.5,width: side,height: side}
+            rounded_stroke(frame,&ring,side * 0.5,paint.border,math.max(1.0,c.border_width * d)) or >>
+            if i == g.selected() { frame.set_fill(c.palette.accent) or >>
+                frame.circle(cx,cy,side * 0.26) or >> }
+        }
+        if g.is_focused() && i == g.selected() { rounded_stroke(frame,&b,4.0 * d,c.palette.focus,c.focus_width * d) or >> }
+        $text := c.clone()
+        text.states = []StatePaint{}
+        text.palette.foreground = c.palette.foreground
+        if !g.is_enabled() { text.palette.foreground = c.palette.muted }
+        value := g.values[i] + ""
+        labels := $&g.labels
+        labels.paint_text(i,&value,frame,&b,styles,&text,0) or >>
+    }
+    << 0
+}
+
+// Upstream: src/ui/widgets/radio_group.xu
+pub fn (g $&RadioGroup) set_focus(focused bool) { control := $&g.control
+    control.set_focus(focused) }
+
+// Upstream: src/ui/widgets/radio_group.xu
 pub fn (g &RadioGroup) bounds() layout.Rect { << g.control.bounds() }
 
 // Upstream: src/ui/widgets/radio_group.xu
@@ -50,69 +107,12 @@ pub fn (g &RadioGroup) style_or(styles &Styles) ControlStyle {
     << styles.radio_style()
 }
 
-// Upstream: src/ui/widgets/radio_group.xu
-pub fn (g &mut RadioGroup) dispose() { labels := mut &g.labels
-    labels.dispose()
-    g.control.closed = true }
-
-// Upstream: src/ui/widgets/radio_group.xu
-pub fn (g &mut RadioGroup) input(event &ui.InputEvent) Action {
-    mut translated := choice_copy_input(event)
-    if !g.horizontal && event.kind != ui.EV_KEY_DOWN && event.kind != ui.EV_KEY_UP {
-        b := g.bounds()
-        if b.height > 0.0 && b.contains(event.x,event.y) {
-            translated.x = b.x + (event.y - b.y) / b.height * b.width
-            translated.y = b.y + b.height * 0.5
-        } else { translated.x = b.x - 1.0
-            translated.y = b.y - 1.0 }
-    }
-    control := mut &g.control
-    << control.input(&translated) or >>
-}
-
-// Upstream: src/ui/widgets/radio_group.xu
-pub fn (g &mut RadioGroup) paint_styled(frame &mut draw.Frame,styles &Styles) int {
-    mut c := g.style_or(styles)
-    c.padding = layout.Insets{left: 36.0,top: 4.0,right: 8.0,bottom: 4.0}
-    c.align_x = 0.0
-    c.align_y = 0.5
-    d := styles.density
-    for i in 0:g.count() {
-        b := g.item_bounds(i) or >>
-        state := g.control.item_visual_state(i)
-        paint := c.resolve(state)
-        if i == g.control.hovered_idx { rounded_fill(frame,&b,4.0 * d,fade_color(c.palette.accent,0.06)) or >> }
-        cx := b.x + 16.0 * d
-        cy := b.y + b.height * 0.5
-        side := math.min(16.0 * d,b.height - 4.0 * d)
-        if side > 0.0 {
-            ring := layout.Rect{x: cx - side * 0.5,y: cy - side * 0.5,width: side,height: side}
-            rounded_stroke(frame,&ring,side * 0.5,paint.border,math.max(1.0,c.border_width * d)) or >>
-            if i == g.selected() { frame.set_fill(c.palette.accent) or >>
-                frame.circle(cx,cy,side * 0.26) or >> }
-        }
-        if g.is_focused() && i == g.selected() { rounded_stroke(frame,&b,4.0 * d,c.palette.focus,c.focus_width * d) or >> }
-        mut text := c.clone()
-        text.states = []StatePaint{}
-        text.palette.foreground = c.palette.foreground
-        if !g.is_enabled() { text.palette.foreground = c.palette.muted }
-        value := g.values[i] + ""
-        labels := mut &g.labels
-        labels.paint_text(i,&value,frame,&b,styles,&text,0) or >>
-    }
-    << 0
-}
-
-// Upstream: src/ui/widgets/radio_group.xu
-pub fn (g &mut RadioGroup) set_focus(focused bool) { control := mut &g.control
-    control.set_focus(focused) }
-
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (t &Tabs) has_style() bool { << t.custom.active }
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (t &Tabs) item_visual_state(index int) int {
-    mut state := 0
+    $state := 0
     if t.invalid { state = state | STATE_INVALID }
     if t.read_only { state = state | STATE_READ_ONLY }
     if !t.is_enabled() { state = state | STATE_DISABLED }
@@ -134,7 +134,7 @@ pub fn radio_group(context &draw.Context,identity &ui.CanvasEvent,id int,bounds 
     validate_choices(options) or >>
     if !context.matches_canvas(identity) { >> errors.new("widgets: radio group context mismatch") }
     control := tabs(identity,id,bounds,options.len,selected) or >>
-    mut values := []string{}
+    $values := []string{}
     for value in options { values.push(value + "") }
     labels := text_cache(context)
     << RadioGroup{control: control,values: values,labels: labels,horizontal: false}

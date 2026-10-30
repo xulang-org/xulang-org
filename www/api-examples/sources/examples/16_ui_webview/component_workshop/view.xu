@@ -1,0 +1,426 @@
+@main
+
+#ui
+#ui/widgets
+#ui/draw
+#time
+#math
+
+fn names()[]string { <<["StyledLabel", "Button", "IconButton", "Input", "TextArea", "Field", "FieldArea", "TreeView", "TaskButton", "Checkbox", "Switch", "Radio", "RadioGroup", "Slider", "Stepper", "Select", "ComboBox", "MultiSelect", "DatePicker", "TimePicker", "ColorPicker", "Tabs", "Segmented", "ListBox", "Table", "Pagination", "Breadcrumbs", "Progress", "Spinner", "Divider", "Badge", "Card", "Scroll", "Popover", "Tooltip", "ToastHost", "Modal", "WebView", "ButtonGroup", "Chart", "RangeSlider", "SplitView", "Menu", "ContextMenu", "SplitButton", "PasswordInput"]}
+
+fn new_page(s $&widgets.Screen, index int) Page{
+    group := s.group() or >>
+    $ids :=[]int {}
+    choices :=["Workspace 工作区", "History 历史", "Output 输出"]
+    if index == 0 {ids.push(s.label("清晰的层级，让每个细节都服务于使用。\n中文、English 与 emoji 👩🏽‍💻 都使用原生排版。", 20.0, false) or >>)
+        s.set_label_wrapped(ids[0], true) or >>
+        ids.push(s.label("很长的完整内容：Cluster-safe truncation · 👨‍👩‍👧‍👦 family · workspace / widgets / component.xu", 16.0, false) or >>)
+        s.set_label_ellipsis(ids[1], true) or >>
+        anchor := ids[1]
+        ids.push(s.tooltip(anchor, "很长的完整内容：Cluster-safe truncation · 👨‍👩‍👧‍👦 family · workspace / widgets / component.xu") or >>)}
+    if index == 1 {
+        $sizes :=[]int {}
+        $labels :=[]int {}
+        for text in["Build project", "Open workspace · trailing", "Save changes · above", "Download SDK · below"] {
+            // Each inspector precedes its own button in both layout and Tab order.
+            inspector := s.stepper(12.0, 64.0, 4.0, 24.0) or >>
+            sizes.push(inspector)
+            _ := s.tooltip(inspector, text + " · Icon size 图标尺寸 (px)") or >>
+            labels.push(s.label("Icon 图标 · 24 px", 14.0, true) or >>)
+            ids.push(s.button_with_icon("logo.png", text) or >>)}
+        for text in["Secondary", "Outline", "Ghost", "Danger", "Subtle"] {ids.push(s.button(text) or >>)}
+        s.set_button_variant(ids[0], widgets.BUTTON_PRIMARY) or >>
+        for variant in 1:6 {s.set_button_variant(ids[variant + 3], variant) or >> }
+        for id in sizes{ids.push(id)}
+        for id in labels{ids.push(id)}}
+    if index == 2 {ids.push(s.icon_button("logo.png", "Open XU workspace") or >>)
+        anchor := ids[0]
+        ids.push(s.tooltip(anchor, "Open XU workspace · Enter") or >>)}
+    if index == 3 {ids.push(s.input("中文 / English / 🙂") or >>)}
+    if index == 4 {ids.push(s.text_area("Native text editing\n选择文字、复制、粘贴，保留输入法会话。\n👩🏽‍💻 family 👨‍👩‍👧‍👦") or >>)}
+    if index == 5 || index == 6 {
+        $decoration := widgets.field_decoration(&"Project name 项目名称")
+        decoration.helper = "Enter a name · Native IME / selection / clipboard"
+        decoration.error = "名称不能为空。Please enter a project name."
+        decoration.clearable = true
+        if index == 5 {decoration.prefix = "xu /"
+            ids.push(s.field("", &decoration) or >>)}
+        else {ids.push(s.text_field_area("Build notes\n中文与 emoji 🙂", &decoration) or >>)}
+        $options := widgets.field_text_options()
+        options.counter = true
+        options.character_limit = 32
+        if index == 6 {options.min_rows = 3
+            options.max_rows = 6}
+        s.set_field_text_options(ids[0], &options) or >>
+    }
+    if index == 7 {
+        ids.push(s.tree() or >>)
+        root := s.tree_add(ids[0], - 1, "XU workspace") or >>
+        src := s.tree_add(ids[0], root, "src") or >>
+        widgets_node := s.tree_add(ids[0], src, "widgets") or >>
+        for name in["tree_view.xu", "task_button.xu", "field.xu", "screen.xu"] {leaf := s.tree_add(ids[0], widgets_node, name) or >>
+            s.set_tree_metadata(ids[0], leaf, "Xu") or >>
+            s.set_tree_action(ids[0], leaf, true) or >> }
+        _ := s.tree_add(ids[0], root, "xu.xun") or >>
+        for node in[root, src, widgets_node] {s.set_expanded(ids[0], node, true) or >> }
+        $appearance := widgets.tree_appearance()
+        appearance.guides = true
+        s.set_tree_appearance(ids[0], &appearance) or >>
+        $decoration := widgets.field_decoration(&"Find a node")
+        decoration.clearable = true
+        ids.push(s.field("", &decoration) or >>)
+    }
+    if index == 8 {ids.push(s.task_button("Build project") or >>)
+        s.set_task_labels(ids[0], "Building", "Built · run again", "Retry build", "Build again") or >> }
+    if index == 9 {ids.push(s.checkbox("Keep generated files 保留产物", true) or >>)}
+    if index == 10 {ids.push(s.switch_control("Live preview 实时预览", true) or >>)}
+    if index == 11 {ids.push(s.radio("Use workspace settings", 1, true) or >>)}
+    if index == 12 {ids.push(s.radio_group(&choices, 0) or >>)}
+    if index == 13 {ids.push(s.slider(0.0, 100.0, 40.0) or >>)
+        $appearance := widgets.slider_appearance()
+        appearance.ticks = 11
+        appearance.show_value = true
+        s.set_slider_appearance(ids[0], &appearance, 10.0) or >>
+        s.set_slider_commit_only(ids[0], true) or >>
+        $decoration := widgets.field_decoration(&"Exact value / 精确数值")
+        decoration.helper = "0–100 · step 10 · Apply input"
+        decoration.error = "Enter a number between 0 and 100."
+        ids.push(s.field("40", &decoration) or >>)}
+    if index == 14 {ids.push(s.stepper(0.0, 100.0, 1.0, 24.0) or >>)
+        s.set_stepper_repeat(ids[0], true, time.milliseconds(400) or >>, time.milliseconds(80) or >>) or >> }
+    if index == 15 {$unavailable := widgets.select_option("Remote (unavailable)")
+        unavailable.enabled = false
+        options :=[widgets.select_group("LOCAL"), widgets.select_option("Workspace 工作区"), widgets.select_option("History 历史"), widgets.select_group("REMOTE"), unavailable]
+        ids.push(s.select_options(&options, 1) or >>)}
+    if index == 16 {ids.push(s.combo_box(&choices, "") or >>)
+        s.set_combo_custom_values(ids[0], false) or >> }
+    if index == 17 {ids.push(s.multi_select(&choices) or >>)
+        $decoration := widgets.field_decoration(&"Filter options")
+        decoration.clearable = true
+        ids.push(s.field("", &decoration) or >>)}
+    if index == 18 || index == 19 {value := time.date(2026, 10, 25, 14, 30, 0, 0)
+        if index == 18 {ids.push(s.date_picker(value) or >>)
+            s.set_date_options(ids[0], value, true) or >> }
+        else {ids.push(s.time_picker(value) or >>)
+            s.set_clock_format(ids[0], true, true) or >> }}
+    if index == 20 {ids.push(s.color_picker(draw.rgb(180, 57, 45)) or >>)
+        s.set_color_swatches(ids[0], &[draw.rgb(180, 57, 45), draw.rgb(50, 121, 160), draw.rgb(72, 130, 90)]) or >>
+        $decoration := widgets.field_decoration(&"HEX / RGBA")
+        decoration.helper = "#RGB, #RGBA, #RRGGBB, #RRGGBBAA"
+        decoration.error = "Use a valid HEX value."
+        ids.push(s.field("#B4392DFF", &decoration) or >>)}
+    if index == 21 {ids.push(s.tabs(&choices, 0) or >>)
+        s.set_tab_behavior(ids[0], &[180.0, 144.0, 160.0], false) or >> }
+    if index == 22 {ids.push(s.segmented(&["Day", "Week", "Month"], 0) or >>)}
+    if index == 23 {ids.push(s.list_box(&["TreeView", "TaskButton", "Field", "Table", "WebView", "Scroll", "Tabs", "Select", "ToastHost"], 0) or >>)
+        for row in 0:9 {$detail := widgets.list_row(["TreeView", "TaskButton", "Field", "Table", "WebView", "Scroll", "Tabs", "Select", "ToastHost"][row])
+            detail.description = "Native component · 原生交互"
+            detail.detail = "Ready"
+            detail.icon = widgets.TREE_ICON_FILE
+            s.set_list_row(ids[0], row, &detail) or >> }}
+    if index == 24 {ids.push(s.table(&["Component", "Build ms", "Status"], 12, 0) or >>)
+        components :=["Button", "TreeView", "Field", "Input", "Tabs", "Checkbox", "Switch", "Menu", "WebView", "Chart", "Table", "Badge"]
+        durations :=[14, 7, 120, 3, 21, 7, 45, 9, 210, 32, 18, 2]
+        for row in 0:12 {s.set_cell(ids[0], row, 0, components[row]) or >>
+            s.set_cell(ids[0], row, 1, str(durations[row])) or >>
+            s.set_cell(ids[0], row, 2,["Ready", "Review", "Draft"][row % 3]) or >> }
+        s.set_table_sort_kind(ids[0], 1, widgets.TABLE_SORT_NUMBER) or >>
+        s.set_table_column_min_width(ids[0], 0, 160.0) or >>
+        s.set_table_column(ids[0], 0, 280.0, 0.0) or >>
+        s.set_table_column(ids[0], 1, 160.0, 1.0) or >>
+        s.set_table_column(ids[0], 2, 200.0, 0.0) or >> }
+    if index == 25 {ids.push(s.pagination(1000, 122) or >>)
+        s.set_pagination_data(ids[0], 20000, 20) or >>
+        $decoration := widgets.field_decoration(&"Page 页码")
+        decoration.helper = ""
+        decoration.error = ""
+        decoration.reserve_helper = false
+        decoration.floating = widgets.LABEL_ALWAYS
+        ids.push(s.field("123", &decoration) or >>)
+        ids.push(s.select_box(&["10 / page", "20 / page", "50 / page", "100 / page"], 1) or >>)
+        ids.push(s.label("", 14.0, true) or >>)
+        s.set_label_wrapped(ids[3], true) or >>
+        ids.push(s.button("Go 跳转") or >>)
+        ids.push(s.label("", 13.0, true) or >>)
+        s.set_label_wrapped(ids[5], true) or >> }
+    if index == 26 {ids.push(s.breadcrumbs(&["Home", "XU workspace", "src", "ui", "widgets", "A long Chinese path 中文路径", "field.xu"]) or >>)}
+    if index == 27 {ids.push(s.progress(0.42) or >>)
+        s.set_progress_buffer(ids[0], 0.72) or >> }
+    if index == 28 {ids.push(s.spinner() or >>)
+        s.set_spinner_appearance(ids[0], 32.0, 3.0, time.milliseconds(900) or >>) or >>
+        s.set_running(ids[0], true) or >>
+        ids.push(s.label("Loading assets… 正在加载", 14.0, true) or >>)}
+    if index == 29 {ids.push(s.divider(widgets.AXIS_HORIZONTAL) or >>)
+        ids.push(s.label("SECTION / 章节", 12.0, true) or >>)}
+    if index == 30 {
+        inbox := s.button("Inbox 收件箱") or >>
+        count := s.badge_on(inbox, "12", widgets.BADGE_COUNT) or >>
+        s.set_badge_tone(count, widgets.BADGE_ERROR) or >>
+        avatar := s.button("LW") or >>
+        s.set_button_variant(avatar, widgets.BUTTON_SUBTLE) or >>
+        dot := s.badge_on(avatar, "", widgets.BADGE_DOT) or >>
+        s.set_badge_anchor(dot, avatar, 0.86, 0.86) or >>
+        s.set_badge_tone(dot, widgets.BADGE_SUCCESS) or >>
+        synced := s.badge("Synced 已同步") or >>
+        s.set_badge_tone(synced, widgets.BADGE_SUCCESS) or >>
+        beta := s.badge("BETA") or >>
+        s.set_badge_tone(beta, widgets.BADGE_INFO) or >>
+        ids =[count, inbox, avatar, dot, synced, beta,
+        s.label("12 unread · 点击收件箱清零，徽标随数字收紧。", 14.0, true) or >>,
+        s.label("林文 · Available 在线", 16.0, false) or >>,
+        s.label("点击头像切换在线状态；状态点不单独承担文字含义。", 13.0, true) or >>,
+        s.label("Workspace 工作区", 16.0, false) or >>]
+    }
+    if index == 31 {
+        ids.push(s.card() or >>)
+        sections := s.card_sections(ids[0], 36.0, 44.0) or >>
+        for parent in[sections.header, sections.body, sections.footer] {ids.push(parent)}
+        ids.push(s.label("Workspace configuration", 18.0, false) or >>)
+        ids.push(s.label("Header, body and footer keep distinct spacing.\n正文区域随密度与字号调整。", 14.0, true) or >>)
+        s.set_label_wrapped(ids[5], true) or >>
+        ids.push(s.button("Open workspace") or >>)
+        s.set_parent(ids[4], sections.header) or >>
+        s.set_parent(ids[5], sections.body) or >>
+        s.set_parent(ids[6], sections.footer) or >>
+    }
+    if index == 32 {ids.push(s.scroll_area(widgets.AXIS_VERTICAL, 1100.0) or >>)
+        for row in 0:14 {id := s.button("Focusable row " + str(row + 1) + " · 滚动内容") or >>
+            s.set_parent(id, ids[0]) or >>
+            ids.push(id)}}
+    if index >= 33 && index <= 36 {ids.push(s.button(["Open popover", "Focus or hover for help", "Enqueue notification", "Open confirmation"][index - 33]) or >>)
+        anchor := ids[0]
+        if index == 33 {
+            ids.push(s.popover(anchor, "") or >>)
+            ids.push(s.label("Workspace preferences", 18.0, false) or >>)
+            ids.push(s.label("Edit a draft, then apply. Escape or clicking outside dismisses.\n编辑草稿后应用；关闭不会提交。", 13.0, true) or >>)
+            s.set_label_wrapped(ids[3], true) or >>
+            $decoration := widgets.field_decoration(&"Workspace name 工作区名称")
+            decoration.clearable = true
+            decoration.error = "名称不能为空 / Enter a name"
+            ids.push(s.field("XU workspace", &decoration) or >>)
+            ids.push(s.checkbox("Keep history 保留历史", true) or >>)
+            ids.push(s.button("Cancel 取消") or >>)
+            ids.push(s.button("Apply 应用") or >>)
+            s.set_button_variant(ids[7], widgets.BUTTON_PRIMARY) or >>
+            ids.push(s.label("Current: XU workspace · history on", 14.0, true) or >>)
+            for i in 2:8 {s.set_parent(ids[i], ids[1]) or >> }
+        }
+        if index == 34 {ids.push(s.tooltip(anchor, "Hover waits 500 ms; keyboard focus shows help immediately.\n鼠标离开或点击收起；Escape 抑制重复提示。") or >>)}
+        if index == 36 {ids.push(s.modal("Apply configuration?", "Focus stays inside this confirmation. Escape returns to the trigger.") or >>)
+            ids.push(s.button("Cancel") or >>)
+            ids.push(s.button("Apply changes") or >>)
+            s.set_parent(ids[2], ids[1]) or >>
+            s.set_parent(ids[3], ids[1]) or >> }
+    }
+    if index == 37 {ids.push(s.webview() or >>)
+        s.load_web_html(ids[0], "<!doctype html><html><meta charset='utf-8'><style>body{font:16px system-ui;background:#f3f2ee;color:#292c30;padding:24px}input{font:inherit;padding:12px;border:1px solid #747b83;border-radius:6px;width:80%}h2{font-weight:500}</style><h2>WebView is a component.</h2><p>Native focus, clipping and independent lifecycle.</p><input aria-label='Web content' placeholder='中文 / English / 🙂'></html>") or >> }
+    if index == 38 {
+        actions :=[widgets.button_group_item(10, "Undo"), widgets.button_group_item(20, "Redo"), widgets.button_group_item(30, "Save")]
+        group_choices :=[widgets.button_group_item(10, "Day"), widgets.button_group_item(20, "Week"), widgets.button_group_item(30, "Month")]
+        formats :=[widgets.button_group_item(10, "Bold"), widgets.button_group_item(20, "Italic"), widgets.button_group_item(30, "Underline")]
+        ids.push(s.button_group(&actions, widgets.BUTTON_GROUP_ACTIONS) or >>)
+        ids.push(s.button_group(&group_choices, widgets.BUTTON_GROUP_SINGLE) or >>)
+        ids.push(s.button_group(&formats, widgets.BUTTON_GROUP_MULTIPLE) or >>)
+        ids.push(s.label("Actions / 独立操作", 12.0, true) or >>)
+        ids.push(s.label("Single / 单选", 12.0, true) or >>)
+        ids.push(s.label("Multiple / 多选", 12.0, true) or >>)
+    }
+    if index == 39 {
+        ids.push(s.chart() or >>)
+        types :=[widgets.button_group_item(1, "Line"), widgets.button_group_item(2, "Area"), widgets.button_group_item(3, "Bar"), widgets.button_group_item(4, "Scatter"), widgets.button_group_item(5, "Donut")]
+        ids.push(s.button_group(&types, widgets.BUTTON_GROUP_SINGLE) or >>)
+        series := chart_data(widgets.CHART_LINE, 0)
+        s.set_chart_series(ids[0], &series) or >>
+    }
+    if index == 40 {
+        ids.push(s.range_slider(0.0, 100.0, 20.0, 80.0) or >>)
+        ids.push(s.label("20 – 80", 18.0, false) or >>)
+        ids.push(s.label("Drag either thumb or the selected band. Tab visits both thumbs. Escape cancels a pending edit.\n拖动端点或整段；Tab 访问两个端点。", 14.0, true) or >>)
+        s.set_label_wrapped(ids[2], true) or >>
+    }
+    if index == 41 {
+        ids.push(s.split_view(0.4) or >>)
+        split := ids[0]
+        ids.push(s.split_pane(split, 0) or >>)
+        ids.push(s.split_pane(split, 1) or >>)
+        ids.push(s.label("Workspace / 工作区\nPane content follows the available size.", 16.0, false) or >>)
+        ids.push(s.label("Preview / 预览\nDrag the handle; arrows adjust, Shift accelerates.", 16.0, false) or >>)
+        ids.push(s.button("Open workspace") or >>)
+        ids.push(s.button("Refresh preview") or >>)
+        for i in 0:2 {s.set_label_wrapped(ids[3 + i], true) or >>
+            s.set_parent(ids[3 + i], ids[1 + i]) or >>
+            s.set_parent(ids[5 + i], ids[1 + i]) or >> }
+    }
+    if index >= 42 && index <= 44 {
+        mode :=[widgets.MENU_DROPDOWN, widgets.MENU_CONTEXT, widgets.MENU_SPLIT][index - 42]
+        label :=["Actions", "Right click here · 右键打开菜单", "Save"][index - 42]
+        ids.push(s.menu(label, &workshop_menu_items(true), mode, 100) or >>)
+        ids.push(s.label("Choose an action · 选择操作", 16.0, false) or >>)
+        ids.push(s.label("Check and radio items preserve their state. Navigate submenus with arrows; Escape returns one level.\n操作文案与快捷键由应用配置。", 14.0, true) or >>)
+        s.set_label_wrapped(ids[1], true) or >>
+        s.set_label_wrapped(ids[2], true) or >>
+    }
+    if index == 45 {
+        ids.push(s.password_input("Xu-密码🙂") or >>)
+        ids.push(s.checkbox("Show password 显示密码", false) or >>)
+        ids.push(s.label("Password 密码", 15.0, false) or >>)
+        ids.push(s.label("Paste is supported. Copy and cut are blocked even when revealed.\n支持粘贴、选择和中英文输入；显隐切换保留内容与光标。", 14.0, true) or >>)
+        s.set_label_wrapped(ids[3], true) or >>
+    }
+    for i in 0:ids.len{
+        // Card slots and scroll children retain their content parent.
+        if index == 30 &&(i == 0 || i == 3) { -> }
+        if index == 31 && i > 0 { -> }
+        if index == 41 && i > 0 { -> }
+        if index == 32 && i > 0 { -> }
+        if index == 36 && i > 1 { -> }
+        if index == 33 && i >= 2 && i <= 7 { -> }
+        s.set_parent(ids[i], group) or >>
+    }
+    s.set_visible(group, false) or >>
+    << Page{group: group, ids: ids}
+}
+
+fn description(index int) string {
+    if index == 45 { << "按 Unicode 字素掩码；显隐切换、原生编辑、只读与禁用，禁止复制或剪切密码。"}
+    if index == 40 { << "双端区间：步进、最小间距、端点推挤、整段拖动；独立焦点与提交。"}
+    if index == 41 { << "可调整分栏：尺寸约束、折叠恢复、键盘调整；内容保持在各自面板内。"}
+    if index >= 42 && index <= 44 { << "动作 / 勾选 / 单选 / 子菜单；键盘、边缘翻转、快捷键与可定制的逐项反馈。"}
+    if index == 38 { << "独立操作 / 单选 / 多选；逐项禁用，方向键导航，Enter 或空格激活。"}
+    if index == 39 { << "原生交互图表：稳定 ID 数据过渡、悬停/选中、图例；Ctrl/⌘ + 滚轮缩放，拖动平移，双击复位。"}
+    descriptions :=["正文、标题与辅助文字分层；原生换行与字体覆盖。",
+    "图标左 / 右 / 上 / 下；各自调节尺寸，按钮按内容宽度自动换行。",
+    "独立点击目标与动作名称；键盘焦点也能查看提示。",
+    "原生单行编辑：选区、复制、粘贴与 IME。",
+    "原生多行编辑：段落、内部滚动与输入法候选定位。",
+    "浮动标签 / 固定标签 / 三种边框；软计数不截断输入。",
+    "多行 Field：最小 3 行、最大 6 行；计数与稳定辅助区。",
+    "层级引导、矢量箭头、图标、元数据、筛选和节点动作。",
+    "真实计算批次驱动进度；任务 ID 拒绝旧回调。",
+    "整行点击；混合态；可中断的勾选显现。",
+    "轨道与圆钮过渡；快速切换可中断；只读保留焦点。",
+    "单项选择与选中动效；完整标签点击目标。",
+    "方向键管理互斥；Tab 只进入一次。",
+    "11 个刻度、10 步吸附、数值提示；松开才提交。",
+    "按住连续增加并加速；到达边界停止。",
+    "有类型的分组 / 禁用选项；方向键跳过不可选行。",
+    "本地匹配高亮与无结果；可控制是否接受自由输入。",
+    "候选筛选、可移除标签、全选和清空。",
+    "今天 / 清空；Page Up/Down 快速翻月，Shift 切年。",
+    "12/24 小时可选；存储保持明确的时间值。",
+    "RGBA 通道、HEX 精确输入、色板与最近颜色。",
+    "可变宽标签；方向键移动，Enter 手动激活。",
+    "与 Tabs 分开的选中底板和容器语义。",
+    "图标 / 主副文本 / 尾部信息；字体放大后命中保持一致。",
+    "拖动调整列宽；横向与纵向滚动；数据状态文字。",
+    "首页、末页与省略项；大页数仍可快速定位。",
+    "保留当前路径；中间段收进可交互的菜单。",
+    "真实确定进度与缓冲区分别显示，不伪造百分比。",
+    "大小 / 粗细 / 周期可配置；减少动效显示静态反馈。",
+    "弱分隔与章节文字组合；水平和垂直使用同一规范。",
+    "Badge 放入真实上下文：未读计数、头像状态点与列表标签。",
+    "Header / body / footer 内容槽；动作使用独立 Button。",
+    "真实子控件裁剪、滚轮冒泡、轨道拖动与键盘焦点滚入。",
+    "锚点定位、边缘翻转；外点 / Escape 关闭。",
+    "Hover 延迟、focus 立即显示；Escape 抑制重复提示。",
+    "最多三条可见通知；队列、去重、优先级与撤销动作。",
+    "模态焦点循环与恢复；安全动作先获得焦点。",
+    "原生网页子视图作为 Screen 组件，支持裁剪与独立生命周期。"]
+    << descriptions[index]
+}
+
+fn tool_labels(index int)[]string {
+    if index == 45 { <<["Clear 清空", "Reset 示例", "Focus 输入"]}
+    if index == 40 { <<["Clamp / push 端点", "Commit mode 提交", "Orientation 方向"]}
+    if index == 41 { <<["Orientation 方向", "Collapse / restore 折叠", "Reset 复位"]}
+    if index >= 42 && index <= 44 { <<["Open 打开", "Keep open 保持展开", "Disable export 禁用导出"]}
+    if index == 38 { <<["Disable middle 逐项禁用", "Orientation 方向", "Joined / gap 拼接"]}
+    if index == 39 { <<["Update data 更新数据", "Reset zoom 复位", "Pause / resume 暂停"]}
+    if index == 0 { <<["Long text 长文", "Short text 短文", ""]}
+    if index == 1 || index == 2 { <<["Select 选中", "Clear selection", ""]}
+    if index == 3 || index == 4 { <<["Empty 清空", "Long text 长文", ""]}
+    if index == 5 || index == 6 { <<["Empty 清空", "Long text 长文", "Appearance 外观"]}
+    if index == 7 { <<["Guides 引导线", "Reveal last 定位", "Clear filter"]}
+    if index == 8 { <<["Progress 外观", "Fail next 下次失败", "Cancel 取消"]}
+    if index == 9 { <<["Mixed 混合态", "Checked 勾选", "Unchecked"]}
+    if index == 10 { <<["Pending 等待", "Resolve 成功", "Fail 恢复"]}
+    if index == 11 { <<["On 选中", "Off 取消", ""]}
+    if index == 13 { <<["Apply input", "Commit only", "Live updates"]}
+    if index == 15 { <<["Open 展开", "Disabled option", ""]}
+    if index == 16 { <<["Allow custom 自由", "Options only", "Clear 清空"]}
+    if index == 17 { <<["Select all 全选", "Clear 清空", ""]}
+    if index == 18 { <<["Clear 清空", "Set today 今天", ""]}
+    if index == 19 { <<["12 hour", "24 hour", "Hide seconds"]}
+    if index == 20 { <<["Apply HEX", "Cinnabar 朱砂", "Transparent"]}
+    if index == 24 { <<["Data 数据", "Loading 加载", "Error 错误"]}
+    if index == 25 { <<["Jump 跳转", "Last 末页", "Data 空/满"]}
+    if index == 27 { <<["0%", "42%", "100%"]}
+    if index == 28 { <<["Run 开始", "Stop 停止", "Large 大号"]}
+    if index == 30 { <<["+1 未读", "Clear 清零", "99+ 溢出"]}
+    if index == 32 { <<["Top 顶部", "Bottom 底部", "Focus last"]}
+    if index == 33 { <<["Open 打开", "Close 关闭", "Position 方位"]}
+    if index == 34 { <<["Focus 提示", "Blur 隐藏", "Position 方位"]}
+    if index == 35 { <<["Enqueue 通知", "Undo", "Burst 三条"]}
+    if index == 36 { <<["Open 打开", "Close 关闭", ""]}
+    if index == 37 { <<["Reload 重载", "Hide 隐藏", "Show 恢复"]}
+    <<["", "", ""]
+}
+
+fn workshop_menu_items(english bool)[]widgets.MenuItem{
+    labels :=["Open workspace", "Show grid", "Export", "PNG image", "SVG image", "Unavailable", "Save", "View density", "Compact", "Comfortable"]
+    $translated := labels
+    if !english{translated =["打开工作区", "显示网格", "导出", "PNG 图片", "SVG 图片", "暂不可用", "保存", "视图密度", "紧凑", "舒适"]}
+    $grid := widgets.menu_item(20, translated[1])
+    grid.kind = widgets.MENU_CHECK
+    $export := widgets.menu_item(30, translated[2])
+    export.kind = widgets.MENU_SUBMENU
+    $png := widgets.menu_item(31, translated[3])
+    png.parent = 30
+    $svg := widgets.menu_item(32, translated[4])
+    svg.parent = 30
+    $unavailable := widgets.menu_item(40, translated[5])
+    unavailable.enabled = false
+    $save := widgets.menu_item(50, translated[6])
+    save.shortcut_key = 115
+    save.shortcut_modifiers = ui.MOD_META
+    save.shortcut_label = "⌘S"
+    $separator := widgets.menu_item(60, "")
+    separator.kind = widgets.MENU_SEPARATOR
+    $heading := widgets.menu_item(70, translated[7])
+    heading.kind = widgets.MENU_HEADING
+    $compact := widgets.menu_item(80, translated[8])
+    compact.kind = widgets.MENU_RADIO
+    compact.radio_group = 1
+    $comfortable := widgets.menu_item(81, translated[9])
+    comfortable.kind = widgets.MENU_RADIO
+    comfortable.radio_group = 1
+    comfortable.checked = true
+    <<[widgets.menu_item(10, translated[0]), grid, export, png, svg, unavailable, save, separator, heading, compact, comfortable]
+}
+
+fn chart_data(kind int, revision int)[]widgets.ChartSeries{
+    $result :=[]widgets.ChartSeries{}
+    $series_count := 2
+    if kind == widgets.CHART_DONUT{series_count = 1}
+    for si in 0:series_count{
+        $name := "Build 构建"
+        if si == 1 {name = "Index 索引"}
+        if kind == widgets.CHART_DONUT{name = "Workload 工作量"}
+        $series := widgets.chart_series(si + 1, name, kind)
+        series.smooth = kind == widgets.CHART_LINE || kind == widgets.CHART_AREA
+        $count := 12 - revision % 2
+        if kind == widgets.CHART_SCATTER{count = 64}
+        if kind == widgets.CHART_DONUT{count = 5}
+        for i in 0:count{
+            x := f64(i + 1)
+            phase := f64(revision) * 0.9 + f64(si) * 1.7
+            y := 48.0 + f64(si) * 20.0 + math.sin(x * 0.55 + phase) * 20.0 + math.cos(x * 0.17 + phase) * 7.0
+            $point := widgets.chart_point(i + 1, x, y)
+            point.label = "Sample 样本 " + str(i + 1)
+            if kind == widgets.CHART_DONUT{point.label =["Compile 编译", "Index 索引", "Render 绘制", "I/O 输入输出", "Other 其他"][i]}
+            series.points.push(point)
+        }
+        result.push(series)
+    }
+    << result
+}

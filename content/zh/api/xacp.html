@@ -1,10 +1,10 @@
 <!--title: #xacp-->
 <p class="crumb">API</p>
 <h1><code>#xacp</code></h1>
-<!--xu-api-version: 0.10.11-->
+<!--xu-api-version: 0.10.12-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#xacp</code></p>
-<p class="meta">counts: 49 函数, 2 方法, 8 类型, 18 常量, 0 方法集</p>
+<p class="meta">counts: 55 函数, 2 方法, 10 类型, 27 常量, 0 方法集</p>
 <p class="lead"><code>#xacp</code> 是与传输无关的安全核心：帧上限、XUN 校验、权限和会话生命周期。导入它不会打开控制通道。stdio 与本机回环 TCP 是运行时钩子，只有 <code>xu build --xacp</code> 或 <code>--xacp-port</code> 才会插入。</p>
 <p><a href="/docs/cli#xacp">命令行：<code>xu xacp</code></a> · <a href="/docs/faq">常见问题</a> · <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md">可运行样例</a></p>
 
@@ -15,12 +15,12 @@
 <thead><tr><th>函数</th><th>作用</th></tr></thead>
 <tbody>
 <tr><td><code>open_session() Session</code></td><td>新建无权限会话。</td></tr>
-<tr><td><code>close_session(s &amp;mut Session)</code></td><td>关闭并清空权限。</td></tr>
-<tr><td><code>cancel_request(s &amp;mut Session)</code></td><td>丢弃活动请求，不把会话打开。</td></tr>
-<tr><td><code>begin_request(s &amp;mut Session, r &amp;Request) Outcome</code></td><td>在 <code>authorized</code> 允许时预约下一个单调 id。</td></tr>
-<tr><td><code>finish_request(s &amp;mut Session, id int) Outcome</code></td><td>释放活动 id。id <code>1</code> 会打开会话。</td></tr>
-<tr><td><code>authorized(s &amp;mut Session, r &amp;Request) bool</code></td><td><code>xacp.hello</code> 仅在 <code>STATE_NEW</code>。其后的操作需要对应权限位。</td></tr>
-<tr><td><code>dispatch(s &amp;mut Session, d &amp;xun.Doc, l &amp;Limits) Outcome</code></td><td>只做核心生命周期。完成 <code>xacp.hello</code>，不授予 development 权限。其他已知操作在 begin 成功后返回 <code>not_implemented</code>；未授权时返回 <code>permission_denied</code>。</td></tr>
+<tr><td><code>close_session(s $&amp;Session)</code></td><td>关闭并清空权限。</td></tr>
+<tr><td><code>cancel_request(s $&amp;Session)</code></td><td>丢弃活动请求，不把会话打开。</td></tr>
+<tr><td><code>begin_request(s $&amp;Session, r &amp;Request) Outcome</code></td><td>在 <code>authorized</code> 允许时预约下一个单调 id。</td></tr>
+<tr><td><code>finish_request(s $&amp;Session, id int) Outcome</code></td><td>释放活动 id。id <code>1</code> 会打开会话。</td></tr>
+<tr><td><code>authorized(s $&amp;Session, r &amp;Request) bool</code></td><td><code>xacp.hello</code> 仅在 <code>STATE_NEW</code>。其后的操作需要对应权限位。</td></tr>
+<tr><td><code>dispatch(s $&amp;Session, d &amp;xun.Doc, l &amp;Limits) Outcome</code></td><td>只做核心生命周期。完成 <code>xacp.hello</code>，不授予 development 权限。其他已知操作在 begin 成功后返回 <code>not_implemented</code>；未授权时返回 <code>permission_denied</code>。</td></tr>
 </tbody></table></div>
 
 <h2>Hello 与权限</h2>
@@ -108,7 +108,7 @@ data:
 <p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
 <details class="api-example" id="example-79cd31b33432" open>
 <summary><code>16_ui_webview/xacp_screen/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/e608123c2615494b22bf8ecca41318f7ba950ece/examples/16_ui_webview/xacp_screen">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/xacp_screen/main.xu" download>下载源码</a></p>
+<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/f8527ee845cabd2fbe2006574f83ab2c7bbcd774/examples/16_ui_webview/xacp_screen">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/xacp_screen/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/xacp_screen/events.xu" download>events.xu</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/xacp_screen/main.xu"><code class="language-xu">@main
 
 <span class="syn-import"><span class="hash">#</span>ui</span>
@@ -118,93 +118,93 @@ data:
 
 demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
-<span class="syn-kw">struct</span> Model {
+<span class="syn-kw">struct</span> Model{
     label_id <span class="syn-type">int</span>
     count <span class="syn-type">int</span>
 }
 
-<span class="syn-kw">fn</span> (m <span class="syn-borrow">&amp;mut</span> Model) layout(s <span class="syn-borrow">&amp;mut</span> widgets.Screen) <span class="syn-type">int</span> {
-    s.place(m.label_id,32.0,36.0,540.0,44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+<span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Model) layout(s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
+    s.place(m.label_id, 32.0, 36.0, 540.0, 44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-flow">&lt;&lt;</span> 0
 }
 
-<span class="syn-kw">fn</span> (m <span class="syn-borrow">&amp;mut</span> Model) update(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,action widgets.Action) <span class="syn-type">int</span> {
-    <span class="syn-kw">if</span> action.kind == widgets.ACTION_KEY &amp;&amp; <span class="syn-type">int</span>(action.value) == ui.KEY_ESCAPE {
-        s.close() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    }
-    <span class="syn-kw">if</span> action.kind == widgets.ACTION_ACTIVATE {
-        m.count += 1
-        s.set_text(m.label_id,<span class="syn-str">"Button actions: "</span> + str(m.count)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    }
-    <span class="syn-flow">&lt;&lt;</span> 0
-}
-
-<span class="syn-kw">fn</span> inspect_screen(s <span class="syn-borrow">&amp;mut</span> widgets.Screen) <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> session <span class="syn-flow">:=</span> xacp.open_session()
+<span class="syn-kw">fn</span> inspect_screen(s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
+    $session <span class="syn-flow">:=</span> xacp.open_session()
+    <span class="syn-cmt">// The in-process adapter follows the current session lifecycle too.</span>
+    <span class="syn-cmt">// This token belongs only to this local demonstration; no listener is opened.</span>
     permissions <span class="syn-flow">:=</span> xacp.PERM_UI_READ | xacp.PERM_UI_MUTATE
-    <span class="syn-kw">if</span> !xacp.set_permissions(<span class="syn-borrow">mut &amp;</span>session,permissions) {
-        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
-        <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"xacp_screen: failed to set least-privilege UI permissions"</span>)
-    }
     limits <span class="syn-flow">:=</span> xacp.default_limits()
-    nodes <span class="syn-flow">:=</span> xacp.ui_tree(<span class="syn-borrow">mut &amp;</span>*s,<span class="syn-borrow">mut &amp;</span>session,1,false,32,&amp;limits) <span class="syn-kw">or</span> (err) {
-        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+    $nonces <span class="syn-flow">:=</span> xacp.new_nonce_registry(8, true)
+    hello <span class="syn-flow">:=</span> xacp.parse_frame(<span class="syn-str">"id: !i 1\nop: xacp.hello\nargs:\n  ver: !ver 1.0.0\n  nonce: local-screen-demo\n  token: local-screen-demo\n  permissions: !i "</span> + str(permissions) + <span class="syn-str">"\n"</span>) <span class="syn-kw">or</span>(err) {
+        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
-    println(<span class="syn-str">"XACP ui.tree: "</span> + str(nodes.len) + <span class="syn-str">" visible nodes"</span>)
-    <span class="syn-kw">for</span> node <span class="syn-kw">in</span> nodes {
+    opened <span class="syn-flow">:=</span> xacp.dispatch_with_token(<span class="syn-borrow">$&amp;</span>session, &amp;hello, &amp;limits, <span class="syn-str">"local-screen-demo"</span>, <span class="syn-borrow">$&amp;</span>nonces)
+    <span class="syn-kw">if</span> !opened.ok{
+        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"xacp_screen: "</span> + opened.err_msg)
+    }
+    tree <span class="syn-flow">:=</span> xacp.ui_tree(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 2, false, 0, 32, &amp;limits) <span class="syn-kw">or</span>(err) {
+        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
+        <span class="syn-flow">&gt;&gt;</span> err
+    }
+    println(<span class="syn-str">"XACP ui.tree: "</span> + str(tree.nodes.len) + <span class="syn-str">" visible nodes"</span>)
+    <span class="syn-kw">for</span> node <span class="syn-kw">in</span> tree.nodes{
         println(<span class="syn-str">"  #"</span> + str(node.id) + <span class="syn-str">" kind="</span> + str(node.kind) + <span class="syn-str">" "</span> + node.text)
     }
 
-    <span class="syn-kw">mut</span> snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(<span class="syn-borrow">mut &amp;</span>*s,<span class="syn-borrow">mut &amp;</span>session,2,1.0,&amp;limits) <span class="syn-kw">or</span> (err) {
-        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+    $snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 3, 1.0, &amp;limits) <span class="syn-kw">or</span>(err) {
+        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
     println(<span class="syn-str">"XACP ui.screenshot: "</span> + str(snapshot.pixel_width) + <span class="syn-str">"x"</span> + str(snapshot.pixel_height) + <span class="syn-str">" pixels"</span>)
-    snapshot.dispose() <span class="syn-kw">or</span> (err) {
-        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+    snapshot.dispose() <span class="syn-kw">or</span>(err) {
+        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
 
-    _ <span class="syn-flow">:=</span> xacp.ui_act(<span class="syn-borrow">mut &amp;</span>*s,<span class="syn-borrow">mut &amp;</span>session,2,3,<span class="syn-str">"focus"</span>,<span class="syn-str">""</span>,false,&amp;limits) <span class="syn-kw">or</span> (err) {
-        xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+    _ <span class="syn-flow">:=</span> xacp.ui_act(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 2, 4, <span class="syn-str">"focus"</span>, <span class="syn-str">""</span>, false, &amp;limits) <span class="syn-kw">or</span>(err) {
+        xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
-    xacp.close_session(<span class="syn-borrow">mut &amp;</span>session)
+    xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
     <span class="syn-flow">&lt;&lt;</span> 0
 }
 
 <span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
     ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
-    <span class="syn-kw">mut</span> screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.resize(640.0,180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>,22.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT{ <span class="syn-flow">&lt;&lt;</span> 0}
+    $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.resize(640.0, 180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>, 22.0, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     button_id <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Activate locally or through ui.act"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.place(label_id,32.0,36.0,540.0,44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.place(button_id,32.0,96.0,360.0,40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    inspect_screen(<span class="syn-borrow">mut &amp;</span>screen) <span class="syn-kw">or</span> (err) {
+    screen.place(label_id, 32.0, 36.0, 540.0, 44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(button_id, 32.0, 96.0, 360.0, 40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    inspect_screen(<span class="syn-borrow">$&amp;</span>screen) <span class="syn-kw">or</span>(err) {
         screen.dispose()
         <span class="syn-flow">&gt;&gt;</span> err
     }
-    <span class="syn-kw">mut</span> model <span class="syn-flow">:=</span> Model{label_id: label_id,count: 0}
-    <span class="syn-flow">&lt;&lt;</span> widgets.run_screen(<span class="syn-borrow">mut &amp;</span>screen,events,<span class="syn-borrow">mut &amp;</span>model) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $model <span class="syn-flow">:=</span> Model{label_id: label_id, count: 0}
+    $actions <span class="syn-flow">:=</span> widgets.action_dispatcher(&amp;model, &amp;screen)
+    actions.on(button_id, widgets.ACTION_ACTIVATE, activate) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    actions.set_fallback(global_key)
+    <span class="syn-flow">&lt;&lt;</span> widgets.run_screen_actions(<span class="syn-borrow">$&amp;</span>screen, events, <span class="syn-borrow">$&amp;</span>model, layout_action, &amp;actions) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
 
 <span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) {
-    scene(events) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
+    scene(events) <span class="syn-kw">or</span>(err) {demo.fail(err.msg())
         <span class="syn-flow">&lt;&lt;</span> }
 }
 
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>,640,180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>, 640, 180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
 
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
-    <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span> (err) { eprintln(err.msg())
-        <span class="syn-flow">&lt;&lt;</span> 1 }
+    <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span>(err) {eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1}
 }</code></pre></div>
 </details>
 </section>
@@ -262,6 +262,62 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_REQUEST_TIMEOUT_MS = 600000</code></pre></div>
 <h3>用途</h3>
 <p>常量 `MAX_REQUEST_TIMEOUT_MS`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="const-DEFAULT_HELLO_TIMEOUT_MS">
+<h2><code>const DEFAULT_HELLO_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DEFAULT_HELLO_TIMEOUT_MS = 5000</code></pre></div>
+<h3>用途</h3>
+<p>常量 `DEFAULT_HELLO_TIMEOUT_MS`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="const-MAX_HELLO_TIMEOUT_MS">
+<h2><code>const MAX_HELLO_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_HELLO_TIMEOUT_MS = 600000</code></pre></div>
+<h3>用途</h3>
+<p>常量 `MAX_HELLO_TIMEOUT_MS`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="const-DEFAULT_IDLE_TIMEOUT_MS">
+<h2><code>const DEFAULT_IDLE_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DEFAULT_IDLE_TIMEOUT_MS = 60000</code></pre></div>
+<h3>用途</h3>
+<p>常量 `DEFAULT_IDLE_TIMEOUT_MS`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="const-MIN_IDLE_TIMEOUT_MS">
+<h2><code>const MIN_IDLE_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MIN_IDLE_TIMEOUT_MS = 1000</code></pre></div>
+<h3>用途</h3>
+<p>常量 `MIN_IDLE_TIMEOUT_MS`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="const-MAX_IDLE_TIMEOUT_MS">
+<h2><code>const MAX_IDLE_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_IDLE_TIMEOUT_MS = 3600000</code></pre></div>
+<h3>用途</h3>
+<p>常量 `MAX_IDLE_TIMEOUT_MS`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="const-DEFAULT_NONCE_CACHE">
+<h2><code>const DEFAULT_NONCE_CACHE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DEFAULT_NONCE_CACHE = 1024</code></pre></div>
+<h3>用途</h3>
+<p>常量 `DEFAULT_NONCE_CACHE`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="const-MAX_NONCE_CACHE">
+<h2><code>const MAX_NONCE_CACHE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_NONCE_CACHE = 65536</code></pre></div>
+<h3>用途</h3>
+<p>常量 `MAX_NONCE_CACHE`，定义了相关的协议或算法配置参数。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -331,9 +387,17 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">无</p>
 <p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
+<article class="api-item" id="const-PERM_UI_RAW">
+<h2><code>const PERM_UI_RAW</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PERM_UI_RAW = 16</code></pre></div>
+<h3>用途</h3>
+<p>常量 `PERM_UI_RAW`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
 <article class="api-item" id="const-PERM_ALL">
 <h2><code>const PERM_ALL</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PERM_ALL = 15</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PERM_ALL = 31</code></pre></div>
 <h3>用途</h3>
 <p>常量 `PERM_ALL`，定义了相关的协议或算法配置参数。</p>
 <h3>参数</h3>
@@ -348,6 +412,8 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">pub</span> max_table_rows <span class="syn-type">int</span>
     <span class="syn-kw">pub</span> max_node_id <span class="syn-type">int</span>
     <span class="syn-kw">pub</span> request_timeout_ms <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> hello_timeout_ms <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> idle_timeout_ms <span class="syn-type">int</span>
 }</code></pre></div>
 <h3>用途</h3>
 <p>承载 max_frame_bytes、max_string_bytes、max_fields、max_table_rows、max_node_id 等属性的结构体。</p>
@@ -359,6 +425,8 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>max_table_rows</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>max_node_id</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>request_timeout_ms</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>hello_timeout_ms</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>idle_timeout_ms</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
 </article>
 <article class="api-item" id="struct-Session">
@@ -388,6 +456,30 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>bytes_in</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 <dt><code>bytes_out</code> <span class="type">int</span></dt><dd>字段（int）</dd>
 </dl>
+</article>
+<article class="api-item" id="struct-NonceRegistry">
+<h2><code>struct NonceRegistry</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> NonceRegistry {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>`NonceRegistry` 上下文或状态结构体。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="new_nonce_registry">
+<h2><code>new_nonce_registry</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> new_nonce_registry(capacity <span class="syn-type">int</span>, enabled <span class="syn-type">bool</span>) NonceRegistry</code></pre></div>
+<h3>用途</h3>
+<p>构造 nonce registry。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>capacity</code> <span class="type">int</span></dt><dd>capacity（int）</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>NonceRegistry — 该类型的值</p>
+<p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-Request">
 <h2><code>struct Request</code></h2>
@@ -444,6 +536,46 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
 </article>
+<article class="api-item" id="hello_timeout_from_env">
+<h2><code>hello_timeout_from_env</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> hello_timeout_from_env() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 hello timeout from env 操作。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="idle_timeout_from_env">
+<h2><code>idle_timeout_from_env</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> idle_timeout_from_env() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 idle timeout from env 操作。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="nonce_cache_from_env">
+<h2><code>nonce_cache_from_env</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> nonce_cache_from_env() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 nonce cache from env 操作。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="nonce_replay_from_env">
+<h2><code>nonce_replay_from_env</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> nonce_replay_from_env() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 nonce replay from env 操作。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
 <article class="api-item" id="open_session">
 <h2><code>open_session</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open_session() Session</code></pre></div>
@@ -457,38 +589,37 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="close_session">
 <h2><code>close_session</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> close_session(s <span class="syn-borrow">&amp;mut</span> Session)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> close_session(s <span class="syn-borrow">$&amp;</span>Session)</code></pre></div>
 <h3>用途</h3>
 <p>执行 close session 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 </dl>
 <p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="cancel_request">
 <h2><code>cancel_request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> cancel_request(s <span class="syn-borrow">&amp;mut</span> Session)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> cancel_request(s <span class="syn-borrow">$&amp;</span>Session)</code></pre></div>
 <h3>用途</h3>
 <p>取消请求。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 </dl>
 </article>
 <article class="api-item" id="set_permissions">
 <h2><code>set_permissions</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> set_permissions(s <span class="syn-borrow">&amp;mut</span> Session, permissions <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> set_permissions(s <span class="syn-borrow">$&amp;</span>Session, permissions <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>设置 permissions。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>permissions</code> <span class="type">int</span></dt><dd>permissions（int）</dd>
 </dl>
 <h3>返回</h3>
 <p>bool — 是否成立</p>
-<p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="development_permissions">
 <h2><code>development_permissions</code></h2>
@@ -502,12 +633,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="enable_development">
 <h2><code>enable_development</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> enable_development(s <span class="syn-borrow">&amp;mut</span> Session) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> enable_development(s <span class="syn-borrow">$&amp;</span>Session) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>执行 enable development 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 </dl>
 <h3>返回</h3>
 <p>bool — 是否成立</p>
@@ -523,6 +654,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>返回</h3>
 <p>xun.Doc — 该类型的值</p>
+<p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="request_id_hint">
 <h2><code>request_id_hint</code></h2>
@@ -551,12 +683,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="authorized">
 <h2><code>authorized</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> authorized(s <span class="syn-borrow">&amp;mut</span> Session, r &amp;Request) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> authorized(s <span class="syn-borrow">$&amp;</span>Session, r &amp;Request) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>执行 authorized 处理。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>r</code> <span class="type">&amp;Request</span></dt><dd>rune（Unicode 码点）（借用，调用方仍持有；类型 &amp;Request）</dd>
 </dl>
 <h3>返回</h3>
@@ -564,12 +696,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="begin_request">
 <h2><code>begin_request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> begin_request(s <span class="syn-borrow">&amp;mut</span> Session, r &amp;Request) Outcome</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> begin_request(s <span class="syn-borrow">$&amp;</span>Session, r &amp;Request) Outcome</code></pre></div>
 <h3>用途</h3>
 <p>执行 begin request 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>r</code> <span class="type">&amp;Request</span></dt><dd>rune（Unicode 码点）（借用，调用方仍持有；类型 &amp;Request）</dd>
 </dl>
 <h3>返回</h3>
@@ -577,12 +709,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="finish_request">
 <h2><code>finish_request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> finish_request(s <span class="syn-borrow">&amp;mut</span> Session, id <span class="syn-type">int</span>) Outcome</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> finish_request(s <span class="syn-borrow">$&amp;</span>Session, id <span class="syn-type">int</span>) Outcome</code></pre></div>
 <h3>用途</h3>
 <p>执行 finish request 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 </dl>
 <h3>返回</h3>
@@ -590,12 +722,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="consume_input">
 <h2><code>consume_input</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> consume_input(s <span class="syn-borrow">&amp;mut</span> Session, n <span class="syn-type">int</span>, l &amp;Limits) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> consume_input(s <span class="syn-borrow">$&amp;</span>Session, n <span class="syn-type">int</span>, l &amp;Limits) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>执行 consume input 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
 </dl>
@@ -604,12 +736,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="consume_output">
 <h2><code>consume_output</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> consume_output(s <span class="syn-borrow">&amp;mut</span> Session, n <span class="syn-type">int</span>, l &amp;Limits) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> consume_output(s <span class="syn-borrow">$&amp;</span>Session, n <span class="syn-type">int</span>, l &amp;Limits) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>执行 consume output 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
 </dl>
@@ -646,47 +778,51 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="negotiate_hello">
 <h2><code>negotiate_hello</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> negotiate_hello(s <span class="syn-borrow">&amp;mut</span> Session, d &amp;xun.Doc, r &amp;Request, expected_token <span class="syn-type">string</span>) Outcome</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> negotiate_hello(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, r &amp;Request, expected_token <span class="syn-type">string</span>, nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) Outcome</code></pre></div>
 <h3>用途</h3>
 <p>执行 negotiate hello 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d（借用，调用方仍持有；类型 &amp;xun.Doc）</dd>
 <dt><code>r</code> <span class="type">&amp;Request</span></dt><dd>rune（Unicode 码点）（借用，调用方仍持有；类型 &amp;Request）</dd>
 <dt><code>expected_token</code> <span class="type">string</span></dt><dd>expected_token（string）</dd>
+<dt><code>nonces</code> <span class="type">$&amp;NonceRegistry</span></dt><dd>nonces（独占借用；类型 $&amp;NonceRegistry）</dd>
 </dl>
 <h3>返回</h3>
 <p>Outcome — 该类型的值</p>
 </article>
 <article class="api-item" id="dispatch">
 <h2><code>dispatch</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch(s <span class="syn-borrow">&amp;mut</span> Session, d &amp;xun.Doc, l &amp;Limits) Outcome</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, l &amp;Limits, nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) Outcome</code></pre></div>
 <h3>用途</h3>
 <p>执行 dispatch 处理。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d（借用，调用方仍持有；类型 &amp;xun.Doc）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
+<dt><code>nonces</code> <span class="type">$&amp;NonceRegistry</span></dt><dd>nonces（独占借用；类型 $&amp;NonceRegistry）</dd>
 </dl>
 <h3>返回</h3>
 <p>Outcome — 该类型的值</p>
 </article>
 <article class="api-item" id="dispatch_with_token">
 <h2><code>dispatch_with_token</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_with_token(s <span class="syn-borrow">&amp;mut</span> Session, d &amp;xun.Doc, l &amp;Limits, expected_token <span class="syn-type">string</span>) Outcome</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_with_token(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, l &amp;Limits, expected_token <span class="syn-type">string</span>, nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) Outcome</code></pre></div>
 <h3>用途</h3>
 <p>执行 dispatch with token 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut Session</span></dt><dd>源字符串（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>源字符串（独占借用；类型 $&amp;Session）</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d（借用，调用方仍持有；类型 &amp;xun.Doc）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
 <dt><code>expected_token</code> <span class="type">string</span></dt><dd>expected_token（string）</dd>
+<dt><code>nonces</code> <span class="type">$&amp;NonceRegistry</span></dt><dd>nonces（独占借用；类型 $&amp;NonceRegistry）</dd>
 </dl>
 <h3>返回</h3>
 <p>Outcome — 该类型的值</p>
+<p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="struct-ControlReply">
 <h2><code>struct ControlReply</code></h2>
@@ -760,12 +896,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="register_screen">
 <h2><code>register_screen</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> register_screen(control <span class="syn-borrow">&amp;mut</span> ScreenControl,s &amp;widgets.Screen) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> register_screen(control <span class="syn-borrow">$&amp;</span>ScreenControl,s &amp;widgets.Screen) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>执行 register screen 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>control</code> <span class="type">&amp;mut ScreenControl</span></dt><dd>control（独占借用；类型 &amp;mut ScreenControl）</dd>
+<dt><code>control</code> <span class="type">$&amp;ScreenControl</span></dt><dd>control（独占借用；类型 $&amp;ScreenControl）</dd>
 <dt><code>s</code> <span class="type">&amp;widgets.Screen</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;widgets.Screen）</dd>
 </dl>
 <h3>返回</h3>
@@ -773,26 +909,44 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="unregister_screen">
 <h2><code>unregister_screen</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> unregister_screen(control <span class="syn-borrow">&amp;mut</span> ScreenControl)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> unregister_screen(control <span class="syn-borrow">$&amp;</span>ScreenControl)</code></pre></div>
 <h3>用途</h3>
 <p>执行 unregister screen 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>control</code> <span class="type">&amp;mut ScreenControl</span></dt><dd>control（独占借用；类型 &amp;mut ScreenControl）</dd>
+<dt><code>control</code> <span class="type">$&amp;ScreenControl</span></dt><dd>control（独占借用；类型 $&amp;ScreenControl）</dd>
 </dl>
 </article>
 <article class="api-item" id="poll">
 <h2><code>poll</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> poll(control <span class="syn-borrow">&amp;mut</span> ScreenControl,s <span class="syn-borrow">&amp;mut</span> widgets.Screen) <span class="syn-type">bool</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> poll(control <span class="syn-borrow">$&amp;</span>ScreenControl,s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
 <p>执行 poll 处理。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>control</code> <span class="type">&amp;mut ScreenControl</span></dt><dd>control（独占借用；类型 &amp;mut ScreenControl）</dd>
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
+<dt><code>control</code> <span class="type">$&amp;ScreenControl</span></dt><dd>control（独占借用；类型 $&amp;ScreenControl）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
 </dl>
 <h3>返回</h3>
 <p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="const-MAX_SCREENSHOT_BYTES">
+<h2><code>const MAX_SCREENSHOT_BYTES</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_SCREENSHOT_BYTES = 33554432</code></pre></div>
+<h3>用途</h3>
+<p>常量 `MAX_SCREENSHOT_BYTES`，定义了相关的协议或算法配置参数。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="screenshot_dir">
+<h2><code>screenshot_dir</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screenshot_dir() <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 screenshot dir 操作。失败时 throw。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+<h3>返回</h3>
+<p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="stdio_preflight">
 <h2><code>stdio_preflight</code></h2>
@@ -880,14 +1034,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>返回</h3>
 <p>Recorder — 该类型的值</p>
 </article>
-<article class="api-item" id="-mut-Recorder-close">
-<h2><code>(&amp;mut Recorder) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">&amp;mut</span> Recorder) close()</code></pre></div>
+<article class="api-item" id="--Recorder-close">
+<h2><code>($&amp;Recorder) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Recorder) close()</code></pre></div>
 <h3>用途</h3>
-<p>`&amp;mut Recorder` 上的操作：关闭资源。</p>
+<p>`$&amp;Recorder` 上的操作：关闭资源。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">&amp;mut Recorder</span></dt><dd>接收者 &amp;mut Recorder（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Recorder</span></dt><dd>接收者 $&amp;Recorder（可变借用）</dd>
 </dl>
 </article>
 <article class="api-item" id="-Recorder-is_open">
@@ -904,13 +1058,13 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="write_record">
 <h2><code>write_record</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> write_record<span class="syn-import"><span class="hash">#</span>W</span>:StreamWriter(r <span class="syn-borrow">&amp;mut</span> Recorder,sink <span class="syn-borrow">&amp;mut</span> W,kind <span class="syn-type">string</span>,data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> write_record<span class="syn-import"><span class="hash">#</span>W</span>:StreamWriter(r <span class="syn-borrow">$&amp;</span>Recorder,sink <span class="syn-borrow">$&amp;</span>W,kind <span class="syn-type">string</span>,data <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>执行 write record 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">&amp;mut Recorder</span></dt><dd>rune（Unicode 码点）（独占借用；类型 &amp;mut Recorder）</dd>
-<dt><code>sink</code> <span class="type">&amp;mut W</span></dt><dd>sink（独占借用；类型 &amp;mut W）</dd>
+<dt><code>r</code> <span class="type">$&amp;Recorder</span></dt><dd>rune（Unicode 码点）（独占借用；类型 $&amp;Recorder）</dd>
+<dt><code>sink</code> <span class="type">$&amp;W</span></dt><dd>sink（独占借用；类型 $&amp;W）</dd>
 <dt><code>kind</code> <span class="type">string</span></dt><dd>类型标签（string）</dd>
 <dt><code>data</code> <span class="type">string</span></dt><dd>数据（string）</dd>
 </dl>
@@ -941,29 +1095,46 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>返回</h3>
 <p>string — 结果字符串</p>
 </article>
+<article class="api-item" id="struct-TreeWindow">
+<h2><code>struct TreeWindow</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> TreeWindow {
+    <span class="syn-kw">pub</span> start <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> total <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> nodes []widgets.ScreenNodeInfo
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 start、total、nodes 等属性的结构体。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>start</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>total</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>nodes</code> <span class="type">[]widgets.ScreenNodeInfo</span></dt><dd>字段（[]widgets.ScreenNodeInfo）</dd>
+</dl>
+</article>
 <article class="api-item" id="screen_tree">
 <h2><code>screen_tree</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_tree(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,include_hidden <span class="syn-type">bool</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) []widgets.ScreenNodeInfo</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_tree(s <span class="syn-borrow">$&amp;</span>widgets.Screen,include_hidden <span class="syn-type">bool</span>,start <span class="syn-type">int</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) TreeWindow</code></pre></div>
 <h3>用途</h3>
 <p>执行 screen tree 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
 <dt><code>include_hidden</code> <span class="type">bool</span></dt><dd>include_hidden（bool）</dd>
+<dt><code>start</code> <span class="type">int</span></dt><dd>start（int）</dd>
 <dt><code>max_rows</code> <span class="type">int</span></dt><dd>max_rows（int）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
 </dl>
 <h3>返回</h3>
-<p>[]widgets.ScreenNodeInfo — 切片结果</p>
+<p>TreeWindow — 该类型的值</p>
 </article>
 <article class="api-item" id="screen_screenshot">
 <h2><code>screen_screenshot</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_screenshot(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,scale <span class="syn-type">f64</span>) draw.Surface</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_screenshot(s <span class="syn-borrow">$&amp;</span>widgets.Screen,scale <span class="syn-type">f64</span>) draw.Surface</code></pre></div>
 <h3>用途</h3>
 <p>执行 screen screenshot 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
 <dt><code>scale</code> <span class="type">f64</span></dt><dd>scale（f64）</dd>
 </dl>
 <h3>返回</h3>
@@ -971,12 +1142,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="screen_screenshot_node">
 <h2><code>screen_screenshot_node</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_screenshot_node(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,node <span class="syn-type">int</span>,scale <span class="syn-type">f64</span>,l &amp;Limits) draw.Surface</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_screenshot_node(s <span class="syn-borrow">$&amp;</span>widgets.Screen,node <span class="syn-type">int</span>,scale <span class="syn-type">f64</span>,l &amp;Limits) draw.Surface</code></pre></div>
 <h3>用途</h3>
 <p>执行 screen screenshot node 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
 <dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
 <dt><code>scale</code> <span class="type">f64</span></dt><dd>scale（f64）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
@@ -986,12 +1157,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="screen_input">
 <h2><code>screen_input</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_input(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,events &amp;[]ui.InputEvent,l &amp;Limits) []widgets.Action</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_input(s <span class="syn-borrow">$&amp;</span>widgets.Screen,events &amp;[]ui.InputEvent,l &amp;Limits) []widgets.Action</code></pre></div>
 <h3>用途</h3>
 <p>执行 screen input 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
 <dt><code>events</code> <span class="type">&amp;[]ui.InputEvent</span></dt><dd>events（借用，调用方仍持有；类型 &amp;[]ui.InputEvent）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
 </dl>
@@ -1000,12 +1171,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="screen_input_request">
 <h2><code>screen_input_request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_input_request(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,d &amp;xun.Doc,args <span class="syn-type">int</span>,l &amp;Limits) []widgets.Action</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_input_request(s <span class="syn-borrow">$&amp;</span>widgets.Screen,d &amp;xun.Doc,args <span class="syn-type">int</span>,l &amp;Limits) []widgets.Action</code></pre></div>
 <h3>用途</h3>
 <p>执行 screen input request 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d（借用，调用方仍持有；类型 &amp;xun.Doc）</dd>
 <dt><code>args</code> <span class="type">int</span></dt><dd>可变实参（int）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
@@ -1015,12 +1186,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="screen_act">
 <h2><code>screen_act</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_act(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,id <span class="syn-type">int</span>,act <span class="syn-type">string</span>,text <span class="syn-type">string</span>,checked <span class="syn-type">bool</span>,l &amp;Limits) []widgets.Action</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_act(s <span class="syn-borrow">$&amp;</span>widgets.Screen,id <span class="syn-type">int</span>,act <span class="syn-type">string</span>,text <span class="syn-type">string</span>,checked <span class="syn-type">bool</span>,l &amp;Limits) []widgets.Action</code></pre></div>
 <h3>用途</h3>
 <p>执行 screen act 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 <dt><code>act</code> <span class="type">string</span></dt><dd>act（string）</dd>
 <dt><code>text</code> <span class="type">string</span></dt><dd>文本（string）</dd>
@@ -1032,12 +1203,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="start_recorder">
 <h2><code>start_recorder</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> start_recorder(session <span class="syn-borrow">&amp;mut</span> Session,id <span class="syn-type">int</span>,mode <span class="syn-type">string</span>,max_bytes <span class="syn-type">int</span>,l &amp;Limits) Recorder</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> start_recorder(session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,mode <span class="syn-type">string</span>,max_bytes <span class="syn-type">int</span>,l &amp;Limits) Recorder</code></pre></div>
 <h3>用途</h3>
 <p>启动记录器。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 <dt><code>mode</code> <span class="type">string</span></dt><dd>模式（string）</dd>
 <dt><code>max_bytes</code> <span class="type">int</span></dt><dd>max_bytes（int）</dd>
@@ -1048,55 +1219,56 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="finish_recorder">
 <h2><code>finish_recorder</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> finish_recorder(session <span class="syn-borrow">&amp;mut</span> Session,r <span class="syn-borrow">&amp;mut</span> Recorder) <span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> finish_recorder(session <span class="syn-borrow">$&amp;</span>Session,r <span class="syn-borrow">$&amp;</span>Recorder) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
 <p>执行 finish recorder 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
-<dt><code>r</code> <span class="type">&amp;mut Recorder</span></dt><dd>rune（Unicode 码点）（独占借用；类型 &amp;mut Recorder）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
+<dt><code>r</code> <span class="type">$&amp;Recorder</span></dt><dd>rune（Unicode 码点）（独占借用；类型 $&amp;Recorder）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
 </article>
 <article class="api-item" id="abort_recorder">
 <h2><code>abort_recorder</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> abort_recorder(session <span class="syn-borrow">&amp;mut</span> Session,r <span class="syn-borrow">&amp;mut</span> Recorder)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> abort_recorder(session <span class="syn-borrow">$&amp;</span>Session,r <span class="syn-borrow">$&amp;</span>Recorder)</code></pre></div>
 <h3>用途</h3>
 <p>执行 abort recorder 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
-<dt><code>r</code> <span class="type">&amp;mut Recorder</span></dt><dd>rune（Unicode 码点）（独占借用；类型 &amp;mut Recorder）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
+<dt><code>r</code> <span class="type">$&amp;Recorder</span></dt><dd>rune（Unicode 码点）（独占借用；类型 $&amp;Recorder）</dd>
 </dl>
 </article>
 <article class="api-item" id="ui_tree">
 <h2><code>ui_tree</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_tree(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,session <span class="syn-borrow">&amp;mut</span> Session,id <span class="syn-type">int</span>,include_hidden <span class="syn-type">bool</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) []widgets.ScreenNodeInfo</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_tree(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,include_hidden <span class="syn-type">bool</span>,start <span class="syn-type">int</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) TreeWindow</code></pre></div>
 <h3>用途</h3>
 <p>执行 ui tree 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 <dt><code>include_hidden</code> <span class="type">bool</span></dt><dd>include_hidden（bool）</dd>
+<dt><code>start</code> <span class="type">int</span></dt><dd>start（int）</dd>
 <dt><code>max_rows</code> <span class="type">int</span></dt><dd>max_rows（int）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
 </dl>
 <h3>返回</h3>
-<p>[]widgets.ScreenNodeInfo — 切片结果</p>
+<p>TreeWindow — 该类型的值</p>
 <p><a href="#example-79cd31b33432">查看用法示例</a></p>
 </article>
 <article class="api-item" id="ui_screenshot">
 <h2><code>ui_screenshot</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_screenshot(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,session <span class="syn-borrow">&amp;mut</span> Session,id <span class="syn-type">int</span>,scale <span class="syn-type">f64</span>,l &amp;Limits) draw.Surface</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_screenshot(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,scale <span class="syn-type">f64</span>,l &amp;Limits) draw.Surface</code></pre></div>
 <h3>用途</h3>
 <p>执行 ui screenshot 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 <dt><code>scale</code> <span class="type">f64</span></dt><dd>scale（f64）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
@@ -1107,13 +1279,13 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="ui_screenshot_node">
 <h2><code>ui_screenshot_node</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_screenshot_node(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,session <span class="syn-borrow">&amp;mut</span> Session,id <span class="syn-type">int</span>,node <span class="syn-type">int</span>,scale <span class="syn-type">f64</span>,l &amp;Limits) draw.Surface</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_screenshot_node(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,node <span class="syn-type">int</span>,scale <span class="syn-type">f64</span>,l &amp;Limits) draw.Surface</code></pre></div>
 <h3>用途</h3>
 <p>执行 ui screenshot node 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 <dt><code>node</code> <span class="type">int</span></dt><dd>node（int）</dd>
 <dt><code>scale</code> <span class="type">f64</span></dt><dd>scale（f64）</dd>
@@ -1124,13 +1296,13 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="ui_input">
 <h2><code>ui_input</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_input(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,session <span class="syn-borrow">&amp;mut</span> Session,id <span class="syn-type">int</span>,events &amp;[]ui.InputEvent,l &amp;Limits) []widgets.Action</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_input(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,events &amp;[]ui.InputEvent,l &amp;Limits) []widgets.Action</code></pre></div>
 <h3>用途</h3>
 <p>执行 ui input 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 <dt><code>events</code> <span class="type">&amp;[]ui.InputEvent</span></dt><dd>events（借用，调用方仍持有；类型 &amp;[]ui.InputEvent）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
@@ -1140,13 +1312,13 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="ui_input_request">
 <h2><code>ui_input_request</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_input_request(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,session <span class="syn-borrow">&amp;mut</span> Session,id <span class="syn-type">int</span>,d &amp;xun.Doc,args <span class="syn-type">int</span>,l &amp;Limits) []widgets.Action</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_input_request(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,d &amp;xun.Doc,args <span class="syn-type">int</span>,l &amp;Limits) []widgets.Action</code></pre></div>
 <h3>用途</h3>
 <p>执行 ui input request 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d（借用，调用方仍持有；类型 &amp;xun.Doc）</dd>
 <dt><code>args</code> <span class="type">int</span></dt><dd>可变实参（int）</dd>
@@ -1157,13 +1329,13 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="ui_act">
 <h2><code>ui_act</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_act(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,session <span class="syn-borrow">&amp;mut</span> Session,id <span class="syn-type">int</span>,request_id <span class="syn-type">int</span>,act <span class="syn-type">string</span>,text <span class="syn-type">string</span>,checked <span class="syn-type">bool</span>,l &amp;Limits) []widgets.Action</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_act(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,request_id <span class="syn-type">int</span>,act <span class="syn-type">string</span>,text <span class="syn-type">string</span>,checked <span class="syn-type">bool</span>,l &amp;Limits) []widgets.Action</code></pre></div>
 <h3>用途</h3>
 <p>执行 ui act 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id（int）</dd>
 <dt><code>request_id</code> <span class="type">int</span></dt><dd>request_id（int）</dd>
 <dt><code>act</code> <span class="type">string</span></dt><dd>act（string）</dd>
@@ -1177,15 +1349,16 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="dispatch_screen">
 <h2><code>dispatch_screen</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_screen(s <span class="syn-borrow">&amp;mut</span> widgets.Screen,session <span class="syn-borrow">&amp;mut</span> Session,d &amp;xun.Doc,l &amp;Limits) ControlReply</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_screen(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,d &amp;xun.Doc,l &amp;Limits,nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) ControlReply</code></pre></div>
 <h3>用途</h3>
 <p>执行 dispatch screen 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;mut widgets.Screen</span></dt><dd>源字符串（独占借用；类型 &amp;mut widgets.Screen）</dd>
-<dt><code>session</code> <span class="type">&amp;mut Session</span></dt><dd>session（独占借用；类型 &amp;mut Session）</dd>
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>源字符串（独占借用；类型 $&amp;widgets.Screen）</dd>
+<dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session（独占借用；类型 $&amp;Session）</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d（借用，调用方仍持有；类型 &amp;xun.Doc）</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l（借用，调用方仍持有；类型 &amp;Limits）</dd>
+<dt><code>nonces</code> <span class="type">$&amp;NonceRegistry</span></dt><dd>nonces（独占借用；类型 $&amp;NonceRegistry）</dd>
 </dl>
 <h3>返回</h3>
 <p>ControlReply — 该类型的值</p>
