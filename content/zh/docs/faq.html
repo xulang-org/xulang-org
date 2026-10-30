@@ -7,28 +7,29 @@
   <details class="faq-item">
     <summary><h3>什么是 Xu 编程语言？</h3></summary>
     <div class="faq-answer">
-      <p>Xu 是一门现代静态强类型、超音速 AOT 编译的原生系统级编程语言，专为高并发云原生后端、网络基建与低延迟系统软件而设计。它在无需垃圾回收（零 GC）的前提下，通过编译期确定性 RAII 所有权、轻量级原生协程（<code>xu f()</code>）与类型安全通道（<code>chan T</code>）实现卓越的内存安全与并发吞吐。</p>
+      <p>Xu 是一门静态类型系统编程语言，采用自研原生与 WebAssembly AOT 后端。它结合所有权推断、借用检查与确定性资源释放，无需垃圾回收器，并内建协程（<code>xu f()</code>）与类型安全通道（<code>chan T</code>）。</p>
     </div>
   </details>
 
   <details class="faq-item">
     <summary><h3>Xu 编译器是否使用了 LLVM？为什么采用自研后端？</h3></summary>
     <div class="faq-answer">
-      <p><strong>没有使用 LLVM</strong>。Xu 编译器采用完全自主研发的轻量 MIR（中间表示）、寄存器分配器与直接原生机器码发射器，直出 Mach-O、ELF、PE 与 WASM 二进制。LLVM pass 链庞大沉重，是 C++/Rust 编译速度慢的根源；Xu 追求类似 Go 的亚秒级极致编译速度，且编译器本身为单文件极简二进制，零外置 C++ 动态库依赖，真正开箱即用。</p>
+      <p><strong>没有使用 LLVM</strong>。Xu 编译器采用自研 MIR（中间表示）、寄存器分配器及面向 Mach-O、ELF、PE 与 WebAssembly 的代码发射器。原生模块与桌面构建可能需要宿主库及匹配的 C 工具链；详见<a href="/docs/native">原生模块</a>与<a href="/docs/ui#build">桌面构建要求</a>。</p>
     </div>
   </details>
 
-  <details class="faq-item">
+  <details class="faq-item" id="memory-safety">
     <summary><h3>Xu 语言是否有垃圾回收（GC）？</h3></summary>
     <div class="faq-answer">
-      <p><strong>没有</strong>。Xu 完全不依赖任何运行时垃圾回收器（Zero GC），没有 Stop-The-World (STW) 暂停。内存由编译期唯一所有权跟踪与 RAII 作用域析构确定性释放，并通过 <code>&amp;T</code> 共享借用与 <code>$&amp;T</code> 独占借用在编译阶段彻底消除悬垂指针、内存泄漏与多线程数据竞争。</p>
+      <p><strong>没有</strong>。Xu 通过所有权推断与 RAII 在作用域退出时确定性释放资源，不依赖运行时垃圾回收器。所有权检查及 <code>&amp;T</code> 共享借用 / <code>$&amp;T</code> 独占借用检查，可防止受检查 Xu 代码中的一类生命周期与别名访问错误。</p>
+      <p>并发代码中的共享可变状态仍需适当同步。原生代码、FFI 与并发库各有安全要求；这些检查不保证所有程序都没有数据竞争、泄漏或未定义行为。分配、调度与 I/O 仍可能造成延迟波动。详见<a href="/docs/lang/memory">所有权与借用</a>、<a href="/docs/lang/concurrency">并发</a>和<a href="/docs/native">原生模块边界</a>。</p>
     </div>
   </details>
 
   <details class="faq-item">
     <summary><h3>Xu 相比 Rust 与 Go 有哪些区别？</h3></summary>
     <div class="faq-answer">
-      <p>相比 Rust，Xu 在提供同等确定性零成本内存安全的同时，<strong>去除了复杂的显式生命周期标注（如 <code>&lt;'a&gt;</code>）</strong>，并将轻量协程与通信通道作为语言一等公民内置，无需引入笨重的外部异步运行时；相比 Go，Xu 保持了轻快直观的并发体验，但<strong>编译为零 GC 原生机器码</strong>，完全没有并发三色标记清除 GC 的内存常驻底线与停顿延迟。</p>
+      <p>Xu 推断所有权并确定性释放资源，无需显式生命周期标注（如 <code>&lt;'a&gt;</code>）。它提供类似 Go 的协程与类型安全通道，以所有权和借用检查替代垃圾回收器。安全限制见<a href="#memory-safety">上文边界说明</a>；运行时间与内存的实测结果见<a href="/benchmarks">基准看板</a>。</p>
     </div>
   </details>
 
@@ -105,7 +106,7 @@
   <details class="faq-item">
     <summary><h3>Xu 目前支持哪些操作系统与 CPU 芯片架构？</h3></summary>
     <div class="faq-answer">
-      <p>原生支持主流跨端全矩阵：操作系统覆盖 macOS、Linux、Windows (PE AOT) 及 WebAssembly；CPU 架构支持 ARM64 (Apple Silicon / AWS Graviton)、x86-64 (Intel / AMD)、LoongArch64 (龙芯)、RISC-V 64/32 及 Linux ARM32。</p>
+      <p>代码发射目标包括 macOS arm64/x64、Linux arm64/x64/loongarch64/riscv64/arm32、Windows x64/arm64 与 WebAssembly（wasm32）；Thumb 与 RISC-V 裸机目标见<a href="/docs/status">状态与限制</a>。可下载的 SDK 资产见<a href="/download">下载页</a>。代码可发射、SDK 可下载不代表运行时或 GUI 行为已实测；没有目标机验收结果的路径仍属待验。请按所需目标查阅状态与<a href="/docs/packages">逐包限制</a>。</p>
     </div>
   </details>
 
@@ -113,14 +114,14 @@
     <summary><h3>什么是 XACP？</h3></summary>
     <div class="faq-answer">
       <p>XACP（Xu Agent Control Protocol）是用 <code>xu build --xacp</code> 和/或 <code>--xacp-port PORT</code> 构建的 hosted native 程序的帧控制通道。该构建会嵌入发现信息。<code>./app --xacp-help</code> 打印机器可读摘要，其中 <code>capabilities</code> 为 <code>stdio</code>，并标明 TCP 是否启用以及绑定地址。这取代了早先只含 help-only 的发现文本。</p>
-      <p><code>#xacp</code>（<code>src/xacp</code>）是与传输无关的安全核心：帧与 XUN 校验、权限、会话生命周期。单独导入 <code>#xacp</code> 不会装上启动期控制入口。stdio 与本机回环 TCP 是 <code>--xacp</code> 构建插入的运行时钩子。启动器是 <code>xu xacp</code>，它转而执行伴生工具 <code>xu-xacp</code>（模块 0.1.1）。模式为 <code>inspect</code>、<code>run</code>、<code>debug</code>、<code>record</code>、<code>control</code>、<code>connect</code>。该行为来自语言仓库 0.10.10-dev.1（<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>），不属于已发布的 {{xu_version}} SDK 提取结果。见<a href="/docs/cli#xacp">命令行参考</a>、<a href="/api/xacp"><code>#xacp</code> API</a>与<a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md">可运行样例</a>。</p>
+      <p><code>#xacp</code>（<code>src/xacp</code>）是与传输无关的安全核心：帧与 XUN 校验、权限、会话生命周期。单独导入 <code>#xacp</code> 不会装上启动期控制入口。stdio 与本机回环 TCP 是 <code>--xacp</code> 构建插入的运行时钩子。启动器是 <code>xu xacp</code>，它转而执行伴生工具 <code>xu-xacp</code>。模式为 <code>inspect</code>、<code>run</code>、<code>debug</code>、<code>record</code>、<code>control</code>、<code>attach</code>、<code>connect</code>。API 已包含在正式 {{xu_version}} SDK 提取结果中，契约依据对应发布源码。原生会话和平台/UI 运行验收仍待验。见<a href="/docs/cli#xacp">命令行参考</a>、<a href="/api/xacp"><code>#xacp</code> API</a>与<a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">对应发布源码</a>。</p>
     </div>
   </details>
 
   <details class="faq-item">
     <summary><h3>XACP 的 stdio 与本机回环 TCP 有什么区别？</h3></summary>
     <div class="faq-answer">
-      <p><strong>stdio。</strong>用 <code>--xacp-stdio</code> 启动目标，或执行 <code>xu xacp control &lt;program&gt;</code>。会话独占 stdin 与 stdout。帧为 <code>--- !xacp</code> … <code>===</code> 再加换行。业务 main 不会运行。</p>
+      <p><strong>stdio。</strong>用 <code>--xacp-stdio</code> 启动目标，或执行 <code>xu xacp control &lt;program&gt;</code>。会话独占 stdin 与 stdout。帧使用 <code>XACP/1\n&lt;N&gt;\n</code>，后接恰好 <code>N</code> 个 UTF-8 字节的纯 XUN 正文。正文换行计入，前缀不计入；没有结束分隔符。传输层去掉前缀后才调用 <code>parse_frame</code>，见<a href="/api/xacp">精确字节示例</a>。业务 main 不会运行。</p>
       <p><strong>本机回环 TCP。</strong>用 <code>--xacp-port N</code> 构建，<code>N</code> 为 1..65535，然后运行 <code>&lt;app&gt; --xacp-tcp</code>。进程只监听 <code>127.0.0.1:N</code>。另一个终端执行 <code>xu xacp connect PORT</code>，逐帧中继同样的请求与响应。端口 <code>0</code> 关闭 TCP（发现信息为 <code>tcp: disabled (port 0)</code>），stdio 能力仍然保留。每个已接受的连接是独立会话。连接按顺序处理；失败的对端只结束自己的会话，监听继续。stdio 会话结束时进程退出。<code>--</code> 之前的第一个控制标志优先。普通启动不监听，也不读取控制 stdin。</p>
     </div>
   </details>
