@@ -135,13 +135,16 @@
     var side = btn.closest('.side');
     if (!side) return;
     var groups = side.querySelectorAll('.side-group');
-    var allOpen = Array.from(groups).every(function (g) { return g.classList.contains('is-open'); });
+    var apiGroups = side.querySelectorAll('.side-api-bucket, .side-api-topic');
+    var allOpen = Array.from(groups).every(function (g) { return g.classList.contains('is-open'); }) &&
+      Array.from(apiGroups).every(function (g) { return g.open; });
     var nextState = !allOpen;
     groups.forEach(function (g) {
       g.classList.toggle('is-open', nextState);
       var h = g.querySelector('button.side-h');
       if (h) h.setAttribute('aria-expanded', String(nextState));
     });
+    apiGroups.forEach(function (g) { g.open = nextState; });
     side.querySelectorAll('.side-toggle-all-btn, .side-footer-btn').forEach(function (b) {
       if (b.querySelector('.xi-sliders')) b.setAttribute('data-expanded', String(nextState));
     });
@@ -450,6 +453,30 @@
         runBtn.setAttribute('aria-expanded', 'false');
         var runInline = null;
         var runSource = {value: ''};
+        function prefetch() {
+          if (window.XuPlay && typeof window.XuPlay.warmup === 'function') {
+            window.XuPlay.warmup();
+          }
+        }
+        runBtn.addEventListener('mouseenter', prefetch);
+        runBtn.addEventListener('focus', prefetch);
+        if (editBtn) {
+          editBtn.addEventListener('mouseenter', prefetch);
+          editBtn.addEventListener('focus', prefetch);
+        }
+        if (typeof window !== 'undefined' && typeof window.IntersectionObserver === 'function') {
+          try {
+            var observer = new window.IntersectionObserver(function (entries) {
+              entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                  prefetch();
+                  observer.unobserve(entry.target);
+                }
+              });
+            }, {rootMargin: '200px 0px'});
+            observer.observe(wrapper);
+          } catch (_) {}
+        }
         runBtn.addEventListener('click', function () {
           runSource.value = prepareCode(currentCode());
           if (!runInline) {

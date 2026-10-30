@@ -2,6 +2,7 @@
 
 import importlib.util
 import hashlib
+from html import unescape
 import json
 from pathlib import Path
 import re
@@ -101,6 +102,16 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn('/releases/', downloads)
         self.assertTrue((output / '.nojekyll').exists())
         version = re.search(r'(?m)^xu: !ver (\S+)', (self.source / 'xu.xun').read_text())[1]
+        for page in (home, chinese):
+            hero = page.split('<div class="hero home-hero">', 1)[1].split('<section', 1)[0]
+            self.assertIn('class="hero-install"', hero)
+            for platform in ('unix', 'win'):
+                self.assertIn(f'data-tab="{platform}"', hero)
+                self.assertIn(f'data-pane="{platform}"', hero)
+            self.assertIn(f'curl -fsSL https://xulang.org/install.sh | bash -s -- --online --version {version} --yes', unescape(hero))
+            self.assertIn(f'& ([scriptblock]::Create((irm https://xulang.org/install.ps1))) -Online -Version "{version}"', unescape(hero))
+            self.assertIn('src="/theme.js"', page)
+            self.assertIn('href="/site.css"', page)
         self.assertNotIn('<span class="badge">v', home)
         self.assertNotIn('XU v' + version, home)
         self.assertIn('XU v' + version, downloads)

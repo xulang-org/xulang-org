@@ -26,6 +26,40 @@ class HomeTaskTests(unittest.TestCase):
             if url.fragment:
                 self.assertRegex(target.read_text(), rf'id=[\'"]{re.escape(url.fragment)}[\'"]', href)
 
+    def test_oneclick_install_stays_in_both_home_heroes(self):
+        commands = {
+            'unix': 'curl -fsSL https://xulang.org/install.sh | bash -s -- --online --version {{xu_version}} --yes',
+            'win': '& ([scriptblock]::Create((irm https://xulang.org/install.ps1))) -Online -Version "{{xu_version}}"',
+        }
+        for lang in ('en', 'zh'):
+            with self.subTest(lang=lang):
+                home = source(lang, 'home.html')
+                hero = home.split('<section', 1)[0]
+                self.assertEqual(home.count('class="hero-install"'), 1)
+                self.assertIn('class="hero-install"', hero)
+                self.assertIn('class="hero-install-tabs" role="tablist"', hero)
+                tabs = re.findall(r'<button\b([^>]*\bclass="hero-install-tab\b[^>]*)>(.*?)</button>', hero, re.S)
+                self.assertEqual(len(tabs), 2)
+                for (attrs, label), platform in zip(tabs, commands):
+                    self.assertIn(f'data-tab="{platform}"', attrs)
+                    self.assertIn('role="tab"', attrs)
+                    self.assertIn('type="button"', attrs)
+                    active = platform == 'unix'
+                    self.assertIn(f'aria-selected="{str(active).lower()}"', attrs)
+                    self.assertEqual('is-active' in attrs, active)
+                    self.assertIn('macOS / Linux' if active else 'Windows (PowerShell)', label)
+                panes = re.findall(r'<div class="hero-install-pane([^\"]*)" data-pane="([^"]+)">\s*<pre><code[^>]*>(.*?)</code></pre>\s*</div>', hero, re.S)
+                self.assertEqual(len(panes), 2)
+                for (classes, platform, command), expected in zip(panes, commands):
+                    self.assertEqual(platform, expected)
+                    self.assertEqual('is-active' in classes, platform == 'unix')
+                    self.assertEqual(unescape(command), commands[platform])
+                meta = re.search(r'<div class="hero-install-meta">(.*?)</div>', hero, re.S)
+                self.assertIsNotNone(meta)
+                self.assertEqual(meta[1].count('<span>'), 3)
+                self.assertIn('PATH', meta[1])
+                self.assertIn('SDK', meta[1])
+
     def test_home_example_matches_every_catalog_file_and_primary_cta(self):
         catalog = json.loads((ROOT / 'www/xu-play-examples.json').read_text())['projects']
         for lang in ('en', 'zh'):
@@ -44,9 +78,9 @@ class HomeTaskTests(unittest.TestCase):
                 r'<code class="language-xu" data-source-file="([^"]+)">(.*?)</code>', preview, re.S)}
             self.assertEqual(files, project['files'])
             self.assertIn(f'<samp>{project["expected"]["value"].strip()}</samp>', preview)
-            inputs = ' '.join(project['files'])
-            self.assertIn(f'xu check {inputs}', preview)
-            self.assertIn(f'xu run {inputs}', preview)
+            self.assertIn('xu check .', preview)
+            self.assertIn('xu run .', preview)
+            self.assertNotRegex(home, r'xu (check|run) [^ <]*\.xu')
             self.assertLess(home.index('</section>'), home.index('<section class="pillars">'))
             self.assertIn('WASM', preview)
             self.assert_links_resolve(home, lang)

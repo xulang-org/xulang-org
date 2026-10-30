@@ -264,29 +264,41 @@ for (const en of [false, true]) {
     const wrappers = pres.map(pre => pre.closest('.code-block-wrapper'));
     assert.match(wrappers[0].querySelector('.code-block-header-title').innerHTML, en ? /WASM subset/ : /WASM 子集/);
     const buttons = wrappers.map(wrapper => wrapper.querySelector('.code-run-btn'));
+
+    // Hover prefetch warms up the shared singleton worker
+    buttons[0].listeners.mouseenter();
+    await new Promise(setImmediate);
+    assert.equal(workers.length, 1, 'hovering run button must preheat the shared worker');
+    assert.equal(workers[0].messages[0].type, 'init');
+
     buttons[0].click();
     await new Promise(setImmediate);
     assert.match(workers[0].messages.at(-1).source, /^@main\n\nfn main\(\) int \{/);
     assert.match(workers[0].messages.at(-1).source, /println\("inline"\)/);
-    buttons[1].click();
-    await new Promise(setImmediate);
-    assert.equal(workers[1].messages.at(-1).source, '@main\n\nfn main() int { << 3 }');
-    workers[1].respond({type: 'result', exit: 3, stdout: '', stderr: 'error: invalid code\n'});
     workers[0].respond({type: 'result', exit: 0, stdout: '<script>output is text</script>\n', stderr: ''});
     assert.equal(wrappers[0].querySelector('.xu-play-out').textContent, '<script>output is text</script>\n');
     assert.equal(wrappers[0].querySelector('.xu-play-meta').textContent, 'exit 0');
+    assert.notEqual(workers[0].terminated, true, 'shared singleton worker stays alive for instant next run');
+
+    buttons[1].click();
+    await new Promise(setImmediate);
+    assert.equal(workers.length, 1, 'subsequent inline runs reuse the shared singleton worker');
+    assert.equal(workers[0].messages.at(-1).source, '@main\n\nfn main() int { << 3 }');
+    workers[0].respond({type: 'result', exit: 3, stdout: '', stderr: 'error: invalid code\n'});
     assert.match(wrappers[1].querySelector('.xu-play-out').className, /is-err/);
     assert.equal(wrappers[1].querySelector('.xu-play-out').textContent, 'error: invalid code\n');
     assert.equal(wrappers[1].querySelector('.xu-play-meta').textContent, 'exit 3');
+    assert.equal(wrappers[0].querySelector('.xu-play-out').textContent, '<script>output is text</script>\n', 'first block result is independent');
     assert.equal(buttons[0].attributes['aria-expanded'], 'true');
     assert.notEqual(buttons[0].attributes['aria-controls'], buttons[1].attributes['aria-controls']);
-    assert.equal(workers[0].terminated, true, 'completed inline workers must release their memory');
-    assert.equal(workers[1].terminated, true);
+    assert.notEqual(workers[0].terminated, true);
     assert.deepEqual(fetches, [], 'inline runs do not need playground examples');
     assert.equal(context.window.location.href, 'https://example.org/repo/zh/docs/tutorial/01/');
+
     buttons[0].click();
     await new Promise(setImmediate);
-    workers[2].respond({type: 'result', exit: 0, stdout: '', stderr: '', truncated: true});
+    assert.equal(workers.length, 1);
+    workers[0].respond({type: 'result', exit: 0, stdout: '', stderr: '', truncated: true});
     assert.match(wrappers[0].querySelector('.xu-play-out').textContent, en ? /Output truncated/ : /输出过长/);
     assert.equal(wrappers[0].children.filter(child => child.className === 'code-run-result').length, 1);
   });
@@ -396,15 +408,15 @@ for (const en of [false, true]) {
     run.click();
     editor.value = 'fn main() int { println("second edit")\n    << 0\n}';
     await new Promise(setImmediate);
-    assert.match(workers[1].messages.at(-1).source, /first edit/);
-    assert.doesNotMatch(workers[1].messages.at(-1).source, /second edit/);
-    workers[1].respond({type: 'result', exit: 0, stdout: 'first edit\n', stderr: ''});
+    assert.match(workers[0].messages.at(-1).source, /first edit/);
+    assert.doesNotMatch(workers[0].messages.at(-1).source, /second edit/);
+    workers[0].respond({type: 'result', exit: 0, stdout: 'first edit\n', stderr: ''});
     let prevented = false;
     editor.listeners.keydown({key: 'Enter', metaKey: true, preventDefault() { prevented = true; }});
     await new Promise(setImmediate);
     assert.equal(prevented, true);
-    assert.match(workers[2].messages.at(-1).source, /second edit/);
-    workers[2].respond({type: 'result', exit: 0, stdout: 'second edit\n', stderr: ''});
+    assert.match(workers[0].messages.at(-1).source, /second edit/);
+    workers[0].respond({type: 'result', exit: 0, stdout: 'second edit\n', stderr: ''});
     wrappers[0].querySelector('.code-copy-btn').click();
     await new Promise(setImmediate);
     assert.deepEqual(copied, ['fn main() int { println("second edit")\n    << 0\n}']);
@@ -424,7 +436,8 @@ for (const en of [false, true]) {
     apiEditor.value = '@main\nfn main() int {\n    println("edited API")\n    << 0\n}';
     wrappers[1].querySelector('.code-run-btn').click();
     await new Promise(setImmediate);
-    assert.equal(workers[3].messages.at(-1).source, apiEditor.value);
+    assert.equal(workers[0].messages.at(-1).source, apiEditor.value);
+    assert.equal(workers.length, 1, 'all edits and runs share the single warm worker instance');
     assert.equal(editor.value, 'fn main() int { println("second edit")\n    << 0\n}', 'editing API code must not change another block');
   });
 }
