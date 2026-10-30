@@ -4,7 +4,6 @@
 from __future__ import annotations
 
 import argparse
-import datetime
 import json
 import hashlib
 from html import escape, unescape
@@ -14,7 +13,7 @@ import re
 import shutil
 from urllib.parse import unquote, urlsplit
 
-from site_layout import render
+from site_layout import render, shared_content
 from gen_llms import render_corpora
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -277,6 +276,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         if labels != [measured]:
             raise ValueError(f'Benchmark measurement label does not match {measured}: {lang}')
     asset_key = playground_asset_key(root, wasm)
+    shared = shared_content(root)
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)
@@ -296,6 +296,8 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     for route, source in pages.items():
         lang = source.relative_to(root / 'content').parts[0]
         raw = source.read_text(encoding='utf-8').replace('{{xu_version}}', xu_version)
+        for key, value in shared[lang].items():
+            raw = raw.replace('{{' + key + '}}', value)
         title = TITLE.match(raw)
         body = raw[title.end():] if title else raw
         body = playground_options(root, body, lang)
@@ -334,7 +336,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
 def generate_sitemap(output: Path, pages: dict[str, Path], base: str = '') -> None:
     origin = "https://xulang.org"
     entries = []
-    today = datetime.date.today().isoformat()
+    # Omit lastmod: checkout mtimes and API regeneration are not editorial dates.
     for route in sorted(pages.keys()):
         en_route = route if not (route == '/zh' or route.startswith('/zh/')) else (route[3:] or '/')
         zh_route = ('/zh' if route == '/' else '/zh' + route) if en_route == route else route
@@ -366,7 +368,6 @@ def generate_sitemap(output: Path, pages: dict[str, Path], base: str = '') -> No
         entries.append(
             '  <url>\n'
             f'    <loc>{loc}</loc>\n'
-            f'    <lastmod>{today}</lastmod>\n'
             f'    <changefreq>{changefreq}</changefreq>\n'
             f'    <priority>{priority}</priority>\n'
             f'    <xhtml:link rel="alternate" hreflang="en" href="{en_url}"/>\n'
