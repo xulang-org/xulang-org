@@ -453,6 +453,30 @@
         runBtn.setAttribute('aria-expanded', 'false');
         var runInline = null;
         var runSource = {value: ''};
+        function prefetch() {
+          if (window.XuPlay && typeof window.XuPlay.warmup === 'function') {
+            window.XuPlay.warmup();
+          }
+        }
+        runBtn.addEventListener('mouseenter', prefetch);
+        runBtn.addEventListener('focus', prefetch);
+        if (editBtn) {
+          editBtn.addEventListener('mouseenter', prefetch);
+          editBtn.addEventListener('focus', prefetch);
+        }
+        if (typeof window !== 'undefined' && typeof window.IntersectionObserver === 'function') {
+          try {
+            var observer = new window.IntersectionObserver(function (entries) {
+              entries.forEach(function (entry) {
+                if (entry.isIntersecting) {
+                  prefetch();
+                  observer.unobserve(entry.target);
+                }
+              });
+            }, {rootMargin: '200px 0px'});
+            observer.observe(wrapper);
+          } catch (_) {}
+        }
         runBtn.addEventListener('click', function () {
           runSource.value = prepareCode(currentCode());
           if (!runInline) {

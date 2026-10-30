@@ -19,10 +19,23 @@ CASES = {
 }
 
 
-def source(name, slug):
+def source(name, slug, description=''):
     constructor, summary, initial, paint = CASES[slug]
     tall = slug in ('radio-group', 'split-view', 'table', 'chart', 'color-picker', 'context-menu')
-    height = 200 if tall else 44
+    height = 180 if tall else 44
+    if slug in ('stepper', 'breadcrumbs', 'table', 'chart'):
+        bounds = f'box(32.0,86.0,550.0,{height}.0)'
+    elif slug in ('select', 'multi-select'):
+        bounds = 'box(48.0,86.0,340.0,44.0)'
+    elif slug in ('menu', 'split-button'):
+        bounds = 'box(48.0,86.0,240.0,44.0)'
+    elif slug == 'button-group':
+        bounds = 'box(48.0,86.0,400.0,44.0)'
+    elif slug == 'range-slider':
+        bounds = 'box(48.0,96.0,544.0,44.0)'
+    else:
+        bounds = f'box(48.0,86.0,544.0,{height}.0)'
+
     code = '''@main
 #ui
 #ui/draw
@@ -42,7 +55,7 @@ fn demo() int {
     options := ["Design","Develop","Review"]
     headers := ["Workspace","Members"]
 '''
-    code += f'    bounds := box(32.0,86.0,550.0,{height}.0)\n'
+    code += f'    bounds := {bounds}\n'
     if slug == 'button-group':
         code += '    items := [widgets.button_group_item(1,"Design"),widgets.button_group_item(2,"Develop"),widgets.button_group_item(3,"Review")]\n'
     elif slug in ('menu', 'context-menu', 'split-button'):
@@ -85,9 +98,12 @@ fn demo() int {
     code += '''    }
     $frame := context.new_frame(8192)
     frame.begin() or >>
-    frame.clear(draw.rgb(16,24,39)) or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(25,22,28)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(62,54,69),1.0) or >>
 '''
-    code += f'    draw.text(32,24,24,"#f8fafc","{name}")\n'
+    code += f'    draw.text(32,22,20,"#f5f0ed","XUUI  /  {name}")\n'
+    code += f'    draw.text(32,48,12,"#b3aab6","{description}")\n'
     if paint == 'basic-label':
         code += '    value := str(int(control.value()))\n    label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n    control.paint($&frame,&label,&theme) or >>\n'
     elif paint == 'basic-options':
@@ -98,10 +114,10 @@ fn demo() int {
         code += '    control.paint_popup_styled($&frame,&styles) or >>\n'
     if slug == 'split-view':
         code += '''    panes := control.layout()
-    frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(39,60,85)) or >>
-    frame.fill_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(62,45,74)) or >>
+    frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(35,31,39)) or >>
+    frame.fill_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(44,39,49)) or >>
 '''
-    code += f'    message := {summary}\n    draw.text(32,320,16,"#e2e8f0",message + "")\n    println(message)\n'
+    code += f'    message := {summary}\n    draw.text(32,326,13,"#b3aab6",message + "")\n    println(message)\n'
     code += '''    frame.present() or >>
     << 0
 }
