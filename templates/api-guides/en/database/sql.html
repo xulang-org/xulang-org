@@ -1,0 +1,30 @@
+<h2 id="quickstart">Insert a row with SQLite</h2>
+<p>Use <code>database/sql</code> with a concrete driver to manage a connection pool and execute SQL.</p>
+<p><code>open</code> takes a driver object and a driver-specific DSN; it opens connections lazily. This example uses SQLite in memory, checks operation errors and closes the pool explicitly.</p>
+<p>Prerequisite: use the official packages checkout and build the <a href="/en/docs/packages#sqlite-native">SQLite native bridge</a> for your target. Add this dependency to your project’s <code>xu.xun</code>, replacing the path with that checkout:</p>
+<pre><code class="language-xun">require:
+  "github.com/xulang-org/packages": file:/path/to/packages</code></pre>
+<p>See the <a href="/en/docs/packages">MySQL quickstart</a> for a server-backed driver and its DSN. MySQL service integration here: 待验 (not verified).</p>
+<p>Save the complete program as <code>main.xu</code> and check it with <code>xu check main.xu</code>. One-step linking of native static libraries is supported on macOS arm64/x64, where you can use <code>xu run main.xu</code>; Linux requires object emission and a separate linker step. This example passed the SDK check; native execution is 待验 (not verified).</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#database/sql
+sqlite #github.com/xulang-org/packages/sqlite
+
+fn main() int {
+    $db := sql.open(sqlite.driver(), ":memory:")
+    db.exec("CREATE TABLE notes (body TEXT)") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    result := db.exec("INSERT INTO notes VALUES ('hello')") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println(result.rows_affected())
+    db.close() or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre></div>
+<p>Expected output: <code>1</code> (the inserted row count).</p>

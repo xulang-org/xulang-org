@@ -1,0 +1,30 @@
+<h2 id="quickstart">通过 SQLite 插入一行</h2>
+<p>使用 <code>database/sql</code> 配合具体驱动管理连接池并执行 SQL。</p>
+<p><code>open</code> 接收驱动对象与该驱动解释的 DSN，首次操作时才打开连接。此例使用 SQLite 内存数据库，处理操作错误，并显式关闭连接池。</p>
+<p>前提：准备官方 packages 源码，并为目标平台构建 <a href="/zh/docs/packages#sqlite-native">SQLite 原生桥</a>。在工程的 <code>xu.xun</code> 中加入以下依赖，将路径替换为该源码目录：</p>
+<pre><code class="language-xun">require:
+  "github.com/xulang-org/packages": file:/path/to/packages</code></pre>
+<p>服务端驱动与 DSN 参见 <a href="/zh/docs/packages">MySQL 快速示例</a>；此处 MySQL 服务集成：待验。</p>
+<p>将完整程序保存为 <code>main.xu</code>，用 <code>xu check main.xu</code> 检查。原生静态库的一步链接支持 macOS arm64/x64，可在这些目标上使用 <code>xu run main.xu</code>；Linux 需要输出对象文件后另行链接。此例已通过 SDK 检查；原生执行：待验。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#database/sql
+sqlite #github.com/xulang-org/packages/sqlite
+
+fn main() int {
+    $db := sql.open(sqlite.driver(), ":memory:")
+    db.exec("CREATE TABLE notes (body TEXT)") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    result := db.exec("INSERT INTO notes VALUES ('hello')") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println(result.rows_affected())
+    db.close() or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre></div>
+<p>预期输出：<code>1</code>（插入行数）。</p>
