@@ -23,7 +23,7 @@
 <tr><td><code>map</code></td><td><code>xu map [options] [path...]</code></td><td>Analyze code control flows and call graphs to emit Mermaid flowcharts or raw canvas lines</td></tr>
 <tr><td><code>doctor</code></td><td><code>xu doctor [options]</code></td><td>Verify host toolchain health, native linkers, C headers, and desktop packaging prerequisites</td></tr>
 <tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>Native C module compilation, <code>xu.o</code> metadata injection, <code>.xulib</code> multi-target packaging &amp; inspection</td></tr>
-<tr><td><code>xacp</code></td><td><code>xu xacp &lt;inspect|run|debug|record|control|connect&gt; ...</code></td><td>Launcher for an XACP-enabled hosted native program. Runs the sibling <code>xu-xacp</code> tool. See <a href="#xacp">XACP control</a>.</td></tr>
+<tr><td><code>xacp</code></td><td><code>xu xacp &lt;inspect|run|debug|record|control|attach|connect&gt; ...</code></td><td>Launcher for an XACP-enabled hosted native program. Runs the sibling <code>xu-xacp</code> tool. See <a href="#xacp">XACP control</a>.</td></tr>
 <tr><td><code>setup</code></td><td><code>xu setup [options]</code></td><td>Launch the native GUI installer wizard or run silent global environment configuration</td></tr>
 <tr><td><code>lsp</code></td><td><code>xu lsp [options]</code></td><td>Start Language Server Protocol (JSON-RPC 2.0) daemon for VS Code, Cursor, Neovim, etc.</td></tr>
 <tr><td><code>up / update</code></td><td><code>xu update [options]</code> (or <code>xu up</code>)</td><td>Check and download official GitHub releases to atomically update the local compiler and standard library</td></tr>
@@ -113,8 +113,8 @@ XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
 <p>In PowerShell, set the variable first, for example <code>$env:XU_VERIFY = '1'</code>, then run the same <code>xu build</code> command. Clear it afterward with <code>Remove-Item Env:XU_VERIFY</code>.</p>
 
 <h2 id="xacp">XACP control (<code>xu xacp</code> / <code>xu-xacp</code>)</h2>
-<p>Documented from the language repository at 0.10.10-dev.1 (<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>). <code>xu xacp</code> executes the sibling binary <code>xu-xacp</code> (tool module 0.1.1). A source tree builds that binary with <code>make xu-xacp</code>. The published {{xu_version}} download is a separate snapshot. The safety core is <a href="/api/xacp"><code>#xacp</code></a>. Importing that package does not embed discovery or a control loop. The runnable sample is <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md"><code>examples/xacp</code></a> in the language repository. <code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> is an earlier note; its “no TCP in this phase” line is superseded.</p>
-<p><code>xu --help</code> summarizes the tool as “inspect, run, and debug”. <code>xu xacp --help</code> is the full mode list: <code>inspect</code>, <code>run</code>, <code>debug</code>, <code>record</code>, <code>control</code>, and <code>connect PORT</code>.</p>
+<p>The <a href="/api/xacp"><code>#xacp</code> API</a> is published in the {{xu_version}} SDK extract. This section follows the matching release source. <code>xu xacp</code> runs the sibling <code>xu-xacp</code> tool, built from source with <code>make xu-xacp</code>. Importing <code>#xacp</code> does not embed discovery or a control loop. The <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">release source</a> and smoke scripts define the contract; older example README/design notes can drift on framing, permissions, and timeouts. Native sessions and platform/UI runtime acceptance remain <strong>unverified</strong>.</p>
+<p><code>xu --help</code> summarizes the tool as “inspect, run, and debug”. <code>xu xacp --help</code> is the full mode list: <code>inspect</code>, <code>run</code>, <code>debug</code>, <code>record</code>, <code>control</code>, <code>attach</code>, and <code>connect PORT</code>.</p>
 
 <h3>Build and discovery</h3>
 <pre><code>xu build --xacp examples/xacp/main.xu -o app
@@ -130,22 +130,29 @@ xu build --xacp-port 4321 examples/xacp/main.xu -o app
 <tr><td><code>xu xacp run &lt;program&gt; -- args...</code></td><td>Runs business main. Inserts an extra <code>--</code> before the forwarded arguments. Does not read control stdin.</td></tr>
 <tr><td><code>xu xacp debug &lt;program&gt; -- args...</code></td><td>Inspects first, then runs with the same boundary. Not a breakpoint debugger. A failed inspect does not continue to run.</td></tr>
 <tr><td><code>xu xacp record &lt;program&gt; -- args...</code></td><td>Streams at most 1 MiB of stdout. Redirect it yourself. Stderr stays on the terminal. Unix only; Windows prints <code>record is not available on Windows yet</code> and exits 1. This is not an XACP UI frame file.</td></tr>
-<tr><td><code>xu xacp control &lt;program&gt;</code></td><td>Spawns <code>&lt;program&gt; --xacp-stdio</code> and inherits the caller's stdin and stdout. No business arguments. Business main does not run. A validated <code>xacp.hello</code> calls <code>enable_development()</code> before the request is finished.</td></tr>
-<tr><td><code>xu xacp connect PORT</code></td><td>Relays framed stdin/stdout to <code>127.0.0.1:PORT</code>. One request, then its response. The target must already be listening with <code>--xacp-tcp</code>. <code>PORT</code> is 1..65535. Input frames end with <code>===</code> and a newline. EOF at a frame boundary disconnects.</td></tr>
+<tr><td><code>xu xacp control &lt;program&gt;</code></td><td>Spawns <code>&lt;program&gt; --xacp-stdio</code> and inherits the caller's stdin and stdout. No business arguments. Business main does not run. Hello negotiates INFO or host-token permissions before the request finishes.</td></tr>
+<tr><td><code>xu xacp attach &lt;program&gt; -- args...</code></td><td>Runs business main; the application must call <code>attach_stdio</code>, register a Screen, and poll from its owning coroutine. It owns protocol stdin/stdout; send logs to stderr. Runtime UI behavior is unverified.</td></tr>
+<tr><td><code>xu xacp connect PORT</code></td><td>Relays framed stdin/stdout to <code>127.0.0.1:PORT</code>. One request, then its response. The target must already be listening with <code>--xacp-tcp</code>. <code>PORT</code> is 1..65535. Input frames use <code>XACP/1\n&lt;N&gt;\n</code> followed by exactly N body bytes. EOF at a frame boundary disconnects.</td></tr>
 </tbody></table></div>
-<p>Arguments for <code>run</code>, <code>debug</code>, and <code>record</code> must follow the tool's <code>--</code>. <code>inspect</code> and <code>control</code> reject extra arguments. A failing child returns its exit status when the tool can read one.</p>
+<p>Arguments for <code>run</code>, <code>debug</code>, <code>record</code>, and <code>attach</code> must follow the tool's <code>--</code>. <code>inspect</code> and <code>control</code> reject extra arguments. A failing child returns its exit status when the tool can read one.</p>
 
 <h3>Stdio and loopback TCP</h3>
+<p>Create <code>control.xacp</code> with the exact hello bytes (Python 3):</p>
+<pre><code>python3 - &lt;&lt;'PY'
+from pathlib import Path
+body = b"id: !i 1\nop: xacp.hello\nargs:\n  ver: !ver 1.0.0\n  nonce: docs-client\n"
+Path("control.xacp").write_bytes(b"XACP/1\n" + str(len(body)).encode("ascii") + b"\n" + body)
+PY</code></pre>
 <pre><code># stdio: pipe frames; business main is skipped
-xu xacp control ./app &lt; control.xun
+xu xacp control ./app &lt; control.xacp
 
 # TCP: build a positive port, listen, then connect from another terminal
 xu build --xacp-port 4321 main.xu -o app
 ./app --xacp-tcp
-xu xacp connect 4321 &lt; control.xun</code></pre>
-<p>Both control modes use the same frame, session, and operations. The frame is a XUN document between <code>--- !xacp</code> and <code>===</code>. The startup reader also requires the newline after <code>===</code>. The first of <code>--xacp-stdio</code> and <code>--xacp-tcp</code> before <code>--</code> wins. A normal start does not listen and does not read control stdin.</p>
-<p>TCP listens on <code>127.0.0.1</code> only. There is no TLS and no other bind address. Each connection is its own session. Connections are handled one at a time. A bad peer ends that session; the listener keeps accepting. Stdio exits when its session ends. A half frame at EOF returns <code>truncated_frame</code>. A frame over 1 MiB returns <code>frame_too_large</code> and closes that session. Invalid frames and schema errors use id <code>0</code>.</p>
-<p>After a validated hello, <code>proc.status</code> returns the real pid. <code>proc.output</code> and <code>ui.tree</code>, <code>ui.screenshot</code>, <code>ui.input</code>, <code>ui.act</code>, and <code>ui.record</code> are validated and return <code>not_implemented</code> until the program registers a Screen or output adapter. There is no host timeout if the target produces no output or does not exit.</p>
+xu xacp connect 4321 &lt; control.xacp</code></pre>
+<p>Both transports use <code>XACP/1\n&lt;N&gt;\n</code> plus exactly <code>N</code> bytes of plain XUN. Count UTF-8 bytes, including body newlines; the prefix is excluded. There is no closing delimiter or extra separator. <code>parse_frame</code> receives only the body after transport decoding. The <a href="/api/xacp">API guide</a> gives a 69-byte hello and 109-byte response. The first <code>--xacp-stdio</code> or <code>--xacp-tcp</code> before <code>--</code> wins; ordinary startup does not listen or read control stdin.</p>
+<p>TCP listens on <code>127.0.0.1</code> only. There is no TLS and no other bind address. Each connection is its own session. Connections are handled one at a time. A bad peer ends that session; the listener keeps accepting. Stdio exits when its session ends. A half frame at EOF returns <code>truncated_frame</code>. A frame over 1 MiB returns <code>frame_too_large</code> and closes that session. Frame errors use id <code>0</code>; schema errors use a valid id hint when available, otherwise <code>0</code>.</p>
+<p>Hello requires <code>ver: !ver 1.0.0</code> and a non-empty nonce. Without <code>XU_XACP_TOKEN</code> on the host, permissions are capped at INFO. With a host token, a missing or mismatched client token closes the session with <code>auth_failed</code>; a matching token permits the requested subset of <code>PERM_ALL</code> (<code>15</code>). <code>proc.status</code> returns the pid under INFO. Output/UI operations need their permission bits and return <code>not_implemented</code> without adapters. Startup control has no registered Screen; UI attachment needs registration and polling. Its default request deadline is 5000 ms, configurable with <code>XU_XACP_REQUEST_TIMEOUT_MS</code> (<code>1..600000</code>). Callers still need process/I/O timeouts for stalled targets.</p>
 
 <h2>2. Automated Testing (test)</h2>
 <p><code>xu test</code> discovers and builds automated test runners. Test and benchmark functions must be in a file named <code>test.&lt;name&gt;.xu</code>, in package <code>@main</code>, with no parameters or return type. Ordinary source files cannot declare <code>fn test_*</code> or <code>fn bench_*</code>. Save this example as <code>test.example.xu</code>:</p>

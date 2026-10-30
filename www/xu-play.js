@@ -83,12 +83,10 @@
         var previewTab = document.getElementById('xu-play-preview-tab');
         if (previewTab) previewTab.click();
       }
-      interactive = committed && result.ui.interactive && activeSource === currentSource() && clicks.length < window.XuPlayCanvas.maxEvents;
+      interactive = committed && result.ui.interactive && activeSource === currentSource();
       canvas.setAttribute('aria-disabled', String(!interactive));
       if (uiStatus) uiStatus.textContent = result.ui.interactive
-        ? clicks.length + '/64 · ' + (clicks.length >= 64
-          ? text('事件已达上限，重新运行以重置。', 'Event limit reached. Run Code to reset.')
-          : (inputMode ? text('真实控件 · 点击 / Tab 聚焦 · Enter/空格激活 · 方向键调节 · Esc 离开。', 'Real widgets · Click / Tab to focus · Enter/Space to activate · Arrows to adjust · Esc to leave.') : text('点击画布，或聚焦画布后按 Enter 点击中心。', 'Click the canvas, or focus it and press Enter to click its center.')))
+        ? (inputMode ? text('真实控件 · 点击 / Tab 聚焦 · Enter/空格激活 · 方向键调节 · Esc 离开。', 'Real widgets · Click / Tab to focus · Enter/Space to activate · Arrows to adjust · Esc to leave.') : text('点击画布，或聚焦画布后按 Enter 点击中心。', 'Click the canvas, or focus it and press Enter to click its center.'))
         : text('静态画面 · 修改代码后重新运行。', 'Static drawing · Edit the source and run again.');
     }
     function clearWorker() {
@@ -147,7 +145,8 @@
           try {
             showUI(result);
             if (inputMode && queuedInputs.length && activeSource === currentSource()) {
-              clicks = clicks.concat(queuedInputs.splice(0, window.XuPlayCanvas.maxEvents - clicks.length));
+              var maxEv = (window.XuPlayCanvas && window.XuPlayCanvas.maxEvents) || 100000;
+              clicks = clicks.concat(queuedInputs.splice(0, Math.max(0, maxEv - clicks.length)));
               if (interactive) execute();
               else queuedInputs = [];
             }
@@ -253,7 +252,13 @@
             maybeAutoRun();
           } else {
             try {
-              var selected = new URL(window.location.href).searchParams.get('example');
+              var params = new URL(window.location.href).searchParams;
+              var selected = params.get('example');
+              if (!selected && params.get('widget')) {
+                var widgetSlug = params.get('widget');
+                if (examples['widget-' + widgetSlug]) selected = 'widget-' + widgetSlug;
+                else if (examples['ui-' + widgetSlug]) selected = 'ui-' + widgetSlug;
+              }
               if (select && examples[selected]) {
                 select.value = selected;
                 if (workspace) workspace.setExample(selected, examples[selected]);
@@ -343,7 +348,7 @@
         });
         function appendInput(input) {
           if (!inputMode || !ready || activeSource !== currentSource() || (!running && !interactive) ||
-              clicks.length + queuedInputs.length >= window.XuPlayCanvas.maxEvents) return;
+              clicks.length + queuedInputs.length >= ((window.XuPlayCanvas && window.XuPlayCanvas.maxEvents) || 100000)) return;
           if (running) queuedInputs.push(input);
           else { clicks.push(input); execute(); }
         }

@@ -5,7 +5,36 @@
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#database/sql</code></p>
 <p class="meta">counts: 9 函数, 63 方法, 18 类型, 8 常量, 0 方法集</p>
-<p class="lead">数据库用户 API：open、连接池、Conn、事务、Stmt 与 Rows；具体驱动由外部 packages 提供。</p>
+<h2 id="quickstart">通过 SQLite 插入一行</h2>
+<p>使用 <code>database/sql</code> 配合具体驱动管理连接池并执行 SQL。</p>
+<p><code>open</code> 接收驱动对象与该驱动解释的 DSN，首次操作时才打开连接。此例使用 SQLite 内存数据库，处理操作错误，并显式关闭连接池。</p>
+<p>前提：准备官方 packages 源码，并为目标平台构建 <a href="/zh/docs/packages#sqlite-native">SQLite 原生桥</a>。在工程的 <code>xu.xun</code> 中加入以下依赖，将路径替换为该源码目录：</p>
+<pre><code class="language-xun">require:
+  "github.com/xulang-org/packages": file:/path/to/packages</code></pre>
+<p>服务端驱动与 DSN 参见 <a href="/zh/docs/packages">MySQL 快速示例</a>；此处 MySQL 服务集成：待验。</p>
+<p>将完整程序保存为 <code>main.xu</code>，用 <code>xu check main.xu</code> 检查。原生静态库的一步链接支持 macOS arm64/x64，可在这些目标上使用 <code>xu run main.xu</code>；Linux 需要输出对象文件后另行链接。此例已通过 SDK 检查；原生执行：待验。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#database/sql
+sqlite #github.com/xulang-org/packages/sqlite
+
+fn main() int {
+    $db := sql.open(sqlite.driver(), ":memory:")
+    db.exec("CREATE TABLE notes (body TEXT)") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    result := db.exec("INSERT INTO notes VALUES ('hello')") or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println(result.rows_affected())
+    db.close() or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    &lt;&lt; 0
+}</code></pre></div>
+<p>预期输出：<code>1</code>（插入行数）。</p>
 <p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
 <section class="api-examples" id="examples">
 <h2>示例代码</h2>
@@ -235,7 +264,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_DEFAULT</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_DEFAULT = 0</code></pre></div>
 <h3>用途</h3>
-<p>常量 `LEVEL_DEFAULT`，定义了相关的协议或算法配置参数。</p>
+<p>默认事务隔离级别，沿用底层数据库驱动或服务端的默认隔离配置。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -243,7 +272,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_READ_UNCOMMITTED</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_READ_UNCOMMITTED = 1</code></pre></div>
 <h3>用途</h3>
-<p>常量 `LEVEL_READ_UNCOMMITTED`，定义了相关的协议或算法配置参数。</p>
+<p>读未提交（Read Uncommitted）事务隔离级别，允许读取其他并发事务未提交的数据变更（脏读）。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -251,7 +280,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_READ_COMMITTED</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_READ_COMMITTED = 2</code></pre></div>
 <h3>用途</h3>
-<p>常量 `LEVEL_READ_COMMITTED`，定义了相关的协议或算法配置参数。</p>
+<p>读已提交（Read Committed）事务隔离级别，仅允许读取已提交数据，避免脏读。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -267,7 +296,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_REPEATABLE_READ</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_REPEATABLE_READ = 4</code></pre></div>
 <h3>用途</h3>
-<p>常量 `LEVEL_REPEATABLE_READ`，定义了相关的协议或算法配置参数。</p>
+<p>可重复读（Repeatable Read）事务隔离级别，保证同一事务内多次读取相同行数据一致，避免不可重复读。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -283,7 +312,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>const LEVEL_SERIALIZABLE</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LEVEL_SERIALIZABLE = 6</code></pre></div>
 <h3>用途</h3>
-<p>常量 `LEVEL_SERIALIZABLE`，定义了相关的协议或算法配置参数。</p>
+<p>串行化（Serializable）事务隔离级别；具体支持情况由驱动与数据库决定。</p>
 <h3>参数</h3>
 <p class="api-none">无</p>
 </article>
@@ -670,11 +699,11 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <h2><code>open</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(d driver.Driver, name <span class="syn-type">string</span>) DB</code></pre></div>
 <h3>用途</h3>
-<p>根据驱动名与数据源连接串（DSN）初始化数据库连接池 DB；不会立即建立真实网络连接。</p>
+<p>使用驱动对象与数据源连接串（DSN）创建数据库连接池 DB；首次操作时才打开连接。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>d</code> <span class="type">driver.Driver</span></dt><dd>d（driver.Driver）</dd>
-<dt><code>name</code> <span class="type">string</span></dt><dd>名字（string）</dd>
+<dt><code>d</code> <span class="type">driver.Driver</span></dt><dd>具体驱动对象（例如 sqlite.driver() 或 mysql.driver()）</dd>
+<dt><code>name</code> <span class="type">string</span></dt><dd>由驱动解释的数据源连接串（DSN）</dd>
 </dl>
 <h3>返回</h3>
 <p>数据库连接池实例 DB</p>
@@ -1005,7 +1034,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>`$&amp;DB` 上的操作：关闭资源。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>db</code> <span class="type">$&amp;DB</span></dt><dd>接收者 $&amp;DB（可变借用）</dd>
+<dt><code>db</code> <span class="type">$&amp;DB</span></dt><dd>接收者 $&amp;DB（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -1128,7 +1157,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>`$&amp;Conn` 上的操作：关闭资源。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Conn</span></dt><dd>接收者 $&amp;Conn（可变借用）</dd>
+<dt><code>c</code> <span class="type">$&amp;Conn</span></dt><dd>接收者 $&amp;Conn（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -1164,7 +1193,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>`$&amp;Rows` 上的操作：取出下一项；没有则按本类型约定结束。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Rows</span></dt><dd>接收者 $&amp;Rows（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Rows</span></dt><dd>接收者 $&amp;Rows（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>bool — 是否成立</p>
@@ -1176,7 +1205,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>在 `$&amp;Rows` 上执行 `take` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Rows</span></dt><dd>接收者 $&amp;Rows（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Rows</span></dt><dd>接收者 $&amp;Rows（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>[]temp — 切片结果</p>
@@ -1200,7 +1229,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>`$&amp;Rows` 上的操作：关闭资源。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Rows</span></dt><dd>接收者 $&amp;Rows（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Rows</span></dt><dd>接收者 $&amp;Rows（独占借用）</dd>
 </dl>
 </article>
 <article class="api-item" id="-Rows-err">
@@ -1294,7 +1323,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>`$&amp;Rows` 上的操作：执行 next result set 操作。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Rows</span></dt><dd>接收者 $&amp;Rows（可变借用）</dd>
+<dt><code>r</code> <span class="type">$&amp;Rows</span></dt><dd>接收者 $&amp;Rows（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>bool — 是否成立</p>
@@ -1471,7 +1500,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>在 `$&amp;Tx` 上执行 `commit` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>t</code> <span class="type">$&amp;Tx</span></dt><dd>接收者 $&amp;Tx（可变借用）</dd>
+<dt><code>t</code> <span class="type">$&amp;Tx</span></dt><dd>接收者 $&amp;Tx（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -1483,7 +1512,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>在 `$&amp;Tx` 上执行 `rollback` 操作。失败时 throw。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>t</code> <span class="type">$&amp;Tx</span></dt><dd>接收者 $&amp;Tx（可变借用）</dd>
+<dt><code>t</code> <span class="type">$&amp;Tx</span></dt><dd>接收者 $&amp;Tx（独占借用）</dd>
 </dl>
 <h3>返回</h3>
 <p>int — 该类型的值</p>
@@ -1576,6 +1605,6 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <p>`$&amp;Stmt` 上的操作：关闭资源。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">$&amp;Stmt</span></dt><dd>接收者 $&amp;Stmt（可变借用）</dd>
+<dt><code>s</code> <span class="type">$&amp;Stmt</span></dt><dd>接收者 $&amp;Stmt（独占借用）</dd>
 </dl>
 </article>

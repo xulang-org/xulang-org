@@ -58,6 +58,7 @@ class StaticSiteTests(unittest.TestCase):
         sitemap = (output / 'sitemap.xml').read_text()
         self.assertIn('<loc>https://xulang.org/</loc>', sitemap)
         self.assertIn('<loc>https://xulang.org/zh/</loc>', sitemap)
+        self.assertNotIn('<lastmod>', sitemap)
         robots = (output / 'robots.txt').read_text()
         self.assertIn('User-agent: GPTBot', robots)
         self.assertIn('Sitemap: https://xulang.org/sitemap.xml', robots)
@@ -79,7 +80,7 @@ class StaticSiteTests(unittest.TestCase):
             self.assertEqual([item['name'] for item in faq['mainEntity']], questions)
             self.assertTrue(all(item['acceptedAnswer']['text'] for item in faq['mainEntity']))
         for page, destination in ((home, '/playground/'), (chinese, '/zh/playground/')):
-            self.assertIn(f'class="btn pri" href="{destination}"', page)
+            self.assertIn(f'class="btn pri" href="{destination}?example=chan-workers"', page)
             self.assertNotIn('id="xu-play-src"', page)
             self.assertNotIn('xu-play.js', page)
             self.assertNotIn('xu-play.wasm', page)
@@ -100,11 +101,79 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn('/releases/', downloads)
         self.assertTrue((output / '.nojekyll').exists())
         version = re.search(r'(?m)^xu: !ver (\S+)', (self.source / 'xu.xun').read_text())[1]
-        self.assertIn('XU v' + version, home)
+        self.assertNotIn('<span class="badge">v', home)
+        self.assertNotIn('XU v' + version, home)
+        self.assertIn('XU v' + version, downloads)
         self.assertNotIn('{{xu_version}}', home)
         self.assertIn('/releases/tag/v' + version, (output / 'download/index.html').read_text())
         self.assertIn('Xu ' + version + ' API', (output / 'api/net/http/index.html').read_text())
         self.assertIn('Xu ' + version, (output / 'docs/status/index.html').read_text())
+        counts = site.shared_content(self.source)['en']
+        for lang, prefix in (('en', ''), ('zh', 'zh/')):
+            status = (output / (prefix + 'docs/status/index.html')).read_text()
+            self.assertNotIn('{{api_', status)
+            self.assertIn(counts['api_standard_count'], status)
+            self.assertIn(counts['api_external_count'], status)
+            banner = re.search(r'<p class="banner">(.*?)</p>', (output / (prefix + 'index.html')).read_text())[1]
+            self.assertNotRegex(banner, r'\d+\.\d+\.\d+')
+            self.assertIn('id="language-switch"', (output / (prefix + 'index.html')).read_text())
+            releases = (output / (prefix + 'releases/index.html')).read_text()
+            for entry in json.loads((self.source / 'templates/releases.json').read_text()):
+                self.assertIn('id="v' + entry['version'].replace('.', '-') + '"', releases)
+            self.assertNotIn('{{release_', releases)
+
+    def test_shared_inventory_changes_counts_without_counting_widget_pages(self):
+        from site_layout import shared_content
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'templates').mkdir()
+            (root / 'templates/releases.json').write_text('[]')
+            for lang in ('en', 'zh'):
+                api = root / f'content/{lang}/api'
+                (api / 'ui/widgets').mkdir(parents=True)
+                (api / 'packages').mkdir()
+                for name in ('fmt', 'ui/widgets/button', 'packages/transport'):
+                    (api / (name + '.html')).touch()
+                (api / 'index.html').write_text('<a href="/api/fmt">fmt</a>')
+            self.assertEqual(shared_content(root)['en']['api_standard_count'], '1')
+            self.assertEqual(shared_content(root)['zh']['api_external_count'], '0')
+            for lang in ('en', 'zh'):
+                index = root / f'content/{lang}/api/index.html'
+                index.write_text(index.read_text() + '<a href="/api/packages/transport">transport</a>')
+            self.assertEqual(shared_content(root)['en']['api_external_count'], '1')
+            index.write_text(index.read_text() + '<a href="/api/fmt#examples">example</a>')
+            self.assertEqual(shared_content(root)['en']['api_standard_count'], '1')
+            index.write_text(index.read_text() + '<a href="/api/ui/widgets/button">button</a>')
+            with self.assertRaisesRegex(ValueError, 'inventories.*match'):
+                shared_content(root)
+            index.write_text('<a href="/api/missing">missing</a>')
+            with self.assertRaisesRegex(ValueError, 'missing package'):
+                shared_content(root)
+
+    def test_release_metadata_drives_both_indexes_and_sidebar(self):
+        from site_layout import shared_content, sidebar
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            shutil.copytree(self.source / 'content', root / 'content')
+            (root / 'templates').mkdir()
+            entry = {'version': '0.99.1', 'notes': {'en': '<p>New release</p>', 'zh': '<p>新版本</p>'},
+                     'blog_entry': {'en': '<a href="/blog/xu-0-99-1">New release</a>',
+                                    'zh': '<a href="/blog/xu-0-99-1">新版本</a>'}}
+            (root / 'templates/releases.json').write_text(json.dumps([entry]))
+            shared = shared_content(root)
+            for lang, prefix in (('en', ''), ('zh', '/zh')):
+                self.assertIn('id="v0-99-1"', shared[lang]['release_notes'])
+                self.assertIn(entry['notes'][lang], shared[lang]['release_notes'])
+                self.assertIn('/blog/xu-0-99-1', shared[lang]['release_blog_entries'])
+                self.assertIn(prefix + '/blog/xu-0-99-1', sidebar(prefix + '/blog', lang == 'en', root=root))
+
+    def test_xacp_seo_keeps_the_selected_release_identity_and_limits(self):
+        from site_layout import get_seo_meta
+        for en, route, limit in ((True, '/api/xacp', 'unverified'), (False, '/zh/api/xacp', '待验')):
+            description = get_seo_meta(route, '#xacp', en, '0.99.1')['meta_description']
+            self.assertIn('v0.99.1', description)
+            self.assertIn(limit, description)
+            self.assertNotIn('dev.', description)
 
     def test_project_path_and_rebuild_remove_stale_pages(self):
         output = self.workspace / 'project'
@@ -115,8 +184,8 @@ class StaticSiteTests(unittest.TestCase):
         self.assertRegex((output / 'playground/index.html').read_text(), r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}"')
         self.assertRegex((output / 'zh/api/fmt/index.html').read_text(), r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}" defer data-wasm-available="false"')
         self.assertIn('href="/xulang-org/site.css"', home)
-        self.assertIn('class="btn pri" href="/xulang-org/playground/"', home)
-        self.assertIn('class="btn pri" href="/xulang-org/zh/playground/"', (output / 'zh/index.html').read_text())
+        self.assertIn('class="btn pri" href="/xulang-org/playground/?example=chan-workers"', home)
+        self.assertIn('class="btn pri" href="/xulang-org/zh/playground/?example=chan-workers"', (output / 'zh/index.html').read_text())
         self.assertIn('href="/xulang-org/"', home)
         chinese = (output / 'zh/docs/start/index.html').read_text()
         self.assertIn('href="/xulang-org/docs/start/" hreflang="en"', chinese)

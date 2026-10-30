@@ -1,13 +1,154 @@
 <!--title: Concurrency-->
-<p class='crumb'><a href='/en/docs/start'>Docs</a> / Language</p><h1>Concurrency</h1>
-<pre><code>fn worker(id int, ch chan int) {
+<p class="crumb"><a href="/en/docs/start">Docs</a> / Language</p>
+<h1>Concurrency</h1>
+<p><code>xu f(args)</code> schedules a coroutine. Scheduling determines which ready task can make progress; parallelism means tasks execute at the same time on different CPU threads. Spawning a coroutine alone promises neither an execution order nor CPU parallelism. The spelling <code>xu.pkg.f</code> is a package-qualified call, not a spawn.</p>
+<p>All blocks below were checked with the official SDK v0.10.12. Save each as a separate <code>.xu</code> file. Use <code>xu check</code> for complete programs and <code>xu check --lib</code> for function-only examples. Expected diagnostics are actual substrings. Complete programs also passed native <code>xu run</code>; browser Run uses the WASM subset described below.</p>
+
+<h2 id="scheduling">Scheduling and rendezvous</h2>
+<p>A zero-capacity channel needs a sender and a receiver to rendezvous. A receive on an open empty channel waits; a buffered send waits when the buffer is full. These channel waits let the scheduler run other ready coroutines. Use a channel to wait for a result before <code>main</code> returns, rather than assuming that spawn means completion.</p>
+<pre id="worker-pass"><code class="language-xu">@main
+
+fn worker(id int, ch chan int) {
     ch &lt;- id * 10
 }
-
 fn main() int {
-    ch := chan int{cap: 1}
+    ch := chan int{cap: 0}
     xu worker(1, ch)
     println(&lt;-ch)
     &lt;&lt; 0
 }</code></pre>
-<p><code>xu f(args)</code> starts a coroutine. <code>xu.pkg.f</code> calls a package-qualified function. Channels move ownership; do not send borrows. Buffered and unbuffered channels, <code>close</code>, and <code>select</code> exist.</p>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>10</code>.</p>
+
+<h2 id="send-receive">Send and receive: transfer owned data, share channel handles</h2>
+<p><code>ch &lt;- value</code> sends and <code>&lt;-ch</code> receives. Sending an owning value transfers ownership; scalars copy. Channel handles may be passed to workers and still used by the caller. References, including references nested inside containers, cannot cross the <code>xu</code> or channel boundary. This does not establish safety for arbitrary shared state in foreign code.</p>
+<pre id="send-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan string{cap: 1}
+    text := &quot;owned&quot;
+    ch &lt;- text
+    println(&lt;-ch)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>owned</code>.</p>
+<pre id="send-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    ch := chan string{cap: 1}
+    text := &quot;owned&quot;
+    ch &lt;- text
+    println(text)
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>use of moved value &#x27;text&#x27;</code>.</p>
+<pre id="borrow-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn worker(value &amp;int) {}
+fn bad() {
+    value := 1
+    xu worker(&amp;value)
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>xu argument cannot be a reference type (M17)</code>.</p>
+
+<h2 id="close">Close: drain buffered values, then receive zero</h2>
+<p><code>close(ch)</code> marks the channel closed; it does not discard buffered data. This integer channel first returns the queued <code>7</code>, then <code>0</code> without waiting. Do not use zero as a unique end marker if zero is valid data; define an application-level message/completion protocol. Designate one closer after all sends finish, and close only once.</p>
+<pre id="close-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan int{cap: 1}
+    ch &lt;- 7
+    close(ch)
+    println(&lt;-ch)
+    println(&lt;-ch)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>7</code>, then <code>0</code>.</p>
+<pre id="close-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    close(1)
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>close requires a channel, found int</code>.</p>
+<p>Sending on a closed channel is a runtime error, not a static ownership error. This function passes checking; a native test harness calling it exited with status <code>1</code>. The browser evaluator reports <code>send on closed channel</code>. It is deliberately not a runnable example.</p>
+<pre id="closed-send" class="xu-local-only"><code class="language-xu">@main
+
+fn wrong() {
+    ch := chan int{cap: 1}
+    close(ch)
+    ch &lt;- 1
+}</code></pre>
+<p><strong>Expected xu check --lib: pass.</strong></p>
+
+<h2 id="select">Select: wait for readiness, or probe without blocking</h2>
+<p>Each arm is a send or receive followed by its body. Without <code>else</code>, select waits until an operation is ready. With <code>else</code>, it immediately takes that branch if no operation is ready: this is a non-blocking readiness probe, not a timeout. Receiving from a closed empty channel is ready and yields zero. Do not depend on arm order or fairness when several arms are ready.</p>
+<pre id="select-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan int{cap: 1}
+    select {
+        ch &lt;- 7 { println(&quot;sent&quot;) }
+        else { println(&quot;full&quot;) }
+    }
+    select {
+        value := &lt;-ch { println(value) }
+        else { println(&quot;empty&quot;) }
+    }
+    select {
+        value := &lt;-ch { println(value) }
+        else { println(&quot;empty&quot;) }
+    }
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>sent</code>, then <code>7</code>, then <code>empty</code>.</p>
+<p>A select must contain at least one communication arm; <code>else</code> alone is invalid.</p>
+<pre id="select-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    select {
+        else { println(&quot;idle&quot;) }
+    }
+}</code></pre>
+<p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>select requires at least one send/recv case</code>.</p>
+
+<h2 id="cancellation">Cancellation and blocking are separate concerns</h2>
+<p><strong>Local SDK only.</strong> Cancellation is cooperative: a task must observe the signal. Here the caller closes a dedicated stop channel; the worker can observe it while waiting for a job because both operations are in the same select. A separate acknowledgement lets the caller wait for worker completion. No job is sent, so only the stop arm becomes ready.</p>
+<pre id="cancel-pass" class="xu-local-only"><code class="language-xu">@main
+
+fn worker(jobs chan int, stop chan int, done chan int) {
+    select {
+        signal := &lt;-stop { println(&quot;stopped&quot;) }
+        job := &lt;-jobs { println(job) }
+    }
+    done &lt;- 1
+}
+
+fn main() int {
+    jobs := chan int{cap: 0}
+    stop := chan int{cap: 0}
+    done := chan int{cap: 0}
+    xu worker(jobs, stop, done)
+    close(stop)
+    println(&lt;-done)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>stopped</code>, then <code>1</code>.</p>
+<p>Closing <code>stop</code> does not forcibly interrupt another channel receive or an unrelated blocking OS/FFI call. Put cancellation in the same select as the operation being awaited, or use that API's documented cancellation mechanism. Release owned resources and explicitly dispose native handles on cancellation as on every other exit. If work and cancellation are both ready, allow for the work arm to win; cancellation has no priority guarantee.</p>
+<p>A successful check does not prove progress. This function has no sender or closer, so its receive cannot complete in isolation. It is checked as a library fragment and is not executed.</p>
+<pre id="blocking" class="xu-local-only"><code class="language-xu">@main
+
+fn wait_without_sender() int {
+    ch := chan int{cap: 0}
+    &lt;&lt; &lt;-ch
+}</code></pre>
+<p><strong>Expected xu check --lib: pass.</strong></p>
+<p>A busy loop repeatedly taking <code>else</code> does not wait for work. Prefer a blocking select with a stop arm when waiting is the intended behavior. CPU-only work and blocking host calls also need an explicit progress/cancellation design; <code>xu</code> is not a universal non-blocking wrapper.</p>
+
+<h2 id="platforms">Native and browser WASM boundaries</h2>
+<table>
+<tr><th>Concern</th><th>Native SDK</th><th>This site's browser Playground</th></tr>
+<tr><td>Execution</td><td>Custom AOT backend; hosted runtime has OS worker threads and can run coroutines in parallel.</td><td>MIR interpreter inside WASM; tasks are scheduled cooperatively in a browser worker, without CPU parallelism between Xu tasks.</td></tr>
+<tr><td>Channel waits</td><td>Park waiting coroutines and wake them on communication or close.</td><td>Yield to other interpreted tasks; all tasks blocked produces a channel-deadlock diagnostic. Execution also has a step limit.</td></tr>
+<tr><td>Host operations</td><td>OS, network and native/FFI APIs depend on package and target support; an OS call can block a worker.</td><td>Browser sandbox and canvas UI subset; native files, sockets, C FFI and desktop UI are outside this runtime.</td></tr>
+<tr><td>What these examples prove</td><td>Checking and the listed outputs on Linux x64; no performance or scheduling-order guarantee.</td><td>Simple send/receive, close and non-blocking select examples also ran here; this is not evidence for arbitrary WASM hosts.</td></tr>
+</table>
+<p><strong>Confirmed browser limitation:</strong> the blocking multi-arm select in the cancellation example reports <code>unsupported playground builtin: 151</code> in this evaluator. That program is local-only; non-blocking <code>select</code> with <code>else</code> above works in the browser. Native I/O cancellation is a separate API/target concern.</p>
+<p><strong>To be verified:</strong> cross-platform native runs, CPU-parallel throughput, and cancellation of live native I/O are not covered by these examples. Native API helpers are marked local-only. See <a href="/en/playground">Playground</a> for sandbox limits and <a href="/en/docs/lang/memory">Memory</a> for lifetime and disposal rules.</p>

@@ -65,21 +65,28 @@ async function mount({blocks, en = false, available = true, supported = true, ui
   const pres = [];
   if (blocks) {
     const main = new Element('main');
-    for (const {source, api, local} of blocks) {
+    for (const {source, api, local, project, signature, codeClass = '', preClass = ''} of blocks) {
       const pre = new Element('pre');
       const code = new Element('code');
+      pre.className = preClass;
+      code.className = codeClass;
       code.textContent = source;
       pre.appendChild(code);
       pres.push(pre);
       // API pages already have wrappers; docs can contain plain pre elements.
-      if (api) {
+      if (api || signature || local || project) {
         const wrapper = new Element('div');
-        wrapper.className = 'code-block-wrapper' + (local ? ' xu-local-only' : '');
+        wrapper.className = 'code-block-wrapper' + (local ? ' xu-local-only' : '') + (project ? ' xu-project-example' : '');
         const header = new Element('div');
         header.className = 'code-block-header';
         wrapper.appendChild(header);
         wrapper.appendChild(pre);
-        main.appendChild(wrapper);
+        if (signature) {
+          const item = new Element('article');
+          item.className = 'api-item';
+          item.appendChild(wrapper);
+          main.appendChild(item);
+        } else main.appendChild(wrapper);
       } else main.appendChild(pre);
     }
   }
@@ -117,7 +124,7 @@ async function mount({blocks, en = false, available = true, supported = true, ui
     setTimeout(handler, delay) { const id = ++nextTimer; timers.set(id, {handler, delay}); return id; },
     clearTimeout(id) { timers.delete(id); }
   };
-  if (ui) context.window.XuPlayCanvas = {maxEvents: 64, render(canvas, commands) { canvas.commands = commands; return true; }};
+  if (ui) context.window.XuPlayCanvas = {maxEvents: 100000, render(canvas, commands) { canvas.commands = commands; return true; }};
   if (workspace) context.window.XuPlayWorkspace = workspace;
   if (blocks) vm.runInNewContext(readFileSync(new URL('../www/theme.js', import.meta.url), 'utf8'), context);
   vm.runInNewContext(readFileSync(new URL('../www/xu-play.js?v=fixture', import.meta.url), 'utf8'), context);
@@ -188,26 +195,74 @@ test('opening a different project stops old execution and ignores its late resul
   assert.equal(elements['xu-play-out'].textContent, 'new project');
 });
 
-test('Local SDK examples can be copied without offering browser execution', async () => {
-  const source = '@main\n#net/http\nfn main() { http.listen_and_serve("127.0.0.1:8080", ".") }';
-  const {pres, copied, workers} = await mount({blocks: [{source, api: true, local: true}]});
-  const wrapper = pres[0].parentNode;
-  assert.equal(wrapper.querySelector('.code-run-btn'), null);
-  assert.equal(wrapper.querySelector('.code-edit-btn'), null);
-  wrapper.querySelector('.code-copy-btn').click();
-  await new Promise(setImmediate);
-  assert.deepEqual(copied, [source]);
-  assert.deepEqual(workers, []);
-});
+for (const en of [false, true]) {
+  test('Local SDK examples show local steps and retain Copy (' + (en ? 'en' : 'zh') + ')', async () => {
+    const source = '@main\n#net/http\nfn main() { http.listen_and_serve("127.0.0.1:8080", ".") }';
+    const {pres, copied, workers} = await mount({en, blocks: [{source, api: true, local: true, codeClass: 'language-xu'}]});
+    const wrapper = pres[0].parentNode;
+    assert.equal(wrapper.querySelector('.code-run-btn'), null);
+    assert.equal(wrapper.querySelector('.code-edit-btn'), null);
+    const help = wrapper.querySelector('.code-local-help').innerHTML;
+    assert.match(help, /xu run main\.xu/);
+    assert.match(help, en ? /complete project.*dependencies/ : /完整工程及其依赖/);
+    wrapper.querySelector('.code-copy-btn').click();
+    await new Promise(setImmediate);
+    assert.deepEqual(copied, [source]);
+    assert.deepEqual(workers, []);
+  });
+
+  test('Signatures, declarations and incomplete snippets retain only Copy (' + (en ? 'en' : 'zh') + ')', async () => {
+    const blocks = [
+      {source: 'pub fn example(x int) int', signature: true},
+      {source: 'pub fn main() int', signature: true, codeClass: 'language-xu'},
+      {source: 'pub struct Value { n int }', signature: true},
+      {source: 'pub fn example(x int) int', api: true},
+      {source: 'fn main() int', codeClass: 'language-xu'},
+      {source: '@main\nfn main() int {\n    if true { << 0 }'},
+      {source: 'fn main() int { << 0 }\nfn helper() int {'},
+      {source: 'fn outer() {\nfn main() int { << 0 }\n}'},
+      {source: '@main'},
+      {source: 'fn helper() int { << 0 }'},
+      {source: 'println("a fragment")'},
+      {source: '#errors\nprintln("imported fragment")'},
+      {source: '// fn main() int { << 0 }\npub fn example(x int) int'},
+      {source: '/*\nfn main() int { << 0 }\n*/'},
+      {source: 'const source = `\nfn main() int { << 0 }\n`'},
+      {source: 'const source = "\nfn main() int { << 0 }\n"'},
+      {source: 'fn main() int { << 0 }', preClass: 'block-api'}
+    ];
+    const {pres, copied, workers} = await mount({en, blocks});
+    for (const [i, pre] of pres.entries()) {
+      const wrapper = pre.closest('.code-block-wrapper');
+      assert.equal(wrapper.querySelector('.code-run-btn'), null, blocks[i].source);
+      assert.equal(wrapper.querySelector('.code-edit-btn'), null, blocks[i].source);
+      wrapper.querySelector('.code-copy-btn').click();
+    }
+    await new Promise(setImmediate);
+    assert.deepEqual(copied, blocks.map(block => block.source));
+    assert.deepEqual(workers, []);
+    assert.ok(pres[0].closest('.code-block-wrapper').classList.contains('block-kind-api'));
+  });
+
+  test('Complete entry points tolerate comments, literals and nested blocks (' + (en ? 'en' : 'zh') + ')', async () => {
+    const source = '// fn main() is described here\nfn main() /* entry */ {\n    if true { println("}") }\n    /* { */\n}';
+    const {pres, workers} = await mount({en, blocks: [{source}]});
+    const wrapper = pres[0].closest('.code-block-wrapper');
+    wrapper.querySelector('.code-run-btn').click();
+    await new Promise(setImmediate);
+    assert.equal(workers[0].messages.at(-1).source, '@main\n\n' + source);
+  });
+}
 
 for (const en of [false, true]) {
   test(`Docs and API buttons render independent inline results (${en ? 'en' : 'zh'})`, async () => {
     const {pres, workers, fetches, context} = await mount({en, blocks: [
-      {source: 'println("inline")'},
+      {source: 'fn main() int { println("inline")\n    << 0\n}'},
       {source: 'fn main() int { << 3 }', api: true}
     ]});
     assert.equal(workers.length, 0, 'reading a page must not load WASM');
     const wrappers = pres.map(pre => pre.closest('.code-block-wrapper'));
+    assert.match(wrappers[0].querySelector('.code-block-header-title').innerHTML, en ? /WASM subset/ : /WASM 子集/);
     const buttons = wrappers.map(wrapper => wrapper.querySelector('.code-run-btn'));
     buttons[0].click();
     await new Promise(setImmediate);
@@ -266,7 +321,7 @@ test('Inline stop, timeout, and retry ignore late results', async () => {
 
 test('Unavailable WASM and unsupported browsers show inline feedback without starting workers', async () => {
   for (const options of [{available: false}, {supported: false}]) {
-    const {pres, workers} = await mount({...options, blocks: [{source: 'println(1)'}]});
+    const {pres, workers} = await mount({...options, blocks: [{source: 'fn main() int { println(1)\n    << 0\n}'}]});
     const wrapper = pres[0].closest('.code-block-wrapper');
     wrapper.querySelector('.code-run-btn').click();
     assert.match(wrapper.querySelector('.xu-play-out').textContent, options.available === false ? /暂未启用/ : /此浏览器不支持/);
@@ -283,6 +338,20 @@ test('Shell commands retain Copy without a Run action and show terminal controls
   assert.match(wrapper.querySelector('.code-copy-btn').innerHTML, /复制命令/);
   assert.equal(wrapper.querySelector('.code-run-btn'), null);
   assert.equal(wrapper.querySelector('.code-edit-btn'), null);
+});
+
+test('multi-file catalog previews keep Copy and use their full-project CTA for execution', async () => {
+  const catalog = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url), 'utf8'));
+  for (const en of [false, true]) {
+    const {pres, workers} = await mount({en, blocks: Object.values(catalog.projects['chan-workers'].files).map(source => ({source, project: true}))});
+    for (const pre of pres) {
+      const wrapper = pre.closest('.code-block-wrapper');
+      assert.ok(wrapper.querySelector('.code-copy-btn'));
+      assert.equal(wrapper.querySelector('.code-run-btn'), null);
+      assert.equal(wrapper.querySelector('.code-edit-btn'), null);
+    }
+    assert.equal(workers.length, 0);
+  }
 });
 
 test('CLI help blocks retain Copy without Run action and show help badge', async () => {
@@ -305,8 +374,8 @@ test('Browser HTMLCollection parent.children without indexOf does not throw', as
 for (const en of [false, true]) {
   test(`Editing docs and API code updates every run and copy (${en ? 'en' : 'zh'})`, async () => {
     const {pres, workers, copied} = await mount({en, blocks: [
-      {source: 'println("original docs")'},
-      {source: 'pub fn example(x int) int', api: true}
+      {source: 'fn main() int { println("original docs")\n    << 0\n}'},
+      {source: 'fn main() int { << 0 }', api: true}
     ]});
     const wrappers = pres.map(pre => pre.closest('.code-block-wrapper'));
     const edit = wrappers[0].querySelector('.code-edit-btn');
@@ -320,12 +389,12 @@ for (const en of [false, true]) {
     assert.equal(editor.focused, true);
     assert.equal(editor.hidden, false);
     assert.equal(pres[0].hidden, true);
-    assert.equal(editor.value, 'println("original docs")');
+    assert.equal(editor.value, 'fn main() int { println("original docs")\n    << 0\n}');
     assert.equal(edit.attributes['aria-pressed'], 'true');
     assert.match(edit.innerHTML, en ? /Done/ : /完成/);
-    editor.value = 'println("first edit")';
+    editor.value = 'fn main() int { println("first edit")\n    << 0\n}';
     run.click();
-    editor.value = 'println("second edit")';
+    editor.value = 'fn main() int { println("second edit")\n    << 0\n}';
     await new Promise(setImmediate);
     assert.match(workers[1].messages.at(-1).source, /first edit/);
     assert.doesNotMatch(workers[1].messages.at(-1).source, /second edit/);
@@ -338,36 +407,36 @@ for (const en of [false, true]) {
     workers[2].respond({type: 'result', exit: 0, stdout: 'second edit\n', stderr: ''});
     wrappers[0].querySelector('.code-copy-btn').click();
     await new Promise(setImmediate);
-    assert.deepEqual(copied, ['println("second edit")']);
+    assert.deepEqual(copied, ['fn main() int { println("second edit")\n    << 0\n}']);
     edit.click();
     assert.equal(editor.hidden, true);
     assert.equal(pres[0].hidden, false);
     assert.equal(pres[0].querySelector('code').textContent, editor.value);
     assert.equal(edit.attributes['aria-pressed'], 'false');
     edit.click();
-    assert.equal(editor.value, 'println("second edit")', 'reopening must preserve changes');
+    assert.equal(editor.value, 'fn main() int { println("second edit")\n    << 0\n}', 'reopening must preserve changes');
     assert.equal(wrappers[0].children.filter(child => child.className === 'code-block-editor').length, 1);
 
     wrappers[1].querySelector('.code-edit-btn').click();
     const apiEditor = wrappers[1].querySelector('.code-block-editor');
-    assert.equal(apiEditor.value, 'pub fn example(x int) int');
+    assert.equal(apiEditor.value, 'fn main() int { << 0 }');
     assert.notEqual(editor.id, apiEditor.id);
     apiEditor.value = '@main\nfn main() int {\n    println("edited API")\n    << 0\n}';
     wrappers[1].querySelector('.code-run-btn').click();
     await new Promise(setImmediate);
     assert.equal(workers[3].messages.at(-1).source, apiEditor.value);
-    assert.equal(editor.value, 'println("second edit")', 'editing API code must not change another block');
+    assert.equal(editor.value, 'fn main() int { println("second edit")\n    << 0\n}', 'editing API code must not change another block');
   });
 }
 
-test('Import snippets can be edited and keep imports outside the generated main function', async () => {
-  const {pres, workers} = await mount({blocks: [{source: '#errors\nprintln("imported")'}]});
+test('Complete programs keep imports and function definitions unchanged when adding @main', async () => {
+  const source = '#errors\nfn helper() string { << "imported" }\nfn main() int { println(helper())\n    << 0\n}';
+  const {pres, workers} = await mount({blocks: [{source}]});
   const wrapper = pres[0].closest('.code-block-wrapper');
   assert.ok(wrapper.querySelector('.code-edit-btn'));
   wrapper.querySelector('.code-run-btn').click();
   await new Promise(setImmediate);
-  assert.equal(workers[0].messages.at(-1).source,
-    '@main\n\n#errors\n\nfn main() int {\n    println("imported")\n    << 0\n}\n');
+  assert.equal(workers[0].messages.at(-1).source, '@main\n\n' + source);
 });
 
 test('Diagrams, C code, manifests, and outputs retain copy without run or edit buttons', async () => {

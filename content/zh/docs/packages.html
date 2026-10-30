@@ -2,7 +2,7 @@
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>官方扩展包 (Packages)</h1>
 <p class="banner">官方模块：<code>github.com/xulang-org/packages</code> · SDK 内模块版本 1.0.0 · 29 个服务集成包及共享 transport 包</p>
-<p>Xu {{xu_version}} SDK 包含外部驱动及原生源码资源，官网 API 从该安装包提取。驱动涵盖数据库、缓存、消息、对象存储与服务发现；协议和平台边界见各包说明。</p>
+<p>Xu {{xu_version}} SDK 包含外部驱动及原生源码资源，下方矩阵以该安装包为范围；API 页显示各自的包来源身份（当前为 1.0.2），与 SDK 内 1.0.0 清单不同，不能从较新 API 声明推断内置能力。驱动涵盖数据库、缓存、消息、对象存储与服务发现；协议和平台边界见各包说明。</p>
 <h2>1. 选择 SDK 内置包或固定源码提交</h2>
 <p>将项目放在解压后的 SDK 旁，通过本地来源声明内置 packages；安装位置不同时调整相对路径：</p>
 <pre><code class="language-xun">module: my_app
@@ -21,7 +21,7 @@ xu build main.xu -o my_app</code></pre>
 <h2>2. 在代码中引用扩展包</h2>
 <p>Xu 对所有外部扩展包采用<strong>明确的命名空间别名机制</strong>，语法格式为：<code>别名 #完整包路径</code>。这不仅避免了全局命名污染，也保证了所有代码依赖关系透明可见。</p>
 
-<pre><code class="language-xu">@main
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 
 // 1. 标准库无需别名，以 # 开头
 #database/sql
@@ -35,7 +35,7 @@ fn main() int {
     // 使用别名进行调用
     println("Drivers loaded successfully")
     << 0
-}</code></pre>
+}</code></pre></div>
 
 <p class="note"><strong>注意：</strong>不能写 <code>#mysql</code> 或 <code>#redis</code>。外部模块必须使用显式别名与完整模块路径。标准库与本地包（如 <code>#util</code>）各有解析规则。本文所列集成包属于 <code>github.com/xulang-org/packages</code>，其他外部模块使用各自的模块标识。</p>
 
@@ -43,7 +43,7 @@ fn main() int {
 
 <h3>实战 1：配合 <code>database/sql</code> 使用 MySQL 驱动</h3>
 <p>标准库 <code>database/sql</code> 提供连接池、事务与结果集抽象，具体的驱动实现由 packages 的 <code>mysql</code> 包提供：</p>
-<pre><code class="language-xu">@main
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 #database/sql
 mysql #github.com/xulang-org/packages/mysql
 
@@ -57,10 +57,10 @@ fn main() int {
     println("Connected to MySQL successfully!")
     db.close() or (err) { << 1 }
     << 0
-}</code></pre>
+}</code></pre></div>
 
 <h3>实战 2：连接与操作 Redis 缓存</h3>
-<pre><code class="language-xu">@main
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 redis #github.com/xulang-org/packages/redis
 
 fn main() int {
@@ -73,10 +73,10 @@ fn main() int {
     println("Key 'app_version': " + val)
     client.close()
     << 0
-}</code></pre>
+}</code></pre></div>
 
 <h3>实战 3：使用 S3 / MinIO 进行对象存储</h3>
-<pre><code class="language-xu">@main
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 s3 #github.com/xulang-org/packages/s3
 
 fn main() int {
@@ -87,13 +87,17 @@ fn main() int {
     }
     println("Object uploaded successfully")
     << 0
-}</code></pre>
+}</code></pre></div>
 
 <h2>4. 官方服务集成包速查表与导入代码</h2>
 <p>packages 仓库包含 29 个服务集成包及共享 transport 包。可直接复制下方对应的导入代码行置于源文件顶部：</p>
 
-<div class="doc-table-wrap">
-<table>
+<p id="matrix-scope">以下状态列来自所选 SDK 随附的 <code>packages/*.xu</code> 源码检查，包括 <code>client.xu</code>、认证文件、<code>tls.xu</code> 辅助接口与 <code>transport/mod.xu</code>。这是源码证据，不是服务互操作或平台验收结果。<strong>未知</strong>表示此处尚未证明该能力。</p>
+<p class="note"><strong>TLS 路径：</strong>HTTPS 业务请求使用共享 TLS 连接路径，旧的手工 fd 池仍为明文。<em>TLS 字节流辅助接口</em>仅提供 <code>tls_connect</code> / <code>tls_connect_config</code> 及原始读写，不能据此认定普通带认证客户端或连接池已接通 TLS；这种集成明确标为未知。SMTP STARTTLS 和 DNS-over-TLS 查询集成未知。默认 TLS 配置校验证书与主机名；此处没有逐服务实测这些源码路径。</p>
+<p><strong>平台：</strong>网络驱动依赖原生套接字，只能沿本机 SDK 路径运行，超出演练场浏览器子集。每行各系统 / 架构的验收均为未知。SQLite 需要匹配的 C 桥接切片，一站式链接仅支持 macOS ARM64 / x64，其他目标需外部链接。参见<a href="/download#platform-boundaries">下载平台边界</a>与<a href="/docs/status">状态说明</a>。</p>
+
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="集成支持矩阵">
+<table id="integration-matrix" class="package-matrix">
   <thead>
     <tr>
       <th>分类</th>
@@ -101,38 +105,43 @@ fn main() int {
       <th>适用服务</th>
       <th>源文件一键导入语句</th>
       <th>API 参考</th>
+      <th>协议范围</th>
+      <th>认证</th>
+      <th>TLS 路径</th>
+      <th>平台 / 验收</th>
     </tr>
   </thead>
   <tbody>
-    <tr><td>数据库</td><td><code>mysql</code></td><td>MySQL / MariaDB</td><td><code>mysql #github.com/xulang-org/packages/mysql</code></td><td><a href="/api/packages/mysql">API 文档</a></td></tr>
-    <tr><td>数据库</td><td><code>postgres</code></td><td>PostgreSQL</td><td><code>postgres #github.com/xulang-org/packages/postgres</code></td><td><a href="/api/packages/postgres">API 文档</a></td></tr>
-    <tr><td>数据库</td><td><code>sqlite</code></td><td>SQLite 嵌入式</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/api/packages/sqlite">API 文档</a></td></tr>
-    <tr><td>数据库</td><td><code>clickhouse</code></td><td>ClickHouse 列存</td><td><code>clickhouse #github.com/xulang-org/packages/clickhouse</code></td><td><a href="/api/packages/clickhouse">API 文档</a></td></tr>
-    <tr><td>数据库</td><td><code>mongodb</code></td><td>MongoDB 文档库</td><td><code>mongodb #github.com/xulang-org/packages/mongodb</code></td><td><a href="/api/packages/mongodb">API 文档</a></td></tr>
-    <tr><td>数据库</td><td><code>cassandra</code></td><td>Apache Cassandra</td><td><code>cassandra #github.com/xulang-org/packages/cassandra</code></td><td><a href="/api/packages/cassandra">API 文档</a></td></tr>
-    <tr><td>数据库</td><td><code>neo4j</code></td><td>Neo4j 图数据库</td><td><code>neo4j #github.com/xulang-org/packages/neo4j</code></td><td><a href="/api/packages/neo4j">API 文档</a></td></tr>
-    <tr><td>缓存</td><td><code>redis</code></td><td>Redis 高性能缓存</td><td><code>redis #github.com/xulang-org/packages/redis</code></td><td><a href="/api/packages/redis">API 文档</a></td></tr>
-    <tr><td>缓存</td><td><code>memcached</code></td><td>Memcached</td><td><code>memcached #github.com/xulang-org/packages/memcached</code></td><td><a href="/api/packages/memcached">API 文档</a></td></tr>
-    <tr><td>消息</td><td><code>kafka</code></td><td>Apache Kafka</td><td><code>kafka #github.com/xulang-org/packages/kafka</code></td><td><a href="/api/packages/kafka">API 文档</a></td></tr>
-    <tr><td>消息</td><td><code>rabbitmq</code></td><td>RabbitMQ / AMQP</td><td><code>rabbitmq #github.com/xulang-org/packages/rabbitmq</code></td><td><a href="/api/packages/rabbitmq">API 文档</a></td></tr>
-    <tr><td>消息</td><td><code>nats</code></td><td>NATS 高吞吐消息</td><td><code>nats #github.com/xulang-org/packages/nats</code></td><td><a href="/api/packages/nats">API 文档</a></td></tr>
-    <tr><td>消息</td><td><code>mqtt</code></td><td>MQTT 物联网协议</td><td><code>mqtt #github.com/xulang-org/packages/mqtt</code></td><td><a href="/api/packages/mqtt">API 文档</a></td></tr>
-    <tr><td>服务发现</td><td><code>etcd</code></td><td>etcd v3 分布式键值</td><td><code>etcd #github.com/xulang-org/packages/etcd</code></td><td><a href="/api/packages/etcd">API 文档</a></td></tr>
-    <tr><td>服务发现</td><td><code>consul</code></td><td>HashiCorp Consul</td><td><code>consul #github.com/xulang-org/packages/consul</code></td><td><a href="/api/packages/consul">API 文档</a></td></tr>
-    <tr><td>服务发现</td><td><code>zookeeper</code></td><td>Apache ZooKeeper</td><td><code>zookeeper #github.com/xulang-org/packages/zookeeper</code></td><td><a href="/api/packages/zookeeper">API 文档</a></td></tr>
-    <tr><td>服务发现</td><td><code>nacos</code></td><td>Alibaba Nacos</td><td><code>nacos #github.com/xulang-org/packages/nacos</code></td><td><a href="/api/packages/nacos">API 文档</a></td></tr>
-    <tr><td>检索</td><td><code>elasticsearch</code></td><td>Elasticsearch / OpenSearch</td><td><code>elasticsearch #github.com/xulang-org/packages/elasticsearch</code></td><td><a href="/api/packages/elasticsearch">API 文档</a></td></tr>
-    <tr><td>检索</td><td><code>meilisearch</code></td><td>Meilisearch 轻量搜索</td><td><code>meilisearch #github.com/xulang-org/packages/meilisearch</code></td><td><a href="/api/packages/meilisearch">API 文档</a></td></tr>
-    <tr><td>可观测</td><td><code>prometheus</code></td><td>Prometheus 指标采集</td><td><code>prometheus #github.com/xulang-org/packages/prometheus</code></td><td><a href="/api/packages/prometheus">API 文档</a></td></tr>
-    <tr><td>可观测</td><td><code>influxdb</code></td><td>InfluxDB 时序数据库</td><td><code>influxdb #github.com/xulang-org/packages/influxdb</code></td><td><a href="/api/packages/influxdb">API 文档</a></td></tr>
-    <tr><td>向量 AI</td><td><code>milvus</code></td><td>Milvus 向量检索</td><td><code>milvus #github.com/xulang-org/packages/milvus</code></td><td><a href="/api/packages/milvus">API 文档</a></td></tr>
-    <tr><td>向量 AI</td><td><code>qdrant</code></td><td>Qdrant 向量数据库</td><td><code>qdrant #github.com/xulang-org/packages/qdrant</code></td><td><a href="/api/packages/qdrant">API 文档</a></td></tr>
-    <tr><td>向量 AI</td><td><code>chroma</code></td><td>Chroma AI 嵌入数据库</td><td><code>chroma #github.com/xulang-org/packages/chroma</code></td><td><a href="/api/packages/chroma">API 文档</a></td></tr>
-    <tr><td>存储</td><td><code>s3</code></td><td>AWS S3 / MinIO 协议</td><td><code>s3 #github.com/xulang-org/packages/s3</code></td><td><a href="/api/packages/s3">API 文档</a></td></tr>
-    <tr><td>协议</td><td><code>grpc</code></td><td>gRPC / HTTP/2 客户端</td><td><code>grpc #github.com/xulang-org/packages/grpc</code></td><td><a href="/api/packages/grpc">API 文档</a></td></tr>
-    <tr><td>协议</td><td><code>websocket</code></td><td>WebSocket 双工通信</td><td><code>websocket #github.com/xulang-org/packages/websocket</code></td><td><a href="/api/packages/websocket">API 文档</a></td></tr>
-    <tr><td>协议</td><td><code>dns</code></td><td>DNS 自定义解析</td><td><code>dns #github.com/xulang-org/packages/dns</code></td><td><a href="/api/packages/dns">API 文档</a></td></tr>
-    <tr><td>协议</td><td><code>smtp</code></td><td>SMTP 邮件发送</td><td><code>smtp #github.com/xulang-org/packages/smtp</code></td><td><a href="/api/packages/smtp">API 文档</a></td></tr>
+    <tr data-package="mysql"><td>数据库</td><td><code>mysql</code></td><td>MySQL / MariaDB</td><td><code>mysql #github.com/xulang-org/packages/mysql</code></td><td><a href="/api/packages/mysql">API 文档</a></td><td>MySQL 文本协议</td><td>mysql_native_password；拒绝 caching_sha2_password</td><td>DSN TLS 升级，校验证书与主机名</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="postgres"><td>数据库</td><td><code>postgres</code></td><td>PostgreSQL</td><td><code>postgres #github.com/xulang-org/packages/postgres</code></td><td><a href="/api/packages/postgres">API 文档</a></td><td>PostgreSQL wire 3.0</td><td>Trust / 明文 / MD5 / SCRAM-SHA-256</td><td>SSLRequest 升级；require / verify-ca / verify-full</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="sqlite"><td>数据库</td><td><code>sqlite</code></td><td>SQLite 嵌入式</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/api/packages/sqlite">API 文档</a></td><td>嵌入式 SQLite C API</td><td>不适用（嵌入式）</td><td>不适用（无网络传输）</td><td>C 桥接；macOS 一站式链接；目标验收未知</td></tr>
+    <tr data-package="clickhouse"><td>数据库</td><td><code>clickhouse</code></td><td>ClickHouse 列存</td><td><code>clickhouse #github.com/xulang-org/packages/clickhouse</code></td><td><a href="/api/packages/clickhouse">API 文档</a></td><td>HTTP SQL 请求</td><td>X-ClickHouse-User / Key 请求头</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="mongodb"><td>数据库</td><td><code>mongodb</code></td><td>MongoDB 文档库</td><td><code>mongodb #github.com/xulang-org/packages/mongodb</code></td><td><a href="/api/packages/mongodb">API 文档</a></td><td>OP_MSG 子集；无压缩 / 拓扑发现</td><td>未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="cassandra"><td>数据库</td><td><code>cassandra</code></td><td>Apache Cassandra</td><td><code>cassandra #github.com/xulang-org/packages/cassandra</code></td><td><a href="/api/packages/cassandra">API 文档</a></td><td>CQL 二进制 v4；启动 / 查询</td><td>未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="neo4j"><td>数据库</td><td><code>neo4j</code></td><td>Neo4j 图数据库</td><td><code>neo4j #github.com/xulang-org/packages/neo4j</code></td><td><a href="/api/packages/neo4j">API 文档</a></td><td>HTTP Cypher 事务；未声明 Bolt</td><td>HTTP Basic</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="redis"><td>缓存</td><td><code>redis</code></td><td>Redis 高性能缓存</td><td><code>redis #github.com/xulang-org/packages/redis</code></td><td><a href="/api/packages/redis">API 文档</a></td><td>RESP2 与有界 RESP3 类型</td><td>密码 AUTH；ACL 用户名支持未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="memcached"><td>缓存</td><td><code>memcached</code></td><td>Memcached</td><td><code>memcached #github.com/xulang-org/packages/memcached</code></td><td><a href="/api/packages/memcached">API 文档</a></td><td>文本命令</td><td>未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="kafka"><td>消息</td><td><code>kafka</code></td><td>Apache Kafka</td><td><code>kafka #github.com/xulang-org/packages/kafka</code></td><td><a href="/api/packages/kafka">API 文档</a></td><td>Produce v3 / Fetch v4 子集；无压缩记录</td><td>未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="rabbitmq"><td>消息</td><td><code>rabbitmq</code></td><td>RabbitMQ / AMQP</td><td><code>rabbitmq #github.com/xulang-org/packages/rabbitmq</code></td><td><a href="/api/packages/rabbitmq">API 文档</a></td><td>AMQP 0-9-1 子集</td><td>SASL PLAIN</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="nats"><td>消息</td><td><code>nats</code></td><td>NATS 高吞吐消息</td><td><code>nats #github.com/xulang-org/packages/nats</code></td><td><a href="/api/packages/nats">API 文档</a></td><td>NATS 文本协议</td><td>用户名 / 密码 CONNECT</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="mqtt"><td>消息</td><td><code>mqtt</code></td><td>MQTT 物联网协议</td><td><code>mqtt #github.com/xulang-org/packages/mqtt</code></td><td><a href="/api/packages/mqtt">API 文档</a></td><td>MQTT 3.1.1；QoS 0 / 1</td><td>CONNECT 用户名 / 密码</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="etcd"><td>服务发现</td><td><code>etcd</code></td><td>etcd v3 分布式键值</td><td><code>etcd #github.com/xulang-org/packages/etcd</code></td><td><a href="/api/packages/etcd">API 文档</a></td><td>v3 HTTP/JSON 网关；非原生 gRPC</td><td>未知</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="consul"><td>服务发现</td><td><code>consul</code></td><td>HashiCorp Consul</td><td><code>consul #github.com/xulang-org/packages/consul</code></td><td><a href="/api/packages/consul">API 文档</a></td><td>HTTP API</td><td>X-Consul-Token 请求头</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="zookeeper"><td>服务发现</td><td><code>zookeeper</code></td><td>Apache ZooKeeper</td><td><code>zookeeper #github.com/xulang-org/packages/zookeeper</code></td><td><a href="/api/packages/zookeeper">API 文档</a></td><td>四字管理命令；非会话客户端</td><td>未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="nacos"><td>服务发现</td><td><code>nacos</code></td><td>Alibaba Nacos</td><td><code>nacos #github.com/xulang-org/packages/nacos</code></td><td><a href="/api/packages/nacos">API 文档</a></td><td>HTTP OpenAPI 子集</td><td>未知</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="elasticsearch"><td>检索</td><td><code>elasticsearch</code></td><td>Elasticsearch / OpenSearch</td><td><code>elasticsearch #github.com/xulang-org/packages/elasticsearch</code></td><td><a href="/api/packages/elasticsearch">API 文档</a></td><td>HTTP/JSON API 子集</td><td>未知</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="meilisearch"><td>检索</td><td><code>meilisearch</code></td><td>Meilisearch 轻量搜索</td><td><code>meilisearch #github.com/xulang-org/packages/meilisearch</code></td><td><a href="/api/packages/meilisearch">API 文档</a></td><td>HTTP/JSON；文档 ID 仅整数</td><td>Bearer API 密钥</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="prometheus"><td>可观测</td><td><code>prometheus</code></td><td>Prometheus 指标采集</td><td><code>prometheus #github.com/xulang-org/packages/prometheus</code></td><td><a href="/api/packages/prometheus">API 文档</a></td><td>文本指标 / HTTP Pushgateway</td><td>未知</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="influxdb"><td>可观测</td><td><code>influxdb</code></td><td>InfluxDB 时序数据库</td><td><code>influxdb #github.com/xulang-org/packages/influxdb</code></td><td><a href="/api/packages/influxdb">API 文档</a></td><td>HTTP API / line protocol</td><td>Authorization: Token</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="milvus"><td>向量 AI</td><td><code>milvus</code></td><td>Milvus 向量检索</td><td><code>milvus #github.com/xulang-org/packages/milvus</code></td><td><a href="/api/packages/milvus">API 文档</a></td><td>REST v2 检索；ID 仅整数</td><td>Bearer token 字段</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="qdrant"><td>向量 AI</td><td><code>qdrant</code></td><td>Qdrant 向量数据库</td><td><code>qdrant #github.com/xulang-org/packages/qdrant</code></td><td><a href="/api/packages/qdrant">API 文档</a></td><td>HTTP/JSON API 子集</td><td>api-key 请求头</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="chroma"><td>向量 AI</td><td><code>chroma</code></td><td>Chroma AI 嵌入数据库</td><td><code>chroma #github.com/xulang-org/packages/chroma</code></td><td><a href="/api/packages/chroma">API 文档</a></td><td>HTTP/JSON API 子集</td><td>未知</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="s3"><td>存储</td><td><code>s3</code></td><td>AWS S3 / MinIO 协议</td><td><code>s3 #github.com/xulang-org/packages/s3</code></td><td><a href="/api/packages/s3">API 文档</a></td><td>S3 HTTP 对象 API 子集</td><td>AWS SigV4</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="grpc"><td>协议</td><td><code>grpc</code></td><td>gRPC / HTTP/2 客户端</td><td><code>grpc #github.com/xulang-org/packages/grpc</code></td><td><a href="/api/packages/grpc">API 文档</a></td><td>HTTP/2 unary；无流式 / 压缩</td><td>未知</td><td>HTTPS unary + ALPN h2；fd 池为 h2c</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="websocket"><td>协议</td><td><code>websocket</code></td><td>WebSocket 双工通信</td><td><code>websocket #github.com/xulang-org/packages/websocket</code></td><td><a href="/api/packages/websocket">API 文档</a></td><td>HTTP Upgrade / WebSocket 帧</td><td>未知</td><td>wss 使用 connect_secure；须保留 transport.Conn</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="dns"><td>协议</td><td><code>dns</code></td><td>DNS 自定义解析</td><td><code>dns #github.com/xulang-org/packages/dns</code></td><td><a href="/api/packages/dns">API 文档</a></td><td>TCP DNS A 记录查询；非 UDP</td><td>未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="smtp"><td>协议</td><td><code>smtp</code></td><td>SMTP 邮件发送</td><td><code>smtp #github.com/xulang-org/packages/smtp</code></td><td><a href="/api/packages/smtp">API 文档</a></td><td>SMTP 邮件投递</td><td>AUTH LOGIN</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
+    <tr data-package="transport"><td>共享传输</td><td><code>transport</code></td><td>TCP / TLS / HTTP 分帧</td><td><code>transport #github.com/xulang-org/packages/transport</code></td><td><a href="/api/packages/transport">API 参考</a></td><td>TCP / TLS；HTTP/1.x 响应分帧</td><td>应用层认证未知</td><td>dial 使用 crypto/tls；可传 tls.Config</td><td>原生套接字；验收未知</td></tr>
   </tbody>
 </table>
 </div>

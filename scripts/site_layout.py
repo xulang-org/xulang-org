@@ -4,6 +4,7 @@ from html import escape
 from html.parser import HTMLParser
 import json
 from pathlib import Path
+import re
 from string import Template
 
 DOC_GROUPS = [
@@ -30,7 +31,7 @@ DOC_GROUPS = [
         ('vscode', 'VS Code', 'VS Code'), ('status', '限制与现状', 'Limitations'),
     ]),
 ]
-API_GROUPS = [
+_CURATED_API_GROUPS = [
     ('xi-api', 'API', 'API', ['']),
     ('xi-cpu', '核心', 'Core', 'errors fmt flag cmp context sync time runtime maps slices sort testing testing/fstest xacp'.split()),
     ('xi-file', '文本', 'Text', 'strings bytes strconv unicode regexp html'.split()),
@@ -44,6 +45,82 @@ API_GROUPS = [
         'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite websocket zookeeper'.split()]),
     ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/widgets ui/webview'.split()),
 ]
+
+
+def api_groups(root: Path | None = None) -> list[tuple[str, str, str, list[str]]]:
+    """Discover released API pages while preserving curated groups and order."""
+    api_root = (root or Path(__file__).resolve().parents[1]) / 'content/en/api'
+    on_disk = {
+        page.relative_to(api_root).with_suffix('').as_posix()
+        for page in api_root.rglob('*.html')
+        if page.name != 'index.html' and 'preview' not in page.relative_to(api_root).parts
+    }
+    groups = [
+        (icon, zh, en, [package for package in packages if not package or package in on_disk])
+        for icon, zh, en, packages in _CURATED_API_GROUPS
+    ]
+    namespaces = {
+        package.partition('/')[0]: index
+        for index, (_icon, _zh, _en, packages) in enumerate(_CURATED_API_GROUPS)
+        for package in packages if package
+    }
+    listed = {package for _icon, _zh, _en, packages in groups for package in packages}
+    other = []
+    for package in sorted(on_disk - listed):
+        index = namespaces.get(package.partition('/')[0])
+        (groups[index][3] if index is not None else other).append(package)
+    if other:
+        groups.append(('xi-package', '其他', 'Other', other))
+    return [group for group in groups if group[3]]
+
+
+API_GROUPS = api_groups()
+
+
+class PackageInventory(HTMLParser):
+    """The generated index lists packages; widget detail pages are not packages."""
+
+    def __init__(self, source: str):
+        super().__init__()
+        self.packages = set()
+        self.feed(source)
+
+    def handle_starttag(self, tag, attrs):
+        href = dict(attrs).get('href', '')
+        match = re.fullmatch(r'/(?:zh/)?api/([^#?]+)', href)
+        if tag == 'a' and match and not match[1].startswith('preview/'):
+            self.packages.add(match[1])
+
+
+def shared_content(root: Path) -> dict[str, dict[str, str]]:
+    """Expand bilingual pages from the generated inventory and release metadata."""
+    inventories = {}
+    for lang in ('en', 'zh'):
+        inventory = PackageInventory((root / f'content/{lang}/api/index.html').read_text()).packages
+        for package in inventory:
+            if not (root / f'content/{lang}/api/{package}.html').is_file():
+                raise ValueError(f'API inventory points to a missing package: {lang}/{package}')
+        inventories[lang] = inventory
+    if not inventories['en'] or inventories['en'] != inventories['zh']:
+        raise ValueError('API package inventories must be nonempty and match in EN/ZH')
+    external = sum(p.startswith('packages/') for p in inventories['en'])
+    releases = release_entries(root)
+    values = {}
+    for lang in ('en', 'zh'):
+        values[lang] = {
+            'api_standard_count': str(len(inventories[lang]) - external),
+            'api_external_count': str(external),
+            'release_notes': '\n'.join(
+                f'<h2 id="v{item["version"].replace(".", "-")}">{item["version"]} '
+                + ('release' if lang == 'en' else '正式版') + '</h2>\n' + item['notes'][lang]
+                for item in releases),
+            'release_blog_entries': '\n'.join('<li>' + item['blog_entry'][lang] + '</li>' for item in releases),
+        }
+    return values
+
+
+def release_entries(root: Path) -> list[dict]:
+    return json.loads((root / 'templates/releases.json').read_text(encoding='utf-8'))
 
 SOCIAL_PROFILES = [
     ('GitHub', 'xulang-org', 'https://github.com/xulang-org', 'github'),
@@ -106,24 +183,17 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
                     for c in catalog['components'] if c['group'] == category
                 ]))
     elif rest == '/api' or rest.startswith('/api/'):
-        for icon, zh, english, packages in API_GROUPS:
+        for icon, zh, english, packages in api_groups(root):
             groups.append((icon, english if en else zh, [
                 (prefix + '/api' + ('/' + package if package else ''),
-                 '#' + package.removeprefix('packages/') if package else 'Index')
+                 '#' + package.removeprefix('packages/') if package else ('Index' if en else '索引'))
                 for package in packages
             ]))
     elif rest == '/blog' or rest.startswith('/blog/'):
         groups.append(('xi-chat', 'Blog', [
             (prefix + '/blog', 'Index' if en else '博客索引'),
-            (prefix + '/blog/xu-0-10-12', 'Xu 0.10.12'),
-            (prefix + '/blog/xu-0-10-11', 'Xu 0.10.11'),
-            (prefix + '/blog/xu-0-10-7', 'Xu 0.10.7'),
-            (prefix + '/blog/xu-0-10-6', 'Xu 0.10.6'),
-            (prefix + '/blog/xu-0-10-5', 'Xu 0.10.5'),
-            (prefix + '/blog/xu-0-10-2', 'Xu 0.10.2'),
-            (prefix + '/blog/xu-0-10-1', 'Xu 0.10.1'),
-            (prefix + '/blog/xu-0-9-4', 'Xu 0.9.4'),
-            (prefix + '/blog/xu-0-9-3', 'Xu 0.9.3'),
+            *[(prefix + '/blog/xu-' + item['version'].replace('.', '-'), 'Xu ' + item['version'])
+              for item in release_entries(root or Path(__file__).resolve().parents[1])],
             (prefix + '/blog/xu-lsp-and-vscode', 'Xu LSP & vscode-xu' if en else 'Xu LSP 与 vscode-xu'),
             (prefix + '/blog/xu-0-8-13', 'Xu 0.8.13'),
             (prefix + '/blog/xu-0-8-12', 'Xu 0.8.12'),
@@ -271,9 +341,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
 
     if not bare_path:
         if en:
-            desc = f"Official portal for Xu v{xu_version} — rock-solid memory safety with zero runtime GC overhead, supersonic native AOT & WebAssembly compilation, user-space coroutines, and typed channels."
+            desc = "Xu systems programming language: zero GC, inferred ownership, borrow checking, deterministic cleanup, built-in coroutines, and custom native/WebAssembly AOT backends."
         else:
-            desc = f"Xu 编程语言官方网站 (v{xu_version}) — 坚若磐石、零 GC 运行时开销、超音速原生 AOT 与 WebAssembly 编译的系统级编程语言，具备确定性 RAII 所有权、轻量协程与类型安全通道。"
+            desc = "Xu 系统编程语言：零 GC、所有权推断、借用检查、确定性资源释放、内建协程及自研原生 / WebAssembly AOT 后端。"
     elif bare_path == 'benchmarks':
         if en:
             desc = "Cross-language runtime, CPU time, peak memory and binary-size measurements across Linux, macOS and Windows on ARM64 and x86-64. See the measured Xu version and source CI records."
@@ -291,9 +361,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
             desc = f"下载官方 Xu (v{xu_version}) 编译器 SDK 与工具链（macOS、Linux、Windows）。支持一键自动化安装脚本与原生二进制发行包。"
     elif bare_path.startswith('docs/faq'):
         if en:
-            desc = f"Frequently Asked Questions (FAQ) for Xu v{xu_version} — Custom native backend, zero-GC memory safety, LSP editor support, xu get vs xu install, native C modules, WebAssembly, and the XACP control channel."
+            desc = "Xu FAQ: ownership and borrow checking, shared-state synchronization, native/FFI safety boundaries, code generation targets, SDK availability, and runtime verification."
         else:
-            desc = f"Xu 编程语言 (v{xu_version}) 常见问题解答 (FAQ) — 自研原生后端、零 GC 内存安全、LSP 编辑器支持、xu get 与 xu install 依赖管理、xu native 原生 C 模块、WebAssembly 与 XACP 控制通道。"
+            desc = "Xu 常见问题：所有权与借用检查、共享状态同步、原生 / FFI 安全边界、代码发射目标、SDK 可下载范围与运行实测。"
     elif bare_path.startswith('docs/tutorial'):
         if en:
             desc = f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
@@ -309,9 +379,9 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
                 if en else f'Xu 开发预览 API：{title}。尚未发布，请使用页面标明的 SDK 版本与源码摘要。')
     elif bare_path == 'api/xacp':
         if en:
-            desc = f"Xu #xacp safety core from the 0.10.10-dev.1 language repository: sessions, hello, permissions, frame limits, and known ops. Transport is separate from the published v{xu_version} catalog."
+            desc = f"Xu v{xu_version} SDK #xacp safety core: sessions, permissions, XUN checks, and frame limits. Native transport and UI integration remain unverified."
         else:
-            desc = f"Xu #xacp 安全核心（语言仓库 0.10.10-dev.1）：会话、hello、权限、帧上限与已知操作。传输与已发布的 v{xu_version} 目录分开。"
+            desc = f"Xu v{xu_version} SDK 的 #xacp 安全核心：会话、权限、XUN 校验与帧上限。原生传输与 UI 集成仍待验。"
     elif bare_path.startswith('api'):
         if en:
             desc = f"Official API reference for {title} in the Xu v{xu_version} standard library and extended package ecosystem."
@@ -478,7 +548,9 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     return template.substitute(
         lang='en' if en else 'zh-CN', title=escape(title), home=home,
         home_title='Xu Home' if en else 'Xu 官网首页',
-        xu_version=escape(xu_version), nav=''.join(nav), main=main,
+        version_badge=('' if route in ('/', '/zh') else f'<span class="badge">v{escape(xu_version)}</span>'),
+        footer_identity='XU' if route in ('/', '/zh') else 'XU v' + escape(xu_version),
+        nav=''.join(nav), main=main,
         playground_assets=playground_assets,
         page_assets=('<link rel="stylesheet" href="/playground-design.css"><link rel="stylesheet" href="/widgets.css">'
                      if '/api/ui/widgets' in route else '') + ('<link rel="stylesheet" href="/playground.css">'
@@ -492,8 +564,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         other_lang=other, other_lang_code='zh-CN' if en else 'en',
         lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',
         theme_label='Switch theme' if en else '切换主题', ui_href=prefix + '/docs/ui',
-        footer_text=('<a href="/LICENSE">MIT License</a> · Zero GC · Supersonic AOT' if en
-                     else '<a href="/LICENSE">MIT 开源协议</a> · 坚若磐石 · 零 GC 内存安全 · 超音速 AOT'),
+        footer_text=('<a href="/LICENSE">MIT License</a> · Zero GC · Inferred Ownership · Custom AOT' if en
+                     else '<a href="/LICENSE">MIT 开源协议</a> · 零 GC · 所有权推断 · 自研 AOT'),
         header_social=social_links(en, compact=True), footer_social=social_links(en),
         social_label='Official accounts' if en else '官方帐号',
         menu_label='Navigation menu' if en else '导航菜单',

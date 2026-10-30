@@ -135,6 +135,16 @@ make clean                       # Remove dist/ and build/playground/
 
 Generated output goes to the ignored `dist/` and `build/` directories. Content fragments declare titles with `<!--title: ...-->` and render into directory routes such as `docs/start/index.html`.
 
+### Shared site metadata
+
+Status package counts come from the generated `content/{en,zh}/api/index.html` inventories. The builder checks that both inventories match and their package pages exist; widget detail pages and preview pages do not contribute to package counts. Refresh the API inventory with the generator when packages change.
+
+`templates/releases.json` supplies the bilingual release notes, recent release entries on the blog index, and release links in the blog sidebar. Add new releases there, alongside their bilingual blog posts. Earlier historical blog entries remain editorial content. Home banners, header and footer omit the SDK patch identity; download, documentation and API pages retain it. Structured software metadata still identifies the selected SDK accurately.
+
+Manual language selection stores `xu-lang=en` or `xu-lang=zh` in localStorage and a one-year SameSite=Lax cookie. LocalStorage is origin-wide; the cookie is scoped to the deployment base path. The language link also includes `?lang=en` or `?lang=zh`, so that visit works with storage blocked. A valid explicit query wins, followed by localStorage, then the cookie. Only the bare English homepage automatically selects Chinese, using the saved choice first and otherwise a Simplified Chinese browser locale. With all storage blocked, later visits without the query use the browser locale again.
+
+The sitemap deliberately omits `lastmod`. Checkout timestamps and API regeneration times do not establish editorial modification dates; an unchanged rebuild must not imply fresh content. Add dates only when a reliable per-page content history (including shared dependencies) is available.
+
 ### API content and examples
 
 LLM guides use `templates/llms/*.md`, shared site examples, `VERSION`, and `www/benchmarks.json`. The static build renders them with the selected SDK identity; run `python3 scripts/gen_llms.py` to refresh the checked-in `www/llms*.txt` copies.

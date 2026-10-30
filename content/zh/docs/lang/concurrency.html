@@ -1,13 +1,154 @@
 <!--title: 并发-->
-<p class='crumb'><a href='/docs/start'>文档</a> / 语言</p><h1>并发</h1>
-<pre><code>fn worker(id int, ch chan int) {
+<p class="crumb"><a href="/docs/start">文档</a> / 语言</p>
+<h1>并发</h1>
+<p><code>xu f(args)</code> 调度一个协程。调度决定哪个就绪任务可以推进；并行是多个任务同时在不同 CPU 线程上执行。启动协程本身既不保证执行顺序，也不承诺 CPU 并行。<code>xu.pkg.f</code> 是包限定调用，不是启动协程。</p>
+<p>下列代码块均使用官方 SDK v0.10.12 检查。每个块单独保存为一个 <code>.xu</code> 文件；完整程序用 <code>xu check</code>，仅含函数的示例用 <code>xu check --lib</code>。预期诊断均为实际输出的子串。完整程序也通过本机 <code>xu run</code>；浏览器运行使用下述 WASM 子集。</p>
+
+<h2 id="scheduling">调度与无缓冲会合</h2>
+<p>容量为零的信道要求发送方与接收方会合。对开放的空信道接收会等待；缓冲区满时发送也会等待。这些信道等待会让调度器推进其他就绪协程。应通过信道等待结果，再让 <code>main</code> 返回；启动并不代表任务已完成。</p>
+<pre id="worker-pass"><code class="language-xu">@main
+
+fn worker(id int, ch chan int) {
     ch &lt;- id * 10
 }
-
 fn main() int {
-    ch := chan int{cap: 1}
+    ch := chan int{cap: 0}
     xu worker(1, ch)
     println(&lt;-ch)
     &lt;&lt; 0
 }</code></pre>
-<p><code>xu f(args)</code> 启动协程。<code>xu.pkg.f</code> 用于包限定函数调用。Channel 转移所有权；不要把借用送进协程。已有缓冲/无缓冲、<code>close</code>、<code>select</code>。</p>
+<p><strong>预期 xu check：通过。</strong> <code>xu run</code> 输出（逐行）：<code>10</code>.</p>
+
+<h2 id="send-receive">发送与接收：转移 owned 数据，共享信道句柄</h2>
+<p><code>ch &lt;- value</code> 发送，<code>&lt;-ch</code> 接收。发送 owning 值会转移所有权；标量按值复制。信道句柄可以传给工作协程，调用方仍可使用它。引用（包括嵌套在容器内的引用）不能跨越 <code>xu</code> 或信道边界；这并不能保证外部代码中任意共享状态的安全。</p>
+<pre id="send-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan string{cap: 1}
+    text := &quot;owned&quot;
+    ch &lt;- text
+    println(&lt;-ch)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>预期 xu check：通过。</strong> <code>xu run</code> 输出（逐行）：<code>owned</code>.</p>
+<pre id="send-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    ch := chan string{cap: 1}
+    text := &quot;owned&quot;
+    ch &lt;- text
+    println(text)
+}</code></pre>
+<p><strong>预期 xu check --lib：失败，诊断包含</strong> <code>use of moved value &#x27;text&#x27;</code>.</p>
+<pre id="borrow-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn worker(value &amp;int) {}
+fn bad() {
+    value := 1
+    xu worker(&amp;value)
+}</code></pre>
+<p><strong>预期 xu check --lib：失败，诊断包含</strong> <code>xu argument cannot be a reference type (M17)</code>.</p>
+
+<h2 id="close">Close：先排空缓冲，再接收零值</h2>
+<p><code>close(ch)</code> 将信道标记为关闭，不会丢弃缓冲数据。下例的整数信道先返回排队的 <code>7</code>，随后不等待就返回 <code>0</code>。若零是合法数据，不应将它当作唯一结束标记；应定义应用层消息 / 完成协议。在所有发送结束后由唯一关闭方关闭，且只关闭一次。</p>
+<pre id="close-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan int{cap: 1}
+    ch &lt;- 7
+    close(ch)
+    println(&lt;-ch)
+    println(&lt;-ch)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>预期 xu check：通过。</strong> <code>xu run</code> 输出（逐行）：<code>7 / 0</code>.</p>
+<pre id="close-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    close(1)
+}</code></pre>
+<p><strong>预期 xu check --lib：失败，诊断包含</strong> <code>close requires a channel, found int</code>.</p>
+<p>向已关闭信道发送是运行时错误，并非静态所有权错误。此函数能通过检查；本机测试入口调用它时退出码为 <code>1</code>。浏览器解释器报告 <code>send on closed channel</code>。因此它有意不提供运行按钮。</p>
+<pre id="closed-send" class="xu-local-only"><code class="language-xu">@main
+
+fn wrong() {
+    ch := chan int{cap: 1}
+    close(ch)
+    ch &lt;- 1
+}</code></pre>
+<p><strong>预期 xu check --lib：通过。</strong></p>
+
+<h2 id="select">Select：等待就绪，或进行非阻塞探测</h2>
+<p>每个分支由发送或接收操作及其分支体构成。没有 <code>else</code> 时，select 等待某个操作就绪；带 <code>else</code> 时，若没有就绪操作，立即进入该分支：这是非阻塞就绪探测，不是超时。已关闭的空信道可立即接收并产生零值。多个分支同时就绪时，不应依赖分支顺序或公平性。</p>
+<pre id="select-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan int{cap: 1}
+    select {
+        ch &lt;- 7 { println(&quot;sent&quot;) }
+        else { println(&quot;full&quot;) }
+    }
+    select {
+        value := &lt;-ch { println(value) }
+        else { println(&quot;empty&quot;) }
+    }
+    select {
+        value := &lt;-ch { println(value) }
+        else { println(&quot;empty&quot;) }
+    }
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>预期 xu check：通过。</strong> <code>xu run</code> 输出（逐行）：<code>sent / 7 / empty</code>.</p>
+<p>Select 至少要有一个通信分支；只有 <code>else</code> 是无效的。</p>
+<pre id="select-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    select {
+        else { println(&quot;idle&quot;) }
+    }
+}</code></pre>
+<p><strong>预期 xu check --lib：失败，诊断包含</strong> <code>select requires at least one send/recv case</code>.</p>
+
+<h2 id="cancellation">取消与阻塞是两件事</h2>
+<p><strong>仅限本机 SDK。</strong> 取消需要任务协作观察信号。下例由调用方关闭专用 stop 信道；等待工作任务时，工作协程仍能观察停止信号，因为两个操作在同一个 select 中。独立的确认信道让调用方等待工作协程结束。示例没有发送工作任务，因此只有 stop 分支就绪。</p>
+<pre id="cancel-pass" class="xu-local-only"><code class="language-xu">@main
+
+fn worker(jobs chan int, stop chan int, done chan int) {
+    select {
+        signal := &lt;-stop { println(&quot;stopped&quot;) }
+        job := &lt;-jobs { println(job) }
+    }
+    done &lt;- 1
+}
+
+fn main() int {
+    jobs := chan int{cap: 0}
+    stop := chan int{cap: 0}
+    done := chan int{cap: 0}
+    xu worker(jobs, stop, done)
+    close(stop)
+    println(&lt;-done)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>预期 xu check：通过。</strong> <code>xu run</code> 输出（逐行）：<code>stopped / 1</code>.</p>
+<p>关闭 <code>stop</code> 不会强制中断另一个信道上的接收，也不会中断无关的阻塞 OS / FFI 调用。应把取消与正在等待的操作放进同一个 select，或使用该 API 明确提供的取消机制。取消退出与其他退出路径一样，须释放 owned 资源并显式 dispose 原生句柄。工作与取消同时就绪时，须允许工作分支胜出；取消没有优先保证。</p>
+<p>检查通过不代表一定能推进。下列函数没有发送方或关闭方，单独执行时接收无法完成；仅作为库片段检查，不执行。</p>
+<pre id="blocking" class="xu-local-only"><code class="language-xu">@main
+
+fn wait_without_sender() int {
+    ch := chan int{cap: 0}
+    &lt;&lt; &lt;-ch
+}</code></pre>
+<p><strong>预期 xu check --lib：通过。</strong></p>
+<p>在循环里反复进入 <code>else</code> 不会等待工作。若本意是等待，优先使用带 stop 分支的阻塞 select。纯 CPU 工作与阻塞宿主调用也需要明确设计推进与取消方式；<code>xu</code> 不是能把任何操作变成非阻塞的包装。</p>
+
+<h2 id="platforms">原生与浏览器 WASM 的边界</h2>
+<table>
+<tr><th>关注点</th><th>原生 SDK</th><th>本站浏览器 Playground</th></tr>
+<tr><td>执行方式</td><td>自研 AOT 后端；宿主运行时有 OS 工作线程，可并行运行协程。</td><td>WASM 中的 MIR 解释器；在浏览器 worker 中协作调度任务，Xu 任务之间没有 CPU 并行。</td></tr>
+<tr><td>信道等待</td><td>挂起等待协程，在通信或关闭时唤醒。</td><td>让出给其他解释执行的任务；所有任务均阻塞时产生信道死锁诊断，执行还受步数限制。</td></tr>
+<tr><td>宿主操作</td><td>OS、网络、原生 / FFI API 取决于包与目标支持；OS 调用可能阻塞一个工作线程。</td><td>浏览器沙箱与 canvas UI 子集；原生文件、socket、C FFI 与桌面 UI 不在此运行时范围内。</td></tr>
+<tr><td>示例验证范围</td><td>Linux x64 上的检查与所列输出；没有性能或调度顺序保证。</td><td>简单发送 / 接收、close 与非阻塞 select 示例也已在此运行；不能据此推断任意 WASM 宿主的能力。</td></tr>
+</table>
+<p><strong>已确认的浏览器限制：</strong> 取消示例中的多分支阻塞 select 在此解释器中报告 <code>unsupported playground builtin: 151</code>，因此该程序仅限本机；上面的带 <code>else</code> 非阻塞 <code>select</code> 可在浏览器运行。原生 I/O 取消另须考虑具体 API 与目标支持。</p>
+<p><strong>待验：</strong> 跨平台原生运行、CPU 并行吞吐量、真实原生 I/O 的取消不在这些示例的验证范围内。原生 API 辅助片段标为仅限本机。沙箱限制见<a href="/playground">演练场</a>；生命周期与 dispose 规则见<a href="/docs/lang/memory">内存模型</a>。</p>

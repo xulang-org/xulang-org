@@ -1,5 +1,5 @@
 // Host bridge only: Xu source is parsed, checked and interpreted inside WASM.
-export const MAX_UI_EVENTS = 64;
+export const MAX_UI_EVENTS = 100000;
 export async function createRuntime(bytesOrModule, {cache = true, checkpoints = true} = {}) {
   const module = (bytesOrModule instanceof WebAssembly.Module)
     ? bytesOrModule
@@ -29,7 +29,7 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
       const cached = cache && prepared?.source === source ? prepared : null;
       const input = cached ? null : encoder.encode(source);
       if (input && input.length > 128 * 1024) throw new Error('Source exceeds 128 KiB');
-      if (!Array.isArray(events) || events.length > MAX_UI_EVENTS) throw new Error('UI event limit exceeded (64)');
+      if (!Array.isArray(events) || events.length > MAX_UI_EVENTS) throw new Error('UI event limit exceeded (' + MAX_UI_EVENTS + ')');
       for (const event of events) {
         if (!event || !Number.isInteger(event.x ?? 0) || !Number.isInteger(event.y ?? 0) ||
             Math.abs(event.x ?? 0) > 100000 || Math.abs(event.y ?? 0) > 100000 ||
@@ -67,14 +67,17 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
       view.setBigInt64(1024, cached ? cached.stdoutLength : 0n, true);
       view.setBigInt64(1032, cached ? cached.stderrLength : 0n, true);
       for (const slot of [1048, 1056, 1072, 1080, 1088, 1112, 1120]) view.setBigInt64(slot, 0n, true);
-      view.setBigInt64(1064, BigInt(events.length), true);
-      events.forEach((event, index) => {
-        const values = [event.kind ?? 0, event.x ?? 0, event.y ?? 0, event.key ?? 0,
-          event.modifiers ?? 0, event.repeat ?? 0, event.button ?? 0, event.buttons ?? 0];
-        view.setFloat64(1000000 + index * 80 + 64, event.dx ?? 0, true);
-        view.setFloat64(1000000 + index * 80 + 72, event.dy ?? 0, true);
-        values.forEach((value, slot) => view.setBigInt64(1000000 + index * 80 + slot * 8, BigInt(value), true));
-      });
+      const writeBatch = (batch) => {
+        view.setBigInt64(1064, BigInt(batch.length), true);
+        batch.forEach((event, index) => {
+          const values = [event.kind ?? 0, event.x ?? 0, event.y ?? 0, event.key ?? 0,
+            event.modifiers ?? 0, event.repeat ?? 0, event.button ?? 0, event.buttons ?? 0];
+          view.setFloat64(1000000 + index * 80 + 64, event.dx ?? 0, true);
+          view.setFloat64(1000000 + index * 80 + 72, event.dy ?? 0, true);
+          values.forEach((value, slot) => view.setBigInt64(1000000 + index * 80 + slot * 8, BigInt(value), true));
+        });
+      };
+      if (!checkpoints || !prepared?.checkpoint) writeBatch(events);
       let exit;
       let trap;
       try {
@@ -97,25 +100,32 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
             timings.resumeHit = !!resume;
             timings.replayedEvents = events.length - (resume ? cp.eventCount : 0);
           }
+          const newEvents = resume ? events.slice(cp.eventCount) : events;
+          writeBatch(newEvents);
           if (resume) {
             new Uint8Array(memory, base, cp.arena.length).set(cp.arena);
             // Eval has three slice descriptors and four scalars: 13 descending
             // i64 slots at 146000. Keep in sync with runtime/interpreter.xu.
             new Uint8Array(memory, 146000 - 96, 104).set(cp.state);
             view.setBigInt64(1040, BigInt(base + cp.arena.length), true);
-            view.setBigInt64(1072, BigInt(cp.eventCount), true);
+            view.setBigInt64(1072, 0n, true);
+            view.setBigInt64(1112, 0n, true);
             for (const [slot, ptr, data] of cp.outputs) {
               new Uint8Array(memory, ptr, data.length).set(data);
               view.setBigInt64(slot, BigInt(data.length), true);
             }
-          } else exp.xu_start_frame(800, 146000);
+          } else {
+            view.setBigInt64(1072, 0n, true);
+            view.setBigInt64(1112, 0n, true);
+            exp.xu_start_frame(800, 146000);
+          }
           view.setBigInt64(792, 146000n, true);
           exp.xu_drive_frame(800, 768);
           prepared.checkpoint = undefined;
           if (view.getBigInt64(1120, true) !== 0n) {
             const end = Number(view.getBigInt64(1040, true));
             // Bounded extra host memory. Larger programs retain full replay.
-            if (end - base <= 8 * 1024 * 1024) {
+            if (end - base <= 200 * 1024 * 1024) {
               prepared.checkpoint = {
                 eventCount: events.length, key: JSON.stringify(events),
                 arena: new Uint8Array(memory, base, end - base).slice(),
