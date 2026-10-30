@@ -2455,7 +2455,7 @@ def refresh_examples(site: str, root: str, ref: str, xu_version: str,
     preserved = {entry['path']: entry for entry in previous['files']} if previous else {}
     selected = {value for value in paths if not projects or
                 any(Path(value).parent.is_relative_to(Path(project)) for project in projects)}
-    if projects and set(projects) - {str(Path(value).parent) for value in selected}:
+    if projects and {Path(project) for project in projects} - {Path(value).parent for value in selected}:
         raise ValueError('unknown example project in scoped refresh')
     # Read and validate all inputs before changing the checked-in snapshot.
     sources = []

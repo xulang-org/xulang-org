@@ -50,11 +50,28 @@
       var secret = slug === 'password-input';
       var el = input(stage, secret ? 'password' : area ? 'textarea' : 'text', secret ? t('示例密码（请勿输入真实密码）', 'Sample password (do not enter a real password)') : area ? t('项目说明', 'Project description') : t('项目名称', 'Project name'), secret ? 'Xu-demo-123' : 'Xu workspace');
       if (area) el.rows = 4;
-      el.addEventListener('input', function () { say(t('已输入 ', 'Characters: ') + Array.from(el.value).length); el.removeAttribute('aria-invalid'); });
-      if (secret) button(stage, t('显示 / 隐藏', 'Show / hide'), function () { el.type = el.type === 'password' ? 'text' : 'password'; });
+      var submitted = false, limit = area ? 400 : 40;
+      if (!secret) el.maxLength = limit;
+      function validate() {
+        var length = Array.from(el.value.trim()).length;
+        var valid = length > 0 && length <= limit;
+        el.setAttribute('aria-invalid', String(!valid));
+        if (!valid) say(length ? t('最多输入 ', 'Use at most ') + limit + t(' 个字符', ' characters') : t('请填写内容', 'Enter a value'));
+        return valid;
+      }
+      el.addEventListener('input', function () { if (submitted && !validate()) return; say(t('已输入 ', 'Characters: ') + Array.from(el.value).length); });
+      if (secret) {
+        el.id = 'widget-demo-password';
+        var reveal = button(stage, t('显示密码', 'Show password'), function () {
+          var shown = el.type === 'password'; el.type = shown ? 'text' : 'password';
+          reveal.setAttribute('aria-pressed', String(shown));
+        });
+        reveal.setAttribute('aria-pressed', 'false'); reveal.setAttribute('aria-controls', el.id);
+      }
       else {
         button(stage, t('清空', 'Clear'), function () { el.value = ''; el.dispatchEvent(new Event('input')); el.focus(); });
-        button(stage, t('保存', 'Save'), function () { var valid = !!el.value.trim(); el.setAttribute('aria-invalid', String(!valid)); say(valid ? t('已保存', 'Saved') : t('请填写内容', 'Enter a value')); });
+        el.setAttribute('aria-describedby', status.id);
+        button(stage, t('保存', 'Save'), function () { submitted = true; if (validate()) say(t('已保存', 'Saved')); else el.focus(); });
       }
     } else if (['checkbox', 'switch', 'radio', 'radio-group', 'multi-select', 'button-group'].includes(slug)) {
       var radio = slug === 'radio' || slug === 'radio-group';
@@ -117,7 +134,10 @@
       button(stage, t('打开确认框', 'Open confirmation'), function () {
         if (modal) return;
         modal = node('dialog', undefined, 'widget-demo-dialog'); var opener = document.activeElement;
-        modal.appendChild(node('h3', t('应用更改？', 'Apply changes?'))); modal.appendChild(node('p', t('这只是组件体验，不会保存实际数据。', 'This experience does not save real data.')));
+        var title = node('h3', t('应用更改？', 'Apply changes?')); title.id = 'widget-dialog-title';
+        var description = node('p', t('这只是组件体验，不会保存实际数据。', 'This experience does not save real data.')); description.id = 'widget-dialog-description';
+        modal.setAttribute('aria-labelledby', title.id); modal.setAttribute('aria-describedby', description.id);
+        modal.appendChild(title); modal.appendChild(description);
         function close(value) { modal.close(); modal.remove(); modal = null; say(value); opener.focus(); }
         button(modal, t('取消', 'Cancel'), function () { close(t('已取消', 'Cancelled')); }); button(modal, t('确认', 'Confirm'), function () { close(t('已确认', 'Confirmed')); });
         modal.addEventListener('cancel', function (event) { event.preventDefault(); close(t('已取消', 'Cancelled')); }); document.body.appendChild(modal); modal.showModal();
@@ -132,15 +152,34 @@
       if (slug === 'context-menu') stage.addEventListener('contextmenu', function (event) { event.preventDefault(); panel.hidden = false; opener.setAttribute('aria-expanded', 'true'); panel.querySelector('button').focus(); });
     } else if (slug === 'tooltip') {
       var tip = node('span', t('更改项目的显示名称', 'Change the displayed project name'), 'widget-demo-tip'); tip.id = 'widget-tip'; tip.setAttribute('role', 'tooltip'); tip.hidden = true;
-      var help = button(stage, t('项目名称 ⓘ', 'Project name ⓘ'), function () { tip.hidden = !tip.hidden; }); help.setAttribute('aria-describedby', tip.id);
-      help.addEventListener('mouseenter', function () { timer = setTimeout(function () { tip.hidden = false; }, 500); }); help.addEventListener('mouseleave', function () { clearTimeout(timer); tip.hidden = true; }); help.addEventListener('focus', function () { tip.hidden = false; }); help.addEventListener('blur', function () { tip.hidden = true; }); help.addEventListener('keydown', function (event) { if (event.key === 'Escape') tip.hidden = true; }); stage.appendChild(tip);
+      var tipFocused = false, tipHovered = false;
+      function showTip() { clearTimeout(timer); tip.hidden = false; }
+      function hideTip() { clearTimeout(timer); tip.hidden = true; }
+      var help = button(stage, t('项目名称 ⓘ', 'Project name ⓘ'), showTip); help.setAttribute('aria-describedby', tip.id);
+      help.addEventListener('mouseenter', function () { tipHovered = true; clearTimeout(timer); timer = setTimeout(showTip, 500); });
+      help.addEventListener('mouseleave', function () { tipHovered = false; clearTimeout(timer); if (!tipFocused) timer = setTimeout(hideTip, 100); });
+      help.addEventListener('focus', function () { tipFocused = true; showTip(); });
+      help.addEventListener('blur', function () { tipFocused = false; if (!tipHovered) hideTip(); });
+      stage.addEventListener('keydown', function (event) { if (event.key === 'Escape') hideTip(); });
+      tip.addEventListener('mouseenter', function () { clearTimeout(timer); });
+      tip.addEventListener('mouseleave', function () { if (!tipFocused && !tipHovered) hideTip(); }); stage.appendChild(tip);
     } else if (slug === 'toast-host') {
       var region = node('div', undefined, 'widget-demo-toast'); region.hidden = true; region.setAttribute('role', 'status');
-      button(stage, t('显示通知', 'Show notification'), function () { region.textContent = ''; region.appendChild(node('span', t('工作区已保存', 'Workspace saved'))); button(region, t('关闭', 'Dismiss'), function () { region.hidden = true; }); region.hidden = false; clearTimeout(timer); timer = setTimeout(function () { region.hidden = true; }, 5000); }); stage.appendChild(region);
+      function dismissToast() { var restore = region.contains(document.activeElement); region.hidden = true; if (restore) toastTrigger.focus(); }
+      var toastTrigger = button(stage, t('显示通知', 'Show notification'), function () { region.textContent = ''; region.appendChild(node('span', t('工作区已保存', 'Workspace saved'))); button(region, t('关闭', 'Dismiss'), dismissToast); region.hidden = false; clearTimeout(timer); timer = setTimeout(dismissToast, 5000); }); stage.appendChild(region);
     } else if (slug === 'task-button' || slug === 'spinner') {
       var active = false, trigger;
       var spinner = node('span', undefined, 'widget-demo-spinner'); spinner.hidden = true; spinner.setAttribute('aria-hidden', 'true'); stage.appendChild(spinner);
-      trigger = button(stage, t('开始', 'Start'), function () { if (active) { active = false; clearTimeout(timer); spinner.hidden = true; trigger.textContent = t('开始', 'Start'); say(t('已暂停', 'Paused')); return; } active = true; spinner.hidden = false; trigger.textContent = t('暂停', 'Pause'); say(t('进行中…', 'In progress…')); timer = setTimeout(function () { active = false; spinner.hidden = true; trigger.textContent = t('再次开始', 'Run again'); say(t('已完成', 'Complete')); }, 1800); });
+      stage.setAttribute('aria-busy', 'false');
+      function taskState(busy, label, message) {
+        active = busy; spinner.hidden = !busy; stage.setAttribute('aria-busy', String(busy));
+        trigger.textContent = label; say(message);
+      }
+      trigger = button(stage, t('开始', 'Start'), function () {
+        if (active) { clearTimeout(timer); taskState(false, t('开始', 'Start'), t('已暂停', 'Paused')); return; }
+        taskState(true, t('暂停', 'Pause'), t('进行中…', 'In progress…'));
+        timer = setTimeout(function () { taskState(false, t('再次开始', 'Run again'), t('已完成', 'Complete')); }, 1800);
+      });
     } else if (slug === 'badge') {
       var count = 3, badge = node('span', String(count), 'widget-demo-badge'); stage.appendChild(node('span', t('收件箱 ', 'Inbox '))); stage.appendChild(badge); button(stage, '+1', function () { badge.textContent = String(++count); say(String(count)); }); button(stage, t('清零', 'Clear'), function () { count = 0; badge.textContent = '0'; say('0'); });
     } else if (slug === 'card') {
@@ -152,30 +191,35 @@
     } else {
       var count = 0;
       var el = button(stage, slug === 'icon-button' ? '☆' : t('保存更改', 'Save changes'), function () { say(t('已完成操作 ', 'Action completed: ') + (++count)); if (slug === 'icon-button') { el.textContent = count % 2 ? '★' : '☆'; el.setAttribute('aria-pressed', String(!!(count % 2))); } });
-      if (slug === 'icon-button') el.setAttribute('aria-label', t('切换收藏', 'Toggle favorite'));
+      if (slug === 'icon-button') { el.setAttribute('aria-label', t('切换收藏', 'Toggle favorite')); el.setAttribute('aria-pressed', 'false'); el.classList.add('widget-demo-icon-button'); }
       var disabled = input(stage, 'checkbox', t('禁用', 'Disabled')); disabled.addEventListener('change', function () { el.disabled = disabled.checked; });
     }
   }
-  function show(c) {
+  function show(c, moveFocus) {
     stop(); current = c;
     var workspace = document.getElementById('xu-play-workspace');
-    if (workspace) workspace.hidden = !c.project && new URL(location.href).searchParams.has('widget');
+    var browsing = new URL(location.href).searchParams.has('widget');
+    if (workspace) workspace.hidden = browsing;
+    var projectHelp = document.getElementById('xu-play-help');
+    if (projectHelp) projectHelp.hidden = browsing;
     detail.textContent = '';
     detail.appendChild(node('p', c.project ? 'Xu / WASM' : t('交互预览 · 不执行 Xu', 'Interactive preview · does not execute Xu'), 'widget-preview-kind'));
-    detail.appendChild(node('h3', c.name)); detail.appendChild(node('p', c.exercise[lang]));
+    var heading = node('h3', c.name); heading.tabIndex = -1;
+    detail.appendChild(heading); detail.appendChild(node('p', c.exercise[lang]));
     if (c.project) {
       var run = node('a', t('打开 Xu 运行示例 ↗', 'Open the Xu example ↗'), 'btn pri'); var target = url('playground/'); target.searchParams.set('example', c.project); target.hash = 'xu-play-workspace'; run.href = target.href; detail.appendChild(run);
     } else {
-      var stage = node('div', undefined, 'widget-demo-stage'); var status = node('p', t('等待操作', 'Ready to try'), 'widget-demo-status'); status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); detail.appendChild(stage); detail.appendChild(status); draw(c, stage, status);
+      var stage = node('div', undefined, 'widget-demo-stage'); var status = node('p', t('等待操作', 'Ready to try'), 'widget-demo-status'); status.id = 'widget-demo-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); detail.appendChild(stage); detail.appendChild(status); draw(c, stage, status);
     }
     var docs = node('a', t('查看组件 API →', 'Read component API →'), 'widget-doc-link'); docs.href = url('api/ui/widgets/' + c.slug + '/').href; detail.appendChild(docs);
     Array.from(list.children).forEach(function (el) { el.setAttribute('aria-current', String(el.dataset.widget === c.slug)); });
+    if (moveFocus) heading.focus();
   }
   function renderList() {
     list.textContent = '';
     var query = search.value.trim().toLowerCase();
     catalog.components.filter(function (c) { return (!category.value || c.group === category.value) && (c.name + ' ' + c.description.zh + ' ' + c.description.en).toLowerCase().includes(query); }).forEach(function (c) {
-      var el = button(list, c.name, function () { var address = new URL(location.href); address.searchParams.delete('example'); address.searchParams.set('widget', c.slug); address.hash = 'widget-experience'; history.replaceState(null, '', address); show(c); }); el.dataset.widget = c.slug; el.setAttribute('aria-current', String(current && current.slug === c.slug));
+      var el = button(list, c.name, function () { var address = new URL(location.href); address.searchParams.delete('example'); address.searchParams.set('widget', c.slug); address.hash = 'widget-experience'; history.replaceState(null, '', address); show(c, true); }); el.dataset.widget = c.slug; el.setAttribute('aria-current', String(current && current.slug === c.slug));
     });
     root.querySelector('[data-widget-count]').textContent = list.children.length + t(' 个组件', ' components');
     if (!list.children.length) list.appendChild(node('p', t('没有匹配的组件，请更换关键词。', 'No matching components. Try another search.')));

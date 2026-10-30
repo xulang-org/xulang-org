@@ -2821,6 +2821,25 @@ pub const BADGE_COUNT = 1
 pub const BADGE_DOT = 2
 
 // Upstream: src/ui/widgets/styled_controls.xu
+pub fn (button &Button) visual_state() int {
+    $state := 0
+    if button.invalid { state = state | STATE_INVALID }
+    if button.selected { state = state | STATE_SELECTED }
+    if button.read_only { state = state | STATE_READ_ONLY }
+    if !button.is_enabled() { state = state | STATE_DISABLED }
+    if button.hovered { state = state | STATE_HOVERED }
+    if !button.read_only && ((button.pointer_armed && button.hovered) || button.keyboard_armed != 0) { state = state | STATE_PRESSED }
+    if button.focused { state = state | STATE_FOCUSED }
+    << state
+}
+
+// Upstream: src/ui/widgets/styled_controls.xu
+pub fn (button &Button) style_or(styles &Styles) ControlStyle {
+    if button.custom.active { << unpack_scalar_style(&button.custom) }
+    << styles.button.clone()
+}
+
+// Upstream: src/ui/widgets/styled_controls.xu
 pub fn (button &Button) is_invalid() bool { << button.invalid }
 
 // Upstream: src/ui/widgets/styled_controls.xu
@@ -2843,6 +2862,25 @@ pub fn (button $&Button) set_read_only(read_only bool) {
         button.keyboard_armed = 0
         button.dirty = true
     }
+}
+
+// Upstream: src/ui/widgets/styled_controls.xu
+pub fn (button &Button) paint_styled(frame $&draw.Frame,label $&StyledLabel,styles &Styles) int {
+    c := button.style_or(styles)
+    _ := label.measure_styled(styles,&c) or >>
+    state := button.visual_state()
+    style_box(frame,&button.bounds,&c,styles.density,state) or >>
+    shaped := label.layouts[0]
+    b := button.bounds
+    left := c.padding.left * styles.density
+    top := c.padding.top * styles.density
+    width := math.max(0.0,b.width - left - c.padding.right * styles.density)
+    height := math.max(0.0,b.height - top - c.padding.bottom * styles.density)
+    frame.push() or >>
+    frame.clip_rect(b.x + left,b.y + top,width,height) or >>
+    frame.text_layout(&shaped,b.x + left + (width - shaped.metrics.width) * c.align_x,b.y + top + (height - shaped.metrics.height) * c.align_y,c.resolve(state).foreground) or >>
+    frame.pop() or >>
+    << 0
 }
 
 // Upstream: src/ui/widgets/styled_controls.xu

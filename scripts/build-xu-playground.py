@@ -49,7 +49,7 @@ def build(root: Path, xu: Path, compiler: Path):
     for name, source in [('runtime', 'src/runtime/str_algo.xu'), ('errors', 'src/errors/mod.xu')]:
         embedded += f'fn playground_std_{name}() string {{\n    << ' + xu_literal((xu / source).read_text(encoding='utf-8')) + '\n}\n\n'
     embedded += 'fn playground_std_maps() string {\n    << ' + xu_literal((xu / 'src/runtime/map_algo.xu').read_text(encoding='utf-8')) + '\n}\n\n'
-    for name in ('draw', 'browser', 'frame', 'text_input', 'clock', 'desktop_draw_types', 'desktop_ui', 'desktop_math', 'desktop_time', 'desktop_layout', 'desktop_utf8', 'desktop_codec', 'desktop_widgets'):
+    for name in ('draw', 'browser', 'design', 'frame', 'text_input', 'clock', 'desktop_draw_types', 'desktop_ui', 'desktop_math', 'desktop_time', 'desktop_layout', 'desktop_utf8', 'desktop_codec', 'desktop_widgets'):
         source = root / 'playground/stdlib' / (name + '.xu')
         embedded += f'fn playground_std_{name}() string {{\n    << ' + xu_literal(source.read_text(encoding='utf-8')) + '\n}\n\n'
     selection = json.loads((root / 'playground/stdlib/desktop-sources.json').read_text(encoding='utf-8'))
