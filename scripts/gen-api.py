@@ -18,6 +18,10 @@ import sys
 from dataclasses import dataclass, field
 from typing import Optional, Sequence
 
+# Also support importlib-based callers outside the scripts directory.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from site_layout import api_sections, widget_catalog
+
 FOREIGN_RE = re.compile(
     r"\b[Gg]olang\b|\b[Gg]o(?:'s)?\b|\bRust\b|\brustc\b|\bVlang\b|"
     r"与 V 一致|像 V 一样|Go 源码树|Go stdlib|非 Go|"
@@ -2727,14 +2731,16 @@ def render_page(pkg: Package, lang: str, xu_version: str = "", overview: str = "
     return "\n".join(body)
 
 
-def render_index(packages: list[Package], lang: str, xu_version: str, examples: Optional[dict[str, list[Example]]] = None, preview_digest: str = "") -> str:
+def render_index(packages: list[Package], lang: str, xu_version: str, examples: Optional[dict[str, list[Example]]] = None, preview_digest: str = "", root: Optional[Path] = None) -> str:
     examples = examples or {}
     prefix = "" if lang == "en" else "/zh"
-    standard = [p for p in packages if not p.module]
-    external = [p for p in packages if p.module]
+    root = root or Path(__file__).resolve().parents[1]
+    ui = [p for p in packages if p.path == 'ui' or p.path.startswith('ui/')]
+    external = [p for p in packages if p.path.startswith('packages/')]
+    standard = [p for p in packages if p.path != 'ui' and not p.path.startswith(('ui/', 'packages/'))]
     title = ("开发预览 API" if lang == "zh" else "Development preview API") if preview_digest else ("API 索引" if lang == "zh" else "API index")
-    intro = (f"Xu {{{{xu_version}}}}：{len(standard)} 个标准库与 UI 包、{len(external)} 个扩展包。"
-             if lang == "zh" else f"Xu {{{{xu_version}}}}: {len(standard)} standard-library and UI packages, {len(external)} external packages.")
+    intro = (f"Xu {{{{xu_version}}}}：{len(standard)} 个标准库包、{len(ui)} 个 UI 包、{len(external)} 个扩展包。"
+             if lang == "zh" else f"Xu {{{{xu_version}}}}: {len(standard)} standard-library packages, {len(ui)} UI packages, {len(external)} extensions.")
     body = [f"<!--title: {title}-->", f"<!--xu-api-version: {esc(xu_version)}-->", f"<h1>{title}</h1>", f'<p class="banner">{esc(intro)}</p>',
             ('<p>声明与统计从当前源码生成，仅包含公开 API；具体支持范围见各包说明。</p>'
              if lang == "zh" else '<p>Declarations and counts are generated from current sources and include public API only. See each package for its supported scope.</p>'),
@@ -2746,39 +2752,55 @@ def render_index(packages: list[Package], lang: str, xu_version: str, examples: 
         body.extend([f'<!--xu-api-channel: preview-->\n<!--xu-api-source-sha256: {preview_digest}-->',
                      '<p>' + ('从当前开发源码生成，可能含未提交修改。源码摘要 SHA-256：' if lang == 'zh' else 'Generated from development sources, which may include uncommitted changes. Source SHA-256: ') + f'<code>{preview_digest}</code></p>',
                      f'<p><a href="{prefix}/docs/ui">UI / WebView</a></p>'])
-    groups: dict[str, list[Package]] = {}
-    for pkg in standard:
-        group = ('UI' if pkg.path == 'ui' or pkg.path.startswith('ui/') else
-                 pkg.path.split("/", 1)[0] if "/" in pkg.path else ("核心" if lang == "zh" else "Core"))
-        groups.setdefault(group, []).append(pkg)
-    if external:
-        groups["扩展包" if lang == "zh" else "External packages"] = external
-    for group, members in groups.items():
-        body.extend([f"<h2>{esc(group)}</h2>", "<ul>"])
-        for pkg in members:
-            count = len(pkg.items)
-            label = pkg.import_path.split("#", 1)[1]
-            body.append(f'<li><a href="{prefix}{api_root}/{esc(pkg.path)}"><code>#{esc(label)}</code></a> — {count} '
-                        + ("项公开声明" if lang == "zh" else "public declarations")
-                        + (f' · <a href="{prefix}/api/{esc(pkg.path)}#examples">' + ('示例' if lang == 'zh' else 'Examples') + '</a>' if examples.get(pkg.path) else '') + "</li>")
-        body.append("</ul>")
-    if not preview_digest and not any(pkg.path == "xacp" for pkg in packages):
-        if lang == "zh":
-            body.extend([
-                "<h2>xacp</h2>",
-                '<p>由语言仓库 0.10.10-dev.1（<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>）维护，不计入上方已生成的 {{xu_version}} 包数量。</p>',
-                "<ul>",
-                f'<li><a href="{prefix}/api/xacp"><code>#xacp</code></a> — 与传输无关的安全核心；stdio 与本机回环 TCP 是运行时钩子</li>',
-                "</ul>",
-            ])
-        else:
-            body.extend([
-                "<h2>xacp</h2>",
-                '<p>Maintained from the language repository at 0.10.10-dev.1 (<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>), outside the generated {{xu_version}} package count above.</p>',
-                "<ul>",
-                f'<li><a href="{prefix}/api/xacp"><code>#xacp</code></a> — transport-neutral safety core; stdio and loopback TCP are runtime hooks</li>',
-                "</ul>",
-            ])
+    tree = api_sections((p.path for p in packages), root)
+    by_path = {p.path: p for p in packages}
+    body.append('<nav class="api-section-nav" aria-label="' + ('API 分类' if lang == 'zh' else 'API sections') + '">')
+    for key, _icon, zh, en, topics in tree:
+        count = sum(len(members) for _i, _z, _e, members in topics)
+        body.append(f'<a href="#api-{key}">{esc(zh if lang == "zh" else en)} <span>{count}</span></a>')
+    body.append('</nav>')
+    descriptions = {
+        'standard-library': ('按主题浏览语言随附的包。', 'Browse the packages shipped with the language by topic.'),
+        'ui': ('窗口、绘图、布局、控件与 WebView；控件目录按用途分类。', 'Windows, drawing, layout, widgets and WebView, with a widget catalog organized by use.'),
+        'extensions': ('packages/*：数据库驱动、消息队列、存储与服务集成。', 'packages/*: database drivers, messaging, storage and service integrations.'),
+    }
+    for key, _icon, zh, en, topics in tree:
+        heading = zh if lang == 'zh' else en
+        body.extend([f'<section class="api-section" id="api-{key}" aria-labelledby="api-{key}-heading">',
+                     f'<h2 id="api-{key}-heading">{esc(heading)}</h2>',
+                     '<p>' + descriptions[key][lang == 'en'] + '</p>'])
+        for _i, topic_zh, topic_en, members in topics:
+            topic = topic_zh if lang == 'zh' else topic_en
+            opened = ' open' if key != 'standard-library' else ''
+            body.extend([f'<details class="api-topic"{opened}><summary>{esc(topic)} <span class="api-topic-count">{len(members)}</span></summary>',
+                         '<ul class="api-package-list">'])
+            for path in members:
+                pkg = by_path[path]
+                label = path if path.startswith('packages/') else '#' + pkg.import_path.split('#', 1)[1]
+                body.append(f'<li><a href="{prefix}{api_root}/{esc(path)}"><code>{esc(label)}</code></a>'
+                            f'<span class="api-package-meta">{len(pkg.items)} '
+                            + ('项公开声明' if lang == 'zh' else 'public declarations')
+                            + (f' · <a href="{prefix}{api_root}/{esc(path)}#examples">' + ('示例' if lang == 'zh' else 'Examples') + '</a>' if examples.get(path) else '') + '</span></li>')
+            body.append('</ul></details>')
+        if key == 'ui' and not preview_digest and 'ui/widgets' in by_path:
+            catalog = widget_catalog(root)
+            if catalog:
+                body.extend(['<h3>' + ('控件目录' if lang == 'zh' else 'Widget catalog') + '</h3>',
+                             '<ul class="api-widget-topics">'])
+                for category, labels in catalog['groups'].items():
+                    body.append(f'<li><a href="{prefix}/api/ui/widgets#components-{esc(category)}">{esc(labels[lang == "en"])}</a></li>')
+                body.append('</ul>')
+        if key == 'ui' and ui and not preview_digest:
+            filename = 'ui-browser-zh.png' if lang == 'zh' else 'ui-browser-en.png'
+            if lang == 'en' and not (root / 'www/img/api' / filename).is_file():
+                filename = 'ui-browser.png'
+            if (root / 'www/img/api' / filename).is_file():
+                alt = '浏览器中的 UI 文档与演练场截图' if lang == 'zh' else 'Browser capture of UI documentation and playground'
+                caption = ('UI 演练场与组件目录的浏览器截图。' if lang == 'zh' else 'The UI playground and component catalog, captured in a browser.')
+                body.append(f'<figure class="api-ui-capture"><a href="/img/api/{filename}"><img src="/img/api/{filename}" alt="{alt}" width="1366" height="900" loading="lazy"></a><figcaption>{caption}</figcaption></figure>')
+        if not topics:
+            body.append('<p>' + ('此快照未包含该分类的包。' if lang == 'zh' else 'No packages in this section in this snapshot.') + '</p>')
+        body.append('</section>')
     return "\n".join(body) + "\n"
 
 
@@ -2854,7 +2876,7 @@ def _write_packages(site: str, packages: list[Package], xu_version: str, preview
             with open(dest, "w", encoding="utf-8") as f:
                 f.write(html_text)
         with open(os.path.join(root, "index.html"), "w", encoding="utf-8") as f:
-            f.write(render_index(packages, lang, xu_version, examples, preview_digest))
+            f.write(render_index(packages, lang, xu_version, examples, preview_digest, Path(site)))
     if not preview_digest and any(pkg.path == 'ui/widgets' for pkg in packages):
         generator = Path(site, 'scripts', 'gen-widgets.py')
         if generator.is_file() and Path(site, 'templates', 'widgets.json').is_file():
