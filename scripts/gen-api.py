@@ -2351,6 +2351,10 @@ class Example:
     source: str
     ref: str
     uses: dict[str, set[str]]
+    source_state: str = "committed"
+    companions: tuple[str, ...] = ()
+    companion_sources: tuple[tuple[str, str], ...] = ()
+    required_sdk: str = ""
 
     @property
     def anchor(self) -> str:
@@ -2392,33 +2396,63 @@ def example_path(value: str) -> Path:
     return path
 
 
-def refresh_examples(site: str, root: str, ref: str, xu_version: str) -> None:
+def refresh_examples(site: str, root: str, ref: str, xu_version: str,
+                     projects: Sequence[str] = ()) -> None:
     """Import curated, verbatim sources once; subsequent builds use the snapshot."""
     if not re.fullmatch(r'[0-9a-f]{40}', ref):
         raise ValueError('--examples-ref must be a full Git commit SHA')
     paths = json.loads(Path(site, 'templates/api-examples.json').read_text(encoding='utf-8'))
     if len(paths) != len(set(paths)):
         raise ValueError('duplicate example source paths')
+    destination = Path(site, 'www/api-examples')
+    previous = json.loads((destination / 'index.json').read_text(encoding='utf-8')) if projects else None
+    if previous and previous['xu_version'] != xu_version:
+        raise ValueError('scoped refresh requires the selected SDK to remain unchanged')
+    preserved = {entry['path']: entry for entry in previous['files']} if previous else {}
+    selected = {value for value in paths if not projects or
+                any(Path(value).parent.is_relative_to(Path(project)) for project in projects)}
+    if projects and set(projects) - {str(Path(value).parent) for value in selected}:
+        raise ValueError('unknown example project in scoped refresh')
     # Read and validate all inputs before changing the checked-in snapshot.
     sources = []
     checkout = Path(root).resolve()
     for value in paths:
         relative = example_path(value)
+        if value not in selected:
+            data = (destination / 'sources' / relative).read_bytes()
+            if hashlib.sha256(data).hexdigest() != preserved[value]['sha256']:
+                raise ValueError('API example checksum mismatch: ' + value)
+            sources.append((relative, data))
+            continue
         original = (checkout / relative).resolve()
         if not original.is_relative_to(checkout):
             raise ValueError(f'example source escapes checkout: {value}')
         data = original.read_bytes()
         data.decode('utf-8')
         sources.append((relative, data))
-    destination = Path(site, 'www/api-examples')
     destination.mkdir(parents=True, exist_ok=True)
     records = []
     for relative, data in sources:
+        if relative.as_posix() not in selected:
+            records.append(preserved[relative.as_posix()])
+            continue
         target = destination / 'sources' / relative
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(data)
-        records.append({'path': relative.as_posix(), 'sha256': hashlib.sha256(data).hexdigest()})
-    catalog = {'xu_version': xu_version, 'source_ref': ref, 'files': records}
+        siblings = [path.as_posix() for path, _ in sources if path.parent == relative.parent and path != relative]
+        record = {'path': relative.as_posix(), 'sha256': hashlib.sha256(data).hexdigest()}
+        if siblings:
+            record['companions'] = siblings
+        if previous:
+            record['source_ref'] = ref
+        manifest = next((checkout / parent / 'xu.xun' for parent in relative.parents
+                         if (checkout / parent / 'xu.xun').is_file()), None)
+        if manifest:
+            sdk = re.search(r'^xu:\s*!ver\s+(\S+)', manifest.read_text(encoding='utf-8'), re.M)
+            if sdk and sdk[1] != xu_version:
+                record['required_sdk'] = sdk[1]
+        records.append(record)
+    catalog = {'xu_version': xu_version, 'source_ref': previous['source_ref'] if previous else ref, 'files': records}
     (destination / 'index.json').write_text(json.dumps(catalog, indent=2) + '\n', encoding='utf-8')
 
 
@@ -2435,20 +2469,59 @@ def load_examples(site: str, packages: list[Package], xu_version: str) -> dict[s
         raise ValueError('API examples must reference an immutable Git commit')
     by_import = {pkg.import_path.split('#', 1)[1]: pkg.path for pkg in packages}
     examples: dict[str, list[Example]] = {}
+    indexed = {entry['path'] for entry in catalog['files']}
+    sources = {}
     for record in catalog['files']:
         relative = example_path(record['path'])
         data = (root / 'sources' / relative).read_bytes()
         if hashlib.sha256(data).hexdigest() != record['sha256']:
             raise ValueError('API example checksum mismatch: ' + record['path'])
-        source = data.decode('utf-8')
+        sources[relative.as_posix()] = data.decode('utf-8')
+    for record in catalog['files']:
+        relative = example_path(record['path'])
+        source = sources[relative.as_posix()]
         uses = example_uses(source)
-        example = Example(relative.as_posix(), source, ref, uses)
+        source_ref = record.get('source_ref', ref)
+        if not re.fullmatch(r'[0-9a-f]{40}', source_ref):
+            raise ValueError('invalid example source base: ' + record['path'])
+        companions = tuple(record.get('companions', ()))
+        for companion in companions:
+            sibling = example_path(companion)
+            if sibling.parent != relative.parent or companion not in indexed:
+                raise ValueError('invalid companion source: ' + companion)
+            for module, symbols in example_uses(sources[companion]).items():
+                uses.setdefault(module, set()).update(symbols)
+        # A multi-file project has one expandable entry rooted at main.xu.
+        # Companion declarations still contribute API usage links to that entry.
+        if relative.name != 'main.xu' and (relative.parent / 'main.xu').as_posix() in companions:
+            continue
         for module in uses.keys() & by_import.keys():
+            example = Example(relative.as_posix(), source, source_ref, uses,
+                              record.get('source_state', 'committed'), companions,
+                              tuple((path, sources[path]) for path in companions
+                                    if module in example_uses(sources[path])),
+                              record.get('required_sdk', ''))
             examples.setdefault(by_import[module], []).append(example)
     # Prefer focused, short programs over large integration suites.
     for group in examples.values():
         group.sort(key=lambda ex: (len(ex.uses), len(ex.source.splitlines()), ex.path))
     return examples
+
+
+def example_download_links(example: Example, zh: bool) -> str:
+    links = []
+    if example.required_sdk:
+        links.append(('所需 SDK：Xu ' if zh else 'Required SDK: Xu ') + esc(example.required_sdk))
+    if example.source_state == 'working-tree':
+        links.append('待提交源码快照 · 需要含 ActionDispatcher 的当前 SDK' if zh
+                     else 'Working-tree snapshot · requires the current SDK with ActionDispatcher')
+    else:
+        links.append(f'<a href="{esc(example.project_url)}">' + ('完整工程' if zh else 'Complete project') + '</a>')
+    links.append(f'<a href="{esc(example.asset_url)}" download>' + ('下载源码' if zh else 'Download source') + '</a>')
+    for companion in example.companions:
+        url = '/api-examples/sources/' + companion
+        links.append(f'<a href="{esc(url)}" download>{esc(Path(companion).name)}</a>')
+    return ' · '.join(links)
 
 
 def render_examples(examples: list[Example], lang: str) -> str:
@@ -2459,23 +2532,32 @@ def render_examples(examples: list[Example], lang: str) -> str:
         '<p>' + ('以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。'
                  if zh else 'These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.') + '</p>',
     ]
-    for i, example in enumerate(examples[:3]):
+    for i, example in enumerate(examples):
+        if i == 3:
+            parts.append('<details class="api-example"><summary>' + ('更多相关示例' if zh else 'More related examples') + '</summary><ul>')
+        if i >= 3 and not (example.companions or example.required_sdk or example.source_state != 'committed'):
+            label = example.path.removeprefix('examples/')
+            parts.append(f'<li id="{example.anchor}"><a href="{esc(example.project_url)}"><code>{esc(label)}</code></a> · '
+                         + f'<a href="{esc(example.asset_url)}" download>' + ('下载源码' if zh else 'Download source') + '</a></li>')
+            continue
+        if i >= 3:
+            parts.append('<li>')
         label = example.path.removeprefix('examples/')
         parts.extend([
             f'<details class="api-example" id="{example.anchor}"' + (' open' if i == 0 else '') + '>',
             f'<summary><code>{esc(label)}</code></summary>',
-            '<p class="meta">' + f'<a href="{esc(example.project_url)}">' + ('完整工程' if zh else 'Complete project') + '</a> · '
-            + f'<a href="{esc(example.asset_url)}" download>' + ('下载源码' if zh else 'Download source') + '</a></p>',
-            '<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>'
-            + ('本地 SDK 示例' if zh else 'Local SDK example') + '</span></div>'
-            + f'<pre tabindex="0" aria-label="{esc(label)}"><code class="language-xu">{highlight_xu(example.source.rstrip())}</code></pre></div>',
-            '</details>',
+            '<p class="meta">' + example_download_links(example, zh) + '</p>',
         ])
+        for path, source in ((example.path, example.source), *example.companion_sources):
+            source_label = path.removeprefix('examples/')
+            heading = esc(Path(path).name) if example.companion_sources else ('本地 SDK 示例' if zh else 'Local SDK example')
+            parts.append('<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>'
+                         + heading + '</span></div>'
+                         + f'<pre tabindex="0" aria-label="{esc(source_label)}"><code class="language-xu">{highlight_xu(source.rstrip())}</code></pre></div>')
+        parts.append('</details>')
+        if i >= 3:
+            parts.append('</li>')
     if len(examples) > 3:
-        parts.append('<details class="api-example"><summary>' + ('更多相关示例' if zh else 'More related examples') + '</summary><ul>')
-        for example in examples[3:]:
-            parts.append(f'<li id="{example.anchor}"><a href="{esc(example.project_url)}"><code>{esc(example.path.removeprefix("examples/"))}</code></a> · '
-                         + f'<a href="{esc(example.asset_url)}" download>' + ('下载源码' if zh else 'Download source') + '</a></li>')
         parts.append('</ul></details>')
     parts.append('</section>')
     return '\n'.join(parts)
@@ -2808,10 +2890,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--packages", default=os.environ.get("XU_PACKAGES_ROOT"), help="external packages checkout (default: sibling packages when present)")
     ap.add_argument("--examples", help="refresh bundled example sources from an official examples checkout")
     ap.add_argument("--examples-ref", default="", help="full examples commit SHA (required with --examples)")
+    ap.add_argument("--examples-project", action="append", default=[],
+                    help="refresh only this curated example directory, repeatable; preserve other snapshots and refs")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--preview", action="store_true", help="write unreleased API under api/preview without changing the selected release")
     ap.add_argument("--package", action="append", default=[], help="package subtree to include in a preview, repeatable (e.g. ui)")
     args = ap.parse_args(argv)
+    if args.examples_project and not args.examples:
+        ap.error('--examples-project requires --examples')
     if args.preview and not args.package:
         ap.error('--preview requires an explicit --package scope')
     if args.package and not args.preview:
@@ -2892,7 +2978,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if args.examples:
-        refresh_examples(site, args.examples, args.examples_ref, xu_version)
+        refresh_examples(site, args.examples, args.examples_ref, xu_version, args.examples_project)
     write_packages(site, packages, xu_version)
     ensure_css(site)
     # The user requires the website release to match Xu main's final SDK.

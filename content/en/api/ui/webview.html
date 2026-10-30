@@ -242,8 +242,821 @@
 </details>
 <details class="api-example"><summary>More related examples</summary><ul>
 <li id="example-efd1ed863bda"><a href="https://github.com/xulang-org/examples/tree/9bb00a880e262b37bd7624d8789264900e9cdf59/examples/16_ui_webview/open"><code>16_ui_webview/open/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/open/main.xu" download>Download source</a></li>
-<li id="example-fecca66f5617"><a href="https://github.com/xulang-org/examples/tree/9bb00a880e262b37bd7624d8789264900e9cdf59/examples/16_ui_webview/webview_component"><code>16_ui_webview/webview_component/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_component/main.xu" download>Download source</a></li>
-<li id="example-a2be48ce1c23"><a href="https://github.com/xulang-org/examples/tree/9bb00a880e262b37bd7624d8789264900e9cdf59/examples/16_ui_webview/component_workshop"><code>16_ui_webview/component_workshop/main.xu</code></a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/main.xu" download>Download source</a></li>
+<li>
+<details class="api-example" id="example-fecca66f5617">
+<summary><code>16_ui_webview/webview_component/main.xu</code></summary>
+<p class="meta">Required SDK: Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/f8527ee845cabd2fbe2006574f83ab2c7bbcd774/examples/16_ui_webview/webview_component">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_component/main.xu" download>Download source</a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_component/events.xu" download>events.xu</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="16_ui_webview/webview_component/main.xu"><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/widgets</span>
+<span class="syn-import"><span class="hash">#</span>ui/webview</span>
+<span class="syn-import"><span class="hash">#</span>math</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">fn</span> document(title <span class="syn-type">string</span>, tone <span class="syn-type">string</span>) <span class="syn-type">string</span> {
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"&lt;!doctype html&gt;&lt;html&gt;&lt;head&gt;&lt;meta charset='utf-8'&gt;&lt;title&gt;"</span> + title + <span class="syn-str">"&lt;/title&gt;&lt;style&gt;body{margin:0;padding:28px;font:15px -apple-system,system-ui;color:#252521;background:#faf9f6}small{letter-spacing:.14em;color:#797970}h1{font-size:28px;font-weight:600;letter-spacing:-.04em;margin:16px 0}p{line-height:1.65;color:#6b6b63}input,button{box-sizing:border-box;font:inherit;border-radius:8px;padding:12px;width:100%;margin:8px 0}input{border:1px solid #d8d8cf;background:white;outline-color:"</span> + tone + <span class="syn-str">"}button{border:0;background:"</span> + tone + <span class="syn-str">";color:white;cursor:pointer}output{display:block;min-height:42px;padding:12px 0;line-height:1.5;color:"</span> + tone + <span class="syn-str">"}&lt;/style&gt;&lt;/head&gt;&lt;body&gt;&lt;small&gt;EMBEDDED WEBVIEW&lt;/small&gt;&lt;h1&gt;"</span> + title + <span class="syn-str">"&lt;/h1&gt;&lt;p&gt;This document has its own viewport, focus and request identity.&lt;/p&gt;&lt;input aria-label='Message' value='Hello from "</span> + title + <span class="syn-str">"'&gt;&lt;button onclick='send()'&gt;Ask native Xu&lt;/button&gt;&lt;output aria-live='polite'&gt;Ready for an independent native request.&lt;/output&gt;&lt;p&gt;Tab moves inside this document.&lt;br&gt;Ctrl + Tab returns to the native controls.&lt;/p&gt;&lt;script&gt;async function send(){let out=document.querySelector('output');out.textContent='Waiting…';try{out.textContent=await window.__XU__.invoke('echo',document.querySelector('input').value)}catch(e){out.textContent=e.message}}&lt;/script&gt;&lt;/body&gt;&lt;/html&gt;"</span>
+}
+<span class="syn-kw">fn</span> route(request webview.InvokeRequest) <span class="syn-type">string</span> {
+    target <span class="syn-flow">:=</span> request.target() <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">"Target closed: "</span> + err.msg()}
+    script <span class="syn-flow">:=</span> <span class="syn-str">"document.title"</span>
+    options <span class="syn-flow">:=</span> ui.RequestOptions{timeout_ms: 3000}
+    result <span class="syn-flow">:=</span> ui.webview_request_wait(&amp;target, ui.REQUEST_WEBVIEW_EVAL, &amp;script, &amp;options) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> result.value + <span class="syn-str">" · "</span> + request.payload + <span class="syn-str">" · view "</span> + str(target.canvas_id)
+}
+<span class="syn-kw">fn</span> ipc(events <span class="syn-kw">chan</span> ui.Event, emits <span class="syn-kw">chan</span> <span class="syn-type">string</span>) {
+    webview.bind_ipc_requests_www(<span class="syn-str">":mem:"</span>, route, emits, events) <span class="syn-kw">or</span>(err) {eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> }
+}
+<span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT{ <span class="syn-flow">&lt;&lt;</span> 0}
+    $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.resize(1020.0, 720.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_min_size(760, 580) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    title <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Web content. Native composition."</span>, 26.0, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    subtitle <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Two independent WebViews inside a Canvas window"</span>, 13.0, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    hide <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Hide left"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    reload <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Reload right"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    close <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Dispose left"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    modal_button <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Open modal"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    left <span class="syn-flow">:=</span> screen.webview() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    right <span class="syn-flow">:=</span> screen.webview() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    status <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Resize the window, edit both pages, or test their native requests."</span>, 13.0, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    modal <span class="syn-flow">:=</span> screen.modal(<span class="syn-str">"Native overlay"</span>, <span class="syn-str">"The WebViews resume when this dialog closes."</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    dismiss <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Close dialog"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_parent(dismiss, modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.place(dismiss, 24.0, 175.0, 180.0, 38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.load_web_html(left, document(<span class="syn-str">"Editor preview"</span>, <span class="syn-str">"#b64c3c"</span>)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.load_web_html(right, document(<span class="syn-str">"Reference panel"</span>, <span class="syn-str">"#386f6b"</span>)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $model <span class="syn-flow">:=</span> Model{left: left, right: right, hide: hide, close: close, status: status, modal: modal, hidden: false, disposed: false}
+    $dispatcher <span class="syn-flow">:=</span> widgets.action_dispatcher(&amp;model, &amp;screen)
+    dispatcher.on(hide, widgets.ACTION_ACTIVATE, toggle_left) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    dispatcher.on(reload, widgets.ACTION_ACTIVATE, reload_right) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    dispatcher.on(close, widgets.ACTION_ACTIVATE, dispose_left) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    dispatcher.on(modal_button, widgets.ACTION_ACTIVATE, open_modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    dispatcher.on(dismiss, widgets.ACTION_ACTIVATE, close_modal) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">for</span> id <span class="syn-kw">in</span>[left, right] {
+        dispatcher.on(id, widgets.ACTION_WEB_LOADED, web_loaded) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        dispatcher.on(id, widgets.ACTION_WEB_FAILED, web_failed) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-kw">while</span> screen.is_open() {
+        width <span class="syn-flow">:=</span> screen.width()
+        height <span class="syn-flow">:=</span> screen.height()
+        half <span class="syn-flow">:=</span>(width - 76.0) * 0.5
+        screen.place(title, 28.0, 25.0, width - 56.0, 38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(subtitle, 28.0, 69.0, width - 56.0, 25.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(hide, 28.0, 112.0, 136.0, 38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(reload, 174.0, 112.0, 146.0, 38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(close, 330.0, 112.0, 136.0, 38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(modal_button, 476.0, 112.0, 136.0, 38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(left, 28.0, 174.0, half, math.max(300.0, height - 245.0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(right, 48.0 + half, 174.0, half, math.max(300.0, height - 245.0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        screen.place(status, 28.0, height - 49.0, width - 56.0, 28.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        _ <span class="syn-flow">:=</span> screen.render() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">for</span> action <span class="syn-kw">in</span> screen.next(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> {
+            _ <span class="syn-flow">:=</span> dispatcher.dispatch(&amp;action, <span class="syn-borrow">$&amp;</span>model, <span class="syn-borrow">$&amp;</span>screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        }
+    }
+    screen.dispose()
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+<span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) {scene(events) <span class="syn-kw">or</span>(err) {demo.fail(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> }}
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"XUUI / WebView Components"</span>, 1020, 720) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    _ <span class="syn-flow">:=</span> ui.register_content_plugin(ui.content_plugin_webview())
+    emits <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span> {cap: 64}
+    <span class="syn-kw">xu</span> ipc(app.event_ch, emits)
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span>(err) {eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1}}</code></pre></div>
+</details>
+</li>
+<li>
+<details class="api-example" id="example-a2be48ce1c23">
+<summary><code>16_ui_webview/component_workshop/main.xu</code></summary>
+<p class="meta">Required SDK: Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/f8527ee845cabd2fbe2006574f83ab2c7bbcd774/examples/16_ui_webview/component_workshop">Complete project</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/main.xu" download>Download source</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events.xu" download>events.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events_tools.xu" download>events_tools.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/layout.xu" download>layout.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/model.xu" download>model.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/style.xu" download>style.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/view.xu" download>view.xu</a></p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>main.xu</span></div><pre tabindex="0" aria-label="16_ui_webview/component_workshop/main.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui</span>
+<span class="syn-import"><span class="hash">#</span>ui/widgets</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
+
+<span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
+    ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT{ <span class="syn-flow">&lt;&lt;</span> 0}
+    $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.resize(1180.0, 900.0) <span class="syn-kw">or</span>(err) {screen.dispose()
+        <span class="syn-flow">&gt;&gt;</span> err}
+    screen.set_min_size(920, 780) <span class="syn-kw">or</span>(err) {screen.dispose()
+        <span class="syn-flow">&gt;&gt;</span> err}
+    $model <span class="syn-flow">:=</span> create(<span class="syn-borrow">$&amp;</span>screen) <span class="syn-kw">or</span>(err) {screen.dispose()
+        <span class="syn-flow">&gt;&gt;</span> err}
+    workshop_loop(events, <span class="syn-borrow">$&amp;</span>model, <span class="syn-borrow">$&amp;</span>screen) <span class="syn-kw">or</span>(err) {screen.dispose()
+        <span class="syn-flow">&gt;&gt;</span> err}
+    screen.dispose()
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) {scene(events) <span class="syn-kw">or</span>(err) {demo.fail(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> }}
+
+<span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"XUUI / Component Workshop"</span>, 1180, 900) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">xu</span> worker(app.event_ch)
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+}
+
+<span class="syn-kw">fn</span> main() <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span>(err) {eprintln(err.msg())
+        <span class="syn-flow">&lt;&lt;</span> 1}}
+
+<span class="syn-kw">fn</span> next_event(events <span class="syn-kw">chan</span> ui.Event, deadline time.Instant) ui.Event{
+    <span class="syn-kw">if</span> deadline.is_zero() { <span class="syn-flow">&lt;&lt;</span> <span class="syn-flow">&lt;-</span> events}
+    delay <span class="syn-flow">:=</span> deadline.since(time.instant())
+    <span class="syn-kw">if</span> delay.nanoseconds() &lt;= 0 { <span class="syn-flow">&lt;&lt;</span> ui.Event{kind: ui.EV_NONE, window_id: 0, menu_id: <span class="syn-str">""</span>, width: 0, height: 0}}
+    timer <span class="syn-flow">:=</span> delay.timer()
+    select {event <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span> events{timer.stop()
+            <span class="syn-flow">&lt;&lt;</span> event}
+        _ <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span> timer.c{timer.stop()}}
+    <span class="syn-flow">&lt;&lt;</span> ui.Event{kind: ui.EV_NONE, window_id: 0, menu_id: <span class="syn-str">""</span>, width: 0, height: 0}
+}
+
+<span class="syn-kw">fn</span> workshop_loop(events <span class="syn-kw">chan</span> ui.Event, model <span class="syn-borrow">$&amp;</span>Workshop, screen <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
+    model.apply_locale(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    screen.set_text(model.title, <span class="syn-str">"XUUI  /  Field"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    model.configure_controls(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    model.controls_dirty = false
+    model.apply_appearance(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    model.appearance_dirty = false
+    $dispatcher <span class="syn-flow">:=</span> register_events(&amp; * model, &amp; * screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    model.layout(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">while</span> screen.is_open() {
+        register_notice_events(&amp; * screen, <span class="syn-borrow">$&amp;</span>dispatcher) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        now <span class="syn-flow">:=</span> time.instant()
+        model.work(screen, now) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">if</span> model.controls_dirty{model.configure_controls(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            model.controls_dirty = false}
+        <span class="syn-kw">if</span> model.appearance_dirty{model.apply_appearance(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            model.appearance_dirty = false}
+        model.apply_page_options(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        model.layout(screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        $deadline <span class="syn-flow">:=</span> screen.advance(now) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        $timed_actions <span class="syn-flow">:=</span> false
+        <span class="syn-kw">for</span> action <span class="syn-kw">in</span> screen.take_actions() {
+            _ <span class="syn-flow">:=</span> dispatcher.dispatch_or_fallback(&amp;action, model, screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            timed_actions = true
+        }
+        <span class="syn-cmt">// Reconcile timer-driven values/styles before computing the next wait.</span>
+        <span class="syn-kw">if</span> timed_actions{ <span class="syn-flow">-&gt;</span> }
+        _ <span class="syn-flow">:=</span> screen.render() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">if</span> model.running &amp;&amp;(deadline.is_zero() || model.deadline.before(deadline)) {deadline = model.deadline}
+        event <span class="syn-flow">:=</span> next_event(events, deadline) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        $actions <span class="syn-flow">:=</span> screen.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        $count <span class="syn-flow">:=</span> 0
+        <span class="syn-kw">while</span> screen.is_open() &amp;&amp; count &lt; 128 {pending <span class="syn-flow">:=</span> ui.poll_chan(events)
+            <span class="syn-kw">if</span> pending.kind == ui.EV_NONE{ <span class="syn-flow">&lt;-</span> }
+            more <span class="syn-flow">:=</span> screen.event(&amp;pending) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-kw">for</span> action <span class="syn-kw">in</span> more{actions.push(action)}
+            count += 1}
+        <span class="syn-kw">for</span> action <span class="syn-kw">in</span> actions{register_notice_events(&amp; * screen, <span class="syn-borrow">$&amp;</span>dispatcher) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            _ <span class="syn-flow">:=</span> dispatcher.dispatch_or_fallback(&amp;action, model, screen) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}</code></pre></div>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>events_tools.xu</span></div><pre tabindex="0" aria-label="16_ui_webview/component_workshop/events_tools.xu"><code class="language-xu">@main
+
+<span class="syn-import"><span class="hash">#</span>ui/widgets</span>
+<span class="syn-import"><span class="hash">#</span>ui/webview</span>
+<span class="syn-import"><span class="hash">#</span>time</span>
+<span class="syn-import"><span class="hash">#</span>math</span>
+<span class="syn-import"><span class="hash">#</span>errors</span>
+<span class="syn-import"><span class="hash">#</span>strconv</span>
+
+<span class="syn-kw">fn</span> tool_0_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(0)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    $text <span class="syn-flow">:=</span> <span class="syn-str">"精密 · 清晰 · 可靠。"</span>
+    <span class="syn-kw">if</span> option == 0 {text = <span class="syn-str">"长中文：输入、选择、复制与原生排版保持一致。Long English text wraps inside its content width. Family 👨‍👩‍👧‍👦 and developer 👩🏽‍💻 remain intact."</span>}
+    s.set_text(id, text) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_1_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(1)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    s.set_selected_button(id, option == 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_2_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(2)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    s.set_selected_button(id, option == 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_3_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    index <span class="syn-flow">:=</span> 3
+    page <span class="syn-flow">:=</span> m.page_snapshot(3)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.set_value(id, <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {$value <span class="syn-flow">:=</span> <span class="syn-str">"Long text · 很长的中文与 English · 👩🏽‍💻 🙂 abcdefghijklmnopqrstuvwxyz"</span>
+        <span class="syn-kw">if</span> index == 4 || index == 6 {value = value + <span class="syn-str">"\n第二行\n第三行\n第四行\n第五行\n第六行\n第七行：内部滚动"</span>}
+        s.set_value(id, value) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_4_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    index <span class="syn-flow">:=</span> 4
+    page <span class="syn-flow">:=</span> m.page_snapshot(4)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.set_value(id, <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {$value <span class="syn-flow">:=</span> <span class="syn-str">"Long text · 很长的中文与 English · 👩🏽‍💻 🙂 abcdefghijklmnopqrstuvwxyz"</span>
+        <span class="syn-kw">if</span> index == 4 || index == 6 {value = value + <span class="syn-str">"\n第二行\n第三行\n第四行\n第五行\n第六行\n第七行：内部滚动"</span>}
+        s.set_value(id, value) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_5_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    index <span class="syn-flow">:=</span> 5
+    page <span class="syn-flow">:=</span> m.page_snapshot(5)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.set_value(id, <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {$value <span class="syn-flow">:=</span> <span class="syn-str">"Long text · 很长的中文与 English · 👩🏽‍💻 🙂 abcdefghijklmnopqrstuvwxyz"</span>
+        <span class="syn-kw">if</span> index == 4 || index == 6 {value = value + <span class="syn-str">"\n第二行\n第三行\n第四行\n第五行\n第六行\n第七行：内部滚动"</span>}
+        s.set_value(id, value) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 &amp;&amp; index &gt;= 5 {m.field_options_dirty = true
+        m.field_options_page = index
+        m.variant += 1}
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_6_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    index <span class="syn-flow">:=</span> 6
+    page <span class="syn-flow">:=</span> m.page_snapshot(6)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.set_value(id, <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {$value <span class="syn-flow">:=</span> <span class="syn-str">"Long text · 很长的中文与 English · 👩🏽‍💻 🙂 abcdefghijklmnopqrstuvwxyz"</span>
+        <span class="syn-kw">if</span> index == 4 || index == 6 {value = value + <span class="syn-str">"\n第二行\n第三行\n第四行\n第五行\n第六行\n第七行：内部滚动"</span>}
+        s.set_value(id, value) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 &amp;&amp; index &gt;= 5 {m.field_options_dirty = true
+        m.field_options_page = index
+        m.variant += 1}
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_7_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(7)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {m.guided = !m.guided
+        m.tree_options_dirty = true}
+    <span class="syn-kw">if</span> option == 1 {s.set_selected(id, 7) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.focus(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 {s.set_value(page.ids[1], <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_tree_filter(id, <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_8_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(8)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {m.variant += 1
+        s.set_task_progress_mode(id, m.variant % 3) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {m.failure = !m.failure
+        s.set_selected_button(m.tools[1], m.failure) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 &amp;&amp; m.running{_ <span class="syn-flow">:=</span> s.complete_task(id, m.revision, widgets.TASK_CANCELLED) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        m.running = false}
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_9_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(9)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    s.set_checkbox_indeterminate(id, option == 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> option &gt; 0 {s.set_toggle_value(id, option == 1) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_10_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(10)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {m.pending_before = s.toggle_value(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_switch_pending(id, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(id, <span class="syn-str">"Live preview · Saving…"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> {s.set_switch_pending(id, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_toggle_value(id, option == 1 || m.pending_before) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_invalid(id, option == 2) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(id, <span class="syn-str">"Live preview 实时预览"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_11_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(11)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    s.set_toggle_value(id, option == 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_13_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(13)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option &gt; 0 {s.set_slider_commit_only(id, option == 1) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> {text <span class="syn-flow">:=</span> s.text_value(page.ids[1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        value <span class="syn-flow">:=</span> strconv.parse_float(&amp;text) <span class="syn-kw">or</span>(err) {s.set_field_invalid(page.ids[1], true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-flow">&lt;&lt;</span> 0}
+        <span class="syn-kw">if</span> math.is_nan(value) || math.is_inf(value) || value &lt; 0.0 || value &gt; 100.0 {s.set_field_invalid(page.ids[1], true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-flow">&lt;&lt;</span> 0}
+        s.set_number_value(id, value) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_field_invalid(page.ids[1], false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_15_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(15)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.set_candidate_open(id, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> {s.set_select_option_enabled(id, 2, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_16_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(16)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option &lt; 2 {s.set_combo_custom_values(id, option == 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> {s.set_value(id, <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_17_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(17)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    s.select_all(id, option == 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_18_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(18)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.clear_calendar(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> {value <span class="syn-flow">:=</span> time.date(2026, 10, 25, 0, 0, 0, 0)
+        s.set_calendar_value(id, value) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_19_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(19)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    s.set_clock_format(id, option == 0, option != 2) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_20_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(20)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    $value <span class="syn-flow">:=</span> <span class="syn-str">"#B4392DFF"</span>
+    <span class="syn-kw">if</span> option == 0 {value = s.text_value(page.ids[1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 {value = <span class="syn-str">"#3279A080"</span>}
+    s.set_color_hex(id, value) <span class="syn-kw">or</span>(err) {s.set_field_invalid(page.ids[1], true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.status, err.msg()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-flow">&lt;&lt;</span> 0}
+    s.set_field_invalid(page.ids[1], false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    s.remember_color(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    s.set_value(page.ids[1], s.color_hex(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_24_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(24)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    s.set_table_status(id,[<span class="syn-str">""</span>, <span class="syn-str">"Loading workspace… 正在加载"</span>, <span class="syn-str">"Unable to load. Retry when ready."</span>][option]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_25_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(25)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    sizes <span class="syn-flow">:=</span>[10, 20, 50, 100]
+    size <span class="syn-flow">:=</span> sizes[s.selected(page.ids[2]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>]
+    data <span class="syn-flow">:=</span> s.pagination_data(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-kw">if</span> option == 2 {<span class="syn-kw">if</span> data.total == 0 {s.set_pagination_data(id, 20000, size) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">else</span> {s.set_pagination_data(id, 0, size) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }}
+    <span class="syn-kw">else</span> {
+        <span class="syn-kw">if</span> data.pages == 0 {m.pagination_invalid(s) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            <span class="syn-flow">&lt;&lt;</span> 0}
+        current <span class="syn-flow">:=</span> s.pagination_data(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        $number <span class="syn-flow">:=</span> current.pages
+        <span class="syn-kw">if</span> option == 0 {text <span class="syn-flow">:=</span> s.text_value(page.ids[1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            number = strconv.atoi(&amp;text) <span class="syn-kw">or</span>(err) {m.pagination_invalid(s) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                <span class="syn-flow">&lt;&lt;</span> 0}
+            <span class="syn-kw">if</span> number &lt; 1 || number &gt; current.pages{m.pagination_invalid(s) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+                <span class="syn-flow">&lt;&lt;</span> 0}}
+        s.set_selected(id, number - 1) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_field_invalid(page.ids[1], false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    m.update_pagination(s, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_27_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(27)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    s.set_number_value(id,[0.0, 0.42, 1.0][option]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_28_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(28)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option &lt; 2 {s.set_running(id, option == 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> {m.spinner_options_dirty = true}
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_30_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(30)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {m.unread += 1}
+    <span class="syn-kw">if</span> option == 1 {m.unread = 0}
+    <span class="syn-kw">if</span> option == 2 {m.unread = 123}
+    m.update_badges(s) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_32_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(32)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.set_scroll_offset(id, 0.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {s.set_scroll_offset(id, 100000.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 {s.focus(page.ids[page.ids.len - 1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_33_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    index <span class="syn-flow">:=</span> 33
+    page <span class="syn-flow">:=</span> m.page_snapshot(33)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 2 {m.variant =(m.variant + 1) % 4
+        m.popover_options_dirty = true}
+    <span class="syn-kw">if</span> option == 0 {<span class="syn-kw">if</span> index == 33 {m.open_preferences(s) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> } <span class="syn-kw">else</span> {s.open(page.ids[1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }}
+    <span class="syn-kw">else</span> <span class="syn-kw">if</span> option == 1 {s.close_overlay(page.ids[1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_34_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(34)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 2 {m.tooltip_side =(m.tooltip_side + 1) % 4
+        m.appearance_dirty = true
+        s.focus(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.status, <span class="syn-str">"Tooltip · "</span> +[<span class="syn-str">"Bottom 下"</span>, <span class="syn-str">"Top 上"</span>, <span class="syn-str">"Left 左"</span>, <span class="syn-str">"Right 右"</span>][m.tooltip_side] + <span class="syn-str">" · flips at the viewport edge"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 0 {s.focus(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> <span class="syn-kw">if</span> option == 1 {s.focus(0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_35_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(35)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    $notice <span class="syn-flow">:=</span> widgets.notice(&amp;<span class="syn-str">"Workspace saved · 工作区已保存"</span>)
+    notice.action = <span class="syn-str">"Undo"</span>
+    notice.key = <span class="syn-str">"workspace-save"</span>
+    <span class="syn-kw">if</span> option == 1 {notice.text = <span class="syn-str">"Changes restored · 已撤销"</span>
+        notice.key = <span class="syn-str">"workspace-undo"</span>}
+    $count <span class="syn-flow">:=</span> 1
+    <span class="syn-kw">if</span> option == 2 {count = 3}
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:count{<span class="syn-kw">if</span> count &gt; 1 {notice.key = <span class="syn-str">"notice-"</span> + str(i)
+            notice.text = <span class="syn-str">"Queued notice "</span> + str(i + 1)}
+        _ <span class="syn-flow">:=</span> s.enqueue_notice(&amp;notice) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_36_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    index <span class="syn-flow">:=</span> 36
+    page <span class="syn-flow">:=</span> m.page_snapshot(36)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {<span class="syn-kw">if</span> index == 33 {m.open_preferences(s) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> } <span class="syn-kw">else</span> {s.open(page.ids[1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }}
+    <span class="syn-kw">else</span> <span class="syn-kw">if</span> option == 1 {s.close_overlay(page.ids[1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_37_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(37)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {native <span class="syn-flow">:=</span> s.webview_native(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        client <span class="syn-flow">:=</span> webview.bind_native(&amp;native) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        client.command(<span class="syn-str">"reload"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">else</span> {s.set_visible(id, option == 2) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_38_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(38)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {m.group_disabled = !m.group_disabled
+        m.controls_dirty = true}
+    <span class="syn-kw">if</span> option == 1 {m.group_vertical = !m.group_vertical}
+    <span class="syn-kw">if</span> option == 2 {m.group_joined = !m.group_joined}
+    m.appearance_dirty = true
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_39_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(39)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {m.revision += 1
+        series <span class="syn-flow">:=</span> chart_data(m.chart_kind, m.revision)
+        s.set_chart_series(id, &amp;series) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        m.chart_paused = false}
+    <span class="syn-kw">if</span> option == 1 {s.reset_chart_viewport(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 {m.chart_paused = !m.chart_paused
+        <span class="syn-kw">if</span> m.chart_paused{s.pause_chart_animation(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">else</span> {s.resume_chart_animation(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }}
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_40_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(40)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {m.range_push = !m.range_push}
+    <span class="syn-kw">if</span> option == 1 {m.range_commit = !m.range_commit}
+    <span class="syn-kw">if</span> option == 2 {m.range_vertical = !m.range_vertical}
+    m.appearance_dirty = true
+    m.range_summary(s, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_41_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(41)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {m.split_vertical = !m.split_vertical
+        m.appearance_dirty = true}
+    <span class="syn-kw">if</span> option == 1 {m.split_collapsed =(s.split_layout(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>).collapsed == 0
+        s.set_split_collapsed(id, 0, m.split_collapsed) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 {m.split_collapsed = false
+        s.set_split_ratio(id, 0.4) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_42_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(42)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.focus(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_menu_open(id, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {m.menu_stays_open = !m.menu_stays_open
+        m.appearance_dirty = true}
+    <span class="syn-kw">if</span> option == 2 {m.menu_export_disabled = !m.menu_export_disabled
+        s.set_menu_item_enabled(id, 30, !m.menu_export_disabled) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_43_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(43)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.focus(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_menu_open(id, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {m.menu_stays_open = !m.menu_stays_open
+        m.appearance_dirty = true}
+    <span class="syn-kw">if</span> option == 2 {m.menu_export_disabled = !m.menu_export_disabled
+        s.set_menu_item_enabled(id, 30, !m.menu_export_disabled) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_44_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(44)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.focus(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_menu_open(id, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {m.menu_stays_open = !m.menu_stays_open
+        m.appearance_dirty = true}
+    <span class="syn-kw">if</span> option == 2 {m.menu_export_disabled = !m.menu_export_disabled
+        s.set_menu_item_enabled(id, 30, !m.menu_export_disabled) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_45_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> {
+    page <span class="syn-flow">:=</span> m.page_snapshot(45)
+    id <span class="syn-flow">:=</span> page.ids[0]
+    <span class="syn-kw">if</span> option == 0 {s.set_value(id, <span class="syn-str">""</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 1 {s.set_value(id, <span class="syn-str">"Xu-密码🙂"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> option == 2 {s.focus(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_none_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">int</span> { <span class="syn-flow">&lt;&lt;</span> 0}
+
+<span class="syn-kw">fn</span> tool_clicked_update(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, a &amp;widgets.Action) <span class="syn-type">int</span> {
+    handlers <span class="syn-flow">:=</span>[tool_0, tool_1, tool_2, tool_3, tool_4, tool_5, tool_6, tool_7, tool_8, tool_9, tool_10, tool_11, tool_none, tool_13, tool_none, tool_15, tool_16, tool_17, tool_18, tool_19, tool_20, tool_none, tool_none, tool_none, tool_24, tool_25, tool_none, tool_27, tool_28, tool_none, tool_30, tool_none, tool_32, tool_33, tool_34, tool_35, tool_36, tool_37, tool_38, tool_39, tool_40, tool_41, tool_42, tool_43, tool_44, tool_45]
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:3 {<span class="syn-kw">if</span> a.id == m.tools[i] {handler <span class="syn-flow">:=</span> handlers[m.selected]
+            message <span class="syn-flow">:=</span> handler(m, s, i)
+            <span class="syn-kw">if</span> message.len &gt; 0 { <span class="syn-flow">&gt;&gt;</span> errors.new(message)}
+            <span class="syn-flow">&lt;&lt;</span> 0}}
+    <span class="syn-flow">&lt;&lt;</span> 0
+}
+
+<span class="syn-kw">fn</span> tool_clicked(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, a &amp;widgets.Action) <span class="syn-type">string</span> {
+    tool_clicked_update(m, s, a) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_0(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_0_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_1(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_1_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_2(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_2_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_3(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_3_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_4(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_4_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_5(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_5_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_6(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_6_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_7(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_7_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_8(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_8_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_9(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_9_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_10(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_10_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_11(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_11_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_13(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_13_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_15(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_15_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_16(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_16_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_17(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_17_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_18(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_18_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_19(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_19_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_20(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_20_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_24(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_24_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_25(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_25_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_27(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_27_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_28(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_28_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_30(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_30_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_32(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_32_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_33(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_33_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_34(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_34_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_35(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_35_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_36(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_36_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_37(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_37_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_38(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_38_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_39(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_39_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_40(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_40_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_41(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_41_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_42(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_42_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_43(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_43_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_44(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_44_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_45(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_45_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}
+
+<span class="syn-kw">fn</span> tool_none(m <span class="syn-borrow">$&amp;</span>Workshop, s <span class="syn-borrow">$&amp;</span>widgets.Screen, option <span class="syn-type">int</span>) <span class="syn-type">string</span> {
+    tool_none_update(m, s, option) <span class="syn-kw">or</span>(err) { <span class="syn-flow">&lt;&lt;</span> err.msg()}
+    <span class="syn-flow">&lt;&lt;</span> <span class="syn-str">""</span>
+}</code></pre></div>
+</details>
+</li>
 </ul></details>
 </section>
 <h2 id="api-declarations">API declarations</h2>

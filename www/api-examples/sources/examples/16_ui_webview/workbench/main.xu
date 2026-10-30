@@ -6,7 +6,7 @@
 #math
 demo #"github.com/xulang-org/examples/ui_demo"
 
-struct Model {
+struct Model{
     button widgets.Button
     checkbox widgets.Checkbox
     progress widgets.Progress
@@ -25,24 +25,26 @@ struct Model {
     progress_id int
     scroll_id int
     row_ids []int
+    identity ui.CanvasEvent
+    pending ui.Request
 }
-fn (model $&Model) button_input(kind int,input &ui.InputEvent) widgets.Action {
+fn (model $&Model) button_input(kind int, input &ui.InputEvent) widgets.Action{
     button := $&model.button
-    << button.route(kind,input) or >>
+    << button.route(kind, input) or >>
 }
-fn (model $&Model) checkbox_input(kind int,input &ui.InputEvent) widgets.Action {
+fn (model $&Model) checkbox_input(kind int, input &ui.InputEvent) widgets.Action{
     checkbox := $&model.checkbox
-    << checkbox.route(kind,input) or >>
+    << checkbox.route(kind, input) or >>
 }
-fn (model $&Model) scroll_input(kind int,input &ui.InputEvent) widgets.Action {
+fn (model $&Model) scroll_input(kind int, input &ui.InputEvent) widgets.Action{
     scroll := $&model.scroll
-    << scroll.route(kind,input) or >>
+    << scroll.route(kind, input) or >>
 }
-fn (model $&Model) input(id int,kind int,input &ui.InputEvent) widgets.Action {
-    if id == model.button_id { << model.button_input(kind,input) or >> }
-    if id == model.check_id { << model.checkbox_input(kind,input) or >> }
-    if id == model.scroll_id { << model.scroll_input(kind,input) or >> }
-    << widgets.Action{kind: widgets.ACTION_NONE,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
+fn (model $&Model) input(id int, kind int, input &ui.InputEvent) widgets.Action{
+    if id == model.button_id{ << model.button_input(kind, input) or >> }
+    if id == model.check_id{ << model.checkbox_input(kind, input) or >> }
+    if id == model.scroll_id{ << model.scroll_input(kind, input) or >> }
+    << widgets.Action{kind: widgets.ACTION_NONE, id: id, needs_paint: false, request_focus: false, consumed: false, value: 0.0}
 }
 fn (model $&Model) place_button(bounds &layout.Rect) int {
     button := $&model.button
@@ -56,35 +58,35 @@ fn (model $&Model) place_progress(bounds &layout.Rect) int {
     progress := $&model.progress
     << progress.set_bounds(bounds) or >>
 }
-fn (model $&Model) paint(id int,bounds &layout.Rect,frame $&draw.Frame) bool {
-    model.draw_node(id,bounds,frame) or (err) { eprintln(err.msg())
-        << false }
+fn (model $&Model) paint(id int, bounds &layout.Rect, frame $&draw.Frame) bool {
+    model.draw_node(id, bounds, frame) or(err) {eprintln(err.msg())
+        << false}
     << true
 }
-fn (model $&Model) draw_node(id int,bounds &layout.Rect,frame $&draw.Frame) int {
-    if id == model.header_id {
-        demo.text(&model.context,frame,0.0,0.0,14.0,demo.accent(),"07 / IMAGE WORKBENCH") or >>
-        demo.text(&model.context,frame,0.0,28.0,24.0,demo.ink(),"Image workbench") or >>
-        demo.text(&model.context,frame,0.0,58.0,13.0,demo.muted(),model.message + "") or >>
-    } else if id == model.button_id {
+fn (model $&Model) draw_node(id int, bounds &layout.Rect, frame $&draw.Frame) int {
+    if id == model.header_id{
+        demo.text(&model.context, frame, 0.0, 0.0, 14.0, demo.accent(), "07 / IMAGE WORKBENCH") or >>
+        demo.text(&model.context, frame, 0.0, 28.0, 24.0, demo.ink(), "Image workbench") or >>
+        demo.text(&model.context, frame, 0.0, 58.0, 13.0, demo.muted(), model.message + "") or >>
+    } else if id == model.button_id{
         model.place_button(bounds) or >>
-        model.button.paint(frame,&model.button_label,&model.theme) or >>
-    } else if id == model.check_id {
+        model.button.paint(frame, &model.button_label, &model.theme) or >>
+    } else if id == model.check_id{
         model.place_checkbox(bounds) or >>
-        model.checkbox.paint(frame,&model.checkbox_label,&model.theme) or >>
-    } else if id == model.progress_id {
+        model.checkbox.paint(frame, &model.checkbox_label, &model.theme) or >>
+    } else if id == model.progress_id{
         model.place_progress(bounds) or >>
-        model.progress.paint(frame,&model.theme) or >>
-    } else if id == model.scroll_id {
+        model.progress.paint(frame, &model.theme) or >>
+    } else if id == model.scroll_id{
         scroll := $&model.scroll
         scroll.set_bounds(bounds) or >>
-        frame.fill_rect(0.0,0.0,bounds.width,bounds.height,draw.rgb(26,37,50)) or >>
+        frame.fill_rect(0.0, 0.0, bounds.width, bounds.height, draw.rgb(26, 37, 50)) or >>
     } else if model.row_ids.len > 0 && id == model.row_ids[0] {
         if model.images.len > 0 {
             image := model.images[0]
-            scale := math.min(bounds.width / f64(image.width),bounds.height / f64(image.height))
-            frame.image(&image,0.0,0.0,f64(image.width) * scale,f64(image.height) * scale) or >>
-        } else { demo.text(&model.context,frame,12.0,20.0,17.0,demo.muted(),"The selected image appears here.") or >> }
+            scale := math.min(bounds.width / f64(image.width), bounds.height / f64(image.height))
+            frame.image(&image, 0.0, 0.0, f64(image.width) * scale, f64(image.height) * scale) or >>
+        } else {demo.text(&model.context, frame, 12.0, 20.0, 17.0, demo.muted(), "The selected image appears here.") or >> }
     }
     << 0
 }
@@ -99,19 +101,19 @@ fn (model $&Model) retire_image(index int) int {
     << 0
 }
 fn (model $&Model) replace_image(image draw.Image) int {
-    for i in 0:model.images.len { model.retire_image(i) or >> }
-    model.images = []draw.Image{}
+    for i in 0:model.images.len{model.retire_image(i) or >> }
+    model.images =[]draw.Image{}
     model.images.push(image)
     << 0
 }
-fn preview_paint(window &ui.Window,path &string) int {
+fn preview_paint(window &ui.Window, path &string) int {
     context := draw.window_context(window) or >>
     $image := context.load_image(path) or >>
     $frame := context.new_frame(256)
     frame.begin() or >>
     frame.set_bg(demo.background()) or >>
-    scale := math.min(f64(window.width - 40) / f64(image.width),f64(window.height - 40) / f64(image.height))
-    frame.image(&image,20.0,20.0,f64(image.width) * scale,f64(image.height) * scale) or >>
+    scale := math.min(f64(window.width - 40) / f64(image.width), f64(window.height - 40) / f64(image.height))
+    frame.image(&image, 20.0, 20.0, f64(image.width) * scale, f64(image.height) * scale) or >>
     frame.present() or >>
     frame.dispose()
     image.dispose() or >>
@@ -141,81 +143,81 @@ fn (model $&Model) acknowledge() {
 }
 fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
-    if ready.kind == ui.EV_EXIT { << 0 }
+    if ready.kind == ui.EV_EXIT{ << 0}
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
-    host := widgets.Host{context: context,identity: identity}
+    host := widgets.Host{context: context, identity: identity}
     $column := layout.box_style(layout.BOX_COLUMN)
     column.padding = layout.insets(28.0) or >>
     column.gap = 14.0
     column.cross_alignment = layout.CROSS_STRETCH
-    $view := host.view(&column,demo.background()) or >>
+    $view := host.view(&column, demo.background()) or >>
     leaf := layout.box_style(layout.BOX_LEAF)
-    header := view.add(view.root(),&leaf,&layout.Size{width: 400.0,height: 88.0}) or >>
-    button_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 44.0}) or >>
-    check_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 40.0}) or >>
-    progress_id := view.add(view.root(),&leaf,&layout.Size{width: 280.0,height: 12.0}) or >>
+    header := view.add(view.root(), &leaf, &layout.Size{width: 400.0, height: 88.0}) or >>
+    button_id := view.add(view.root(), &leaf, &layout.Size{width: 280.0, height: 44.0}) or >>
+    check_id := view.add(view.root(), &leaf, &layout.Size{width: 280.0, height: 40.0}) or >>
+    progress_id := view.add(view.root(), &leaf, &layout.Size{width: 280.0, height: 12.0}) or >>
     $viewport := layout.box_style(layout.BOX_COLUMN)
     viewport.height = 260.0
     viewport.clip = true
     viewport.cross_alignment = layout.CROSS_STRETCH
     viewport.gap = 6.0
-    scroll_id := view.add(view.root(),&viewport,&layout.Size{width: 400.0,height: 260.0}) or >>
-    $rows := []int{}
+    scroll_id := view.add(view.root(), &viewport, &layout.Size{width: 400.0, height: 260.0}) or >>
+    $rows :=[]int {}
     for _ in 0:1 {
-        row := view.add(scroll_id,&leaf,&layout.Size{width: 400.0,height: 250.0}) or >>
+        row := view.add(scroll_id, &leaf, &layout.Size{width: 400.0, height: 250.0}) or >>
         rows.push(row)
-        view.set_boundary(row,true) or >>
+        view.set_boundary(row, true) or >>
     }
-    for id in [header,button_id,check_id,progress_id,scroll_id] { view.set_boundary(id,true) or >> }
-    for id in [button_id,check_id,scroll_id] { view.set_input(id,true,true) or >> }
-    empty := layout.Rect{x: 0.0,y: 0.0,width: 0.0,height: 0.0}
+    for id in[header, button_id, check_id, progress_id, scroll_id] {view.set_boundary(id, true) or >> }
+    for id in[button_id, check_id, scroll_id] {view.set_input(id, true, true) or >> }
+    empty := layout.Rect{x: 0.0, y: 0.0, width: 0.0, height: 0.0}
     options := draw.text_options(15.0)
     first := "Open a PNG or JPEG"
     second := "Show a separate preview window"
-    $model := Model{button: widgets.button(&identity,button_id,&empty) or >>,
-        checkbox: widgets.checkbox(&identity,check_id,&empty,true) or >>,
-        progress: widgets.progress(&empty,0.0) or >>,
-        scroll: widgets.scroll(&identity,scroll_id,&empty,widgets.AXIS_VERTICAL,250.0) or >>,
-        button_label: context.layout_text(&first,&options) or >>,
-        checkbox_label: context.layout_text(&second,&options) or >>,
-        theme: widgets.default_theme(),context: context,count: 0,message: "Open a local image to begin.",source: "",images: []draw.Image{},header_id: header,button_id: button_id,check_id: check_id,progress_id: progress_id,scroll_id: scroll_id,row_ids: rows}
+    $model := Model{button: widgets.button(&identity, button_id, &empty) or >>,
+        checkbox: widgets.checkbox(&identity, check_id, &empty, true) or >>,
+        progress: widgets.progress(&empty, 0.0) or >>,
+        scroll: widgets.scroll(&identity, scroll_id, &empty, widgets.AXIS_VERTICAL, 250.0) or >>,
+        button_label: context.layout_text(&first, &options) or >>,
+        checkbox_label: context.layout_text(&second, &options) or >>,
+        theme: widgets.default_theme(), context: context, count: 0, message: "Open a local image to begin.", source: "", images:[]draw.Image{}, header_id: header, button_id: button_id, check_id: check_id, progress_id: progress_id, scroll_id: scroll_id, row_ids: rows, identity: identity, pending: ui.Request{id: 0, window_id: 0, canvas_id: 0, generation: 0, kind: 0}}
     $width := 900.0
     $height := 700.0
     $native := demo.windows(ech)
-    $preview := ui.Window{id: 0,generation: 0,title: "Preview",width: 720,height: 500,content_kind: ui.CONTENT_DRAW,content_backend_id: 0,closed: 1}
-    $pending := ui.Request{id: 0,window_id: 0,canvas_id: 0,generation: 0,kind: 0}
+    $preview := ui.Window{id: 0, generation: 0, title: "Preview", width: 720, height: 500, content_kind: ui.CONTENT_DRAW, content_backend_id: 0, closed: 1}
+    dispatcher := register_actions(&model, &view) or >>
     while true {
-        constraints := layout.tight(width,height) or >>
-        submitted := widgets.present($&view,&constraints,$&model) or >>
-        if submitted { model.acknowledge() }
+        constraints := layout.tight(width, height) or >>
+        submitted := widgets.present($&view, &constraints, $&model) or >>
+        if submitted{model.acknowledge()}
         event := demo.next(ech)
-        if event.kind == ui.EV_EXIT { <- }
-        if preview.id > 0 && event.window_id == preview.id {
-            if event.kind == ui.EV_CLOSED || event.kind == ui.EV_WINDOW_FAILED { preview.closed = 1 }
+        if event.kind == ui.EV_EXIT{ <- }
+        if preview.id > 0 && event.window_id == preview.id{
+            if event.kind == ui.EV_CLOSED || event.kind == ui.EV_WINDOW_FAILED{preview.closed = 1}
             if event.kind == ui.EV_CANVAS_READY && model.source.len > 0 {
                 preview.content_command("input_enabled\t1") or >>
                 preview.content_command("pan_enabled\t0") or >>
-                preview_paint(&preview,&model.source) or >> }
-            if event.kind == ui.EV_CANVAS_METRICS {
+                preview_paint(&preview, &model.source) or >> }
+            if event.kind == ui.EV_CANVAS_METRICS{
                 metrics := ui.metrics_of(&event) or >>
-                if metrics.width > 40.0 && metrics.height > 40.0 { preview.width = int(metrics.width)
+                if metrics.width > 40.0 && metrics.height > 40.0 {preview.width = int(metrics.width)
                     preview.height = int(metrics.height)
-                    if model.source.len > 0 { preview_paint(&preview,&model.source) or >> } }
+                    if model.source.len > 0 {preview_paint(&preview, &model.source) or >> }}
             }
             ->
         }
-        if event.window_id != identity.window_id { -> }
-        if event.kind == ui.EV_REQUEST {
+        if event.window_id != identity.window_id{ -> }
+        if event.kind == ui.EV_REQUEST{
             result := ui.request_of(&event) or >>
-            if result.matches(&pending) {
-                pending.id = 0
+            if result.matches(&model.pending) {
+                model.pending.id = 0
                 model.message = "Selection cancelled or failed."
-                if result.status == ui.REQUEST_COMPLETED {
+                if result.status == ui.REQUEST_COMPLETED{
                     paths := ui.file_paths(&result) or >>
                     if paths.len > 0 {
                         path := paths[0] + ""
-                        image := context.load_image(&path) or (err) { model.message = err.msg()
+                        image := context.load_image(&path) or(err) {model.message = err.msg()
                             view.mark_paint(header) or >>
                             -> }
                         model.replace_image(image) or >>
@@ -225,8 +227,8 @@ fn scene(ech chan ui.Event) int {
                         model.progress_value(1.0) or >>
                         view.mark_paint(model.row_ids[0]) or >>
                         if model.checkbox.value() {
-                            if preview.closed != 0 { preview = native.open_content_window(ui.WindowOpts{title: "Xu UI / Image Preview",width: 720,height: 500},ui.CONTENT_DRAW) or >> }
-                            else { preview_paint(&preview,&path) or >>
+                            if preview.closed != 0 {preview = native.open_content_window(ui.WindowOpts{title: "Xu UI / Image Preview", width: 720, height: 500}, ui.CONTENT_DRAW) or >> }
+                            else {preview_paint(&preview, &path) or >>
                                 preview.focus() or >> }
                         }
                     }
@@ -235,41 +237,29 @@ fn scene(ech chan ui.Event) int {
                 view.mark_paint(progress_id) or >>
             }
         }
-        if event.kind == ui.EV_CANVAS_METRICS {
+        if event.kind == ui.EV_CANVAS_METRICS{
             metrics := ui.metrics_of(&event) or >>
-            if metrics.width > 0.0 && metrics.height > 0.0 { width = metrics.width
-                height = metrics.height }
+            if metrics.width > 0.0 && metrics.height > 0.0 {width = metrics.width
+                height = metrics.height}
         }
-        actions := widgets.dispatch_event($&view,&event,$&model) or >>
-        for action in actions {
-            if action.kind == widgets.ACTION_ACTIVATE && pending.id == 0 {
-                $options := ui.file_dialog_options()
-                options.title = "Open an image"
-                options.filters = [ui.FileFilter{label: "Images",extensions: ["png","jpg","jpeg"]}]
-                pending = ui.open_files_async(&identity,&options) or >>
-                model.message = "Choose a PNG or JPEG in the native dialog."
-                model.progress_value(0.2) or >>
-                view.mark_paint(header) or >>
-                view.mark_paint(progress_id) or >>
-            }
-            if action.kind == widgets.ACTION_SCROLL { view.set_scroll(scroll_id,0.0,action.value) or >> }
-        }
-        if event.kind == ui.EV_CANVAS_CLOSED { demo.quit() or >>
+        actions := widgets.dispatch_event($&view, &event, $&model) or >>
+        for action in actions{_ := dispatcher.dispatch(&action, $&model, $&view) or >> }
+        if event.kind == ui.EV_CANVAS_CLOSED{demo.quit() or >>
             <- }
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
-            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE { demo.quit() or >> }
+            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE{demo.quit() or >> }
         }
         stats := view.stats()
         if stats.recorded_boundaries > 0 || stats.reused_boundaries > 0 {
             println("View: " + str(stats.recorded_boundaries) + " recorded / " + str(stats.reused_boundaries) + " reused boundaries")
         }
     }
-    if pending.id > 0 { _ := pending.cancel() }
+    if model.pending.id > 0 {_ := model.pending.cancel()}
     view.dispose()
     // Native close has already revoked this canvas's images and text layouts.
     if demo.alive(&identity) {
-        for i in 0:model.images.len { model.retire_image(i) or >> }
+        for i in 0:model.images.len{model.retire_image(i) or >> }
         label := $&model.button_label
         label.dispose() or >>
         check_label := $&model.checkbox_label
@@ -277,12 +267,12 @@ fn scene(ech chan ui.Event) int {
     }
     << 0
 }
-fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
-    << } }
+fn worker(ech chan ui.Event) {scene(ech) or(err) {demo.fail(err.msg())
+        << }}
 fn launch() int {
-    $app := demo.app("Xu UI / Retained Image Workbench",900,700) or >>
+    $app := demo.app("Xu UI / Retained Image Workbench", 900, 700) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }
-fn main() int { << launch() or (err) { eprintln(err.msg())
-    << 1 } }
+fn main() int { << launch() or(err) {eprintln(err.msg())
+        << 1}}

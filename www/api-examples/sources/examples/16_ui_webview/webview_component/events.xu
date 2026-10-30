@@ -1,0 +1,48 @@
+@main
+
+#ui
+#ui/widgets
+
+struct Model{left int
+    right int
+    hide int
+    close int
+    status int
+    modal int
+    hidden bool
+    disposed bool}
+fn toggle_left(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    if m.disposed{ << ""}
+    m.hidden = !m.hidden
+    screen.set_visible(m.left, !m.hidden) or(err) { << err.msg()}
+    if m.hidden{screen.set_text(m.hide, "Show left") or(err) { << err.msg()}} else {screen.set_text(m.hide, "Hide left") or(err) { << err.msg()}}
+    << ""
+}
+fn reload_right(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.webview_command(m.right, "reload") or(err) { << err.msg()}
+    << ""
+}
+fn dispose_left(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    if m.disposed{ << ""}
+    screen.close_webview(m.left) or(err) { << err.msg()}
+    m.disposed = true
+    screen.set_enabled(m.hide, false) or(err) { << err.msg()}
+    screen.set_enabled(m.close, false) or(err) { << err.msg()}
+    << ""
+}
+fn open_modal(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.open(m.modal) or(err) { << err.msg()}
+    << ""
+}
+fn close_modal(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.close_overlay(m.modal) or(err) { << err.msg()}
+    << ""
+}
+fn web_loaded(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.set_text(m.status, "WebView " + str(action.id) + " loaded independently") or(err) { << err.msg()}
+    << ""
+}
+fn web_failed(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.set_text(m.status, "WebView " + str(action.id) + " failed to load") or(err) { << err.msg()}
+    << ""
+}

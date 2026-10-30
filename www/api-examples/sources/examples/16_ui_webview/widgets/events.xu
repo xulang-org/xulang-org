@@ -1,0 +1,29 @@
+@main
+
+#ui
+#ui/widgets
+
+fn activate(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    m.advance() or(err) { << err.msg()}
+    screen.mark_paint(m.header_id) or(err) { << err.msg()}
+    screen.mark_paint(m.progress_id) or(err) { << err.msg()}
+    << ""
+}
+fn enable(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    enabled := m.checkbox.value()
+    m.enable_button(enabled)
+    screen.set_input(m.button_id, enabled, enabled) or(err) { << err.msg()}
+    screen.mark_paint(m.button_id) or(err) { << err.msg()}
+    << ""
+}
+fn scroll(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    screen.set_scroll(m.scroll_id, 0.0, action.value) or(err) { << err.msg()}
+    << ""
+}
+fn register_actions(m &Model, screen &widgets.View) widgets.ActionDispatcher#Model, widgets.View, widgets.Action{
+    $d := widgets.action_dispatcher(m, screen)
+    d.on(m.button_id, widgets.ACTION_ACTIVATE, activate) or >>
+    d.on(m.check_id, widgets.ACTION_CHANGE, enable) or >>
+    d.on(m.scroll_id, widgets.ACTION_SCROLL, scroll) or >>
+    << d
+}

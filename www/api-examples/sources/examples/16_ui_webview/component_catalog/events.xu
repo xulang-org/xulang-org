@@ -1,0 +1,97 @@
+@main
+
+#ui
+#ui/widgets
+
+fn page_0(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    m.page = 0
+    << ""
+}
+fn page_1(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    m.page = 1
+    << ""
+}
+fn page_2(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    m.page = 2
+    << ""
+}
+fn choose_theme(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    m.theme =(m.theme + 1) % 3
+    m.appearance_dirty = true
+    << ""
+}
+fn choose_scale(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    if m.text_scale == 1.0 {m.text_scale = 1.4} else {m.text_scale = 1.0}
+    m.appearance_dirty = true
+    << ""
+}
+fn choose_density(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    if m.density == 1.0 {m.density = 0.8} else {m.density = 1.0}
+    m.appearance_dirty = true
+    << ""
+}
+fn refresh_table(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    m.fill_table(screen) or(err) { << err.msg()}
+    << ""
+}
+fn open_popover(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.open(m.popover) or(err) { << err.msg()}
+    << ""
+}
+fn open_modal(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.open(m.modal) or(err) { << err.msg()}
+    << ""
+}
+fn notify_theme(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    _ := screen.notify("All components share the same theme.") or(err) { << err.msg()}
+    << ""
+}
+fn complete_modal(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.close_overlay(m.modal) or(err) { << err.msg()}
+    _ := screen.notify("Action completed.") or(err) { << err.msg()}
+    << ""
+}
+fn close_modal(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.close_overlay(m.modal) or(err) { << err.msg()}
+    << ""
+}
+fn changed(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    screen.set_text(m.note, "Value changed · Tab / Shift+Tab · Escape") or(err) { << err.msg()}
+    << ""
+}
+fn page_changed(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    m.fill_table(screen) or(err) { << err.msg()}
+    << changed(m, screen, action)
+}
+fn inputs_changed(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    value := screen.text_value(m.combo) or(err) { << err.msg()}
+    count :=(screen.values(m.multi) or(err) { << err.msg()}).len
+    screen.set_text(m.value_label, "Value: " + value + "    Selected tags: " + str(count)) or(err) { << err.msg()}
+    << changed(m, screen, action)
+}
+fn global_key(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
+    if action.kind == widgets.ACTION_KEY && int(action.value) == ui.KEY_ESCAPE{screen.close() or(err) { << err.msg()}}
+    << ""
+}
+fn register_actions(m &Model, screen &widgets.Screen) widgets.ActionDispatcher#Model, widgets.Screen, widgets.Action{
+    $d := widgets.action_dispatcher(m, screen)
+    d.on(m.nav[0], widgets.ACTION_ACTIVATE, page_0) or >>
+    d.on(m.nav[1], widgets.ACTION_ACTIVATE, page_1) or >>
+    d.on(m.nav[2], widgets.ACTION_ACTIVATE, page_2) or >>
+    d.on(m.settings[0], widgets.ACTION_ACTIVATE, choose_theme) or >>
+    d.on(m.settings[1], widgets.ACTION_ACTIVATE, choose_scale) or >>
+    d.on(m.settings[2], widgets.ACTION_ACTIVATE, choose_density) or >>
+    d.on(m.table, widgets.ACTION_ACTIVATE, refresh_table) or >>
+    d.on(m.overlay_buttons[0], widgets.ACTION_ACTIVATE, open_popover) or >>
+    d.on(m.overlay_buttons[1], widgets.ACTION_ACTIVATE, open_modal) or >>
+    d.on(m.overlay_buttons[2], widgets.ACTION_ACTIVATE, notify_theme) or >>
+    d.on(m.modal_actions[0], widgets.ACTION_ACTIVATE, complete_modal) or >>
+    d.on(m.modal_actions[1], widgets.ACTION_ACTIVATE, close_modal) or >>
+    for id in[m.table, m.tree, m.crumbs, m.color] {d.on(id, widgets.ACTION_CHANGE, changed) or >> }
+    d.on(m.pager, widgets.ACTION_CHANGE, page_changed) or >>
+    d.on(m.combo, widgets.ACTION_CHANGE, inputs_changed) or >>
+    d.on(m.multi, widgets.ACTION_CHANGE, inputs_changed) or >>
+    // Screen-wide keys have id 0, outside the by-id control namespace.
+    d.set_fallback(global_key)
+    << d
+}
