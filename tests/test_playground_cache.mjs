@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 
 const bytes = readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url));
-const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url)));
-const source = examples['ui-counter'].source;
+const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url))).projects;
+const source = examples['ui-counter'].files['main.xu'];
 
 test('cached MIR replays from zero and recycles the execution arena across long sessions', async () => {
   const runtime = await createRuntime(bytes);
@@ -68,7 +68,7 @@ test('compile diagnostics survive reuse; parser and execution traps discard the 
 test('incremental input snapshots match full replay through clicks, history rewrites and page changes', async () => {
   const fast = await createRuntime(bytes);
   const reference = await createRuntime(bytes, {checkpoints:false});
-  const gallery = examples['ui-gallery'].source;
+  const gallery = examples['ui-gallery'].files['main.xu'];
   const click = (x,y) => [{kind:72,x,y,button:1,buttons:1}, {kind:73,x,y,button:1}];
   const histories = [[], click(100,125), [...click(100,125), ...click(260,125)],
     [...click(100,125), ...click(520,62)], // rewrite history: no snapshot reuse
