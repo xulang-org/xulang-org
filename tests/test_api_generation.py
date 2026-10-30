@@ -150,6 +150,8 @@ fn main() {
             # A scoped refresh must not read the other project from the checkout.
             (checkout / paths[1]).unlink()
             api.refresh_examples(str(site), str(checkout), 'b' * 40, '0.10.12', ['examples/one'])
+            # CLI paths may contain a trailing slash or native Windows separators.
+            api.refresh_examples(str(site), str(checkout), 'b' * 40, '0.10.12', ['examples/one/'])
             examples = api.load_examples(str(site), [api.Package('io', '#io')], '0.10.12')['io']
             by_path = {example.path: example for example in examples}
             self.assertEqual(by_path[paths[0]].ref, 'b' * 40)
