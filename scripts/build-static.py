@@ -135,7 +135,8 @@ class RewriteHTML(HTMLParser):
             end = '/>' if closed else '>'
             raw = raw[:-len(end)] + f' data-wasm-available="{str(self.playground).lower()}"' + end
         if self.asset_key and tag in ('script', 'link'):
-            for asset in ('xu-play-workspace.js', 'xu-play-library.js', 'playground.css'):
+            for asset in ('xu-play-workspace.js', 'xu-play-library.js', 'playground.css',
+                          'widget-experience.js', 'widgets.css', 'playground-design.css'):
                 raw = re.sub(r'(/' + re.escape(asset) + r')(["\'])',
                              lambda m: m[1] + '?v=' + self.asset_key + m[2], raw)
         self.parts.append(raw)
@@ -197,6 +198,16 @@ def check_links(output: Path, base: str) -> None:
                 errors.append(f'{page.relative_to(output)}: missing {value}')
     if errors:
         raise ValueError('Broken local links:\n' + '\n'.join(sorted(set(errors))))
+
+
+def playground_asset_key(root: Path, wasm: Path) -> str:
+    digest = hashlib.sha256()
+    for name in ('xu-play.js', 'xu-play-canvas.js', 'xu-play-workspace.js', 'xu-play-library.js', 'playground.css', 'widget-experience.js', 'widgets.css', 'playground-design.css', 'widgets.json', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
+        asset = wasm if name == 'xu-play.wasm' else root / 'www' / name
+        if asset.exists():
+            digest.update(name.encode())
+            digest.update(asset.read_bytes())
+    return digest.hexdigest()[:16]
 
 
 def build(root: Path, output: Path, base: str = '', require_playground: bool = False, xu_version: str | None = None) -> int:
@@ -265,13 +276,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         labels = re.findall(r'(?:Measured|实测) Xu v(\d+\.\d+\.\d+)', source.read_text())
         if labels != [measured]:
             raise ValueError(f'Benchmark measurement label does not match {measured}: {lang}')
-    digest = hashlib.sha256()
-    for name in ('xu-play.js', 'xu-play-canvas.js', 'xu-play-workspace.js', 'xu-play-library.js', 'playground.css', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
-        asset = wasm if name == 'xu-play.wasm' else root / 'www' / name
-        if asset.exists():
-            digest.update(name.encode())
-            digest.update(asset.read_bytes())
-    asset_key = digest.hexdigest()[:16]
+    asset_key = playground_asset_key(root, wasm)
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)

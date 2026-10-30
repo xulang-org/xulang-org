@@ -213,3 +213,17 @@ StyledLabel, Card, Badge, Progress and a display-only Editor in WASM. Canvas
 renders their paint commands. Editable text and IME remain unavailable. The shapes and click-counter demos
 remain available. See [the browser UI build guide](playground/README.md) for
 source synchronization, supported APIs, keyboard controls, and replay limits.
+
+The Widgets documentation follows **API → UI → Widgets → component**, with 46
+component pages in each language. `templates/widgets.json` owns the categories,
+usage notes and experience descriptions. `scripts/gen-widgets.py` combines this
+catalog with released declarations and adds focused native setup fragments.
+It runs automatically after release API generation. Use `--check` to verify
+that checked-in pages are current.
+
+Twenty-nine component experiences execute real Xu/WASM. Their editable sources
+live in `playground/examples/widget-*.xu` and are published by
+`python3 scripts/gen-widget-examples.py`. Other components have browser
+interaction previews explicitly labeled as not executing Xu, with links to
+their native API and complete Workshop example. These are user experiences;
+the preview does not claim to reproduce platform rendering or native services.

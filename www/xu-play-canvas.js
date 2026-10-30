@@ -21,6 +21,7 @@
       var parts = line.split('\t'), op = parts.shift(), signature = signatures[op];
       // circle has a pen form and an explicit fill/stroke form, like the SDK.
       if (op === 'circle' && parts.length === 6) signature = 'nnnccn';
+      if (op === 'path_stroke' && parts.length === 5) signature = 'cnnnn';
       if (typeof signature !== 'string' || parts.length !== signature.length) throw Error('Unsupported UI command: ' + op);
       var args = parts.map(function (value, index) {
         var type = signature[index];
@@ -50,7 +51,10 @@
       if (['rect', 'fill_rect', 'stroke_rect', 'round_rect', 'clip_rect'].includes(op) && (args[2] < 0 || args[3] < 0)) throw Error('Negative UI size');
       if (op === 'circle' && args[2] < 0 || op === 'round_rect' && args[4] < 0) throw Error('Negative UI radius');
       if ((op === 'text' || op === 'layout_text') && (args[2] < 1 || args[2] > 256)) throw Error('Invalid UI font size');
-      if (['path_stroke', 'width', 'stroke_rect', 'round_rect', 'line'].includes(op) && (args.at(-1) < 1 || args.at(-1) > 1000) || op === 'circle' && args.length === 6 && (args[5] < 1 || args[5] > 1000)) throw Error('Invalid UI stroke width');
+      var strokeWidth = op === 'path_stroke' ? args[1] : args.at(-1);
+      if (['path_stroke', 'width', 'stroke_rect', 'round_rect', 'line'].includes(op) && (strokeWidth < 1 || strokeWidth > 1000) || op === 'circle' && args.length === 6 && (args[5] < 1 || args[5] > 1000)) throw Error('Invalid UI stroke width');
+      if (op === 'path_stroke' && args.length === 5 &&
+          (!Number.isInteger(args[2]) || args[2] < 0 || args[2] > 2 || !Number.isInteger(args[3]) || args[3] < 0 || args[3] > 2 || args[4] <= 0 || args[4] > 1000)) throw Error('Invalid UI stroke options');
       pending.push({op: op, args: args});
     });
     return committed;
@@ -62,10 +66,14 @@
   // Kept separate so the benchmark can time validation and Canvas calls.
   function draw(canvas, display) {
     if (!display) return false; // cancel or an unfinished frame never commits.
+    var ratio = Number(canvas.ownerDocument.defaultView?.devicePixelRatio) || 1;
+    ratio = Math.max(1, Math.min(3, ratio));
     var staging = canvas.ownerDocument.createElement('canvas');
-    staging.width = WIDTH; staging.height = HEIGHT;
+    staging.width = Math.round(WIDTH * ratio); staging.height = Math.round(HEIGHT * ratio);
     var ctx = staging.getContext('2d');
     if (!ctx) throw Error('Canvas 2D is unavailable');
+    function origin() { ctx.setTransform(ratio, 0, 0, ratio, 0, 0); }
+    origin();
     var pen = {fill: '#000000', stroke: '-', width: 1}, stack = [];
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
     function paint(fill, stroke, width) {
@@ -75,14 +83,14 @@
     display.forEach(function (command) {
       var a = command.args, op = command.op;
       if (op === 'bgcolor') {
-        ctx.save(); ctx.resetTransform(); ctx.fillStyle = a[0] === '-' ? '#ffffff' : a[0]; ctx.fillRect(0, 0, WIDTH, HEIGHT); ctx.restore();
+        ctx.save(); origin(); ctx.fillStyle = a[0] === '-' ? '#ffffff' : a[0]; ctx.fillRect(0, 0, WIDTH, HEIGHT); ctx.restore();
       } else if (op === 'color') { pen.fill = a[0]; pen.stroke = a[0]; }
       else if (op === 'fill') pen.fill = a[0];
       else if (op === 'stroke') pen.stroke = a[0];
       else if (op === 'width') pen.width = a[0];
       else if (op === 'push') { ctx.save(); stack.push({...pen}); }
       else if (op === 'pop') { ctx.restore(); pen = stack.pop(); }
-      else if (op === 'origin') ctx.resetTransform();
+      else if (op === 'origin') origin();
       else if (op === 'translate') ctx.translate(a[0], a[1]);
       else if (op === 'rotate') ctx.rotate(a[0] * Math.PI / 180);
       else if (op === 'scale') ctx.scale(a[0] / 100, a[1] / 100);
@@ -93,7 +101,13 @@
       else if (op === 'path_cubic') ctx.bezierCurveTo(...a);
       else if (op === 'path_close') ctx.closePath();
       else if (op === 'path_fill') paint(a[0], '-', 1);
-      else if (op === 'path_stroke') paint('-', a[0], a[1]);
+      else if (op === 'path_stroke') {
+        ctx.save();
+        ctx.lineCap = ['butt','round','square'][a[2] || 0];
+        ctx.lineJoin = ['miter','round','bevel'][a[3] || 0];
+        ctx.miterLimit = a[4] || 10;
+        paint('-', a[0], a[1]); ctx.restore();
+      }
       else if (op === 'layout_text') {
         if (a[3] !== '-' && a[4] > 0 && a[5]) {
           ctx.save(); ctx.font = a[2] + 'px monospace'; ctx.textBaseline = 'top';
@@ -126,7 +140,7 @@
     // Only the complete, validated last present reaches the visible canvas.
     var target = canvas.getContext('2d');
     if (!target) throw Error('Canvas 2D is unavailable');
-    canvas.width = WIDTH; canvas.height = HEIGHT;
+    canvas.width = staging.width; canvas.height = staging.height;
     target.drawImage(staging, 0, 0);
     return true;
   }

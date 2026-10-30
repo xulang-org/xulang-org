@@ -1,0 +1,524 @@
+<!--title: Input · UI / Widgets-->
+<!--xu-api-version: 0.10.12-->
+<nav class="widget-crumb" aria-label="位置"><a href="/zh/api">API</a><span>/</span><a href="/zh/api/ui">UI</a><span>/</span><a href="/zh/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">Input</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / 文本输入</p><h1>Input</h1><p class="lead">编辑单行文本</p><a class="btn pri" href="/zh/playground?widget=input#widget-experience">在演练场体验预览 <span aria-hidden="true">↗</span></a><p class="note">演练场中的预览用于体验交互，不执行 Xu；原生行为以本页 API 和完整 Xu 示例为准。</p></header>
+<h2 id="experience">体验什么</h2><p>输入项目名并清空。</p>
+<h2 id="behavior">使用要点</h2><p>适用于单行数据。通过应用状态读取文本并处理变更；多行内容使用 TextArea，带标签与校验提示时使用 Field。</p>
+<h2 id="create">通过 Screen 创建</h2>
+<p>下面的 Screen 构造方法返回节点 ID。将 ID 交给 Screen 的布局、状态与事件接口；它不是下方独立控件类型的实例。</p>
+<p class="note">原生 Xu 创建片段：在已有 Screen 的初始化阶段调用 configure；窗口创建、事件循环与资源释放参见完整原生示例。</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+
+fn configure(screen $&amp;widgets.Screen) int {
+    id := screen.input(&quot;Xu workspace&quot;) or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="--Screen-input">
+<h2><code>($&amp;Screen) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Screen) input(value <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>接收并处理分发的鼠标、键盘或触摸交互输入事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Screen</span></dt><dd>接收者 $&amp;Screen（可变借用）</dd>
+<dt><code>value</code> <span class="type">string</span></dt><dd>value（string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<h2 id="lifecycle">放置、状态与事件</h2>
+<p>组件由应用拥有。Screen.place 放置节点，Screen.set_enabled 和 Screen.set_visible 管理可用性与显示。状态变化后重新呈现；创建和修改时处理 <code>or</code> 错误，不在绘制回调中修改拓扑。ToastHost 使用自己的队列接口。</p>
+<p><a href="/zh/api/ui/widgets#struct-Action">Action</a> · <a href="/zh/api/ui/widgets#struct-Styles">Styles</a> · <a href="/zh/docs/ui">界面生命周期与样式指南</a></p>
+<p><a href="/zh/api/ui/widgets#--Screen-place">Screen.place</a> · <a href="/zh/api/ui/widgets#--Screen-set_enabled">Screen.set_enabled</a> · <a href="/zh/api/ui/widgets#--Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">独立控件对象 API</h2>
+<p>以下类型与方法用于自行管理控件、输入和绘制的进阶用法。接收者是控件对象，不是 Screen 返回的节点 ID；普通 Screen 用法请使用上面的创建接口及 Widgets 模块中的 Screen 方法。</p>
+<article class="api-item" id="struct-Editor">
+<h2><code>struct Editor</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Editor {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>文本编辑核心控制器，提供光标移动、选区、撤销重做与排版。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+<p><a href="/zh/api/ui/widgets#example-114841dc1d17">查看用法示例</a></p>
+</article>
+<article class="api-item" id="-Editor-id">
+<h2><code>(&amp;Editor) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) id() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件、元素或节点的唯一标识 ID。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Editor-value">
+<h2><code>(&amp;Editor) value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) value() <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="-Editor-is_password">
+<h2><code>(&amp;Editor) is_password</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) is_password() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：判断是否 password。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Editor-is_password_visible">
+<h2><code>(&amp;Editor) is_password_visible</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) is_password_visible() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：判断是否 password visible。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Editor-set_password">
+<h2><code>($&amp;Editor) set_password</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) set_password(on <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Editor` 上的操作：设置 password。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>on</code> <span class="type">bool</span></dt><dd>on（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-set_password_visible">
+<h2><code>($&amp;Editor) set_password_visible</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) set_password_visible(visible <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Editor` 上的操作：设置 password visible。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>visible</code> <span class="type">bool</span></dt><dd>visible（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Editor-is_focused">
+<h2><code>(&amp;Editor) is_focused</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) is_focused() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件当前是否拥有输入焦点。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Editor-is_enabled">
+<h2><code>(&amp;Editor) is_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) is_enabled() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件当前是否可用。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Editor-needs_paint">
+<h2><code>(&amp;Editor) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件是否需要重新绘制；绘制完成后调用 painted 清除标记。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Editor-painted">
+<h2><code>($&amp;Editor) painted</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) painted()</code></pre></div>
+<h3>用途</h3>
+<p>确认当前帧已绘制，清除重绘标记；不是状态查询。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Editor-set_placeholder">
+<h2><code>($&amp;Editor) set_placeholder</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) set_placeholder(value &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Editor` 上的操作：设置 placeholder。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>value</code> <span class="type">&amp;string</span></dt><dd>value（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-focus_session">
+<h2><code>($&amp;Editor) focus_session</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) focus_session(on <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>切换编辑焦点并管理原生输入会话；失焦保留提交值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>on</code> <span class="type">bool</span></dt><dd>on（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>成功为 0；失败抛出错误</p>
+</article>
+<article class="api-item" id="--Editor-enable">
+<h2><code>($&amp;Editor) enable</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) enable(on <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `$&amp;Editor` 上执行 `enable` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>on</code> <span class="type">bool</span></dt><dd>on（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-place">
+<h2><code>($&amp;Editor) place</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) place(bounds &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>设置画布全局矩形；布局或祖先滚动后更新，以同步原生 IME 几何。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>bounds</code> <span class="type">&amp;layout.Rect</span></dt><dd>bounds（借用，调用方仍持有；类型 &amp;layout.Rect）</dd>
+</dl>
+<h3>返回</h3>
+<p>成功为 0；失败抛出错误</p>
+</article>
+<article class="api-item" id="--Editor-set_value">
+<h2><code>($&amp;Editor) set_value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) set_value(value &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Editor` 上的操作：设置 value。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>value</code> <span class="type">&amp;string</span></dt><dd>value（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-route">
+<h2><code>($&amp;Editor) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) route(kind <span class="syn-type">int</span>,event &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>路由并分发交互事件至命中的子节点或处理器。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>类型标签（int）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Editor-event">
+<h2><code>($&amp;Editor) event</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) event(event &amp;ui.Event) Action</code></pre></div>
+<h3>用途</h3>
+<p>处理并响应窗口与系统的交互及生命周期事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.Event</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.Event）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Editor-paint">
+<h2><code>($&amp;Editor) paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) paint(frame <span class="syn-borrow">$&amp;</span>draw.Frame,theme &amp;Theme) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在目标画布或渲染目标上执行控件的视觉绘制。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>theme</code> <span class="type">&amp;Theme</span></dt><dd>theme（借用，调用方仍持有；类型 &amp;Theme）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-dispose">
+<h2><code>($&amp;Editor) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) dispose()</code></pre></div>
+<h3>用途</h3>
+<p>释放并清理对象所持有的系统原生资源与底层句柄。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Editor-caret_opacity">
+<h2><code>(&amp;Editor) caret_opacity</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) caret_opacity() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：执行 caret opacity 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-Editor-has_caret_animation">
+<h2><code>(&amp;Editor) has_caret_animation</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) has_caret_animation() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：判断是否具有 caret animation。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Editor-next_caret_tick">
+<h2><code>(&amp;Editor) next_caret_tick</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) next_caret_tick(now time.Instant,reduced_motion <span class="syn-type">bool</span>) time.Instant</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：执行 next caret tick 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+<dt><code>now</code> <span class="type">time.Instant</span></dt><dd>now（time.Instant）</dd>
+<dt><code>reduced_motion</code> <span class="type">bool</span></dt><dd>reduced_motion（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>time.Instant — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-tick">
+<h2><code>($&amp;Editor) tick</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) tick(now time.Instant,reduced_motion <span class="syn-type">bool</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>推进动画时间戳与状态过渡动画步进。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>now</code> <span class="type">time.Instant</span></dt><dd>now（time.Instant）</dd>
+<dt><code>reduced_motion</code> <span class="type">bool</span></dt><dd>reduced_motion（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Editor-bounds">
+<h2><code>(&amp;Editor) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件或几何对象的有效外接矩形边界（Rectangle）。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-Editor-is_invalid">
+<h2><code>(&amp;Editor) is_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) is_invalid() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：判断是否 invalid。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Editor-is_hovered">
+<h2><code>(&amp;Editor) is_hovered</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) is_hovered() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：判断是否 hovered。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Editor-visual_state">
+<h2><code>(&amp;Editor) visual_state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) visual_state() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：执行 visual state 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Editor-has_style">
+<h2><code>(&amp;Editor) has_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) has_style() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：判断是否具有 style。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Editor-style_or">
+<h2><code>(&amp;Editor) style_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) style_or(styles &amp;Styles) ControlStyle</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：执行 style or 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>ControlStyle — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-set_style">
+<h2><code>($&amp;Editor) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Editor` 上的操作：设置 style。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style（借用，调用方仍持有；类型 &amp;ControlStyle）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-clear_style">
+<h2><code>($&amp;Editor) clear_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) clear_style()</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Editor` 上的操作：执行 clear style 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Editor-apply_styles">
+<h2><code>($&amp;Editor) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>应用并验证主题；指标变化时更新布局 / 几何并标记重绘。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>成功为 0；失败抛出错误</p>
+</article>
+<article class="api-item" id="--Editor-paint_motion_styled">
+<h2><code>($&amp;Editor) paint_motion_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) paint_motion_styled(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles,motion <span class="syn-borrow">$&amp;</span>PaintTransition,now time.Instant,reduced_motion <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Editor` 上的操作：执行 paint motion styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+<dt><code>motion</code> <span class="type">$&amp;PaintTransition</span></dt><dd>motion（独占借用；类型 $&amp;PaintTransition）</dd>
+<dt><code>now</code> <span class="type">time.Instant</span></dt><dd>now（time.Instant）</dd>
+<dt><code>reduced_motion</code> <span class="type">bool</span></dt><dd>reduced_motion（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Editor-set_invalid">
+<h2><code>($&amp;Editor) set_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) set_invalid(invalid <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Editor` 上的操作：设置 invalid。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>invalid</code> <span class="type">bool</span></dt><dd>invalid（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Editor-is_read_only">
+<h2><code>(&amp;Editor) is_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor &amp;Editor) is_read_only() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Editor` 上的操作：判断是否 read only。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">&amp;Editor</span></dt><dd>接收者 &amp;Editor（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Editor-set_read_only">
+<h2><code>($&amp;Editor) set_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) set_read_only(on <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>切换只读并释放或重启原生输入会话；保留选择、导航、复制，拒绝只读期间的写入与迟到 IME 提交。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>on</code> <span class="type">bool</span></dt><dd>on（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>成功为 0；失败抛出错误</p>
+</article>
+<article class="api-item" id="--Editor-measure_styled">
+<h2><code>($&amp;Editor) measure_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) measure_styled(styles &amp;Styles) layout.Size</code></pre></div>
+<h3>用途</h3>
+<p>按有效字体、密度、内容和最小尺寸测量Editor。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>固有逻辑尺寸；原生排版失败时抛出错误</p>
+</article>
+<article class="api-item" id="--Editor-paint_styled">
+<h2><code>($&amp;Editor) paint_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (editor <span class="syn-borrow">$&amp;</span>Editor) paint_styled(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>使用当前完整主题绘制Editor；控件边界与 Frame 使用相同的局部坐标。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>editor</code> <span class="type">$&amp;Editor</span></dt><dd>接收者 $&amp;Editor（可变借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>成功为 0；失败抛出错误</p>
+</article>
+<h2 id="native-example">完整原生示例</h2><p><a href="/zh/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/zh/api/ui/widgets">返回 Widgets 目录</a></p>

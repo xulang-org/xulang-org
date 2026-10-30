@@ -1,0 +1,348 @@
+<!--title: Breadcrumbs · UI / Widgets-->
+<!--xu-api-version: 0.10.12-->
+<nav class="widget-crumb" aria-label="位置"><a href="/zh/api">API</a><span>/</span><a href="/zh/api/ui">UI</a><span>/</span><a href="/zh/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">Breadcrumbs</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / 导航</p><h1>Breadcrumbs</h1><p class="lead">显示当前位置并返回上级</p><a class="btn pri" href="/zh/playground?example=widget-breadcrumbs#xu-play-workspace">在演练场运行 Xu 示例 <span aria-hidden="true">↗</span></a><p class="note">示例由浏览器中的 Xu/WASM 运行器执行。</p></header>
+<h2 id="experience">体验什么</h2><p>点击路径段，查看触发的层级编号。</p>
+<h2 id="behavior">使用要点</h2><p>展示从根到当前位置的路径。祖先可以返回，当前页应明确区分，长路径需要合理折叠或裁剪。</p>
+<h2 id="create">通过 Screen 创建</h2>
+<p>下面的 Screen 构造方法返回节点 ID。将 ID 交给 Screen 的布局、状态与事件接口；它不是下方独立控件类型的实例。</p>
+<p class="note">原生 Xu 创建片段：在已有 Screen 的初始化阶段调用 configure；窗口创建、事件循环与资源释放参见完整原生示例。</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+
+fn configure(screen $&amp;widgets.Screen) int {
+    options := [&quot;Design&quot;,&quot;Develop&quot;,&quot;Review&quot;]
+    id := screen.breadcrumbs(&amp;options) or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="--Screen-breadcrumbs">
+<h2><code>($&amp;Screen) breadcrumbs</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Screen) breadcrumbs(items &amp;[]<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `$&amp;Screen` 上执行 `breadcrumbs` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Screen</span></dt><dd>接收者 $&amp;Screen（可变借用）</dd>
+<dt><code>items</code> <span class="type">&amp;[]string</span></dt><dd>元素列表（借用，调用方仍持有；类型 &amp;[]string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<h2 id="lifecycle">放置、状态与事件</h2>
+<p>组件由应用拥有。Screen.place 放置节点，Screen.set_enabled 和 Screen.set_visible 管理可用性与显示。状态变化后重新呈现；创建和修改时处理 <code>or</code> 错误，不在绘制回调中修改拓扑。ToastHost 使用自己的队列接口。</p>
+<p><a href="/zh/api/ui/widgets#struct-Action">Action</a> · <a href="/zh/api/ui/widgets#struct-Styles">Styles</a> · <a href="/zh/docs/ui">界面生命周期与样式指南</a></p>
+<p><a href="/zh/api/ui/widgets#--Screen-place">Screen.place</a> · <a href="/zh/api/ui/widgets#--Screen-set_enabled">Screen.set_enabled</a> · <a href="/zh/api/ui/widgets#--Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">独立控件对象 API</h2>
+<p>以下类型与方法用于自行管理控件、输入和绘制的进阶用法。接收者是控件对象，不是 Screen 返回的节点 ID；普通 Screen 用法请使用上面的创建接口及 Widgets 模块中的 Screen 方法。</p>
+<article class="api-item" id="-Breadcrumbs-overflow_bounds">
+<h2><code>(&amp;Breadcrumbs) overflow_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) overflow_bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Breadcrumbs` 上的操作：执行 overflow bounds 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-popup_bounds">
+<h2><code>(&amp;Breadcrumbs) popup_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) popup_bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Breadcrumbs` 上的操作：执行 popup bounds 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-set_popup_above">
+<h2><code>($&amp;Breadcrumbs) set_popup_above</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) set_popup_above(above <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：设置 popup above。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>above</code> <span class="type">bool</span></dt><dd>above（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Breadcrumbs-paint_popup_styled">
+<h2><code>($&amp;Breadcrumbs) paint_popup_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) paint_popup_styled(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：执行 paint popup styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-Breadcrumbs">
+<h2><code>struct Breadcrumbs</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Breadcrumbs {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>面包屑路径层级导航控件，指示当前界面位置与层级跳转。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-id">
+<h2><code>(&amp;Breadcrumbs) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) id() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件、元素或节点的唯一标识 ID。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-bounds">
+<h2><code>(&amp;Breadcrumbs) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件或几何对象的有效外接矩形边界（Rectangle）。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-count">
+<h2><code>(&amp;Breadcrumbs) count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) count() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回该控件当前包含的项目数量。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-needs_paint">
+<h2><code>(&amp;Breadcrumbs) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件是否需要重新绘制；绘制完成后调用 painted 清除标记。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-visual_state">
+<h2><code>(&amp;Breadcrumbs) visual_state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) visual_state() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Breadcrumbs` 上的操作：执行 visual state 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-style_or">
+<h2><code>(&amp;Breadcrumbs) style_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) style_or(styles &amp;Styles) ControlStyle</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Breadcrumbs` 上的操作：执行 style or 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>ControlStyle — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-set_style">
+<h2><code>($&amp;Breadcrumbs) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：设置 style。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style（借用，调用方仍持有；类型 &amp;ControlStyle）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-set_enabled">
+<h2><code>($&amp;Breadcrumbs) set_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) set_enabled(enabled <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：设置 enabled。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Breadcrumbs-set_read_only">
+<h2><code>($&amp;Breadcrumbs) set_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) set_read_only(read_only <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：设置 read only。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>read_only</code> <span class="type">bool</span></dt><dd>read_only（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-set_bounds">
+<h2><code>($&amp;Breadcrumbs) set_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) set_bounds(bounds &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：设置 bounds。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>bounds</code> <span class="type">&amp;layout.Rect</span></dt><dd>bounds（借用，调用方仍持有；类型 &amp;layout.Rect）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-set_focus">
+<h2><code>($&amp;Breadcrumbs) set_focus</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) set_focus(focused <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：设置 focus。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>focused（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Breadcrumbs-set_text">
+<h2><code>($&amp;Breadcrumbs) set_text</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) set_text(index <span class="syn-type">int</span>,text &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：设置 text。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index（int）</dd>
+<dt><code>text</code> <span class="type">&amp;string</span></dt><dd>文本（借用，调用方仍持有；类型 &amp;string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-apply_styles">
+<h2><code>($&amp;Breadcrumbs) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>根据当前主题样式表解析并应用几何与视觉度量。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-measure_styled">
+<h2><code>($&amp;Breadcrumbs) measure_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) measure_styled(styles &amp;Styles) layout.Size</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：执行 measure styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Size — 该类型的值</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-item_bounds">
+<h2><code>(&amp;Breadcrumbs) item_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) item_bounds(index <span class="syn-type">int</span>) layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Breadcrumbs` 上的操作：执行 item bounds 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+<dt><code>index</code> <span class="type">int</span></dt><dd>index（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-Breadcrumbs-cursor_at">
+<h2><code>(&amp;Breadcrumbs) cursor_at</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs &amp;Breadcrumbs) cursor_at(x <span class="syn-type">f64</span>,y <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Breadcrumbs` 上的操作：执行 cursor at 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">&amp;Breadcrumbs</span></dt><dd>接收者 &amp;Breadcrumbs（借用）</dd>
+<dt><code>x</code> <span class="type">f64</span></dt><dd>值（f64）</dd>
+<dt><code>y</code> <span class="type">f64</span></dt><dd>值（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-input">
+<h2><code>($&amp;Breadcrumbs) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) input(event &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>接收并处理分发的鼠标、键盘或触摸交互输入事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-route">
+<h2><code>($&amp;Breadcrumbs) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) route(kind <span class="syn-type">int</span>,event &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>路由并分发交互事件至命中的子节点或处理器。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>类型标签（int）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-paint_styled">
+<h2><code>($&amp;Breadcrumbs) paint_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) paint_styled(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Breadcrumbs` 上的操作：执行 paint styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Breadcrumbs-dispose">
+<h2><code>($&amp;Breadcrumbs) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (crumbs <span class="syn-borrow">$&amp;</span>Breadcrumbs) dispose()</code></pre></div>
+<h3>用途</h3>
+<p>释放并清理对象所持有的系统原生资源与底层句柄。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>crumbs</code> <span class="type">$&amp;Breadcrumbs</span></dt><dd>接收者 $&amp;Breadcrumbs（可变借用）</dd>
+</dl>
+</article>
+<h2 id="native-example">完整原生示例</h2><p><a href="/zh/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/zh/api/ui/widgets">返回 Widgets 目录</a></p>

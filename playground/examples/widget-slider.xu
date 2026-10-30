@@ -1,0 +1,43 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.dark_theme()
+    styles := playground.dark_styles()
+    bounds := box(32.0,104.0,550.0,44.0)
+    $control := widgets.slider(&identity,1,&bounds,0.0,100.0,40.0) or >>
+    $count := 0
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        navigation := focus.input(&event)
+        control.set_focus(focus.current() == 1)
+        if navigation.consumed { -> }
+        action := control.input(&event)
+        if action.request_focus { focus.focus(1) or >> }
+        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    draw.text(32,24,24,"#f5f0ed","Slider")
+    control.paint_styled($&frame,&styles) or >>
+    draw.text(32,320,16,"#b3aab6","Value: " + str(int(control.value())))
+    println("Value: " + str(int(control.value())))
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

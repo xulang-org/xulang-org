@@ -59,6 +59,7 @@
     <div class="faq-answer">
       <p>SDK 包含按钮、勾选框、开关、单选、滑块、步进器、标签页、列表与选择器；Input / TextArea 支持原生文字输入会话、IME、选区及复制粘贴。还提供 Table、TreeView、Pagination、ComboBox、MultiSelect、DatePicker、TimePicker、ColorPicker，以及 Popover、Tooltip、Toast、Modal 等组件。</p>
       <p>控件共享深色、浅色和高对比度主题，支持字体与文字缩放、密度、状态样式和局部覆盖。保留布局与 <code>Screen</code> 上下文可协助组织控件、焦点、事件和重绘。绘图、编辑与主题的用法见<a href="/docs/ui#styles">样式指南</a>和<a href="/api/ui/widgets#examples">可运行示例</a>。</p>
+      <p><code>widgets.ActionDispatcher</code> 通过类型化函数表按控件 id 和 action kind 分派语义动作；XACP <code>ui.act</code> 操作已注册的 <code>Screen</code> 后产生的动作可由应用交给同一分派器处理，见<a href="/api/ui/widgets">控件 API</a>与<a href="https://github.com/xulang-org/xu/blob/dev/src/ui/widgets/README.md">ActionDispatcher 说明</a>。</p>
     </div>
   </details>
 
@@ -127,8 +128,8 @@
   <details class="faq-item">
     <summary><h3>xacp.hello 会授予什么权限？</h3></summary>
     <div class="faq-answer">
-      <p>控制会话开始时没有权限。启动适配器校验 <code>xacp.hello</code>（<code>ver: !ver 1.0.0</code>，单调 id），begin 该请求，然后在 <code>finish_request</code> 之前、会话仍为 <code>STATE_NEW</code> 时调用 <code>enable_development()</code>。这会授予 <code>PERM_ALL</code>。成功帧报告 <code>state: OPEN</code> 与 <code>permissions: development</code>。schema 校验、会话生命周期、原生资源释放和帧上限仍然有效。</p>
-      <p>库函数 <code>dispatch()</code> 只完成 hello，不授予 development 权限。hello 已经结束、状态变为 <code>STATE_OPEN</code> 之后，<code>enable_development()</code> 返回 false。可选的 <code>token</code> 字符串只做 schema 检查；启动适配器不把它当作访问口令。development 权限打开后，<code>proc.status</code> 返回真实 pid。<code>proc.output</code> 与 UI 操作（<code>ui.tree</code>、<code>ui.screenshot</code>、<code>ui.input</code>、<code>ui.act</code>、<code>ui.record</code>）会先校验，在没有 Screen 或输出适配器时返回 <code>not_implemented</code>。</p>
+      <p>控制会话开始时没有权限，首个请求必须是 <code>xacp.hello</code>，携带 <code>id: !i 1</code>、<code>ver: !ver 1.0.0</code> 和非空 <code>nonce</code>。宿主未设置非空 <code>XU_XACP_TOKEN</code> 时，允许的权限仅为 <code>PERM_INFO</code>（1），即使客户端提供 token 或宿主设置了 <code>XU_XACP_ALLOW_RAW=1</code> 也不例外。配置非空 token 后，hello 必须通过 <code>token</code> 提供它，并由 <code>crypto/subtle.constant_time_compare</code> 做常数时间比较；缺失、为空或不匹配均返回 <code>auth_failed</code> 并关闭会话。匹配时默认允许掩码 15，只有宿主精确设置 <code>XU_XACP_ALLOW_RAW=1</code> 才允许 31。可选的 <code>permissions: !i 0..31</code> 用于请求权限，实际授予 <code>requested &amp; allowed</code>；省略时请求整个允许掩码。</p>
+      <p>development 权限是显式宿主策略，stdio 与 TCP 传输不会自动开启；进入 <code>OPEN</code> 后权限不可再更改，schema、帧大小、窗口与生命周期检查仍然适用。默认启用的 nonce 重放检查在认证和权限校验后执行；检测到重放时返回同一请求 id 的 <code>nonce_replay</code>，清除会话并断开，不进入 <code>OPEN</code>。成功帧含整数 <code>id: !i</code> 和 <code>ok: !b true</code>，其 <code>data</code> 含 <code>state: OPEN</code>、经路径过滤并加引号的 <code>nonce</code>、实际授予的整数 <code>permissions: !i</code> 与 <code>permission_label</code>：掩码 0 为 <code>none</code>，1 为 <code>info</code>，31 为 <code>development</code>，其余为 <code>custom</code>。<code>proc.output</code> 是否可用取决于宿主的输出捕获支持，不依赖 Screen；独占启动适配器没有注册 Screen，授权后的 UI 操作返回 <code>not_implemented</code>，应用调用 attach API 后注册并持续 poll Screen，UI 操作便可经 Screen marshal 处理，能力边界见下文。</p>
     </div>
   </details>
 
@@ -140,10 +141,14 @@
     </div>
   </details>
 
-  <details class="faq-item">
+  <details class="faq-item" id="xacp-security">
     <summary><h3>XACP 目前有哪些安全限制？</h3></summary>
     <div class="faq-answer">
-      <p>启动器只应指向受信任的本地可执行程序。<code>inspect</code> 也会执行它。启动通道上合法的 hello 会授予 development 权限，控制模式会跳过业务 main。没有 TLS，也不能绑定 <code>127.0.0.1</code> 以外的地址。目标持续无输出或不退出时，宿主没有超时或强制终止，调用方需要自行设置进程超时。这条通道还没有接入 UI Screen 适配器，因此 tree、screenshot、input、act、record 与 <code>proc.output</code> 不会返回真实界面数据。生成器只允许 hosted native 可执行程序：库、共享对象、测试脚手架、嵌入式目标和 <code>--desktop</code> 都会被拒绝。</p>
+      <p>启动器只应指向受信任的本地可执行程序。<code>inspect</code> 也会执行它。没有 TLS，也不能绑定 <code>127.0.0.1</code> 以外的地址。生成器只允许 hosted native 可执行程序：库、共享对象、测试脚手架、嵌入式目标和 <code>--desktop</code> 都会被拒绝。未设置非空 <code>XU_XACP_TOKEN</code> 时仅允许 INFO 只读访问；需要控制能力时须设置 <code>XU_XACP_TOKEN</code>。</p>
+      <p>独占启动适配器（<code>--xacp-stdio</code>、<code>--xacp-tcp</code> 或 <code>xu xacp control</code>）跳过业务 main，没有注册 <code>Screen</code>，授权后的 UI 操作返回 <code>not_implemented</code>。库函数 <code>xacp.attach_stdio()</code> / <code>xacp.attach_tcp(port)</code> 让应用 main 运行，由应用注册 Screen 并持续调用 <code>xacp.poll</code>；<code>ui.tree</code>、<code>ui.screenshot</code>、<code>ui.input</code>、<code>ui.act</code>、<code>ui.record</code> 经 Screen marshal 访问真实界面。其中 <code>ui.record</code> 仍返回 <code>stream_required</code>，传输层尚未接入流式录制接收器。Screen 关闭或注销后，等待中的请求返回 <code>stale_window</code>，后续 UI 请求返回 <code>not_implemented</code>。<code>xu xacp attach &lt;program&gt; -- args...</code> 以安全的 <code>--</code> 参数边界启动应用，应用代码仍需调用 attach API。</p>
+      <p><code>proc.output</code> 在启用 <code>--xacp</code> 插桩的 64 位 POSIX 生成宿主上捕获 Xu 运行时 <code>print</code> / <code>eprint</code> 与运行时 fd-write 路径的 fd 1/2 写入，不捕获外部原生代码或子进程的写入。Windows 与未插桩构建返回 <code>not_implemented</code>；仅调用 attach API 不会增加输出捕获能力。</p>
+      <p><code>XU_XACP_WRITE_TIMEOUT_MS</code> 默认 10000 ms，范围 1..600000；按每个完整出站帧计时，部分写入进度不续期。超时视为传输失败，不再发送帧并关闭会话：独占 stdio 非零退出，TCP 只断开该对端并继续监听；stderr 打印 <code>xacp: write timed out after W ms</code>，W 为配置值。Windows 管道或控制台 stdio 的写超时仅尽力生效，阻塞写入仍可能无界等待。</p>
+      <p>写超时与读侧 <code>XU_XACP_HELLO_TIMEOUT_MS</code>（默认 5000 ms）、<code>XU_XACP_IDLE_TIMEOUT_MS</code>（默认 60000 ms，0 关闭）及 attach UI 等待的 <code>XU_XACP_REQUEST_TIMEOUT_MS</code>（默认 5000 ms）相互独立。<code>xu xacp connect</code> 自身没有应用级响应截止，整体进程超时仍由调用方负责。完整契约见<a href="/api/xacp"><code>#xacp</code> API</a>与<a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/PROTOCOL.md">XACP 协议规格</a>。</p>
     </div>
   </details>
 </section>

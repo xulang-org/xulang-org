@@ -1648,7 +1648,12 @@ def pkg_id(pkg) -> str:
 def lookup_override(pkg, item: Item, lang: str):
     p = pkg_id(pkg)
     receiver = re.sub(r'^(?:\$&|&(?:mut\s+)?)', '', item.recv_type).strip()
-    for key in ((p, item.recv_type, item.name), (p, receiver, item.name), (p, item.name)):
+    keys = [(p, item.recv_type, item.name), (p, receiver, item.name)]
+    # A widget factory named input/scroll/etc. does not document the method
+    # with the same name on every control type.
+    if p != 'ui/widgets' or not item.recv_type:
+        keys.append((p, item.name))
+    for key in keys:
         if key in OVERRIDES:
             return OVERRIDES[key][lang]
     return None
@@ -1877,10 +1882,43 @@ def comment_as_purpose(cmt: str, lang: str) -> str:
     return c
 
 
+_widget_factories = {}
+_widget_catalog = Path(__file__).resolve().parents[1] / 'templates/widgets.json'
+if _widget_catalog.is_file():
+    for _component in json.loads(_widget_catalog.read_text(encoding='utf-8'))['components']:
+        if _component.get('factory_kind') != 'fn':
+            _widget_factories.setdefault(_component['factory'], []).append(_component['name'])
+
+
+def widget_constructor(item: Item) -> str:
+    receiver = re.sub(r'^&(?:mut\s+)?', '', item.recv_type).strip()
+    return ' / '.join(_widget_factories.get(item.name, [])) if receiver == 'Screen' else ''
+
+
 def purpose_for(pkg: str, item: Item, lang: str) -> str:
     ov = lookup_override(pkg, item, lang)
     if ov and ov.get("purpose"):
         return ov["purpose"]
+    if pkg_id(pkg) == 'ui/widgets' and item.kind == 'method':
+        widget_purposes = {
+            'count': ('返回该控件当前包含的项目数量。', 'Return the number of items in this control.'),
+            'needs_paint': ('返回控件是否需要重新绘制；绘制完成后调用 painted 清除标记。', 'Return whether the control needs repainting; call painted after painting to clear the flag.'),
+            'is_open': ('返回浮层、菜单或对话框当前是否打开。', 'Return whether the overlay, menu or dialog is currently open.'),
+            'is_enabled': ('返回控件当前是否可用。', 'Return whether the control is currently enabled.'),
+            'is_focused': ('返回控件当前是否拥有输入焦点。', 'Return whether the control currently has input focus.'),
+            'hovered_option': ('返回指针悬停的选项索引；无悬停项时返回 -1。', 'Return the hovered option index, or -1 when no option is hovered.'),
+        }
+        if item.name in widget_purposes:
+            return widget_purposes[item.name][lang != 'zh']
+        if widget_constructor(item):
+            return ('在 Screen 中创建 ' + widget_constructor(item) + '，返回组件节点 ID；创建失败时抛出错误。' if lang == 'zh' else
+                    'Create ' + widget_constructor(item) + ' in Screen and return the component node ID; throw on creation failure.')
+        if item.name == 'painted':
+            return ('确认当前帧已绘制，清除重绘标记；不是状态查询。' if lang == 'zh' else
+                    'Acknowledge the painted frame and clear the dirty flag; this is not a query.')
+        if item.name == 'clone':
+            return ('复制控件或样式快照，返回独立的 ' + item.ret + ' 值。' if lang == 'zh' else
+                    'Copy the control or style snapshot into an independent ' + item.ret + ' value.')
     c = comment_as_purpose(item.comment, lang)
     zh = lang == "zh"
     
@@ -1991,6 +2029,12 @@ def returns_for(pkg: str, item: Item, lang: str) -> str:
     if not ret:
         return ""
     zh = lang == "zh"
+    if pkg_id(pkg) == 'ui/widgets' and widget_constructor(item):
+        return ('int — 组件节点 ID，供 place 和其他 Screen 方法使用。' if zh else
+                'int — component node ID for place and other Screen methods.')
+    if pkg_id(pkg) == 'ui/widgets' and ret == 'Action':
+        return ('Action — 输入处理结果，包含 kind、id、重绘与焦点请求。' if zh else
+                'Action — input result with kind, id, repaint and focus requests.')
     hinted = ""
     if ret == "bool":
         hinted = "是否成立" if zh else "true or false"
@@ -2411,7 +2455,7 @@ def refresh_examples(site: str, root: str, ref: str, xu_version: str,
     preserved = {entry['path']: entry for entry in previous['files']} if previous else {}
     selected = {value for value in paths if not projects or
                 any(Path(value).parent.is_relative_to(Path(project)) for project in projects)}
-    if projects and set(projects) - {str(Path(value).parent) for value in selected}:
+    if projects and {Path(project) for project in projects} - {Path(value).parent for value in selected}:
         raise ValueError('unknown example project in scoped refresh')
     # Read and validate all inputs before changing the checked-in snapshot.
     sources = []
@@ -2476,7 +2520,9 @@ def load_examples(site: str, packages: list[Package], xu_version: str) -> dict[s
         data = (root / 'sources' / relative).read_bytes()
         if hashlib.sha256(data).hexdigest() != record['sha256']:
             raise ValueError('API example checksum mismatch: ' + record['path'])
-        sources[relative.as_posix()] = data.decode('utf-8')
+        # Downloads keep their exact checksummed bytes. Render with canonical
+        # newlines so Windows text output cannot turn CRLF into CRCRLF.
+        sources[relative.as_posix()] = data.decode('utf-8').replace('\r\n', '\n').replace('\r', '\n')
     for record in catalog['files']:
         relative = example_path(record['path'])
         source = sources[relative.as_posix()]
@@ -2764,6 +2810,11 @@ def _write_packages(site: str, packages: list[Package], xu_version: str, preview
                 f.write(html_text)
         with open(os.path.join(root, "index.html"), "w", encoding="utf-8") as f:
             f.write(render_index(packages, lang, xu_version, examples, preview_digest))
+    if not preview_digest and any(pkg.path == 'ui/widgets' for pkg in packages):
+        generator = Path(site, 'scripts', 'gen-widgets.py')
+        if generator.is_file() and Path(site, 'templates', 'widgets.json').is_file():
+            import subprocess
+            subprocess.run([sys.executable, str(generator), '--site', str(site)], check=True)
 
 
 CSS_BLOCK = """

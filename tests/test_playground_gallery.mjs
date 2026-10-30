@@ -23,9 +23,11 @@ test('gallery entry source is the reviewable Xu example and paints valid resourc
   const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url))).projects;
   assert.equal(examples['ui-gallery'].files['main.xu'], source);
   const commands = host.frame(run().ui.commands);
+  assert.ok(commands.some(c => c.op === 'bgcolor' && c.args[0] === '#100e12ff'));
+  assert.ok(commands.some(c => c.op === 'path_stroke' && c.args[0] === '#8a7e90ff'));
   const labels = commands.filter(c => c.op === 'layout_text');
   assert.deepEqual(Array.from(labels, c => c.args.at(-1)), ['Basics','Data / Scroll','Display','Button +1','Checkbox','Switch','Radio A','Radio B']);
-  assert.ok(labels.every(c => c.args[2] === 15 && c.args[4] > 0));
+  assert.ok(labels.every((c, i) => c.args[2] === (i < 3 ? 15 : 14) && c.args[4] > 0));
 });
 
 test('same native/WASM contract covers selection, scrolling, focus, stale identity, and read-only', () => {
@@ -57,7 +59,7 @@ test('display page paints real StyledLabel, Card stroke, Badge, Progress and dis
   assert.ok(commands.some(c => c.op === 'layout_text' && c.args.at(-1) === 'Desktop control logic'));
   assert.ok(commands.some(c => c.op === 'layout_text' && c.args.at(-1) === 'Read-only Editor / Xu ownership'));
   assert.ok(commands.some(c => c.op === 'clip_rect' && c.args[0] === 52 && c.args[1] === 208 && c.args[2] === 65.6));
-  for (const color of ['#e88471ff', '#fb7185ff', '#a6adb6ff']) assert.match(result.ui.commands, new RegExp(color));
+  for (const color of ['#ff5274ff', '#ff8e9dff', '#b3aab6ff']) assert.match(result.ui.commands, new RegExp(color));
   const unicode = run(display, source.replace('Read-only Editor / Xu ownership', '只读 Xu / 🙂'));
   assert.match(unicode.ui.commands, /只读 Xu \/ 🙂/);
   assert.match(run([...display, ...key(258), ...key(32)]).stdout, /Page: 2 \| Count: 0/);
@@ -70,7 +72,7 @@ test('full event history stays within the fixed WASM memory and rejects malforme
   const events = Array.from({length:32}, () => click(100,125)).flat();
   assert.match(run(events).stdout, /Count: 32/);
   const instance = new WebAssembly.Instance(new WebAssembly.Module(bytes), {});
-  assert.equal(instance.exports.memory.buffer.byteLength, 128 * 1024 * 1024);
+  assert.equal(instance.exports.memory.buffer.byteLength, 256 * 1024 * 1024);
   assert.throws(() => instance.exports.memory.grow(1), RangeError);
   for (const event of [{kind:80,dy:NaN}, {kind:80,dx:Infinity}, {kind:80,dy:100001}])
     assert.throws(() => runtime.run(source, {events:[event]}), /Invalid UI scroll/);
