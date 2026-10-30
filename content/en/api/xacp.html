@@ -1,10 +1,10 @@
 <!--title: #xacp-->
 <p class="crumb">API</p>
 <h1><code>#xacp</code></h1>
-<!--xu-api-version: 0.10.11-->
+<!--xu-api-version: 0.10.12-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#xacp</code></p>
-<p class="meta">counts: 49 fns, 2 methods, 8 types, 18 consts, 0 ifaces</p>
+<p class="meta">counts: 55 fns, 2 methods, 10 types, 27 consts, 0 ifaces</p>
 <p class="lead"><code>#xacp</code> is the transport-neutral safety core: frame limits, XUN checks, permissions, and session lifetime. Importing it does not open a control channel. Stdio and loopback TCP are runtime hooks inserted only by <code>xu build --xacp</code> or <code>--xacp-port</code>.</p>
 <p><a href="/docs/cli#xacp">CLI: <code>xu xacp</code></a> · <a href="/docs/faq">FAQ</a> · <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md">Runnable example</a></p>
 
@@ -140,14 +140,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 }
 
 <span class="syn-kw">fn</span> inspect_screen(s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>session <span class="syn-flow">:=</span> xacp.open_session()
+    $session <span class="syn-flow">:=</span> xacp.open_session()
     permissions <span class="syn-flow">:=</span> xacp.PERM_UI_READ | xacp.PERM_UI_MUTATE
     <span class="syn-kw">if</span> !xacp.set_permissions(<span class="syn-borrow">$&amp;</span>session,permissions) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"xacp_screen: failed to set least-privilege UI permissions"</span>)
     }
     limits <span class="syn-flow">:=</span> xacp.default_limits()
-    nodes <span class="syn-flow">:=</span> xacp.ui_tree(<span class="syn-borrow">$&amp;</span>*s,<span class="syn-borrow">$&amp;</span>session,1,false,32,&amp;limits) <span class="syn-kw">or</span> (err) {
+    nodes <span class="syn-flow">:=</span> xacp.ui_tree(&amp;*s,<span class="syn-borrow">$&amp;</span>session,1,false,32,&amp;limits) <span class="syn-kw">or</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -156,7 +156,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         println(<span class="syn-str">"  #"</span> + str(node.id) + <span class="syn-str">" kind="</span> + str(node.kind) + <span class="syn-str">" "</span> + node.text)
     }
 
-    <span class="syn-kw">$</span>snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(<span class="syn-borrow">$&amp;</span>*s,<span class="syn-borrow">$&amp;</span>session,2,1.0,&amp;limits) <span class="syn-kw">or</span> (err) {
+    $snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(&amp;*s,<span class="syn-borrow">$&amp;</span>session,2,1.0,&amp;limits) <span class="syn-kw">or</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -166,7 +166,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         <span class="syn-flow">&gt;&gt;</span> err
     }
 
-    _ <span class="syn-flow">:=</span> xacp.ui_act(<span class="syn-borrow">$&amp;</span>*s,<span class="syn-borrow">$&amp;</span>session,2,3,<span class="syn-str">"focus"</span>,<span class="syn-str">""</span>,false,&amp;limits) <span class="syn-kw">or</span> (err) {
+    _ <span class="syn-flow">:=</span> xacp.ui_act(&amp;*s,<span class="syn-borrow">$&amp;</span>session,2,3,<span class="syn-str">"focus"</span>,<span class="syn-str">""</span>,false,&amp;limits) <span class="syn-kw">or</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -177,7 +177,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
     ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
-    <span class="syn-kw">$</span>screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     screen.resize(640.0,180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>,22.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     button_id <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Activate locally or through ui.act"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -187,7 +187,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         screen.dispose()
         <span class="syn-flow">&gt;&gt;</span> err
     }
-    <span class="syn-kw">$</span>model <span class="syn-flow">:=</span> Model{label_id: label_id,count: 0}
+    $model <span class="syn-flow">:=</span> Model{label_id: label_id,count: 0}
     <span class="syn-flow">&lt;&lt;</span> widgets.run_screen(<span class="syn-borrow">$&amp;</span>screen,events,<span class="syn-borrow">$&amp;</span>model) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
 
@@ -197,7 +197,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 }
 
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>,640,180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>,640,180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -262,6 +262,62 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_REQUEST_TIMEOUT_MS = 600000</code></pre></div>
 <h3>Purpose</h3>
 <p>Constant `MAX_REQUEST_TIMEOUT_MS`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="const-DEFAULT_HELLO_TIMEOUT_MS">
+<h2><code>const DEFAULT_HELLO_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DEFAULT_HELLO_TIMEOUT_MS = 5000</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `DEFAULT_HELLO_TIMEOUT_MS`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="const-MAX_HELLO_TIMEOUT_MS">
+<h2><code>const MAX_HELLO_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_HELLO_TIMEOUT_MS = 600000</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `MAX_HELLO_TIMEOUT_MS`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="const-DEFAULT_IDLE_TIMEOUT_MS">
+<h2><code>const DEFAULT_IDLE_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DEFAULT_IDLE_TIMEOUT_MS = 60000</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `DEFAULT_IDLE_TIMEOUT_MS`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="const-MIN_IDLE_TIMEOUT_MS">
+<h2><code>const MIN_IDLE_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MIN_IDLE_TIMEOUT_MS = 1000</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `MIN_IDLE_TIMEOUT_MS`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="const-MAX_IDLE_TIMEOUT_MS">
+<h2><code>const MAX_IDLE_TIMEOUT_MS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_IDLE_TIMEOUT_MS = 3600000</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `MAX_IDLE_TIMEOUT_MS`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="const-DEFAULT_NONCE_CACHE">
+<h2><code>const DEFAULT_NONCE_CACHE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DEFAULT_NONCE_CACHE = 1024</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `DEFAULT_NONCE_CACHE`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="const-MAX_NONCE_CACHE">
+<h2><code>const MAX_NONCE_CACHE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_NONCE_CACHE = 65536</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `MAX_NONCE_CACHE`, defining protocol or algorithm parameters.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
@@ -331,9 +387,17 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">none</p>
 <p><a href="#example-79cd31b33432">See usage example</a></p>
 </article>
+<article class="api-item" id="const-PERM_UI_RAW">
+<h2><code>const PERM_UI_RAW</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PERM_UI_RAW = 16</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `PERM_UI_RAW`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
 <article class="api-item" id="const-PERM_ALL">
 <h2><code>const PERM_ALL</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PERM_ALL = 15</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PERM_ALL = 31</code></pre></div>
 <h3>Purpose</h3>
 <p>Constant `PERM_ALL`, defining protocol or algorithm parameters.</p>
 <h3>Parameters</h3>
@@ -348,6 +412,8 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">pub</span> max_table_rows <span class="syn-type">int</span>
     <span class="syn-kw">pub</span> max_node_id <span class="syn-type">int</span>
     <span class="syn-kw">pub</span> request_timeout_ms <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> hello_timeout_ms <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> idle_timeout_ms <span class="syn-type">int</span>
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating max_frame_bytes, max_string_bytes, max_fields, max_table_rows, max_node_id.</p>
@@ -359,6 +425,8 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>max_table_rows</code> <span class="type">int</span></dt><dd>field (int)</dd>
 <dt><code>max_node_id</code> <span class="type">int</span></dt><dd>field (int)</dd>
 <dt><code>request_timeout_ms</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>hello_timeout_ms</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>idle_timeout_ms</code> <span class="type">int</span></dt><dd>field (int)</dd>
 </dl>
 </article>
 <article class="api-item" id="struct-Session">
@@ -388,6 +456,29 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>bytes_in</code> <span class="type">int</span></dt><dd>field (int)</dd>
 <dt><code>bytes_out</code> <span class="type">int</span></dt><dd>field (int)</dd>
 </dl>
+</article>
+<article class="api-item" id="struct-NonceRegistry">
+<h2><code>struct NonceRegistry</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> NonceRegistry {
+
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>The host owns this bounded FIFO across sessions. Sequential listeners borrow it exclusively while negotiating; concurrent hosts must serialize that borrow.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="new_nonce_registry">
+<h2><code>new_nonce_registry</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> new_nonce_registry(capacity <span class="syn-type">int</span>, enabled <span class="syn-type">bool</span>) NonceRegistry</code></pre></div>
+<h3>Purpose</h3>
+<p>Invalid capacities use the default. Disabled registries retain no nonces.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>capacity</code> <span class="type">int</span></dt><dd>capacity (int)</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled (bool)</dd>
+</dl>
+<h3>Returns</h3>
+<p>NonceRegistry — a value of this type</p>
 </article>
 <article class="api-item" id="struct-Request">
 <h2><code>struct Request</code></h2>
@@ -443,6 +534,46 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <p class="api-none">none</p>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+</article>
+<article class="api-item" id="hello_timeout_from_env">
+<h2><code>hello_timeout_from_env</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> hello_timeout_from_env() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>hello_timeout_from_env accepts ASCII decimal 1..600000, otherwise the default.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="idle_timeout_from_env">
+<h2><code>idle_timeout_from_env</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> idle_timeout_from_env() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>idle_timeout_from_env accepts 1000..3600000 or 0 to disable idle expiry. Empty, malformed, out-of-range and overflowing input keeps the default.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="nonce_cache_from_env">
+<h2><code>nonce_cache_from_env</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> nonce_cache_from_env() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Hosts read nonce policy once when starting a listener/control loop.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="nonce_replay_from_env">
+<h2><code>nonce_replay_from_env</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> nonce_replay_from_env() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Nonce replay from env.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+<h3>Returns</h3>
+<p>bool — true or false</p>
 </article>
 <article class="api-item" id="open_session">
 <h2><code>open_session</code></h2>
@@ -528,7 +659,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h2><code>request_id_hint</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> request_id_hint(d &amp;xun.Doc) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>validate_request enforces the fixed top-level schema and rejects every request_id_hint returns a positive top-level `id: !i N` if one parses, otherwise 0, so schema errors can still echo the caller&#x27;s id.</p>
+<p>request_id_hint returns a top-level `id: !i N` if one parses, otherwise 0, so schema errors can still echo the caller&#x27;s id.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d (borrowed; caller keeps it; type &amp;xun.Doc)</dd>
@@ -540,7 +671,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h2><code>validate_request</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> validate_request(d &amp;xun.Doc, l &amp;Limits) Request</code></pre></div>
 <h3>Purpose</h3>
-<p>operation that has not been explicitly added to this package&#x27;s schema. Throws on failure.</p>
+<p>validate_request enforces the fixed top-level schema and rejects every operation that has not been explicitly added to this package&#x27;s schema. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d (borrowed; caller keeps it; type &amp;xun.Doc)</dd>
@@ -646,22 +777,23 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="negotiate_hello">
 <h2><code>negotiate_hello</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> negotiate_hello(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, r &amp;Request, expected_token <span class="syn-type">string</span>) Outcome</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> negotiate_hello(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, r &amp;Request, expected_token <span class="syn-type">string</span>, nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) Outcome</code></pre></div>
 <h3>Purpose</h3>
-<p>negotiate_hello consumes a schema-validated, reserved hello. The host supplies its expected token; this core does not read environment variables or do I/O. A client token alone never grants more than INFO when the host has no token.</p>
+<p>negotiate_hello consumes a schema-validated, reserved hello. The host supplies its expected token and shared registry; RAW additionally requires host opt-in. A client token alone never grants more than INFO when the host has no token.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>source string (exclusive borrow; type $&amp;Session)</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d (borrowed; caller keeps it; type &amp;xun.Doc)</dd>
 <dt><code>r</code> <span class="type">&amp;Request</span></dt><dd>rune (Unicode code point) (borrowed; caller keeps it; type &amp;Request)</dd>
 <dt><code>expected_token</code> <span class="type">string</span></dt><dd>expected_token (string)</dd>
+<dt><code>nonces</code> <span class="type">$&amp;NonceRegistry</span></dt><dd>nonces (exclusive borrow; type $&amp;NonceRegistry)</dd>
 </dl>
 <h3>Returns</h3>
 <p>Outcome — a value of this type</p>
 </article>
 <article class="api-item" id="dispatch">
 <h2><code>dispatch</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, l &amp;Limits) Outcome</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, l &amp;Limits, nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) Outcome</code></pre></div>
 <h3>Purpose</h3>
 <p>dispatch performs only the safe core lifecycle with the default INFO policy. Data-bearing adapters implement operations after the same checks.</p>
 <h3>Parameters</h3>
@@ -669,13 +801,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>source string (exclusive borrow; type $&amp;Session)</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d (borrowed; caller keeps it; type &amp;xun.Doc)</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l (borrowed; caller keeps it; type &amp;Limits)</dd>
+<dt><code>nonces</code> <span class="type">$&amp;NonceRegistry</span></dt><dd>nonces (exclusive borrow; type $&amp;NonceRegistry)</dd>
 </dl>
 <h3>Returns</h3>
 <p>Outcome — a value of this type</p>
 </article>
 <article class="api-item" id="dispatch_with_token">
 <h2><code>dispatch_with_token</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_with_token(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, l &amp;Limits, expected_token <span class="syn-type">string</span>) Outcome</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_with_token(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, l &amp;Limits, expected_token <span class="syn-type">string</span>, nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) Outcome</code></pre></div>
 <h3>Purpose</h3>
 <p>Hosts with an explicit authentication policy pass the expected token here.</p>
 <h3>Parameters</h3>
@@ -684,6 +817,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d (borrowed; caller keeps it; type &amp;xun.Doc)</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l (borrowed; caller keeps it; type &amp;Limits)</dd>
 <dt><code>expected_token</code> <span class="type">string</span></dt><dd>expected_token (string)</dd>
+<dt><code>nonces</code> <span class="type">$&amp;NonceRegistry</span></dt><dd>nonces (exclusive borrow; type $&amp;NonceRegistry)</dd>
 </dl>
 <h3>Returns</h3>
 <p>Outcome — a value of this type</p>
@@ -740,7 +874,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h2><code>attach_stdio</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> attach_stdio() ScreenControl</code></pre></div>
 <h3>Purpose</h3>
-<p>Explicit attachment: business main continues; stdin/stdout belong to XACP. Put business logs on stderr. done receives the server exit status at EOF.</p>
+<p>Explicit attachment: business main continues; stdin/stdout carry XACP. Prefer stderr for logs on this shared transport. Both streams are captured. done receives the server exit status at EOF.</p>
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 <h3>Returns</h3>
@@ -793,6 +927,24 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>bool — true or false</p>
+</article>
+<article class="api-item" id="const-MAX_SCREENSHOT_BYTES">
+<h2><code>const MAX_SCREENSHOT_BYTES</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_SCREENSHOT_BYTES = 33554432</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `MAX_SCREENSHOT_BYTES`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
+<article class="api-item" id="screenshot_dir">
+<h2><code>screenshot_dir</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screenshot_dir() <span class="syn-type">string</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Absolute directory for the host only; the wire always returns a basename. The POSIX native UI host creates/validates private directories on first write. Throws on failure.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+<h3>Returns</h3>
+<p>string — result string</p>
 </article>
 <article class="api-item" id="stdio_preflight">
 <h2><code>stdio_preflight</code></h2>
@@ -941,20 +1093,37 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>string — result string</p>
 </article>
+<article class="api-item" id="struct-TreeWindow">
+<h2><code>struct TreeWindow</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> TreeWindow {
+    <span class="syn-kw">pub</span> start <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> total <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> nodes []widgets.ScreenNodeInfo
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>Structure encapsulating start, total, nodes.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>start</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>total</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>nodes</code> <span class="type">[]widgets.ScreenNodeInfo</span></dt><dd>field ([]widgets.ScreenNodeInfo)</dd>
+</dl>
+</article>
 <article class="api-item" id="screen_tree">
 <h2><code>screen_tree</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_tree(s <span class="syn-borrow">$&amp;</span>widgets.Screen,include_hidden <span class="syn-type">bool</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) []widgets.ScreenNodeInfo</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_tree(s <span class="syn-borrow">$&amp;</span>widgets.Screen,include_hidden <span class="syn-type">bool</span>,start <span class="syn-type">int</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) TreeWindow</code></pre></div>
 <h3>Purpose</h3>
-<p>Read-only tree operation. The returned nodes are copies and remain valid after the caller releases the Screen borrow. Throws on failure.</p>
+<p>Read-only tree window. The returned nodes are copies and remain valid after the caller releases the Screen borrow. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>source string (exclusive borrow; type $&amp;widgets.Screen)</dd>
 <dt><code>include_hidden</code> <span class="type">bool</span></dt><dd>include_hidden (bool)</dd>
+<dt><code>start</code> <span class="type">int</span></dt><dd>start (int)</dd>
 <dt><code>max_rows</code> <span class="type">int</span></dt><dd>max_rows (int)</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l (borrowed; caller keeps it; type &amp;Limits)</dd>
 </dl>
 <h3>Returns</h3>
-<p>[]widgets.ScreenNodeInfo — slice result</p>
+<p>TreeWindow — a value of this type</p>
 </article>
 <article class="api-item" id="screen_screenshot">
 <h2><code>screen_screenshot</code></h2>
@@ -1072,7 +1241,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="ui_tree">
 <h2><code>ui_tree</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_tree(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,include_hidden <span class="syn-type">bool</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) []widgets.ScreenNodeInfo</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ui_tree(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,id <span class="syn-type">int</span>,include_hidden <span class="syn-type">bool</span>,start <span class="syn-type">int</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) TreeWindow</code></pre></div>
 <h3>Purpose</h3>
 <p>Permission-bearing entry points. Every operation reserves a monotonic request id and releases it on both success and adapter failure. Throws on failure.</p>
 <h3>Parameters</h3>
@@ -1081,11 +1250,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session (exclusive borrow; type $&amp;Session)</dd>
 <dt><code>id</code> <span class="type">int</span></dt><dd>id (int)</dd>
 <dt><code>include_hidden</code> <span class="type">bool</span></dt><dd>include_hidden (bool)</dd>
+<dt><code>start</code> <span class="type">int</span></dt><dd>start (int)</dd>
 <dt><code>max_rows</code> <span class="type">int</span></dt><dd>max_rows (int)</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l (borrowed; caller keeps it; type &amp;Limits)</dd>
 </dl>
 <h3>Returns</h3>
-<p>[]widgets.ScreenNodeInfo — slice result</p>
+<p>TreeWindow — a value of this type</p>
 <p><a href="#example-79cd31b33432">See usage example</a></p>
 </article>
 <article class="api-item" id="ui_screenshot">
@@ -1177,15 +1347,16 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </article>
 <article class="api-item" id="dispatch_screen">
 <h2><code>dispatch_screen</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_screen(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,d &amp;xun.Doc,l &amp;Limits) ControlReply</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_screen(s <span class="syn-borrow">$&amp;</span>widgets.Screen,session <span class="syn-borrow">$&amp;</span>Session,d &amp;xun.Doc,l &amp;Limits,nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) ControlReply</code></pre></div>
 <h3>Purpose</h3>
-<p>dispatch_screen executes the schema-approved UI operations against the registered Screen and serializes every successful result before releasing the borrow. Surface bytes are not exported yet; screenshot metadata is returned only after snapshot succeeds, and the native Surface is always disposed. Throws on failure.</p>
+<p>dispatch_screen executes the schema-approved UI operations against the registered Screen and serializes every successful result before releasing the borrow. Native Surfaces are disposed before the owning PNG reply crosses the mailbox; only the authoritative session can export a screenshot file. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>source string (exclusive borrow; type $&amp;widgets.Screen)</dd>
 <dt><code>session</code> <span class="type">$&amp;Session</span></dt><dd>session (exclusive borrow; type $&amp;Session)</dd>
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d (borrowed; caller keeps it; type &amp;xun.Doc)</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l (borrowed; caller keeps it; type &amp;Limits)</dd>
+<dt><code>nonces</code> <span class="type">$&amp;NonceRegistry</span></dt><dd>nonces (exclusive borrow; type $&amp;NonceRegistry)</dd>
 </dl>
 <h3>Returns</h3>
 <p>ControlReply — a value of this type</p>

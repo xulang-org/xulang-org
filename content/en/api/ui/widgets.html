@@ -1,10 +1,10 @@
 <!--title: #ui/widgets-->
 <p class="crumb">API</p>
 <h1><code>#ui/widgets</code></h1>
-<!--xu-api-version: 0.10.11-->
+<!--xu-api-version: 0.10.12-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#ui/widgets</code></p>
-<p class="meta">counts: 104 fns, 1632 methods, 89 types, 156 consts, 4 ifaces</p>
+<p class="meta">counts: 104 fns, 1634 methods, 89 types, 157 consts, 4 ifaces</p>
 <p>Button, Checkbox, Progress, Scroll, Input / TextArea and retained View. Styles provides fonts, density, palettes, geometry and combined-state rules; StyledLabel caches layout. Local themes are complete snapshots. Register measurement with set_style_measure, call mark_measure after text changes, then layout_styled, place_editor and present_styled. Callbacks borrow themes, use node-local coordinates and must not mutate View or topology.</p>
 <p><a href="/docs/ui#styles">Usage and lifetimes</a></p>
 <h2 id="extended-controls">Extended controls and style switching</h2>
@@ -84,7 +84,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
     ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
-    <span class="syn-kw">$</span>screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     screen.resize(1020.0,720.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     screen.set_min_size(760,580) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     title <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"Web content. Native composition."</span>,26.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -102,8 +102,8 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     screen.place(dismiss,24.0,175.0,180.0,38.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     screen.load_web_html(left,document(<span class="syn-str">"Editor preview"</span>,<span class="syn-str">"#b64c3c"</span>)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     screen.load_web_html(right,document(<span class="syn-str">"Reference panel"</span>,<span class="syn-str">"#386f6b"</span>)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>hidden <span class="syn-flow">:=</span> false
-    <span class="syn-kw">$</span>disposed <span class="syn-flow">:=</span> false
+    $hidden <span class="syn-flow">:=</span> false
+    $disposed <span class="syn-flow">:=</span> false
     <span class="syn-kw">while</span> screen.is_open() {
         width <span class="syn-flow">:=</span> screen.width()
         height <span class="syn-flow">:=</span> screen.height()
@@ -141,7 +141,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) { scene(events) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"XUUI / WebView Components"</span>,1020,720) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"XUUI / WebView Components"</span>,1020,720) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     _ <span class="syn-flow">:=</span> ui.register_content_plugin(ui.content_plugin_webview())
     emits <span class="syn-flow">:=</span> <span class="syn-kw">chan</span> <span class="syn-type">string</span>{cap: 64}
     <span class="syn-kw">xu</span> ipc(app.event_ch,emits)
@@ -185,14 +185,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 }
 
 <span class="syn-kw">fn</span> inspect_screen(s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>session <span class="syn-flow">:=</span> xacp.open_session()
+    $session <span class="syn-flow">:=</span> xacp.open_session()
     permissions <span class="syn-flow">:=</span> xacp.PERM_UI_READ | xacp.PERM_UI_MUTATE
     <span class="syn-kw">if</span> !xacp.set_permissions(<span class="syn-borrow">$&amp;</span>session,permissions) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"xacp_screen: failed to set least-privilege UI permissions"</span>)
     }
     limits <span class="syn-flow">:=</span> xacp.default_limits()
-    nodes <span class="syn-flow">:=</span> xacp.ui_tree(<span class="syn-borrow">$&amp;</span>*s,<span class="syn-borrow">$&amp;</span>session,1,false,32,&amp;limits) <span class="syn-kw">or</span> (err) {
+    nodes <span class="syn-flow">:=</span> xacp.ui_tree(&amp;*s,<span class="syn-borrow">$&amp;</span>session,1,false,32,&amp;limits) <span class="syn-kw">or</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -201,7 +201,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         println(<span class="syn-str">"  #"</span> + str(node.id) + <span class="syn-str">" kind="</span> + str(node.kind) + <span class="syn-str">" "</span> + node.text)
     }
 
-    <span class="syn-kw">$</span>snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(<span class="syn-borrow">$&amp;</span>*s,<span class="syn-borrow">$&amp;</span>session,2,1.0,&amp;limits) <span class="syn-kw">or</span> (err) {
+    $snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(&amp;*s,<span class="syn-borrow">$&amp;</span>session,2,1.0,&amp;limits) <span class="syn-kw">or</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -211,7 +211,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         <span class="syn-flow">&gt;&gt;</span> err
     }
 
-    _ <span class="syn-flow">:=</span> xacp.ui_act(<span class="syn-borrow">$&amp;</span>*s,<span class="syn-borrow">$&amp;</span>session,2,3,<span class="syn-str">"focus"</span>,<span class="syn-str">""</span>,false,&amp;limits) <span class="syn-kw">or</span> (err) {
+    _ <span class="syn-flow">:=</span> xacp.ui_act(&amp;*s,<span class="syn-borrow">$&amp;</span>session,2,3,<span class="syn-str">"focus"</span>,<span class="syn-str">""</span>,false,&amp;limits) <span class="syn-kw">or</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -222,7 +222,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
     ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
-    <span class="syn-kw">$</span>screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     screen.resize(640.0,180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>,22.0,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     button_id <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Activate locally or through ui.act"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -232,7 +232,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         screen.dispose()
         <span class="syn-flow">&gt;&gt;</span> err
     }
-    <span class="syn-kw">$</span>model <span class="syn-flow">:=</span> Model{label_id: label_id,count: 0}
+    $model <span class="syn-flow">:=</span> Model{label_id: label_id,count: 0}
     <span class="syn-flow">&lt;&lt;</span> widgets.run_screen(<span class="syn-borrow">$&amp;</span>screen,events,<span class="syn-borrow">$&amp;</span>model) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
 
@@ -242,7 +242,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 }
 
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>,640,180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>,640,180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -273,33 +273,33 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
     identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>switcher <span class="syn-flow">:=</span> widgets.style_switcher()
+    $switcher <span class="syn-flow">:=</span> widgets.style_switcher()
     switcher.use_preset(widgets.THEME_LIGHT) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>toggle <span class="syn-flow">:=</span> widgets.switch_control(&amp;identity,1,&amp;rect(48.0,116.0,280.0,48.0),true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>radio <span class="syn-flow">:=</span> widgets.radio(&amp;identity,2,&amp;rect(48.0,180.0,280.0,48.0),1,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>slider <span class="syn-flow">:=</span> widgets.slider(&amp;identity,3,&amp;rect(48.0,260.0,280.0,36.0),0.0,100.0,50.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $toggle <span class="syn-flow">:=</span> widgets.switch_control(&amp;identity,1,&amp;rect(48.0,116.0,280.0,48.0),true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $radio <span class="syn-flow">:=</span> widgets.radio(&amp;identity,2,&amp;rect(48.0,180.0,280.0,48.0),1,false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $slider <span class="syn-flow">:=</span> widgets.slider(&amp;identity,3,&amp;rect(48.0,260.0,280.0,36.0),0.0,100.0,50.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     slider.set_step(5.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>stepper <span class="syn-flow">:=</span> widgets.stepper(&amp;identity,4,&amp;rect(48.0,324.0,280.0,48.0),0.0,20.0,1.0,5.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>tabs <span class="syn-flow">:=</span> widgets.tabs(&amp;identity,5,&amp;rect(376.0,116.0,348.0,48.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>dropdown <span class="syn-flow">:=</span> widgets.select_box(&amp;identity,6,&amp;rect(376.0,196.0,348.0,48.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>list <span class="syn-flow">:=</span> widgets.list_box(&amp;identity,7,&amp;rect(376.0,284.0,348.0,132.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $stepper <span class="syn-flow">:=</span> widgets.stepper(&amp;identity,4,&amp;rect(48.0,324.0,280.0,48.0),0.0,20.0,1.0,5.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $tabs <span class="syn-flow">:=</span> widgets.tabs(&amp;identity,5,&amp;rect(376.0,116.0,348.0,48.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $dropdown <span class="syn-flow">:=</span> widgets.select_box(&amp;identity,6,&amp;rect(376.0,196.0,348.0,48.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $list <span class="syn-flow">:=</span> widgets.list_box(&amp;identity,7,&amp;rect(376.0,284.0,348.0,132.0),3,0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     panel <span class="syn-flow">:=</span> widgets.card(&amp;rect(24.0,92.0,724.0,352.0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     badge <span class="syn-flow">:=</span> widgets.badge(&amp;rect(48.0,392.0,280.0,32.0)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     divider <span class="syn-flow">:=</span> widgets.divider(&amp;rect(48.0,244.0,280.0,2.0),widgets.AXIS_HORIZONTAL) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>label0 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Enabled"</span>)
-    <span class="syn-kw">$</span>label1 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Choose this option"</span>)
-    <span class="syn-kw">$</span>label2 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Stepper"</span>)
-    <span class="syn-kw">$</span>label3 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"One"</span>)
-    <span class="syn-kw">$</span>label4 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Two"</span>)
-    <span class="syn-kw">$</span>label5 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Three"</span>)
-    <span class="syn-kw">$</span>label6 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Select an option"</span>)
-    <span class="syn-kw">$</span>label7 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Xu 0.10.2"</span>)
-    <span class="syn-kw">$</span>label8 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"One"</span>)
-    <span class="syn-kw">$</span>label9 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Two"</span>)
-    <span class="syn-kw">$</span>label10 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Three"</span>)
-    <span class="syn-kw">$</span>frame <span class="syn-flow">:=</span> context.new_frame(16384)
-    <span class="syn-kw">$</span>dirty <span class="syn-flow">:=</span> true
-    <span class="syn-kw">$</span>focus <span class="syn-flow">:=</span> 0
+    $label0 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Enabled"</span>)
+    $label1 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Choose this option"</span>)
+    $label2 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Stepper"</span>)
+    $label3 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"One"</span>)
+    $label4 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Two"</span>)
+    $label5 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Three"</span>)
+    $label6 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Select an option"</span>)
+    $label7 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Xu 0.10.2"</span>)
+    $label8 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"One"</span>)
+    $label9 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Two"</span>)
+    $label10 <span class="syn-flow">:=</span> widgets.styled_label(&amp;context,&amp;<span class="syn-str">"Three"</span>)
+    $frame <span class="syn-flow">:=</span> context.new_frame(16384)
+    $dirty <span class="syn-flow">:=</span> true
+    $focus <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> true {
         <span class="syn-kw">if</span> dirty {
             styles <span class="syn-flow">:=</span> switcher.styles()
@@ -358,13 +358,13 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
                 <span class="syn-kw">if</span> input.key == 84 || input.key == 116 { switcher.next() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
                     dirty = true }
                 <span class="syn-kw">if</span> input.key == 83 || input.key == 115 {
-                    <span class="syn-kw">$</span>scale <span class="syn-flow">:=</span> 1.4
+                    $scale <span class="syn-flow">:=</span> 1.4
                     <span class="syn-kw">if</span> switcher.text_scale() &gt; 1.0 { scale = 1.0 }
                     switcher.set_text_scale(scale) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
                     dirty = true
                 }
                 <span class="syn-kw">if</span> input.key == 68 || input.key == 100 {
-                    <span class="syn-kw">$</span>density <span class="syn-flow">:=</span> 0.85
+                    $density <span class="syn-flow">:=</span> 0.85
                     <span class="syn-kw">if</span> switcher.density() &lt; 1.0 { density = 1.0 }
                     switcher.set_density(density) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
                     dirty = true
@@ -377,7 +377,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         <span class="syn-cmt">// or activate the ListBox underneath it.</span>
         popup_open <span class="syn-flow">:=</span> dropdown.is_open()
         first <span class="syn-flow">:=</span> dropdown.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        <span class="syn-kw">$</span>actions <span class="syn-flow">:=</span> [first]
+        $actions <span class="syn-flow">:=</span> [first]
         <span class="syn-kw">if</span> !popup_open &amp;&amp; !first.consumed {
             actions.push(toggle.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
             actions.push(radio.event(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>)
@@ -419,7 +419,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         <span class="syn-flow">&lt;&lt;</span> }
 }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Extended Controls"</span>,780,552) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Extended Controls"</span>,780,552) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -15063,6 +15063,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
 </article>
+<article class="api-item" id="const-SCREEN_SECRET_INPUT">
+<h2><code>const SCREEN_SECRET_INPUT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> SCREEN_SECRET_INPUT = 35</code></pre></div>
+<h3>Purpose</h3>
+<p>Constant `SCREEN_SECRET_INPUT`, defining protocol or algorithm parameters.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+</article>
 <article class="api-item" id="const-ACTION_KEY">
 <h2><code>const ACTION_KEY</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> ACTION_KEY = 5</code></pre></div>
@@ -15087,6 +15095,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">pub</span> focusable <span class="syn-type">bool</span>
     <span class="syn-kw">pub</span> focused <span class="syn-type">bool</span>
     <span class="syn-kw">pub</span> text <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> secure <span class="syn-type">bool</span>
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>A bounded, immutable view of one retained screen node for tooling adapters. The internal node remains private so callers cannot forge handles or mutate layout/resource state behind Screen&#x27;s lifecycle checks.</p>
@@ -15104,6 +15113,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>focusable</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
 <dt><code>focused</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
 <dt><code>text</code> <span class="type">string</span></dt><dd>text</dd>
+<dt><code>secure</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
 </dl>
 </article>
 <article class="api-item" id="const-XACP_MAX_NODES">
@@ -17009,6 +17019,33 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>an owned Editor; dispose on closure</p>
+</article>
+<article class="api-item" id="--Screen-secret_input">
+<h2><code>($&amp;Screen) secret_input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Screen) secret_input(value <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>A secret input has the same editing behavior as input; tooling must redact its value and bounds. This flag follows the node for its entire lifetime. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Screen</span></dt><dd>receiver $&amp;Screen (exclusive borrow)</dd>
+<dt><code>value</code> <span class="type">string</span></dt><dd>value (string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="--Screen-set_secure">
+<h2><code>($&amp;Screen) set_secure</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Screen) set_secure(id <span class="syn-type">int</span>,secure <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Mark password/secure controls (including application-defined controls) for screenshot and accessibility export redaction. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Screen</span></dt><dd>receiver $&amp;Screen (exclusive borrow)</dd>
+<dt><code>id</code> <span class="type">int</span></dt><dd>id (int)</dd>
+<dt><code>secure</code> <span class="type">bool</span></dt><dd>secure (bool)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
 </article>
 <article class="api-item" id="--Screen-text_area">
 <h2><code>($&amp;Screen) text_area</code></h2>

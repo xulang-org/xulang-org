@@ -1,13 +1,16 @@
 <!--title: #ui/draw-->
 <p class="crumb">API</p>
 <h1><code>#ui/draw</code></h1>
-<!--xu-api-version: 0.10.11-->
+<!--xu-api-version: 0.10.12-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#ui/draw</code></p>
-<p class="meta">counts: 61 fns, 87 methods, 21 types, 36 consts, 0 ifaces</p>
+<p class="meta">counts: 61 fns, 88 methods, 21 types, 36 consts, 0 ifaces</p>
 <p>Explicit Context / Frame drawing with paths, gradients, text, images, DisplayList, Surface and caching. Panning is disabled by default; set_pan_enabled(1) enables the camera. Frame.scale uses factors; package-level scale uses percentages. Balance push / pop and retain resources until present / freeze / snapshot accepts the recording.</p>
 <p><a href="/docs/ui#frames">Usage and lifetimes</a></p>
 <p>Release examples (complete projects and source downloads): <a href="#example-6a8e15392deb"><code>draw_gallery</code></a></p>
+
+<h2 id="game-engine-boundary">Drawing and game engines</h2>
+<p>This is a desktop 2D drawing layer suitable for tools, editors and modest prototypes. Its platform backends use CoreGraphics, Cairo and GDI+. The public API does not provide a game-engine GPU pipeline, shaders, draw batching or a display-synchronized frame-pacing contract. DisplayList and surface caches help reuse work, but are not evidence of a game frame-time budget; measure the intended workload on each target before committing to it.</p>
 <p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
 <section class="api-examples" id="examples">
 <h2>Examples</h2>
@@ -46,9 +49,9 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
     identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>frame <span class="syn-flow">:=</span> context.new_frame(4096)
-    <span class="syn-kw">$</span>hits <span class="syn-flow">:=</span> 0
-    <span class="syn-kw">$</span>pressed <span class="syn-flow">:=</span> false
+    $frame <span class="syn-flow">:=</span> context.new_frame(4096)
+    $hits <span class="syn-flow">:=</span> 0
+    $pressed <span class="syn-flow">:=</span> false
     paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,hits) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">while</span> true {
         event <span class="syn-flow">:=</span> demo.next(ech)
@@ -79,7 +82,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Frame"</span>,680,430) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Frame"</span>,680,430) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -96,7 +99,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
 <span class="syn-kw">fn</span> paint(window ui.Window,count <span class="syn-type">int</span>) <span class="syn-type">int</span> {
     context <span class="syn-flow">:=</span> draw.window_context(&amp;window) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>frame <span class="syn-flow">:=</span> context.new_frame(2048)
+    $frame <span class="syn-flow">:=</span> context.new_frame(2048)
     frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     demo.text(&amp;context,<span class="syn-borrow">$&amp;</span>frame,26.0,28.0,14.0,demo.accent(),<span class="syn-str">"06 / INDEPENDENT WINDOWS"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -113,16 +116,16 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     ready <span class="syn-flow">:=</span> demo.ready(ech) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT { <span class="syn-flow">&lt;&lt;</span> 0 }
     identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.windows(ech)
+    $app <span class="syn-flow">:=</span> demo.windows(ech)
     first <span class="syn-flow">:=</span> ui.Window{id: identity.window_id,generation: identity.generation,title: <span class="syn-str">"Xu UI / Window 1"</span>,width: 560,height: 340,content_kind: ui.CONTENT_DRAW,content_backend_id: identity.canvas_id,closed: 0}
-    <span class="syn-kw">$</span>windows <span class="syn-flow">:=</span> []ui.Window{}
+    $windows <span class="syn-flow">:=</span> []ui.Window{}
     windows.push(first)
-    <span class="syn-kw">$</span>counts <span class="syn-flow">:=</span> [0]
+    $counts <span class="syn-flow">:=</span> [0]
     paint(windows[0],0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">while</span> true {
         event <span class="syn-flow">:=</span> demo.next(ech)
         <span class="syn-kw">if</span> event.kind == ui.EV_EXIT { <span class="syn-flow">&lt;-</span> }
-        <span class="syn-kw">$</span>index <span class="syn-flow">:=</span> -1
+        $index <span class="syn-flow">:=</span> -1
         <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:windows.len { <span class="syn-kw">if</span> windows[i].id == event.window_id { index = i } }
         <span class="syn-kw">if</span> index &lt; 0 { <span class="syn-flow">-&gt;</span> }
         <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_READY {
@@ -147,7 +150,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         <span class="syn-kw">if</span> input.key == ui.KEY_ESCAPE { demo.quit() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
         <span class="syn-kw">if</span> input.key == 78 || input.key == 110 {
             <span class="syn-cmt">// At most six demo windows; the host's own limit is independent.</span>
-            <span class="syn-kw">$</span>live <span class="syn-flow">:=</span> 0
+            $live <span class="syn-flow">:=</span> 0
             <span class="syn-kw">for</span> window <span class="syn-kw">in</span> windows { <span class="syn-kw">if</span> window.closed == 0 { live = live + 1 } }
             <span class="syn-kw">if</span> live &lt; 6 {
                 window <span class="syn-flow">:=</span> app.open_content_window(ui.WindowOpts{title: <span class="syn-str">"Xu UI / Additional Window"</span>,width: 560,height: 340},ui.CONTENT_DRAW) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -156,12 +159,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
             }
         }
         <span class="syn-kw">if</span> input.key == 87 || input.key == 119 {
-            <span class="syn-kw">$</span>window <span class="syn-flow">:=</span> windows[index]
+            $window <span class="syn-flow">:=</span> windows[index]
             window.request_close() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
             windows[index] = window
         }
         <span class="syn-kw">if</span> input.key == 82 || input.key == 114 {
-            <span class="syn-kw">$</span>window <span class="syn-flow">:=</span> windows[index]
+            $window <span class="syn-flow">:=</span> windows[index]
             window.resize(660,400) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
             windows[index] = window
         }
@@ -175,7 +178,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Window 1"</span>,560,340) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Window 1"</span>,560,340) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -192,11 +195,11 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
 <span class="syn-cmt">// This entire scene is recorded once; subsequent frames replay its resources.</span>
 <span class="syn-kw">fn</span> record(context &amp;draw.Context,image &amp;draw.Image) draw.DisplayList {
-    <span class="syn-kw">$</span>fragment <span class="syn-flow">:=</span> context.new_frame(4096)
+    $fragment <span class="syn-flow">:=</span> context.new_frame(4096)
     fragment.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     fragment.fill_rect(0.0,0.0,960.0,510.0,draw.rgb(26,37,50)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     demo.text(context,<span class="syn-borrow">$&amp;</span>fragment,24.0,22.0,18.0,demo.ink(),<span class="syn-str">"Vectors / gradients / embedded PNG / shaped text"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>path <span class="syn-flow">:=</span> draw.new_path(256)
+    $path <span class="syn-flow">:=</span> draw.new_path(256)
     path.move_to(40.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     path.cubic_to(80.0,60.0,210.0,60.0,250.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     path.quad_to(145.0,300.0,40.0,210.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -212,10 +215,10 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     destination <span class="syn-flow">:=</span> draw.ImageRect{x: 510.0,y: 88.0,width: 190.0,height: 150.0}
     fragment.image_region(image,&amp;source,&amp;destination,0.45,draw.SAMPLER_NEAREST) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     demo.text(context,<span class="syn-borrow">$&amp;</span>fragment,320.0,260.0,14.0,demo.muted(),<span class="syn-str">"Linear sampling      Nearest / opacity"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>options <span class="syn-flow">:=</span> draw.text_options(24.0)
+    $options <span class="syn-flow">:=</span> draw.text_options(24.0)
     options.width = 880.0
     value <span class="syn-flow">:=</span> <span class="syn-str">"你好，Xu · العربية · café · 👩‍💻\nOne native layout: shaping, fallback, wrapping and metrics."</span>
-    <span class="syn-kw">$</span>text <span class="syn-flow">:=</span> context.layout_text(&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $text <span class="syn-flow">:=</span> context.layout_text(&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     fragment.text_layout(&amp;text,32.0,330.0,demo.ink()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     println(<span class="syn-str">"Text metrics: "</span> + str(text.metrics.lines) + <span class="syn-str">" lines"</span>)
     layer <span class="syn-flow">:=</span> draw.ImageRect{x: 740.0,y: 80.0,width: 180.0,height: 200.0}
@@ -241,7 +244,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">if</span> cached { frame.cached_display_list(cache,list,0.0,0.0,960.0,510.0,density,1.0,draw.SAMPLER_LINEAR) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
     <span class="syn-kw">else</span> { frame.display_list(list) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
     frame.pop() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>mode <span class="syn-flow">:=</span> <span class="syn-str">"vector replay"</span>
+    $mode <span class="syn-flow">:=</span> <span class="syn-str">"vector replay"</span>
     <span class="syn-kw">if</span> cached { mode = <span class="syn-str">"raster cache"</span> }
     demo.text(context,frame,32.0,646.0,15.0,demo.ink(),<span class="syn-str">"Space: vector/cache / R: invalidate / current: "</span> + mode) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.present() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -254,18 +257,18 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     identity <span class="syn-flow">:=</span> ui.canvas_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     context <span class="syn-flow">:=</span> draw.context_of(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     path <span class="syn-flow">:=</span> <span class="syn-str">"sample.png"</span>
-    <span class="syn-kw">$</span>image <span class="syn-flow">:=</span> context.load_embedded_image(&amp;path) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>list <span class="syn-flow">:=</span> record(&amp;context,&amp;image) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">$</span>cache <span class="syn-flow">:=</span> draw.new_surface_cache()
-    <span class="syn-kw">$</span>frame <span class="syn-flow">:=</span> context.new_frame(1024)
-    <span class="syn-kw">$</span>density <span class="syn-flow">:=</span> 1.0
-    <span class="syn-kw">$</span>cached <span class="syn-flow">:=</span> false
+    $image <span class="syn-flow">:=</span> context.load_embedded_image(&amp;path) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $list <span class="syn-flow">:=</span> record(&amp;context,&amp;image) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $cache <span class="syn-flow">:=</span> draw.new_surface_cache()
+    $frame <span class="syn-flow">:=</span> context.new_frame(1024)
+    $density <span class="syn-flow">:=</span> 1.0
+    $cached <span class="syn-flow">:=</span> false
     paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,&amp;list,<span class="syn-borrow">$&amp;</span>cache,density,cached) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">while</span> true {
         event <span class="syn-flow">:=</span> demo.next(ech)
         <span class="syn-kw">if</span> event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <span class="syn-flow">&lt;-</span> }
         <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
-        <span class="syn-kw">$</span>dirty <span class="syn-flow">:=</span> false
+        $dirty <span class="syn-flow">:=</span> false
         <span class="syn-kw">if</span> event.kind == ui.EV_CANVAS_METRICS {
             metrics <span class="syn-flow">:=</span> ui.metrics_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
             density = metrics.scale_x
@@ -296,7 +299,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">$</span>app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Resource Gallery"</span>,1030,710) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Resource Gallery"</span>,1030,710) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -2679,6 +2682,18 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Surface-rgba_bytes">
+<h2><code>(&amp;Surface) rgba_bytes</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (surface &amp;Surface) rgba_bytes() <span class="syn-type">string</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Independent, straight sRGB RGBA8 copy, in top-left row order. The native immutable bitmap stays owned by this Surface; editing the copy is safe. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>surface</code> <span class="type">&amp;Surface</span></dt><dd>receiver &amp;Surface (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>string — result string</p>
 </article>
 <article class="api-item" id="--Frame-surface">
 <h2><code>($&amp;Frame) surface</code></h2>
