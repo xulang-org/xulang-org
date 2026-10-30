@@ -1,0 +1,496 @@
+<!--title: Scroll · UI / Widgets-->
+<!--xu-api-version: 0.10.12-->
+<nav class="widget-crumb" aria-label="位置"><a href="/zh/api">API</a><span>/</span><a href="/zh/api/ui">UI</a><span>/</span><a href="/zh/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">Scroll</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / 布局与容器</p><h1>Scroll</h1><p class="lead">让受限区域容纳更多内容</p><a class="btn pri" href="/zh/playground?example=widget-scroll#xu-play-workspace">在演练场运行 Xu 示例 <span aria-hidden="true">↗</span></a><p class="note">示例由浏览器中的 Xu/WASM 运行器执行。</p></header>
+<h2 id="experience">体验什么</h2><p>滚动列表，保持页面其余部分不动。</p>
+<h2 id="behavior">使用要点</h2><p>内容范围决定可滚动距离，视口决定裁剪范围。滚动内容中的子控件仍需使用正确的父节点与坐标。</p>
+<h2 id="create">通过 Screen 创建</h2>
+<p>下面的 Screen 构造方法返回节点 ID。将 ID 交给 Screen 的布局、状态与事件接口；它不是下方独立控件类型的实例。</p>
+<p class="note">原生 Xu 创建片段：在已有 Screen 的初始化阶段调用 configure；窗口创建、事件循环与资源释放参见完整原生示例。</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+
+fn configure(screen $&amp;widgets.Screen) int {
+    id := screen.scroll_area(widgets.AXIS_VERTICAL,600.0) or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="--Screen-scroll_area">
+<h2><code>($&amp;Screen) scroll_area</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Screen) scroll_area(axis <span class="syn-type">int</span>,content_extent <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Screen` 上的操作：执行 scroll area 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Screen</span></dt><dd>接收者 $&amp;Screen（可变借用）</dd>
+<dt><code>axis</code> <span class="type">int</span></dt><dd>axis（int）</dd>
+<dt><code>content_extent</code> <span class="type">f64</span></dt><dd>content_extent（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<h2 id="lifecycle">放置、状态与事件</h2>
+<p>组件由应用拥有。Screen.place 放置节点，Screen.set_enabled 和 Screen.set_visible 管理可用性与显示。状态变化后重新呈现；创建和修改时处理 <code>or</code> 错误，不在绘制回调中修改拓扑。ToastHost 使用自己的队列接口。</p>
+<p><a href="/zh/api/ui/widgets#struct-Action">Action</a> · <a href="/zh/api/ui/widgets#struct-Styles">Styles</a> · <a href="/zh/docs/ui">界面生命周期与样式指南</a></p>
+<p><a href="/zh/api/ui/widgets#--Screen-place">Screen.place</a> · <a href="/zh/api/ui/widgets#--Screen-set_enabled">Screen.set_enabled</a> · <a href="/zh/api/ui/widgets#--Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">独立控件对象 API</h2>
+<p>以下类型与方法用于自行管理控件、输入和绘制的进阶用法。接收者是控件对象，不是 Screen 返回的节点 ID；普通 Screen 用法请使用上面的创建接口及 Widgets 模块中的 Screen 方法。</p>
+<article class="api-item" id="-Scroll-clone">
+<h2><code>(&amp;Scroll) clone</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (value &amp;Scroll) clone() Scroll</code></pre></div>
+<h3>用途</h3>
+<p>复制控件或样式快照，返回独立的 Scroll 值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>value</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>Scroll — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-axis">
+<h2><code>(&amp;Scroll) axis</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) axis() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;Scroll` 上执行 `axis` 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-content_bounds">
+<h2><code>(&amp;Scroll) content_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) content_bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Scroll` 上的操作：执行 content bounds 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-Scroll">
+<h2><code>struct Scroll</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Scroll {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>`Scroll` 上下文或状态结构体。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+<p><a href="/zh/api/ui/widgets#example-ba09d69a23c3">查看用法示例</a></p>
+</article>
+<article class="api-item" id="-Scroll-offset">
+<h2><code>(&amp;Scroll) offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) offset() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;Scroll` 上执行 `offset` 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-needs_paint">
+<h2><code>(&amp;Scroll) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件是否需要重新绘制；绘制完成后调用 painted 清除标记。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Scroll-painted">
+<h2><code>($&amp;Scroll) painted</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) painted()</code></pre></div>
+<h3>用途</h3>
+<p>确认当前帧已绘制，清除重绘标记；不是状态查询。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Scroll-set_focus">
+<h2><code>($&amp;Scroll) set_focus</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_focus(focused <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：设置 focus。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>focused（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Scroll-set_offset">
+<h2><code>($&amp;Scroll) set_offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_offset(offset <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：设置 offset。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>offset</code> <span class="type">f64</span></dt><dd>偏移（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Scroll-set_content_extent">
+<h2><code>($&amp;Scroll) set_content_extent</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_content_extent(extent <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：设置 content extent。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>extent</code> <span class="type">f64</span></dt><dd>extent（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Scroll-set_bounds">
+<h2><code>($&amp;Scroll) set_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_bounds(bounds &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：设置 bounds。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>bounds</code> <span class="type">&amp;layout.Rect</span></dt><dd>bounds（借用，调用方仍持有；类型 &amp;layout.Rect）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Scroll-input">
+<h2><code>($&amp;Scroll) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) input(input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>接收并处理分发的鼠标、键盘或触摸交互输入事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Scroll-event">
+<h2><code>($&amp;Scroll) event</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) event(event &amp;ui.Event) Action</code></pre></div>
+<h3>用途</h3>
+<p>处理并响应窗口与系统的交互及生命周期事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.Event</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.Event）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="-Scroll-visible_items">
+<h2><code>(&amp;Scroll) visible_items</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) visible_items(count <span class="syn-type">int</span>,item_extent <span class="syn-type">f64</span>,gap <span class="syn-type">f64</span>,overscan <span class="syn-type">int</span>) layout.VisibleRange</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Scroll` 上的操作：执行 visible items 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+<dt><code>count</code> <span class="type">int</span></dt><dd>count（int）</dd>
+<dt><code>item_extent</code> <span class="type">f64</span></dt><dd>item_extent（f64）</dd>
+<dt><code>gap</code> <span class="type">f64</span></dt><dd>gap（f64）</dd>
+<dt><code>overscan</code> <span class="type">int</span></dt><dd>overscan（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.VisibleRange — 该类型的值</p>
+</article>
+<article class="api-item" id="--Scroll-layout_items">
+<h2><code>($&amp;Scroll) layout_items</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) layout_items(count <span class="syn-type">int</span>,item_extent <span class="syn-type">f64</span>,gap <span class="syn-type">f64</span>,overscan <span class="syn-type">int</span>) layout.VisibleRange</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：执行 layout items 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>count</code> <span class="type">int</span></dt><dd>count（int）</dd>
+<dt><code>item_extent</code> <span class="type">f64</span></dt><dd>item_extent（f64）</dd>
+<dt><code>gap</code> <span class="type">f64</span></dt><dd>gap（f64）</dd>
+<dt><code>overscan</code> <span class="type">int</span></dt><dd>overscan（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.VisibleRange — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-begin">
+<h2><code>(&amp;Scroll) begin</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) begin(frame <span class="syn-borrow">$&amp;</span>draw.Frame) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;Scroll` 上执行 `begin` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-end">
+<h2><code>(&amp;Scroll) end</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) end(frame <span class="syn-borrow">$&amp;</span>draw.Frame) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;Scroll` 上执行 `end` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-is_enabled">
+<h2><code>(&amp;Scroll) is_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_enabled() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件当前是否可用。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Scroll-set_enabled">
+<h2><code>($&amp;Scroll) set_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_enabled(enabled <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：设置 enabled。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Scroll-id">
+<h2><code>(&amp;Scroll) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) id() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件、元素或节点的唯一标识 ID。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-bounds">
+<h2><code>(&amp;Scroll) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件或几何对象的有效外接矩形边界（Rectangle）。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-is_focused">
+<h2><code>(&amp;Scroll) is_focused</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_focused() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件当前是否拥有输入焦点。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Scroll-is_hovered">
+<h2><code>(&amp;Scroll) is_hovered</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_hovered() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Scroll` 上的操作：判断是否 hovered。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Scroll-is_dragging">
+<h2><code>(&amp;Scroll) is_dragging</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_dragging() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Scroll` 上的操作：判断是否 dragging。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Scroll-is_invalid">
+<h2><code>(&amp;Scroll) is_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_invalid() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Scroll` 上的操作：判断是否 invalid。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Scroll-set_invalid">
+<h2><code>($&amp;Scroll) set_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_invalid(invalid <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：设置 invalid。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>invalid</code> <span class="type">bool</span></dt><dd>invalid（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Scroll-visual_state">
+<h2><code>(&amp;Scroll) visual_state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) visual_state() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Scroll` 上的操作：执行 visual state 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-has_style">
+<h2><code>(&amp;Scroll) has_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) has_style() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Scroll` 上的操作：判断是否具有 style。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Scroll-style_or">
+<h2><code>(&amp;Scroll) style_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) style_or(styles &amp;Styles) ControlStyle</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Scroll` 上的操作：执行 style or 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>ControlStyle — 该类型的值</p>
+</article>
+<article class="api-item" id="--Scroll-set_style">
+<h2><code>($&amp;Scroll) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：设置 style。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style（借用，调用方仍持有；类型 &amp;ControlStyle）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Scroll-clear_style">
+<h2><code>($&amp;Scroll) clear_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) clear_style()</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：执行 clear style 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Scroll-apply_styles">
+<h2><code>($&amp;Scroll) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>应用并验证主题；指标变化时更新布局 / 几何并标记重绘。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>成功为 0；失败抛出错误</p>
+</article>
+<article class="api-item" id="--Scroll-measure_styled">
+<h2><code>($&amp;Scroll) measure_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) measure_styled(styles &amp;Styles) layout.Size</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Scroll` 上的操作：执行 measure styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Size — 该类型的值</p>
+</article>
+<article class="api-item" id="-Scroll-scrollbar_track">
+<h2><code>(&amp;Scroll) scrollbar_track</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) scrollbar_track() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回与交互命中共用的滚动条轨道矩形。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>控件坐标系中的轨道</p>
+</article>
+<article class="api-item" id="-Scroll-scrollbar_thumb">
+<h2><code>(&amp;Scroll) scrollbar_thumb</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) scrollbar_thumb() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回按内容长度、偏移和最小滑块尺寸计算的矩形。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>接收者 &amp;Scroll（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>控件坐标系中的滑块</p>
+</article>
+<article class="api-item" id="--Scroll-paint_scrollbar">
+<h2><code>($&amp;Scroll) paint_scrollbar</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) paint_scrollbar(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>绘制滚动条并清除其脏标记；在 overlay_styled 中于子内容之后调用。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>成功为 0；失败抛出错误</p>
+</article>
+<article class="api-item" id="--Scroll-route">
+<h2><code>($&amp;Scroll) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) route(kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>路由并分发交互事件至命中的子节点或处理器。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>接收者 $&amp;Scroll（可变借用）</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>类型标签（int）</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<h2 id="native-example">完整原生示例</h2><p><a href="/zh/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/zh/api/ui/widgets">返回 Widgets 目录</a></p>

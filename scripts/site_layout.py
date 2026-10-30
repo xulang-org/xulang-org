@@ -73,7 +73,7 @@ def side_link(href: str, label: str, route: str) -> str:
     return f'<li><a{active} href="{href}">{escape(label)}</a></li>'
 
 
-def sidebar(route: str, en: bool, xu_version: str = '') -> str:
+def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None) -> str:
     prefix = '' if en else '/zh'
     rest = route if en else route.removeprefix('/zh')
     groups = []
@@ -90,6 +90,21 @@ def sidebar(route: str, en: bool, xu_version: str = '') -> str:
               for package in ('ui', 'ui/draw', 'ui/layout', 'ui/widgets', 'ui/webview')],
             (prefix + '/api', 'Released SDK API' if en else '正式 SDK API'),
         ]))
+    elif rest == '/api/ui/widgets' or rest.startswith('/api/ui/widgets/'):
+        groups.append(('xi-xuui', 'UI', [
+            (prefix + '/api', 'API'), (prefix + '/api/ui', 'UI'),
+            (prefix + '/api/ui/widgets', 'Widgets'),
+            (prefix + '/api/ui/draw', '#ui/draw'), (prefix + '/api/ui/layout', '#ui/layout'),
+            (prefix + '/api/ui/webview', '#ui/webview'),
+        ]))
+        catalog_path = (root or Path(__file__).resolve().parents[1]) / 'templates/widgets.json'
+        if catalog_path.is_file():
+            catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
+            for category, labels in catalog['groups'].items():
+                groups.append(('xi-package', labels[en], [
+                    (prefix + '/api/ui/widgets/' + c['slug'], c['name'])
+                    for c in catalog['components'] if c['group'] == category
+                ]))
     elif rest == '/api' or rest.startswith('/api/'):
         for icon, zh, english, packages in API_GROUPS:
             groups.append((icon, english if en else zh, [
@@ -450,7 +465,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         main = '<main class="home bench-page">' + body + '</main>'
     else:
         cls = 'doc download' if route == prefix + '/download' else 'doc'
-        main = '<div class="page page-with-side">' + sidebar(route, en, xu_version) + f'<main class="{cls}">' + body + '</main></div>'
+        main = '<div class="page page-with-side">' + sidebar(route, en, xu_version, root) + f'<main class="{cls}">' + body + '</main></div>'
     other = ('/zh' if route == '/' else '/zh' + route) if en else (route[3:] or '/')
     if route == '/404':
         other = '/zh'
@@ -465,10 +480,13 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         home_title='Xu Home' if en else 'Xu 官网首页',
         xu_version=escape(xu_version), nav=''.join(nav), main=main,
         playground_assets=playground_assets,
-        page_assets=('<link rel="stylesheet" href="/playground.css">'
+        page_assets=('<link rel="stylesheet" href="/widgets.css">'
+                     if '/api/ui/widgets' in route else '') + ('<link rel="stylesheet" href="/playground.css">'
+                     '<link rel="stylesheet" href="/widgets.css">'
                      '<script src="/xu-play-canvas.js" defer></script>'
                      '<script src="/xu-play-workspace.js" defer></script>'
                      '<script src="/xu-play-library.js" defer></script>'
+                     '<script src="/widget-experience.js" defer></script>'
                      if route in ('/playground', '/zh/playground') else ''),
         other_lang=other, other_lang_code='zh-CN' if en else 'en',
         lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',

@@ -21,6 +21,11 @@ self.onmessage = async function (event) {
         module = await WebAssembly.compile(await response.arrayBuffer());
       }
       runtime = await createRuntime(module, {cache: event.data.cache !== false, checkpoints: event.data.checkpoints !== false});
+      // Exercise the parser/checker and interpreter while the controller's
+      // loading deadline is active. Cold WASM tiering can otherwise consume
+      // the first user's 10-second execution budget on slower browsers.
+      const warmup = runtime.run('@main\nfn main() int { << 0 }\n');
+      if (warmup.exit !== 0) throw new Error('Xu playground initialization failed: ' + warmup.stderr);
       self.postMessage({type: 'ready'});
     } else if (event.data.type === 'run') {
       if (!runtime) throw new Error('Xu playground is not ready');

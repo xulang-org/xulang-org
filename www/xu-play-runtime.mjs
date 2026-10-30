@@ -148,8 +148,8 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
       const decodeStart = profile ? performance.now() : 0;
       const stdout = decode(150000, 1024);
       let stderr = decode(450000, 1032);
-      if (trap && !stderr) {
-        stderr = view.getBigInt64(1048, true) > 0n
+      if (trap) {
+        stderr += view.getBigInt64(1048, true) > 0n
           ? 'Xu playground memory limit exceeded\n'
           : 'Xu WASM execution stopped: ' + trap.message + '\n';
       }

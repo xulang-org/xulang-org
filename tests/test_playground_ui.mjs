@@ -160,6 +160,18 @@ test('Timeout terminates execution and late results cannot overwrite the next ru
   assert.equal(elements['xu-play-out'].textContent, 'fresh result\n');
 });
 
+test('Widgets programs have a bounded 30-second budget and still terminate on timeout', async () => {
+  const {elements, workers, timers} = await mount();
+  elements['xu-play-src'].value = '@main\n#ui/widgets\nfn main() int { << 0 }';
+  elements['xu-play-run'].click();
+  const timeout = [...timers.values()].find(timer => timer.delay === 30000);
+  assert.ok(timeout, 'a widget program has a separate finite execution budget');
+  timeout.handler();
+  await new Promise(setImmediate);
+  assert.equal(workers[0].terminated, true);
+  assert.match(elements['xu-play-out'].textContent, /运行超过 30 秒/);
+});
+
 test('opening a different project stops old execution and ignores its late result', async () => {
   const {elements, workers} = await mount();
   elements['xu-play-src'].value = 'busy program';

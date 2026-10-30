@@ -13,7 +13,7 @@ is checked against that file.
 The pages use shared desktop implementations:
 
 - Basics: Button, Checkbox, Switch, Slider, and two Radio controls. The Xu
-  caller applies Radio exclusivity; the separate RadioGroup component is absent.
+  caller applies Radio exclusivity; RadioGroup also has its own focused experience.
 - Data: ListBox with selection and scrolling, plus a clipped/transformed Scroll
   container. Wheel deltas, keyboard navigation, and bounds run in the widgets.
 - Display: StyledLabel text, Card, Badge, Progress with normal/invalid/disabled styled states linked to the slider, and
@@ -37,10 +37,19 @@ also mirrored. This is a larger gallery subset, not the complete desktop suite.
 
 `stdlib/desktop_*.xu` supplies necessary desktop layout, math, UTF-8 validation,
 input, text/color/path types, style resolution, and motion initialization.
-Selection excludes native event pumps, full styled-control methods, Screen,
-WebView, services, overlays, and timers. Toast/Menu/Popover and decorated Field
-remain excluded; they need further style/routing/lifetime integration. The
-browser does not simulate these with JavaScript controls.
+The focused component experiences additionally run Select, Stepper, RadioGroup,
+Pagination, Breadcrumbs, RangeSlider, SplitView, ButtonGroup, MultiSelect,
+ColorPicker, Table, Chart, and dropdown/context/split Menu modes. Their geometry,
+state, input and paint methods are unchanged desktop Xu declarations. Canvas
+forwards left/right/middle pointer buttons and supplies drawing resources.
+
+Extension declarations are partitioned by their dependency owners in
+`desktop-sources.json`. The runtime scans user identifier tokens, loads only the
+requested families and shared declarations, and parses each package once.
+Existing basic programs keep their original subset. Native event pumps, Screen,
+WebView, editable input and the remaining component families are not exposed by
+the WASM subset. Their separate playground interaction previews are clearly
+marked as not executing Xu; they are not substitutes inside the WASM runtime.
 
 The checked-in `stdlib/desktop-sources.json` records the upstream commit and a
 SHA-256 for every declaration. To resync against a clean or dirty Xu checkout
@@ -135,7 +144,12 @@ count. Run Code, source edits, and example changes reset the session.
   focused Button/Checkbox/Switch. Arrows, Home/End, and PageUp/PageDown adjust
   Slider. Esc cancels and leaves the canvas. Click requests focus through the
   widgets API. Key events and an active drag’s motion/release are queued during replay; new pointer presses while busy are ignored. Stopping/editing discards pending input.
-- 10-second worker timeout, VM step limit, and 128 MiB memory ceiling (fixed WASM initial and maximum memory).
+- 10-second worker timeout for ordinary programs; 30 seconds for programs importing `#ui/widgets`. The VM step limit and fixed 256 MiB initial/maximum memory still bound execution.
+
+Worker initialization runs a silent minimal Xu program before reporting ready.
+This warms the parser, checker and interpreter under the separate 30-second
+loading deadline, keeping cold WASM tiering out of the first user execution's
+execution budget. Initialization output is never shown as user output.
 - Commands: 256 KiB / 4096 lines; transform stack: 32; text size: 1–256.
 - No continuous animation, hover tracking while idle, native services/windows,
   WebView, full styled widgets, editable text input, or persistent external effects.
@@ -164,12 +178,18 @@ python3 -m http.server 18110 --bind 127.0.0.1 --directory dist
 ```
 
 The build invokes the scalar link step automatically, including adjustment of
-the SDK memory section to a fixed 128 MiB limit. The arena starts at
+the SDK memory section to a fixed 256 MiB limit. The arena starts at
 16 MiB and retains parser/checker/MIR allocations for the checked source;
-execution memory after that boundary is recycled. The gallery still exceeds
-100 MiB including its interpreter plans and execution memory. Reducing memory to the SDK's 64 MiB makes even the
-no-event gallery trap with an out-of-bounds memory access. The allocator limit,
-build metadata, and gallery memory test share this 128 MiB contract.
+execution memory after that boundary is recycled. Styled tables and charts
+exceed the original 128 MiB budget even after loading only their dependencies.
+The allocator, linker, build metadata and memory test share the 256 MiB contract;
+programs cannot grow beyond it. The source size, VM step count, input history
+and worker deadlines remain bounded.
+Native SDK methods can emit conservative division warnings; warnings remain
+visible, and a later WASM trap is appended rather than hidden by those warnings.
+The VM supports the scalar maps needed by these controls (int/string keys,
+int/bool values, at most 4096 entries); other map value/operation forms report an
+explicit unsupported error. Input timestamps use a deterministic replay clock.
 The build records the compiler
 version, WASM digest, and widget-source manifest digest in
 `build/playground/build.json`. Generated WASM and site output remain ignored.

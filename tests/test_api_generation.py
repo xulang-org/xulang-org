@@ -18,6 +18,28 @@ spec.loader.exec_module(api)
 
 
 class APIGenerationTests(unittest.TestCase):
+    def test_widget_factories_do_not_override_same_named_input_methods(self):
+        saved = api.OVERRIDES.copy()
+        try:
+            api.OVERRIDES[('ui/widgets', 'input')] = {
+                lang: {'purpose': 'Create Editor', 'params': {}, 'returns': 'Editor'}
+                for lang in ('zh', 'en')
+            }
+            item = api.Item('method', 'input', 'pub fn (b &mut Button) input(event &ui.InputEvent) Action',
+                            recv_type='&mut Button', ret='Action')
+            self.assertNotIn('Create Editor', api.purpose_for('ui/widgets', item, 'en'))
+            self.assertIn('Action', api.returns_for('ui/widgets', item, 'en'))
+            factory = api.Item('method', 'input', 'pub fn (s &mut Screen) input(value string) int',
+                               recv_type='&mut Screen', ret='int')
+            self.assertIn('node ID', api.returns_for('ui/widgets', factory, 'en'))
+        finally:
+            api.OVERRIDES.clear()
+            api.OVERRIDES.update(saved)
+
+    def test_painted_is_an_acknowledgement_not_a_predicate(self):
+        item = api.Item('method', 'painted', 'pub fn (b &mut Button) painted()', recv_type='&mut Button')
+        self.assertIn('clear the dirty flag', api.purpose_for('ui/widgets', item, 'en'))
+
     def test_usage_links_and_downloads_include_examples_after_inline_limit(self):
         examples = [api.Example(f'examples/{i}/main.xu', '#ui/widgets\n', 'a' * 40,
                                {'ui/widgets': {'style_switcher'} if i == 3 else {'button'}})

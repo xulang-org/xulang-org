@@ -23,6 +23,7 @@ pub fn xu_prepare(ptr int, length int) types.Mir {
     prepared = source[first:source.len]
     if first >= source.len || source[first] != 64 { prepared = "@main\n" + prepared }
     scanner.lex(prepared, $&tokens, "playground.xu")
+    widget_flags := playground_widget_flags(&tokens)
     $p := parser.new_parser(tokens)
     p.file_name = "playground.xu"
     p.parse_module()
@@ -38,10 +39,11 @@ pub fn xu_prepare(ptr int, length int) types.Mir {
     playground_merge($&p, playground_std_desktop_ui(), "ui/input.xu")
     playground_merge($&p, playground_std_desktop_math(), "math.xu")
     playground_merge($&p, playground_std_desktop_time(), "time.xu")
+    playground_merge($&p, playground_std_clock(), "browser_clock.xu")
     playground_merge($&p, playground_std_desktop_layout(), "ui/layout.xu")
     playground_merge($&p, playground_std_desktop_utf8(), "unicode/utf8.xu")
     playground_merge($&p, playground_std_desktop_codec(), "ui/codec.xu")
-    playground_merge($&p, playground_std_desktop_widgets(), "ui/widgets.xu")
+    playground_merge_widget_extensions($&p, &widget_flags)
     $c := types.Checker{}
     $m := types.empty_mir()
     m.opt_level = 0

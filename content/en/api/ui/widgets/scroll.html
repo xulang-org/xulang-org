@@ -1,0 +1,496 @@
+<!--title: Scroll · UI / Widgets-->
+<!--xu-api-version: 0.10.12-->
+<nav class="widget-crumb" aria-label="Breadcrumb"><a href="/api">API</a><span>/</span><a href="/api/ui">UI</a><span>/</span><a href="/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">Scroll</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / Layout</p><h1>Scroll</h1><p class="lead">Fit longer content inside a bounded viewport</p><a class="btn pri" href="/playground?example=widget-scroll#xu-play-workspace">Run the Xu example <span aria-hidden="true">↗</span></a><p class="note">The example executes in the browser using the Xu/WASM runtime.</p></header>
+<h2 id="experience">What to try</h2><p>Scroll the panel independently.</p>
+<h2 id="behavior">Usage notes</h2><p>Content extent determines travel while the viewport determines clipping. Children inside scrolling content still need the correct parent and coordinates.</p>
+<h2 id="create">Create through Screen</h2>
+<p>The Screen constructor returns a node ID. Pass that ID to Screen layout, state and event APIs. It is separate from the standalone control object documented below.</p>
+<p class="note">Native Xu setup fragment: call configure during initialization of an existing Screen. See the complete example for window creation, event dispatch and cleanup.</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+
+fn configure(screen $&amp;widgets.Screen) int {
+    id := screen.scroll_area(widgets.AXIS_VERTICAL,600.0) or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="--Screen-scroll_area">
+<h2><code>($&amp;Screen) scroll_area</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Screen) scroll_area(axis <span class="syn-type">int</span>,content_extent <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Scroll shares the internal surface node category with Card, but retains its own typed state. Child placement, hit testing and native clips use one offset. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Screen</span></dt><dd>receiver $&amp;Screen (exclusive borrow)</dd>
+<dt><code>axis</code> <span class="type">int</span></dt><dd>axis (int)</dd>
+<dt><code>content_extent</code> <span class="type">f64</span></dt><dd>content_extent (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<h2 id="lifecycle">Placement, state and events</h2>
+<p>The application owns the component. Screen.place positions nodes; Screen.set_enabled and Screen.set_visible control availability and visibility. Present again after state changes, handle <code>or</code> errors, and keep topology changes outside paint callbacks. ToastHost uses its own queue API.</p>
+<p><a href="/api/ui/widgets#struct-Action">Action</a> · <a href="/api/ui/widgets#struct-Styles">Styles</a> · <a href="/docs/ui">UI lifecycle and styling guide</a></p>
+<p><a href="/api/ui/widgets#--Screen-place">Screen.place</a> · <a href="/api/ui/widgets#--Screen-set_enabled">Screen.set_enabled</a> · <a href="/api/ui/widgets#--Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">Standalone control object API</h2>
+<p>These types and methods support applications that manage control objects, input and painting directly. Their receiver is a control object, not a Screen node ID. For Screen usage, use the constructor above and the Screen methods in the Widgets module.</p>
+<article class="api-item" id="-Scroll-clone">
+<h2><code>(&amp;Scroll) clone</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (value &amp;Scroll) clone() Scroll</code></pre></div>
+<h3>Purpose</h3>
+<p>Copy the control or style snapshot into an independent Scroll value.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>value</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Scroll — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-axis">
+<h2><code>(&amp;Scroll) axis</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) axis() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute `axis` on `&amp;Scroll`.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-content_bounds">
+<h2><code>(&amp;Scroll) content_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) content_bounds() layout.Rect</code></pre></div>
+<h3>Purpose</h3>
+<p>Children occupy content coordinates; the rail stays outside their clip.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.Rect — a value of this type</p>
+</article>
+<article class="api-item" id="struct-Scroll">
+<h2><code>struct Scroll</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Scroll {
+
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>`Scroll` context or state structure.</p>
+<h3>Parameters</h3>
+<p class="api-none">none</p>
+<p><a href="/api/ui/widgets#example-ba09d69a23c3">See usage example</a></p>
+</article>
+<article class="api-item" id="-Scroll-offset">
+<h2><code>(&amp;Scroll) offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) offset() <span class="syn-type">f64</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute `offset` on `&amp;Scroll`.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>f64 — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-needs_paint">
+<h2><code>(&amp;Scroll) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Return whether the control needs repainting; call painted after painting to clear the flag.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="--Scroll-painted">
+<h2><code>($&amp;Scroll) painted</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) painted()</code></pre></div>
+<h3>Purpose</h3>
+<p>Acknowledge the painted frame and clear the dirty flag; this is not a query.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+</dl>
+</article>
+<article class="api-item" id="--Scroll-set_focus">
+<h2><code>($&amp;Scroll) set_focus</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_focus(focused <span class="syn-type">bool</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: set focus.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>focused (bool)</dd>
+</dl>
+</article>
+<article class="api-item" id="--Scroll-set_offset">
+<h2><code>($&amp;Scroll) set_offset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_offset(offset <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: set offset. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>offset</code> <span class="type">f64</span></dt><dd>offset (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="--Scroll-set_content_extent">
+<h2><code>($&amp;Scroll) set_content_extent</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_content_extent(extent <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: set content extent. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>extent</code> <span class="type">f64</span></dt><dd>extent (f64)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="--Scroll-set_bounds">
+<h2><code>($&amp;Scroll) set_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_bounds(bounds &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: set bounds. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>bounds</code> <span class="type">&amp;layout.Rect</span></dt><dd>bounds (borrowed; caller keeps it; type &amp;layout.Rect)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="--Scroll-input">
+<h2><code>($&amp;Scroll) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) input(input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>Purpose</h3>
+<p>Process routed mouse, keyboard, or touch input events. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input (borrowed; caller keeps it; type &amp;ui.InputEvent)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Action — input result with kind, id, repaint and focus requests.</p>
+</article>
+<article class="api-item" id="--Scroll-event">
+<h2><code>($&amp;Scroll) event</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) event(event &amp;ui.Event) Action</code></pre></div>
+<h3>Purpose</h3>
+<p>Handle and respond to window or system lifecycle and interaction events. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>event</code> <span class="type">&amp;ui.Event</span></dt><dd>event (borrowed; caller keeps it; type &amp;ui.Event)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Action — input result with kind, id, repaint and focus requests.</p>
+</article>
+<article class="api-item" id="-Scroll-visible_items">
+<h2><code>(&amp;Scroll) visible_items</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) visible_items(count <span class="syn-type">int</span>,item_extent <span class="syn-type">f64</span>,gap <span class="syn-type">f64</span>,overscan <span class="syn-type">int</span>) layout.VisibleRange</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Scroll`: visible items. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+<dt><code>count</code> <span class="type">int</span></dt><dd>count (int)</dd>
+<dt><code>item_extent</code> <span class="type">f64</span></dt><dd>item_extent (f64)</dd>
+<dt><code>gap</code> <span class="type">f64</span></dt><dd>gap (f64)</dd>
+<dt><code>overscan</code> <span class="type">int</span></dt><dd>overscan (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.VisibleRange — a value of this type</p>
+</article>
+<article class="api-item" id="--Scroll-layout_items">
+<h2><code>($&amp;Scroll) layout_items</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) layout_items(count <span class="syn-type">int</span>,item_extent <span class="syn-type">f64</span>,gap <span class="syn-type">f64</span>,overscan <span class="syn-type">int</span>) layout.VisibleRange</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: layout items. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>count</code> <span class="type">int</span></dt><dd>count (int)</dd>
+<dt><code>item_extent</code> <span class="type">f64</span></dt><dd>item_extent (f64)</dd>
+<dt><code>gap</code> <span class="type">f64</span></dt><dd>gap (f64)</dd>
+<dt><code>overscan</code> <span class="type">int</span></dt><dd>overscan (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.VisibleRange — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-begin">
+<h2><code>(&amp;Scroll) begin</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) begin(frame <span class="syn-borrow">$&amp;</span>draw.Frame) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute `begin` on `&amp;Scroll`. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame (exclusive borrow; type $&amp;draw.Frame)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-end">
+<h2><code>(&amp;Scroll) end</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) end(frame <span class="syn-borrow">$&amp;</span>draw.Frame) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute `end` on `&amp;Scroll`. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame (exclusive borrow; type $&amp;draw.Frame)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-is_enabled">
+<h2><code>(&amp;Scroll) is_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_enabled() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Return whether the control is currently enabled.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="--Scroll-set_enabled">
+<h2><code>($&amp;Scroll) set_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_enabled(enabled <span class="syn-type">bool</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: set enabled.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled (bool)</dd>
+</dl>
+</article>
+<article class="api-item" id="-Scroll-id">
+<h2><code>(&amp;Scroll) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) id() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Return the unique integer ID of the element or control.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-bounds">
+<h2><code>(&amp;Scroll) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) bounds() layout.Rect</code></pre></div>
+<h3>Purpose</h3>
+<p>Return the bounding Rectangle of the control or geometry.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.Rect — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-is_focused">
+<h2><code>(&amp;Scroll) is_focused</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_focused() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Return whether the control currently has input focus.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Scroll-is_hovered">
+<h2><code>(&amp;Scroll) is_hovered</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_hovered() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Scroll`: whether it is hovered.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Scroll-is_dragging">
+<h2><code>(&amp;Scroll) is_dragging</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_dragging() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Scroll`: whether it is dragging.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Scroll-is_invalid">
+<h2><code>(&amp;Scroll) is_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) is_invalid() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Scroll`: whether it is invalid.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="--Scroll-set_invalid">
+<h2><code>($&amp;Scroll) set_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_invalid(invalid <span class="syn-type">bool</span>)</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: set invalid.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>invalid</code> <span class="type">bool</span></dt><dd>invalid (bool)</dd>
+</dl>
+</article>
+<article class="api-item" id="-Scroll-visual_state">
+<h2><code>(&amp;Scroll) visual_state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) visual_state() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Scroll`: visual state.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-has_style">
+<h2><code>(&amp;Scroll) has_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) has_style() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Scroll`: whether it has style.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Scroll-style_or">
+<h2><code>(&amp;Scroll) style_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) style_or(styles &amp;Styles) ControlStyle</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `&amp;Scroll`: style or.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles (borrowed; caller keeps it; type &amp;Styles)</dd>
+</dl>
+<h3>Returns</h3>
+<p>ControlStyle — a value of this type</p>
+</article>
+<article class="api-item" id="--Scroll-set_style">
+<h2><code>($&amp;Scroll) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: set style. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style (borrowed; caller keeps it; type &amp;ControlStyle)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="--Scroll-clear_style">
+<h2><code>($&amp;Scroll) clear_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) clear_style()</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: clear style.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+</dl>
+</article>
+<article class="api-item" id="--Scroll-apply_styles">
+<h2><code>($&amp;Scroll) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Validate and apply styles, updating layout / geometry and repainting when metrics change.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles (borrowed; caller keeps it; type &amp;Styles)</dd>
+</dl>
+<h3>Returns</h3>
+<p>0 on success; throws on failure</p>
+</article>
+<article class="api-item" id="--Scroll-measure_styled">
+<h2><code>($&amp;Scroll) measure_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) measure_styled(styles &amp;Styles) layout.Size</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;Scroll`: measure styled. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles (borrowed; caller keeps it; type &amp;Styles)</dd>
+</dl>
+<h3>Returns</h3>
+<p>layout.Size — a value of this type</p>
+</article>
+<article class="api-item" id="-Scroll-scrollbar_track">
+<h2><code>(&amp;Scroll) scrollbar_track</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) scrollbar_track() layout.Rect</code></pre></div>
+<h3>Purpose</h3>
+<p>Return the scrollbar track rectangle shared with hit testing.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>track in control coordinates</p>
+</article>
+<article class="api-item" id="-Scroll-scrollbar_thumb">
+<h2><code>(&amp;Scroll) scrollbar_thumb</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll &amp;Scroll) scrollbar_thumb() layout.Rect</code></pre></div>
+<h3>Purpose</h3>
+<p>Return the thumb rectangle from content extent, offset and minimum thumb size.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">&amp;Scroll</span></dt><dd>receiver &amp;Scroll (borrow)</dd>
+</dl>
+<h3>Returns</h3>
+<p>thumb in control coordinates</p>
+</article>
+<article class="api-item" id="--Scroll-paint_scrollbar">
+<h2><code>($&amp;Scroll) paint_scrollbar</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) paint_scrollbar(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Paint the scrollbar and clear its dirty flag. Call after child content in overlay_styled.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame (exclusive borrow; type $&amp;draw.Frame)</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles (borrowed; caller keeps it; type &amp;Styles)</dd>
+</dl>
+<h3>Returns</h3>
+<p>0 on success; throws on failure</p>
+</article>
+<article class="api-item" id="--Scroll-route">
+<h2><code>($&amp;Scroll) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (scroll <span class="syn-borrow">$&amp;</span>Scroll) route(kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>Purpose</h3>
+<p>Route and dispatch the input event to matching targets. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>scroll</code> <span class="type">$&amp;Scroll</span></dt><dd>receiver $&amp;Scroll (exclusive borrow)</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>kind tag (int)</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input (borrowed; caller keeps it; type &amp;ui.InputEvent)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Action — input result with kind, id, repaint and focus requests.</p>
+</article>
+<h2 id="native-example">Complete native example</h2><p><a href="/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/api/ui/widgets">Back to Widgets</a></p>

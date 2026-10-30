@@ -1,0 +1,586 @@
+<!--title: Slider · UI / Widgets-->
+<!--xu-api-version: 0.10.12-->
+<nav class="widget-crumb" aria-label="位置"><a href="/zh/api">API</a><span>/</span><a href="/zh/api/ui">UI</a><span>/</span><a href="/zh/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">Slider</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / 选择与调节</p><h1>Slider</h1><p class="lead">在连续区间内调节数值</p><a class="btn pri" href="/zh/playground?example=widget-slider#xu-play-workspace">在演练场运行 Xu 示例 <span aria-hidden="true">↗</span></a><p class="note">示例由浏览器中的 Xu/WASM 运行器执行。</p></header>
+<h2 id="experience">体验什么</h2><p>拖动滑块，或聚焦后按方向键，查看当前数值。</p>
+<h2 id="behavior">使用要点</h2><p>创建时提供最小值、最大值与当前值。按业务设置步长，并说明拖动时更新还是完成后提交。</p>
+<h2 id="create">通过 Screen 创建</h2>
+<p>下面的 Screen 构造方法返回节点 ID。将 ID 交给 Screen 的布局、状态与事件接口；它不是下方独立控件类型的实例。</p>
+<p class="note">原生 Xu 创建片段：在已有 Screen 的初始化阶段调用 configure；窗口创建、事件循环与资源释放参见完整原生示例。</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+
+fn configure(screen $&amp;widgets.Screen) int {
+    id := screen.slider(0.0,100.0,40.0) or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="--Screen-slider">
+<h2><code>($&amp;Screen) slider</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Screen) slider(minimum <span class="syn-type">f64</span>,maximum <span class="syn-type">f64</span>,value <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `$&amp;Screen` 上执行 `slider` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Screen</span></dt><dd>接收者 $&amp;Screen（可变借用）</dd>
+<dt><code>minimum</code> <span class="type">f64</span></dt><dd>minimum（f64）</dd>
+<dt><code>maximum</code> <span class="type">f64</span></dt><dd>maximum（f64）</dd>
+<dt><code>value</code> <span class="type">f64</span></dt><dd>value（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<h2 id="lifecycle">放置、状态与事件</h2>
+<p>组件由应用拥有。Screen.place 放置节点，Screen.set_enabled 和 Screen.set_visible 管理可用性与显示。状态变化后重新呈现；创建和修改时处理 <code>or</code> 错误，不在绘制回调中修改拓扑。ToastHost 使用自己的队列接口。</p>
+<p><a href="/zh/api/ui/widgets#struct-Action">Action</a> · <a href="/zh/api/ui/widgets#struct-Styles">Styles</a> · <a href="/zh/docs/ui">界面生命周期与样式指南</a></p>
+<p><a href="/zh/api/ui/widgets#--Screen-place">Screen.place</a> · <a href="/zh/api/ui/widgets#--Screen-set_enabled">Screen.set_enabled</a> · <a href="/zh/api/ui/widgets#--Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">独立控件对象 API</h2>
+<p>以下类型与方法用于自行管理控件、输入和绘制的进阶用法。接收者是控件对象，不是 Screen 返回的节点 ID；普通 Screen 用法请使用上面的创建接口及 Widgets 模块中的 Screen 方法。</p>
+<article class="api-item" id="-Slider-clone">
+<h2><code>(&amp;Slider) clone</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (value &amp;Slider) clone() Slider</code></pre></div>
+<h3>用途</h3>
+<p>复制控件或样式快照，返回独立的 Slider 值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>value</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>Slider — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-set_locale">
+<h2><code>($&amp;Slider) set_locale</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (slider <span class="syn-borrow">$&amp;</span>Slider) set_locale(locale &amp;Locale) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 locale。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>slider</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>locale</code> <span class="type">&amp;Locale</span></dt><dd>locale（借用，调用方仍持有；类型 &amp;Locale）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-Slider">
+<h2><code>struct Slider</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Slider {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>`Slider` 上下文或状态结构体。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+<p><a href="/zh/api/ui/widgets#example-9beafed00ebd">查看用法示例</a></p>
+</article>
+<article class="api-item" id="-Slider-id">
+<h2><code>(&amp;Slider) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) id() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件、元素或节点的唯一标识 ID。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-bounds">
+<h2><code>(&amp;Slider) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件或几何对象的有效外接矩形边界（Rectangle）。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-value">
+<h2><code>(&amp;Slider) value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) value() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-min">
+<h2><code>(&amp;Slider) min</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) min() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：返回两数值中的较小值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-max">
+<h2><code>(&amp;Slider) max</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) max() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：返回两数值中的较大值。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-step">
+<h2><code>(&amp;Slider) step</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) step() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;Slider` 上执行 `step` 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-ratio">
+<h2><code>(&amp;Slider) ratio</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) ratio() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;Slider` 上执行 `ratio` 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-needs_paint">
+<h2><code>(&amp;Slider) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件是否需要重新绘制；绘制完成后调用 painted 清除标记。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Slider-painted">
+<h2><code>($&amp;Slider) painted</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) painted()</code></pre></div>
+<h3>用途</h3>
+<p>确认当前帧已绘制，清除重绘标记；不是状态查询。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Slider-invalidate">
+<h2><code>($&amp;Slider) invalidate</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) invalidate()</code></pre></div>
+<h3>用途</h3>
+<p>标记控件区域为脏，请求系统在下一帧重新绘制。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Slider-cancel">
+<h2><code>($&amp;Slider) cancel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) cancel()</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：取消。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Slider-is_enabled">
+<h2><code>(&amp;Slider) is_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) is_enabled() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件当前是否可用。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Slider-set_enabled">
+<h2><code>($&amp;Slider) set_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_enabled(enabled <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 enabled。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Slider-is_focused">
+<h2><code>(&amp;Slider) is_focused</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) is_focused() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件当前是否拥有输入焦点。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Slider-set_focus">
+<h2><code>($&amp;Slider) set_focus</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_focus(focused <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 focus。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>focused（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Slider-is_hovered">
+<h2><code>(&amp;Slider) is_hovered</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) is_hovered() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：判断是否 hovered。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Slider-is_dragging">
+<h2><code>(&amp;Slider) is_dragging</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) is_dragging() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：判断是否 dragging。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Slider-is_invalid">
+<h2><code>(&amp;Slider) is_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) is_invalid() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：判断是否 invalid。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Slider-set_invalid">
+<h2><code>($&amp;Slider) set_invalid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_invalid(invalid <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 invalid。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>invalid</code> <span class="type">bool</span></dt><dd>invalid（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Slider-is_read_only">
+<h2><code>(&amp;Slider) is_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) is_read_only() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：判断是否 read only。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Slider-set_read_only">
+<h2><code>($&amp;Slider) set_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_read_only(read_only <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 read only。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>read_only</code> <span class="type">bool</span></dt><dd>read_only（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Slider-set_value">
+<h2><code>($&amp;Slider) set_value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_value(value <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 value。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>value</code> <span class="type">f64</span></dt><dd>value（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-set_range">
+<h2><code>($&amp;Slider) set_range</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_range(min <span class="syn-type">f64</span>,max <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 range。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>min</code> <span class="type">f64</span></dt><dd>下限（f64）</dd>
+<dt><code>max</code> <span class="type">f64</span></dt><dd>上限（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-set_step">
+<h2><code>($&amp;Slider) set_step</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_step(step <span class="syn-type">f64</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 step。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>step</code> <span class="type">f64</span></dt><dd>step（f64）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-set_bounds">
+<h2><code>($&amp;Slider) set_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_bounds(bounds &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 bounds。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>bounds</code> <span class="type">&amp;layout.Rect</span></dt><dd>bounds（借用，调用方仍持有；类型 &amp;layout.Rect）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-visual_state">
+<h2><code>(&amp;Slider) visual_state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) visual_state() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：执行 visual state 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-has_style">
+<h2><code>(&amp;Slider) has_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) has_style() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：判断是否具有 style。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Slider-style_or">
+<h2><code>(&amp;Slider) style_or</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) style_or(styles &amp;Styles) ControlStyle</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：执行 style or 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>ControlStyle — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-set_style">
+<h2><code>($&amp;Slider) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 style。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style（借用，调用方仍持有；类型 &amp;ControlStyle）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-clear_style">
+<h2><code>($&amp;Slider) clear_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) clear_style()</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：执行 clear style 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Slider-input">
+<h2><code>($&amp;Slider) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) input(input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>接收并处理分发的鼠标、键盘或触摸交互输入事件。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Slider-event">
+<h2><code>($&amp;Slider) event</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) event(event &amp;ui.Event) Action</code></pre></div>
+<h3>用途</h3>
+<p>处理并响应窗口与系统的交互及生命周期事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.Event</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.Event）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="-Slider-paint">
+<h2><code>(&amp;Slider) paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) paint(frame <span class="syn-borrow">$&amp;</span>draw.Frame,theme &amp;Theme) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在目标画布或渲染目标上执行控件的视觉绘制。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>theme</code> <span class="type">&amp;Theme</span></dt><dd>theme（借用，调用方仍持有；类型 &amp;Theme）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-measure_styled">
+<h2><code>(&amp;Slider) measure_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) measure_styled(styles &amp;Styles) layout.Size</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：执行 measure styled 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Size — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-paint_styled">
+<h2><code>(&amp;Slider) paint_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) paint_styled(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：执行 paint styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-set_commit_only">
+<h2><code>($&amp;Slider) set_commit_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_commit_only(enabled <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 commit only。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Slider-apply_styles">
+<h2><code>($&amp;Slider) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>根据当前主题样式表解析并应用几何与视觉度量。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-set_appearance">
+<h2><code>($&amp;Slider) set_appearance</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) set_appearance(appearance &amp;SliderAppearance) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Slider` 上的操作：设置 appearance。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>appearance</code> <span class="type">&amp;SliderAppearance</span></dt><dd>appearance（借用，调用方仍持有；类型 &amp;SliderAppearance）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Slider-shows_value">
+<h2><code>(&amp;Slider) shows_value</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) shows_value() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：执行 shows value 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Slider-value_text">
+<h2><code>(&amp;Slider) value_text</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) value_text() <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：值文本。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="-Slider-paint_value_styled">
+<h2><code>(&amp;Slider) paint_value_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s &amp;Slider) paint_value_styled(frame <span class="syn-borrow">$&amp;</span>draw.Frame,label <span class="syn-borrow">$&amp;</span>StyledLabel,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Slider` 上的操作：执行 paint value styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">&amp;Slider</span></dt><dd>接收者 &amp;Slider（借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>label</code> <span class="type">$&amp;StyledLabel</span></dt><dd>label（独占借用；类型 $&amp;StyledLabel）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Slider-route">
+<h2><code>($&amp;Slider) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Slider) route(kind <span class="syn-type">int</span>,input &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>路由并分发交互事件至命中的子节点或处理器。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Slider</span></dt><dd>接收者 $&amp;Slider（可变借用）</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>类型标签（int）</dd>
+<dt><code>input</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>input（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<h2 id="native-example">完整原生示例</h2><p><a href="/zh/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/zh/api/ui/widgets">返回 Widgets 目录</a></p>

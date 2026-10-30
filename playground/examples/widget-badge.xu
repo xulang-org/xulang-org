@@ -1,0 +1,47 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := widgets.default_theme()
+    styles := widgets.dark_styles()
+    bounds := box(32.0,104.0,550.0,44.0)
+    $control := widgets.badge(&bounds) or >>
+    $count := 0
+    label := context.layout_text(&"+1",&draw.text_options(16.0)) or >>
+    $trigger := widgets.button(&identity,2,&box(32.0,260.0,220.0,40.0)) or >>
+    $focus := widgets.focus_group(&identity,[2]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        navigation := focus.input(&event)
+        trigger.set_focus(focus.current() == 2)
+        if navigation.consumed { -> }
+        action := trigger.input(&event)
+        if action.request_focus { focus.focus(2) or >> }
+        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(draw.rgb(16,24,39)) or >>
+    draw.text(32,24,24,"#f8fafc","Badge")
+    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) or >>
+    control.paint($&frame,&badge_label,&theme) or >>
+    trigger.paint($&frame,&label,&theme) or >>
+    draw.text(32,320,16,"#e2e8f0","Count: " + str(count))
+    println("Count: " + str(count))
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

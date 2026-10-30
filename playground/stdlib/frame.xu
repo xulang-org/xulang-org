@@ -130,12 +130,16 @@ pub fn (frame $&Frame) fill_path(path &Path,color Color,rule int) int {
 
 pub fn (frame $&Frame) stroke_path(path &Path,color Color,options &StrokeOptions) int {
     frame.writable() or >>
-    if options.cap != CAP_BUTT || options.join != JOIN_MITER || options.dashes.len > 0 {
+    if options.cap < CAP_BUTT || options.cap > CAP_SQUARE || options.join < JOIN_MITER || options.join > JOIN_BEVEL || options.dashes.len > 0 {
         >> errors.new("draw: unsupported browser stroke options")
     }
     cmd("path_begin")
     if path.commands.len > 0 { cmd(path.commands[0:path.commands.len - 1]) }
-    << cmd("path_stroke\t" + color_text(color) + "\t" + scalar(options.width))
+    mut stroke := "path_stroke\t" + color_text(color) + "\t" + scalar(options.width)
+    if options.cap != CAP_BUTT || options.join != JOIN_MITER || options.miter_limit != 10.0 {
+        stroke = stroke + "\t" + str(options.cap) + "\t" + str(options.join) + "\t" + scalar(options.miter_limit)
+    }
+    << cmd(stroke)
 }
 
 
@@ -144,6 +148,17 @@ pub fn (frame $&Frame) translate(x f64,y f64) int {
     frame.writable() or >>
     << cmd("translate\t" + scalar(x) + "\t" + scalar(y))
 }
+pub fn (frame &mut Frame) scale(x f64,y f64) int { frame.writable() or >>
+    << cmd("scale\t" + scalar(x * 100.0) + "\t" + scalar(y * 100.0)) }
+pub fn (frame &mut Frame) rotate(degrees f64) int { frame.writable() or >>
+    << cmd("rotate\t" + scalar(degrees)) }
+pub fn (frame &mut Frame) set_fill(color Color) int { frame.writable() or >>
+    << cmd("fill\t" + color_text(color)) }
+pub fn (frame &mut Frame) set_stroke(color Color,width f64) int { frame.writable() or >>
+    cmd("stroke\t" + color_text(color))
+    << cmd("width\t" + scalar(width)) }
+pub fn (frame &mut Frame) circle(x f64,y f64,radius f64) int { frame.writable() or >>
+    << cmd("circle\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(radius)) }
 
 pub fn (context &Context) matches_canvas(identity &ui.CanvasEvent) bool {
     << identity.window_id == 1 && identity.canvas_id == context.canvas_id && identity.generation == context.generation

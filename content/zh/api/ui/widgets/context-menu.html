@@ -1,0 +1,487 @@
+<!--title: ContextMenu · UI / Widgets-->
+<!--xu-api-version: 0.10.12-->
+<nav class="widget-crumb" aria-label="位置"><a href="/zh/api">API</a><span>/</span><a href="/zh/api/ui">UI</a><span>/</span><a href="/zh/api/ui/widgets">Widgets</a><span>/</span><span aria-current="page">ContextMenu</span></nav>
+<header class="widget-page-heading"><p class="widget-kicker">UI / WIDGETS / 操作</p><h1>ContextMenu</h1><p class="lead">在操作对象附近显示相关命令</p><a class="btn pri" href="/zh/playground?example=widget-context-menu#xu-play-workspace">在演练场运行 Xu 示例 <span aria-hidden="true">↗</span></a><p class="note">示例由浏览器中的 Xu/WASM 运行器执行。</p></header>
+<h2 id="experience">体验什么</h2><p>在控件上右键，或聚焦后按 Enter 打开菜单并选择命令。</p>
+<h2 id="behavior">使用要点</h2><p>使用 Menu 的上下文模式，在目标附近打开相关命令。应提供键盘或按钮入口，不仅支持鼠标右键。</p>
+<h2 id="create">通过 Screen 创建</h2>
+<p>下面的 Screen 构造方法返回节点 ID。将 ID 交给 Screen 的布局、状态与事件接口；它不是下方独立控件类型的实例。</p>
+<p class="note">原生 Xu 创建片段：在已有 Screen 的初始化阶段调用 configure；窗口创建、事件循环与资源释放参见完整原生示例。</p>
+<pre class="xu-local-only"><code class="language-xu">#ui/widgets
+
+fn configure(screen $&amp;widgets.Screen) int {
+    items := [widgets.menu_item(1,&quot;Save&quot;),widgets.menu_item(2,&quot;Export&quot;)]
+    id := screen.menu(&quot;Actions&quot;,&amp;items,widgets.MENU_CONTEXT,0) or &gt;&gt;
+    screen.place(id,24.0,24.0,320.0,80.0) or &gt;&gt;
+    &lt;&lt; id
+}</code></pre>
+<article class="api-item" id="--Screen-menu">
+<h2><code>($&amp;Screen) menu</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (s <span class="syn-borrow">$&amp;</span>Screen) menu(label <span class="syn-type">string</span>,items &amp;[]MenuItem,mode <span class="syn-type">int</span>,primary_key <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `$&amp;Screen` 上执行 `menu` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Screen</span></dt><dd>接收者 $&amp;Screen（可变借用）</dd>
+<dt><code>label</code> <span class="type">string</span></dt><dd>label（string）</dd>
+<dt><code>items</code> <span class="type">&amp;[]MenuItem</span></dt><dd>元素列表（借用，调用方仍持有；类型 &amp;[]MenuItem）</dd>
+<dt><code>mode</code> <span class="type">int</span></dt><dd>模式（int）</dd>
+<dt><code>primary_key</code> <span class="type">int</span></dt><dd>primary_key（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<h2 id="lifecycle">放置、状态与事件</h2>
+<p>组件由应用拥有。Screen.place 放置节点，Screen.set_enabled 和 Screen.set_visible 管理可用性与显示。状态变化后重新呈现；创建和修改时处理 <code>or</code> 错误，不在绘制回调中修改拓扑。ToastHost 使用自己的队列接口。</p>
+<p><a href="/zh/api/ui/widgets#struct-Action">Action</a> · <a href="/zh/api/ui/widgets#struct-Styles">Styles</a> · <a href="/zh/docs/ui">界面生命周期与样式指南</a></p>
+<p><a href="/zh/api/ui/widgets#--Screen-place">Screen.place</a> · <a href="/zh/api/ui/widgets#--Screen-set_enabled">Screen.set_enabled</a> · <a href="/zh/api/ui/widgets#--Screen-set_visible">Screen.set_visible</a></p>
+<h2 id="api">独立控件对象 API</h2>
+<p>以下类型与方法用于自行管理控件、输入和绘制的进阶用法。接收者是控件对象，不是 Screen 返回的节点 ID；普通 Screen 用法请使用上面的创建接口及 Widgets 模块中的 Screen 方法。</p>
+<article class="api-item" id="struct-Menu">
+<h2><code>struct Menu</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Menu {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>`Menu` 上下文或状态结构体。</p>
+<h3>参数</h3>
+<p class="api-none">无</p>
+</article>
+<article class="api-item" id="-Menu-id">
+<h2><code>(&amp;Menu) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) id() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件、元素或节点的唯一标识 ID。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Menu-bounds">
+<h2><code>(&amp;Menu) bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件或几何对象的有效外接矩形边界（Rectangle）。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="-Menu-is_enabled">
+<h2><code>(&amp;Menu) is_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) is_enabled() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件当前是否可用。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Menu-is_open">
+<h2><code>(&amp;Menu) is_open</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) is_open() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回浮层、菜单或对话框当前是否打开。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Menu-opacity">
+<h2><code>(&amp;Menu) opacity</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) opacity() <span class="syn-type">f64</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;Menu` 上执行 `opacity` 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>f64 — 该类型的值</p>
+</article>
+<article class="api-item" id="-Menu-needs_paint">
+<h2><code>(&amp;Menu) needs_paint</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) needs_paint() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>返回控件是否需要重新绘制；绘制完成后调用 painted 清除标记。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Menu-painted">
+<h2><code>($&amp;Menu) painted</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) painted()</code></pre></div>
+<h3>用途</h3>
+<p>确认当前帧已绘制，清除重绘标记；不是状态查询。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Menu-set_items">
+<h2><code>($&amp;Menu) set_items</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_items(items &amp;[]MenuItem) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 items。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>items</code> <span class="type">&amp;[]MenuItem</span></dt><dd>元素列表（借用，调用方仍持有；类型 &amp;[]MenuItem）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-set_item_label">
+<h2><code>($&amp;Menu) set_item_label</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_item_label(key <span class="syn-type">int</span>,label <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 item label。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>key</code> <span class="type">int</span></dt><dd>键（int）</dd>
+<dt><code>label</code> <span class="type">string</span></dt><dd>label（string）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-set_label">
+<h2><code>($&amp;Menu) set_label</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_label(label <span class="syn-type">string</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 label。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>label</code> <span class="type">string</span></dt><dd>label（string）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Menu-checked">
+<h2><code>(&amp;Menu) checked</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) checked(key <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>在 `&amp;Menu` 上执行 `checked` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+<dt><code>key</code> <span class="type">int</span></dt><dd>键（int）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Menu-set_checked">
+<h2><code>($&amp;Menu) set_checked</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_checked(key <span class="syn-type">int</span>,value <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 checked。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>key</code> <span class="type">int</span></dt><dd>键（int）</dd>
+<dt><code>value</code> <span class="type">bool</span></dt><dd>value（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-set_item_enabled">
+<h2><code>($&amp;Menu) set_item_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_item_enabled(key <span class="syn-type">int</span>,value <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 item enabled。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>key</code> <span class="type">int</span></dt><dd>键（int）</dd>
+<dt><code>value</code> <span class="type">bool</span></dt><dd>value（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-set_appearance">
+<h2><code>($&amp;Menu) set_appearance</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_appearance(a &amp;MenuAppearance) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 appearance。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>a</code> <span class="type">&amp;MenuAppearance</span></dt><dd>值（借用，调用方仍持有；类型 &amp;MenuAppearance）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-close">
+<h2><code>($&amp;Menu) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：关闭资源。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-cancel">
+<h2><code>($&amp;Menu) cancel</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) cancel()</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：取消。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Menu-set_focus">
+<h2><code>($&amp;Menu) set_focus</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_focus(value <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 focus。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>value</code> <span class="type">bool</span></dt><dd>value（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Menu-set_enabled">
+<h2><code>($&amp;Menu) set_enabled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_enabled(value <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 enabled。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>value</code> <span class="type">bool</span></dt><dd>value（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Menu-set_read_only">
+<h2><code>($&amp;Menu) set_read_only</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_read_only(value <span class="syn-type">bool</span>)</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 read only。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>value</code> <span class="type">bool</span></dt><dd>value（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Menu-set_bounds">
+<h2><code>($&amp;Menu) set_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_bounds(b &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 bounds。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>b</code> <span class="type">&amp;layout.Rect</span></dt><dd>b（借用，调用方仍持有；类型 &amp;layout.Rect）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-set_style">
+<h2><code>($&amp;Menu) set_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_style(style &amp;ControlStyle) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 style。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>style</code> <span class="type">&amp;ControlStyle</span></dt><dd>style（借用，调用方仍持有；类型 &amp;ControlStyle）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-clear_style">
+<h2><code>($&amp;Menu) clear_style</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) clear_style()</code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：执行 clear style 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="--Menu-set_motion">
+<h2><code>($&amp;Menu) set_motion</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_motion(spec &amp;MotionSpec) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 motion。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>spec</code> <span class="type">&amp;MotionSpec</span></dt><dd>spec（借用，调用方仍持有；类型 &amp;MotionSpec）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-dispose">
+<h2><code>($&amp;Menu) dispose</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) dispose()</code></pre></div>
+<h3>用途</h3>
+<p>释放并清理对象所持有的系统原生资源与底层句柄。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+</dl>
+</article>
+<article class="api-item" id="-Menu-popup_bounds">
+<h2><code>(&amp;Menu) popup_bounds</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) popup_bounds() layout.Rect</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Menu` 上的操作：执行 popup bounds 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+</dl>
+<h3>返回</h3>
+<p>layout.Rect — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-set_viewport">
+<h2><code>($&amp;Menu) set_viewport</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) set_viewport(viewport &amp;layout.Rect) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：设置 viewport。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>viewport</code> <span class="type">&amp;layout.Rect</span></dt><dd>viewport（借用，调用方仍持有；类型 &amp;layout.Rect）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-apply_styles">
+<h2><code>($&amp;Menu) apply_styles</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) apply_styles(styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>根据当前主题样式表解析并应用几何与视觉度量。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-tick">
+<h2><code>($&amp;Menu) tick</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) tick(styles &amp;Styles,now time.Instant,reduced <span class="syn-type">bool</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>推进动画时间戳与状态过渡动画步进。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+<dt><code>now</code> <span class="type">time.Instant</span></dt><dd>now（time.Instant）</dd>
+<dt><code>reduced</code> <span class="type">bool</span></dt><dd>reduced（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Menu-next_tick">
+<h2><code>(&amp;Menu) next_tick</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m &amp;Menu) next_tick(now time.Instant) time.Instant</code></pre></div>
+<h3>用途</h3>
+<p>`&amp;Menu` 上的操作：执行 next tick 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">&amp;Menu</span></dt><dd>接收者 &amp;Menu（借用）</dd>
+<dt><code>now</code> <span class="type">time.Instant</span></dt><dd>now（time.Instant）</dd>
+</dl>
+<h3>返回</h3>
+<p>time.Instant — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-open_at">
+<h2><code>($&amp;Menu) open_at</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) open_at(x <span class="syn-type">f64</span>,y <span class="syn-type">f64</span>,context <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：执行 open at 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>x</code> <span class="type">f64</span></dt><dd>值（f64）</dd>
+<dt><code>y</code> <span class="type">f64</span></dt><dd>值（f64）</dd>
+<dt><code>context</code> <span class="type">bool</span></dt><dd>context（bool）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-shortcut">
+<h2><code>($&amp;Menu) shortcut</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) shortcut(event &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>在 `$&amp;Menu` 上执行 `shortcut` 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Menu-input">
+<h2><code>($&amp;Menu) input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) input(event &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>接收并处理分发的鼠标、键盘或触摸交互输入事件。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Menu-route">
+<h2><code>($&amp;Menu) route</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) route(kind <span class="syn-type">int</span>,event &amp;ui.InputEvent) Action</code></pre></div>
+<h3>用途</h3>
+<p>路由并分发交互事件至命中的子节点或处理器。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>kind</code> <span class="type">int</span></dt><dd>类型标签（int）</dd>
+<dt><code>event</code> <span class="type">&amp;ui.InputEvent</span></dt><dd>event（借用，调用方仍持有；类型 &amp;ui.InputEvent）</dd>
+</dl>
+<h3>返回</h3>
+<p>Action — 输入处理结果，包含 kind、id、重绘与焦点请求。</p>
+</article>
+<article class="api-item" id="--Menu-paint_styled">
+<h2><code>($&amp;Menu) paint_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) paint_styled(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：执行 paint styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Menu-paint_popup_styled">
+<h2><code>($&amp;Menu) paint_popup_styled</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Menu) paint_popup_styled(frame <span class="syn-borrow">$&amp;</span>draw.Frame,styles &amp;Styles) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>`$&amp;Menu` 上的操作：执行 paint popup styled 操作。失败时 throw。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>m</code> <span class="type">$&amp;Menu</span></dt><dd>接收者 $&amp;Menu（可变借用）</dd>
+<dt><code>frame</code> <span class="type">$&amp;draw.Frame</span></dt><dd>frame（独占借用；类型 $&amp;draw.Frame）</dd>
+<dt><code>styles</code> <span class="type">&amp;Styles</span></dt><dd>styles（借用，调用方仍持有；类型 &amp;Styles）</dd>
+</dl>
+<h3>返回</h3>
+<p>int — 该类型的值</p>
+</article>
+<h2 id="native-example">完整原生示例</h2><p><a href="/zh/api/ui/widgets#example-a2be48ce1c23">Component Workshop</a> · <a href="/zh/api/ui/widgets">返回 Widgets 目录</a></p>

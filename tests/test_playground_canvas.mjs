@@ -11,6 +11,13 @@ const context = {};
 vm.runInNewContext(readFileSync(new URL('../www/xu-play-canvas.js', import.meta.url), 'utf8'), context);
 const host = context.XuPlayCanvas;
 
+test('Canvas accepts native rounded stroke options and rejects invalid enums and widths', () => {
+  const path = 'begin\npath_begin\npath_move\t0\t0\npath_line\t10\t10\n';
+  assert.ok(host.frame(path + 'path_stroke\t#ffffff\t1.5\t1\t1\t10\npresent\n'));
+  assert.throws(() => host.frame(path + 'path_stroke\t#ffffff\t1.5\t9\t1\t10\npresent\n'), /stroke options/);
+  assert.throws(() => host.frame(path + 'path_stroke\t#ffffff\t0\t1\t1\t10\npresent\n'), /stroke width/);
+});
+
 test('Xu emits draw commands separately from stdout, including Unicode', () => {
   const result = runtime.run(examples['ui-draw'].files['main.xu']);
   assert.equal(result.exit, 0, result.stderr);

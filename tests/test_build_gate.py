@@ -4,6 +4,7 @@ import importlib.util
 import io
 import json
 import os
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -41,7 +42,7 @@ class BuildGateTests(unittest.TestCase):
         for source in (ROOT / 'playground/stdlib').glob('*.xu'):
             (stdlib / source.name).write_text('')
         (stdlib / 'desktop-sources.json').write_text('{}')
-        for relative in ('src/runtime/str_algo.xu', 'src/errors/mod.xu'):
+        for relative in ('src/runtime/str_algo.xu', 'src/runtime/map_algo.xu', 'src/errors/mod.xu'):
             source = self.xu / relative
             source.parent.mkdir(parents=True, exist_ok=True)
             source.write_text('')
@@ -65,6 +66,7 @@ class BuildGateTests(unittest.TestCase):
     def test_opt_in_accepts_dev_and_marks_metadata(self):
         os.environ.update(XU_ALLOW_DEV='1', XU_RELEASE_VERSION='0.10.10-dev.1')
         self.prepare_sources()
+        (self.xu / 'src/runtime/str_algo.xu').write_text('@runtime\n// 你好 🌱 $literal\n', encoding='utf-8')
         stderr = io.StringIO()
         with patch.object(play.subprocess, 'check_output', side_effect=[
                 'Xu Compiler Toolchain v0.10.10-dev.1 (self-hosted)\n', 'wasm32']), \
@@ -72,6 +74,10 @@ class BuildGateTests(unittest.TestCase):
                 contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
             self.build()
         self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_args_list[1].args[0][0], sys.executable)
+        embedded = (self.root / 'build/playground/source/stdlib.xu').read_text(encoding='utf-8')
+        self.assertIn('你好 🌱', embedded)
+        self.assertIn(r'\$literal', embedded)
         self.assertIn('dev build, not for release', stderr.getvalue())
         metadata = json.loads((self.root / 'build/playground/build.json').read_text())
         self.assertEqual(metadata['xu_version'], '0.10.10-dev.1')

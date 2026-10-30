@@ -2,10 +2,13 @@
 import {readFileSync} from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+import vm from 'node:vm';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 
 const bytes = readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url));
 const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url), 'utf8')).projects;
+const canvas = {};
+vm.runInNewContext(readFileSync(new URL('../www/xu-play-canvas.js', import.meta.url), 'utf8'), canvas);
 function exampleSource(example) {
   return '@main\n' + Object.entries(example.files).filter(([path]) => !path.includes('/') && path.endsWith('.xu')).map(([, source]) => source.replace(/^\s*@main\s*$/gm, '')).join('\n\n');
 }
@@ -49,9 +52,15 @@ for (const [name, example] of Object.entries(examples)) {
       return;
     }
     assert.equal(result.exit, 0, result.stderr);
-    assert.equal(result.stdout, expected[name]);
-    assert.equal(example.expected.value, expected[name]);
+    const output = example.component ? example.expected.value : expected[name];
+    assert.equal(result.stdout, output);
+    assert.equal(example.expected.value, output);
+    if (example.component) {
+      assert.ok(result.ui?.commands.length, 'component renders a real Xu frame');
+      assert.ok(canvas.XuPlayCanvas.frame(result.ui.commands), 'the browser accepts every paint command');
+    }
     if (name === 'recursion') assert.match(result.stderr, /warning: recursive call cycle/);
+    else if (example.component) assert.ok(result.stderr.split('\n').every(line => !line || /: warning:/.test(line)), result.stderr);
     else assert.equal(result.stderr, '');
   });
 }
