@@ -124,7 +124,7 @@ async function mount({blocks, en = false, available = true, supported = true, ui
     setTimeout(handler, delay) { const id = ++nextTimer; timers.set(id, {handler, delay}); return id; },
     clearTimeout(id) { timers.delete(id); }
   };
-  if (ui) context.window.XuPlayCanvas = {maxEvents: 64, render(canvas, commands) { canvas.commands = commands; return true; }};
+  if (ui) context.window.XuPlayCanvas = {maxEvents: 100000, render(canvas, commands) { canvas.commands = commands; return true; }};
   if (workspace) context.window.XuPlayWorkspace = workspace;
   if (blocks) vm.runInNewContext(readFileSync(new URL('../www/theme.js', import.meta.url), 'utf8'), context);
   vm.runInNewContext(readFileSync(new URL('../www/xu-play.js?v=fixture', import.meta.url), 'utf8'), context);

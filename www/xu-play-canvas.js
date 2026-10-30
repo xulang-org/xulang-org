@@ -1,7 +1,7 @@
 /* Canvas host for the site's bounded #ui/draw subset. No HTML or JS from Xu. */
 (function (root) {
   'use strict';
-  var WIDTH = 640, HEIGHT = 360, MAX_EVENTS = 64;
+  var WIDTH = 640, HEIGHT = 360, MAX_EVENTS = 100000;
   // Argument types: number, color, text. Validate before touching a canvas.
   var signatures = {
     begin: '', present: '', cancel: '', push: '', pop: '', origin: '',
