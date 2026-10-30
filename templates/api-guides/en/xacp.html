@@ -1,9 +1,11 @@
-<p class="lead"><code>#xacp</code> is the transport-neutral safety core: frame limits, XUN checks, permissions, and session lifetime. Importing it does not open a control channel. Stdio and loopback TCP are runtime hooks inserted only by <code>xu build --xacp</code> or <code>--xacp-port</code>.</p>
-<p><a href="/docs/cli#xacp">CLI: <code>xu xacp</code></a> · <a href="/docs/faq">FAQ</a> · <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md">Runnable example</a></p>
+<p class="lead"><code>#xacp</code> is the transport-neutral safety core published with the Xu {{xu_version}} SDK: frame limits, XUN checks, permissions, and session lifetime. Importing it does not open a control channel. Stdio and loopback TCP are runtime hooks inserted only by <code>xu build --xacp</code> or <code>--xacp-port</code>.</p>
+<p><a href="/docs/cli#xacp">CLI: <code>xu xacp</code></a> · <a href="/docs/faq">FAQ</a> · <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">Matching release source</a></p>
+
+<p class="note">This contract is source-reviewed against the selected release. Native stdio/TCP sessions, UI attachment, screenshots, and platform acceptance remain <strong>unverified</strong>.</p>
 
 <h2>Session</h2>
 <p><code>open_session()</code> returns a session in <code>STATE_NEW</code> (<code>0</code>) with <code>PERM_NONE</code>, generation <code>1</code>, and the next request id <code>1</code>. <code>close_session</code> moves it to <code>STATE_CLOSED</code> (<code>2</code>), bumps the generation, clears the active request, and drops permissions. <code>STATE_OPEN</code> is <code>1</code>.</p>
-<p>One request may be active. <code>begin_request</code> accepts only a positive id equal to <code>next_id</code>, then reserves it. <code>finish_request</code> releases that id. Finishing id <code>1</code> moves the session from <code>STATE_NEW</code> to <code>STATE_OPEN</code>. A mismatched id or generation returns <code>stale_request</code>. A second begin returns <code>request_in_flight</code>. A closed session returns <code>session_closed</code>.</p>
+<p>Only one request may be active. <code>begin_request</code> checks authorization and accepts only a positive id equal to <code>next_id</code>, reserves it, and advances the next id. An invalid id returns <code>invalid_request_id</code>; a second active request returns <code>request_in_flight</code>. A non-hello first request closes the session with <code>hello_required</code>. <code>finish_request</code> checks the active id and generation (<code>stale_request</code> on mismatch). A successfully negotiated hello opens the session; an unnegotiated hello cannot open it. Closed sessions return <code>session_closed</code>.</p>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Function</th><th>Role</th></tr></thead>
 <tbody>
@@ -28,11 +30,11 @@
 <tr><td><code>PERM_UI_MUTATE</code></td><td><code>8</code></td><td><code>ui.input</code>, <code>ui.act</code></td></tr>
 <tr><td><code>PERM_ALL</code></td><td><code>15</code></td><td><code>development_permissions()</code> and <code>enable_development()</code></td></tr>
 </tbody></table></div>
-<p><code>enable_development(s)</code> is <code>set_permissions(s, PERM_ALL)</code>. It does not turn off schema checks, session lifetime, native-resource disposal, or memory limits. Calling it after hello has finished returns false, because the session is already <code>STATE_OPEN</code>. The startup stdio and TCP adapters call it after a validated hello has been begun and before <code>finish_request</code>, while the state is still <code>STATE_NEW</code>. That path is what answers with <code>permissions: development</code>. Library <code>dispatch</code> does not.</p>
-<p>The hello schema accepts an optional non-empty <code>token</code> string. The startup adapter does not treat that field as an access secret.</p>
+<p><code>enable_development(s)</code> is an explicit host helper equivalent to <code>set_permissions(s, PERM_ALL)</code>. It does not bypass schema checks, session lifetime, native-resource disposal, or limits. Calling it after hello finishes returns false. Startup and attachment servers instead read <code>XU_XACP_TOKEN</code> and call <code>negotiate_hello</code> after a validated hello has begun and before <code>finish_request</code>.</p>
+<p>Hello requires <code>ver: !ver 1.0.0</code> and a non-empty string <code>nonce</code>, which the response echoes. With no host token configured, grants are capped at <code>PERM_INFO</code>, even if the client sends a token. With a host token, missing or mismatched <code>args.token</code> returns <code>auth_failed</code> and closes the session; a matching token allows up to <code>PERM_ALL</code> (<code>15</code> in this SDK). Optional <code>args.permissions</code> is an <code>!i</code> mask of known bits: the grant is its intersection with the host allowance. Omitting it requests that allowance. Responses include numeric <code>permissions</code> and <code>permission_label</code> (<code>none</code>, <code>info</code>, <code>development</code>, or <code>custom</code>).</p>
 
 <h2>Frames and limits</h2>
-<p><code>parse_frame</code> accepts a document that starts with <code>--- !xacp</code> and a newline and ends with a newline and <code>===</code>. It rejects an empty body, trailing data, and a frame longer than <code>MAX_FRAME_BYTES</code>. The body is XUN. <code>validate_request</code> requires the root dictionary to contain exactly <code>id</code>, <code>op</code>, and <code>args</code>. <code>id</code> is <code>!i</code> and must be positive. <code>ver</code> on hello must be <code>!ver 1.0.0</code>.</p>
+<p>Both transports use <code>XACP/1\n&lt;N&gt;\n</code> followed by exactly <code>N</code> bytes of plain XUN. Header lines end in LF (<code>0x0A</code>); <code>N</code> is a positive ASCII decimal byte count excluding the header. Count UTF-8 bytes, including any newline in the body. There is no closing delimiter or extra separator between frames. The transport strips the prefix and reads exactly <code>N</code> bytes before calling <code>parse_frame(body)</code>. That function accepts only the XUN body and rejects an empty body, invalid XUN, or a body above <code>MAX_FRAME_BYTES</code>. <code>validate_request</code> requires a root dictionary containing exactly <code>id</code>, <code>op</code>, and <code>args</code>; <code>id</code> is a positive <code>!i</code>.</p>
 <p><code>default_limits()</code> uses these hard caps. A custom <code>Limits</code> value may only be smaller.</p>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Constant</th><th>Value</th></tr></thead>
@@ -43,28 +45,34 @@
 <tr><td><code>MAX_TABLE_ROWS</code></td><td><code>10000</code></td></tr>
 <tr><td><code>MAX_NODE_ID</code></td><td><code>16777215</code></td></tr>
 </tbody></table></div>
-<p><code>consume_input</code> and <code>consume_output</code> reject a negative count, a single count above the frame cap, or a session total that would pass the frame cap. The startup reader applies the per-frame cap itself: an oversized frame returns <code>frame_too_large</code> and closes that session. A half frame at EOF returns <code>truncated_frame</code>. A clean EOF closes the session. Invalid frames and schema failures use request id <code>0</code> and codes <code>frame_error</code> or <code>schema_error</code>.</p>
-<p>Startup responses keep the same envelope. The shape is <code>id</code>, <code>ok</code>, and either <code>data</code> or <code>error.code</code>:</p>
-<pre><code>--- !xacp
+<p><code>consume_input</code> and <code>consume_output</code> reject negative counts, single counts above the frame cap, and totals above the session byte budget. The startup reader returns <code>frame_too_large</code> for an oversized body and <code>truncated_frame</code> for EOF inside a header or body. Clean EOF at a frame boundary closes the session. Frame errors use id <code>0</code>; schema errors use a valid id hint when available, otherwise <code>0</code>. Frame, schema, and authentication errors close the session.</p>
+<p>This hello has a <strong>69-byte body</strong> and a 10-byte header (79 bytes total). Every displayed line ends in LF, including the <code>nonce</code> line:</p>
+<pre><code>XACP/1
+69
 id: !i 1
 op: xacp.hello
 args:
   ver: !ver 1.0.0
-===
---- !xacp
+  nonce: docs-client
+</code></pre>
+<p>With no host token configured, the matching response has a <strong>109-byte body</strong> (120 bytes including its header). The last line again ends in LF. Responses use the same length prefix, with <code>id</code>, <code>ok</code>, and either <code>data</code> or <code>error.code</code> (plus optional <code>error.msg</code>). The next frame starts immediately after the body:</p>
+<pre><code>XACP/1
+109
 id: !i 1
 ok: !b true
 data:
   state: OPEN
-  permissions: development
-===</code></pre>
+  nonce: "docs-client"
+  permissions: !i 1
+  permission_label: info
+</code></pre>
 
 <h2>Known operations</h2>
 <p>The schema allows only these operations. Anything else is an unknown operation.</p>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Op</th><th>Permission</th><th>Startup control channel</th></tr></thead>
 <tbody>
-<tr><td><code>xacp.hello</code></td><td><code>PERM_NONE</code>, <code>STATE_NEW</code> only</td><td>Validated, then <code>enable_development()</code> before finish. Data: <code>state: OPEN</code>, <code>permissions: development</code>.</td></tr>
+<tr><td><code>xacp.hello</code></td><td><code>PERM_NONE</code>, <code>STATE_NEW</code> only</td><td>Token and permission negotiation before finish. Returns <code>state: OPEN</code>, echoed nonce, numeric permissions, and a permission label.</td></tr>
 <tr><td><code>proc.status</code></td><td><code>PERM_INFO</code></td><td>Empty <code>args</code>. Returns the real <code>os.getpid()</code> and <code>state: OPEN</code>.</td></tr>
 <tr><td><code>proc.output</code></td><td><code>PERM_PROCESS</code></td><td>Schema-checked (<code>stream</code> is <code>stdout</code> or <code>stderr</code>). Returns <code>not_implemented</code> with no output adapter.</td></tr>
 <tr><td><code>ui.tree</code></td><td><code>PERM_UI_READ</code></td><td>Schema-checked. Returns <code>not_implemented</code> with no <code>Screen</code> adapter.</td></tr>
@@ -74,13 +82,13 @@ data:
 <tr><td><code>ui.record</code></td><td><code>PERM_UI_READ</code></td><td>Same. Schema modes are <code>events</code> and <code>frames</code>. This is not the launcher's stdout <code>record</code> mode.</td></tr>
 </tbody></table></div>
 <p>On the startup channel, <code>not_implemented</code> is returned after <code>begin_request</code>, so that id is consumed and the next frame must use the following id. <code>permission_denied</code> is returned before the id advances.</p>
-<p>There is no event push on this channel. A host that has a live <code>ui/widgets.Screen</code> can call the typed helpers (<code>ui_tree</code>, <code>ui_screenshot</code>, <code>ui_screenshot_node</code>, <code>ui_input</code>, <code>ui_input_request</code>, <code>ui_act</code>, <code>start_recorder</code>, <code>finish_recorder</code>, <code>abort_recorder</code>, <code>dispatch_screen</code>). Those still require a session that holds the matching permission bit, and they check window id, node id, scale (<code>0.1</code> through <code>4.0</code>), text length, and row or event budgets before touching the widget. A screenshot returns an owning <code>draw.Surface</code>; the caller disposes it. <code>dispatch_screen</code> answers <code>ui.record</code> with <code>stream_required</code> and points at <code>start_recorder</code>. The startup adapter does not register a screen, so none of that data is produced by <code>--xacp-stdio</code> or <code>--xacp-tcp</code> today.</p>
+<p>UI control requires an explicit <code>attach_stdio</code> or <code>attach_tcp</code> handle, a live <code>ui/widgets.Screen</code> registered with <code>register_screen</code>, and <code>poll</code> calls from the Screen-owning coroutine between UI event iterations. Business main continues on this path. Unregister before leaving the poll loop. Typed helpers (<code>ui_tree</code>, <code>ui_screenshot</code>, <code>ui_input</code>, <code>ui_act</code>, and recorder helpers) still require the matching permission and check window/node ids, scale (<code>0.1</code> through <code>4.0</code>), text, and row/event budgets. A screenshot returns an owning <code>draw.Surface</code>; the caller disposes it. <code>dispatch_screen</code> returns <code>stream_required</code> for <code>ui.record</code>. Startup <code>--xacp-stdio</code> and <code>--xacp-tcp</code> do not register a Screen. End-to-end UI behavior remains <strong>unverified</strong>.</p>
 
 <h2>Transport hooks</h2>
 <p><code>src/xacp/stdio.xu</code> is part of the same package, and an <code>--xacp</code> build inserts <code>stdio_preflight(port)</code> at the start of <code>main</code>. That is the control entry. A normal import of <code>#xacp</code> does not emit it.</p>
 <ul>
   <li><code>stdio_preflight(port)</code> scans arguments until <code>--</code>. The first of <code>--xacp-tcp</code> or <code>--xacp-stdio</code> wins and exits without running the rest of <code>main</code>. Other launches return and business <code>main</code> runs. They do not listen and do not read control stdin.</li>
-  <li><code>serve_stdio()</code> reads and writes the process standard streams. Frames are <code>--- !xacp</code> … <code>===</code> plus a newline. The session is exclusive. EOF ends the process.</li>
+  <li><code>serve_stdio()</code> reads and writes the process standard streams. Requests and responses use the same <code>XACP/1</code> length prefix. The session is exclusive. EOF ends the process.</li>
   <li><code>serve_tcp(port)</code> listens on <code>127.0.0.1:port</code> only. The build port must be <code>1..65535</code>; port <code>0</code> disables TCP and this function fails. Each accepted connection gets its own session. Connections are handled one at a time. A failed peer closes that session and the listener keeps accepting. There is no TLS and no other bind address.</li>
 </ul>
 <p><code>--xacp-help</code> is a separate startup print, not a control session. Its <code>capabilities</code> line is <code>stdio</code>. When the build port is <code>0</code> it also prints <code>tcp: disabled (port 0)</code>. A positive port prints <code>tcp: enabled</code> and <code>bind: 127.0.0.1:PORT</code>. See the <a href="/docs/cli#xacp">CLI reference</a> for launcher modes.</p>
@@ -90,8 +98,8 @@ data:
   <li>No TLS.</li>
   <li>No bind address other than <code>127.0.0.1</code>.</li>
   <li>No real UI <code>Screen</code> adapter on the startup channel. <code>proc.output</code> and the UI ops validate, then return <code>not_implemented</code>.</li>
-  <li>No host timeout or forced stop if the target produces no output or does not exit. The caller sets a process timeout.</li>
+  <li>UI attachment requests have a default 5000 ms deadline. <code>XU_XACP_REQUEST_TIMEOUT_MS</code> accepts decimal <code>1..600000</code>; invalid values retain the default. Work already executing is not interrupted. Callers still need process/I/O timeouts for a stalled target.</li>
   <li>The generator accepts hosted native executables only. It rejects libraries, shared objects, test harnesses, embedded targets, and <code>--desktop</code>.</li>
   <li>Launcher <code>record</code> is still unavailable on Windows. That mode captures stdout; it is not <code>ui.record</code>.</li>
 </ul>
-<p class="note"><code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> is an earlier note. Its “no TCP in this phase” line is superseded. Current behavior is <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md"><code>examples/xacp/README.md</code></a> and the sources above. The separate <code>xulang-org/examples</code> repository does not yet carry this sample.</p>
+<p class="note">Use the <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">matching release source</a> and smoke scripts for the contract. Older example README/design notes may describe obsolete framing, permissions, or timeout behavior.</p>

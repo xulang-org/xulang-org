@@ -23,7 +23,7 @@
 <tr><td><code>map</code></td><td><code>xu map [options] [path...]</code></td><td>分析源码分支与调用链，生成 Mermaid 流程图或拓扑连线数据</td></tr>
 <tr><td><code>doctor</code></td><td><code>xu doctor [options]</code></td><td>检查本机宿主工具链、C 链接器及桌面打包所需依赖库的完整性</td></tr>
 <tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>原生 C 模块编译、<code>xu.o</code> 元数据注入、<code>.xulib</code> 便携切片多目标聚合打包与检视提取</td></tr>
-<tr><td><code>xacp</code></td><td><code>xu xacp &lt;inspect|run|debug|record|control|connect&gt; ...</code></td><td>XACP 宿主原生程序的启动器，转而执行伴生工具 <code>xu-xacp</code>。见 <a href="#xacp">XACP 控制通道</a>。</td></tr>
+<tr><td><code>xacp</code></td><td><code>xu xacp &lt;inspect|run|debug|record|control|attach|connect&gt; ...</code></td><td>XACP 宿主原生程序的启动器，转而执行伴生工具 <code>xu-xacp</code>。见 <a href="#xacp">XACP 控制通道</a>。</td></tr>
 <tr><td><code>setup</code></td><td><code>xu setup [options]</code></td><td>启动原生自绘图形向导或执行静默全局环境变量自动配置</td></tr>
 <tr><td><code>lsp</code></td><td><code>xu lsp [options]</code></td><td>启动标准 Language Server Protocol (JSON-RPC 2.0) 守护进程，为 VS Code/Cursor 提供代码服务</td></tr>
 <tr><td><code>up / update</code></td><td><code>xu update [options]</code> (或 <code>xu up</code>)</td><td>直接从 GitHub Releases 检测并下载官方最新构建，原子热更新本地工具链</td></tr>
@@ -113,8 +113,8 @@ XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
 <p>PowerShell 中先设置变量，例如 <code>$env:XU_VERIFY = '1'</code>，再运行相同的 <code>xu build</code> 命令；诊断完成后用 <code>Remove-Item Env:XU_VERIFY</code> 清除。</p>
 
 <h2 id="xacp">XACP 控制通道（<code>xu xacp</code> / <code>xu-xacp</code>）</h2>
-<p>依据语言仓库 0.10.10-dev.1（<a href="https://github.com/xulang-org/xu/pull/23">xu#23</a>）编写。<code>xu xacp</code> 执行伴生二进制 <code>xu-xacp</code>（工具模块 0.1.1）。源码树用 <code>make xu-xacp</code> 构建该二进制。已发布的 {{xu_version}} 下载包是另一份快照。安全核心是 <a href="/api/xacp"><code>#xacp</code></a>。导入该包不会嵌入发现信息或控制循环。可运行样例在语言仓库的 <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/README.md"><code>examples/xacp</code></a>。<code>examples/xacp/STDIO-CONTROL-DESIGN.md</code> 是较早的说明，其中「本阶段不做 TCP」已被后续实现取代。</p>
-<p><code>xu --help</code> 把该工具概括为 “inspect, run, and debug”。<code>xu xacp --help</code> 才是完整模式：<code>inspect</code>、<code>run</code>、<code>debug</code>、<code>record</code>、<code>control</code>，以及 <code>connect PORT</code>。</p>
+<p><a href="/api/xacp"><code>#xacp</code> API</a> 已包含在正式 {{xu_version}} SDK 提取结果中。本节依据对应发布源码。<code>xu xacp</code> 执行伴生工具 <code>xu-xacp</code>，源码树用 <code>make xu-xacp</code> 构建。导入 <code>#xacp</code> 不会嵌入发现信息或控制循环。契约以<a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">发布源码</a>和冒烟脚本为准；旧样例 README/设计说明的分帧、权限和超时描述可能过时。原生会话和平台/UI 运行验收仍为<strong>待验</strong>。</p>
+<p><code>xu --help</code> 把该工具概括为 “inspect, run, and debug”。<code>xu xacp --help</code> 才是完整模式：<code>inspect</code>、<code>run</code>、<code>debug</code>、<code>record</code>、<code>control</code>、<code>attach</code>，以及 <code>connect PORT</code>。</p>
 
 <h3>构建与发现</h3>
 <pre><code>xu build --xacp examples/xacp/main.xu -o app
@@ -130,22 +130,29 @@ xu build --xacp-port 4321 examples/xacp/main.xu -o app
 <tr><td><code>xu xacp run &lt;program&gt; -- args...</code></td><td>运行业务 main。在转发参数前再插入一个 <code>--</code>。不读取控制 stdin。</td></tr>
 <tr><td><code>xu xacp debug &lt;program&gt; -- args...</code></td><td>先发现，再按同样边界运行。不是断点调试器。发现失败则不会继续运行。</td></tr>
 <tr><td><code>xu xacp record &lt;program&gt; -- args...</code></td><td>流式输出最多 1 MiB 的 stdout，由调用方自行重定向。stderr 仍留给终端。仅 Unix；Windows 打印 <code>record is not available on Windows yet</code> 并以状态 1 退出。这不是 XACP UI 帧文件。</td></tr>
-<tr><td><code>xu xacp control &lt;program&gt;</code></td><td>以 <code>&lt;program&gt; --xacp-stdio</code> 启动，并继承调用方的 stdin 与 stdout。不接受业务参数。业务 main 不运行。合法的 <code>xacp.hello</code> 会在请求 finish 之前调用 <code>enable_development()</code>。</td></tr>
-<tr><td><code>xu xacp connect PORT</code></td><td>把带帧的 stdin/stdout 中继到 <code>127.0.0.1:PORT</code>。一次请求，再等一次响应。目标必须已经用 <code>--xacp-tcp</code> 在监听。<code>PORT</code> 为 1..65535。输入帧以 <code>===</code> 加换行结束。帧边界上的 EOF 会断开连接。</td></tr>
+<tr><td><code>xu xacp control &lt;program&gt;</code></td><td>以 <code>&lt;program&gt; --xacp-stdio</code> 启动，并继承调用方的 stdin 与 stdout。不接受业务参数。业务 main 不运行。Hello 在请求 finish 之前协商 INFO 或宿主令牌权限。</td></tr>
+<tr><td><code>xu xacp attach &lt;program&gt; -- args...</code></td><td>运行业务 main；应用必须调用 <code>attach_stdio</code>、注册 Screen，并在所属协程中轮询。协议独占 stdin/stdout；日志写入 stderr。UI 运行行为待验。</td></tr>
+<tr><td><code>xu xacp connect PORT</code></td><td>把带帧的 stdin/stdout 中继到 <code>127.0.0.1:PORT</code>。一次请求，再等一次响应。目标必须已经用 <code>--xacp-tcp</code> 在监听。<code>PORT</code> 为 1..65535。输入帧使用 <code>XACP/1\n&lt;N&gt;\n</code>，后接恰好 N 字节正文。帧边界上的 EOF 会断开连接。</td></tr>
 </tbody></table></div>
-<p><code>run</code>、<code>debug</code>、<code>record</code> 的参数必须写在工具自己的 <code>--</code> 之后。<code>inspect</code> 与 <code>control</code> 拒绝额外参数。子进程失败时，工具能读到退出状态就会原样返回。</p>
+<p><code>run</code>、<code>debug</code>、<code>record</code>、<code>attach</code> 的参数必须写在工具自己的 <code>--</code> 之后。<code>inspect</code> 与 <code>control</code> 拒绝额外参数。子进程失败时，工具能读到退出状态就会原样返回。</p>
 
 <h3>stdio 与本机回环 TCP</h3>
+<p>用 Python 3 生成与指南完全一致的 hello 字节，保存为 <code>control.xacp</code>：</p>
+<pre><code>python3 - &lt;&lt;'PY'
+from pathlib import Path
+body = b"id: !i 1\nop: xacp.hello\nargs:\n  ver: !ver 1.0.0\n  nonce: docs-client\n"
+Path("control.xacp").write_bytes(b"XACP/1\n" + str(len(body)).encode("ascii") + b"\n" + body)
+PY</code></pre>
 <pre><code># stdio：管道送入帧；业务 main 被跳过
-xu xacp control ./app &lt; control.xun
+xu xacp control ./app &lt; control.xacp
 
 # TCP：用正端口构建，先监听，再从另一个终端连接
 xu build --xacp-port 4321 main.xu -o app
 ./app --xacp-tcp
-xu xacp connect 4321 &lt; control.xun</code></pre>
-<p>两种控制模式使用同一套帧、会话和操作。帧是夹在 <code>--- !xacp</code> 与 <code>===</code> 之间的 XUN 文档。启动期读取器还要求 <code>===</code> 之后有换行。<code>--</code> 之前先出现的 <code>--xacp-stdio</code> 或 <code>--xacp-tcp</code> 生效。普通启动不监听，也不读取控制 stdin。</p>
-<p>TCP 只监听 <code>127.0.0.1</code>。没有 TLS，也不能绑定其他地址。每个连接是独立会话。连接按顺序处理。失败的对端只结束自己的会话，监听继续接受。stdio 会话结束时进程退出。EOF 时的半帧返回 <code>truncated_frame</code>。超过 1 MiB 的帧返回 <code>frame_too_large</code> 并关闭该会话。非法帧和 schema 错误的 id 为 <code>0</code>。</p>
-<p>合法 hello 之后，<code>proc.status</code> 返回真实 pid。<code>proc.output</code> 以及 <code>ui.tree</code>、<code>ui.screenshot</code>、<code>ui.input</code>、<code>ui.act</code>、<code>ui.record</code> 会先校验，在程序注册 Screen 或输出适配器之前返回 <code>not_implemented</code>。目标持续无输出或不退出时，宿主没有超时。</p>
+xu xacp connect 4321 &lt; control.xacp</code></pre>
+<p>两种传输均使用 <code>XACP/1\n&lt;N&gt;\n</code> 加恰好 <code>N</code> 字节纯 XUN 正文。按 UTF-8 字节计数，包含正文换行，不含前缀；没有结束分隔符或额外分隔字节。传输解码后，<code>parse_frame</code> 只接收正文。<a href="/api/xacp">API 指南</a>给出 69 字节 hello 和 109 字节响应。<code>--</code> 之前首个 <code>--xacp-stdio</code> 或 <code>--xacp-tcp</code> 生效；普通启动不监听，也不读取控制 stdin。</p>
+<p>TCP 只监听 <code>127.0.0.1</code>。没有 TLS，也不能绑定其他地址。每个连接是独立会话。连接按顺序处理。失败的对端只结束自己的会话，监听继续接受。stdio 会话结束时进程退出。EOF 时的半帧返回 <code>truncated_frame</code>。超过 1 MiB 的帧返回 <code>frame_too_large</code> 并关闭该会话。帧错误的 id 为 <code>0</code>；schema 错误尽量使用有效的 id 提示，否则使用 <code>0</code>。</p>
+<p>Hello 必须提供 <code>ver: !ver 1.0.0</code> 和非空 nonce。宿主未设置 <code>XU_XACP_TOKEN</code> 时权限至多为 INFO；设置后，客户端令牌缺失或不匹配会以 <code>auth_failed</code> 关闭会话，匹配后允许请求 <code>PERM_ALL</code>（<code>15</code>）的子集。INFO 下 <code>proc.status</code> 返回 pid。输出/UI 操作需要相应权限位，没有适配器时返回 <code>not_implemented</code>。启动控制没有注册 Screen；UI 附着需要注册和轮询，默认请求期限为 5000 ms，可用 <code>XU_XACP_REQUEST_TIMEOUT_MS</code>（<code>1..600000</code>）配置。目标挂起时，调用方仍需进程/I/O 超时。</p>
 
 <h2>2. 自动化测试 (test)</h2>
 <p><code>xu test</code> 自动识别并编译测试用例。测试和基准函数必须位于 <code>test.&lt;name&gt;.xu</code> 文件中，属于 <code>@main</code> 包，且不带参数和返回类型。普通源文件不能声明 <code>fn test_*</code> 或 <code>fn bench_*</code>。将以下示例保存为 <code>test.example.xu</code>：</p>
