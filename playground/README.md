@@ -4,6 +4,12 @@ Xu's scanner, parser, borrow checker, MIR interpreter, and cooperative scheduler
 execute inside a worker-owned WASM instance. User source is never translated into
 JavaScript. Canvas is the pixel host for both drawing and real widgets.
 
+The gallery and focused component examples use the pinned
+[xu-ui-design token adapter](design/README.md). Reference colors, styled control
+dimensions and focus treatment are shared with the browser interaction previews.
+Canvas typography, responsive layout, automatic theme switching and per-widget
+accessibility semantics remain incomplete; this is partial design adoption.
+
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
 for a three-page control gallery. `ui-widgets`, `ui-draw`, and `ui-counter`
 remain available. Explicit example links load and run; ordinary selection waits

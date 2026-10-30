@@ -35,8 +35,8 @@ fn box(x f64,y f64,w f64,h f64) layout.Rect {
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := widgets.default_theme()
-    styles := widgets.dark_styles()
+    theme := playground.dark_theme()
+    styles := playground.dark_styles()
 '''
 SUFFIX = '''    frame.present() or >>
     << 0
@@ -61,12 +61,15 @@ def source(name, slug):
     if not static:
         labels = {'button': 'Count +1 / 计数 +1', 'checkbox': 'Receive updates / 接收更新',
                   'switch': 'Live preview / 实时预览', 'radio': 'Stable / 稳定版',
-                  'progress': 'Advance / 增加进度', 'badge': '+1'}
-        code += '    $count := ' + ('4' if kind == 'progress' else '0') + '\n    label := context.layout_text(&"' + labels.get(slug, 'Value / 数值') + '",&draw.text_options(16.0)) or >>\n'
+                  'progress': 'Advance / 增加进度', 'badge': 'Add count / 增加计数'}
+        code += '    $count := ' + ('4' if kind == 'progress' else '0') + '\n'
+    if kind in ('button', 'label'):
+        code += '    $styled := widgets.styled_label(&context,&"' + labels[slug] + '")\n'
     if kind in ('tabs', 'list', 'scroll'):
         code += '    $labels := []draw.TextLayout{}\n    for value in ["Overview","Activity","Settings"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n'
     if not interactive and not static:
-        code += '    $trigger := widgets.button(&identity,2,&box(32.0,260.0,220.0,40.0)) or >>\n'
+        code += '    $trigger := widgets.button(&identity,2,&box(32.0,260.0,280.0,40.0)) or >>\n'
+        code += '    $trigger_label := widgets.styled_label(&context,&"' + labels[slug] + '")\n'
     event_code = f'    $focus := widgets.focus_group(&identity,[{1 if interactive else 2}]) or >>\n'
     event_code += '''    while true {
         event := playground.next_input()
@@ -95,12 +98,18 @@ def source(name, slug):
         message = '"Offset: " + str(int(control.offset()))'
     else:
         message = '"Count: " + str(count)'
-    code += '    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(draw.rgb(16,24,39)) or >>\n'
-    code += f'    draw.text(32,24,24,"#f8fafc","{name}")\n'
+    code += '    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n'
+    code += f'    draw.text(32,24,24,"#f5f0ed","{name}")\n'
     if kind == 'badge':
         code += '    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) or >>\n    control.paint($&frame,&badge_label,&theme) or >>\n'
-    elif kind in ('button', 'label'):
-        code += '    control.paint($&frame,&label,&theme) or >>\n'
+    elif kind == 'button':
+        code += '    control.paint_styled($&frame,$&styled,&styles) or >>\n'
+    elif kind == 'label':
+        code += '    control.paint_styled($&frame,$&styled,&styles) or >>\n'
+    elif kind == 'slider':
+        code += '    control.paint_styled($&frame,&styles) or >>\n'
+    elif kind == 'progress':
+        code += '    control.paint_styled($&frame,&styles) or >>\n'
     elif kind in ('tabs', 'list'):
         code += '    control.paint($&frame,&labels,&theme) or >>\n'
     elif kind == 'scroll':
@@ -114,10 +123,10 @@ def source(name, slug):
     else:
         code += '    control.paint($&frame,&theme) or >>\n'
     if kind == 'card':
-        code += '    draw.text(48,110,20,"#f8fafc","Xu workspace")\n    draw.text(48,146,16,"#cbd5e1","A place for your next idea.")\n'
+        code += '    draw.text(48,110,20,"#f5f0ed","Xu workspace")\n    draw.text(48,146,16,"#b3aab6","A place for your next idea.")\n'
     if not interactive and not static:
-        code += '    trigger.paint($&frame,&label,&theme) or >>\n'
-    code += '    draw.text(32,320,16,"#e2e8f0",' + message + ')\n    println(' + message + ')\n'
+        code += '    trigger.paint_styled($&frame,$&trigger_label,&styles) or >>\n'
+    code += '    draw.text(32,320,16,"#b3aab6",' + message + ')\n    println(' + message + ')\n'
     return code + SUFFIX, initial + '\n'
 
 

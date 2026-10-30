@@ -66,10 +66,14 @@
   // Kept separate so the benchmark can time validation and Canvas calls.
   function draw(canvas, display) {
     if (!display) return false; // cancel or an unfinished frame never commits.
+    var ratio = Number(canvas.ownerDocument.defaultView?.devicePixelRatio) || 1;
+    ratio = Math.max(1, Math.min(3, ratio));
     var staging = canvas.ownerDocument.createElement('canvas');
-    staging.width = WIDTH; staging.height = HEIGHT;
+    staging.width = Math.round(WIDTH * ratio); staging.height = Math.round(HEIGHT * ratio);
     var ctx = staging.getContext('2d');
     if (!ctx) throw Error('Canvas 2D is unavailable');
+    function origin() { ctx.setTransform(ratio, 0, 0, ratio, 0, 0); }
+    origin();
     var pen = {fill: '#000000', stroke: '-', width: 1}, stack = [];
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
     function paint(fill, stroke, width) {
@@ -79,14 +83,14 @@
     display.forEach(function (command) {
       var a = command.args, op = command.op;
       if (op === 'bgcolor') {
-        ctx.save(); ctx.resetTransform(); ctx.fillStyle = a[0] === '-' ? '#ffffff' : a[0]; ctx.fillRect(0, 0, WIDTH, HEIGHT); ctx.restore();
+        ctx.save(); origin(); ctx.fillStyle = a[0] === '-' ? '#ffffff' : a[0]; ctx.fillRect(0, 0, WIDTH, HEIGHT); ctx.restore();
       } else if (op === 'color') { pen.fill = a[0]; pen.stroke = a[0]; }
       else if (op === 'fill') pen.fill = a[0];
       else if (op === 'stroke') pen.stroke = a[0];
       else if (op === 'width') pen.width = a[0];
       else if (op === 'push') { ctx.save(); stack.push({...pen}); }
       else if (op === 'pop') { ctx.restore(); pen = stack.pop(); }
-      else if (op === 'origin') ctx.resetTransform();
+      else if (op === 'origin') origin();
       else if (op === 'translate') ctx.translate(a[0], a[1]);
       else if (op === 'rotate') ctx.rotate(a[0] * Math.PI / 180);
       else if (op === 'scale') ctx.scale(a[0] / 100, a[1] / 100);
@@ -136,7 +140,7 @@
     // Only the complete, validated last present reaches the visible canvas.
     var target = canvas.getContext('2d');
     if (!target) throw Error('Canvas 2D is unavailable');
-    canvas.width = WIDTH; canvas.height = HEIGHT;
+    canvas.width = staging.width; canvas.height = staging.height;
     target.drawImage(staging, 0, 0);
     return true;
   }

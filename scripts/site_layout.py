@@ -480,8 +480,9 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         home_title='Xu Home' if en else 'Xu 官网首页',
         xu_version=escape(xu_version), nav=''.join(nav), main=main,
         playground_assets=playground_assets,
-        page_assets=('<link rel="stylesheet" href="/widgets.css">'
+        page_assets=('<link rel="stylesheet" href="/playground-design.css"><link rel="stylesheet" href="/widgets.css">'
                      if '/api/ui/widgets' in route else '') + ('<link rel="stylesheet" href="/playground.css">'
+                     '<link rel="stylesheet" href="/playground-design.css">'
                      '<link rel="stylesheet" href="/widgets.css">'
                      '<script src="/xu-play-canvas.js" defer></script>'
                      '<script src="/xu-play-workspace.js" defer></script>'

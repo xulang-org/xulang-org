@@ -15,6 +15,7 @@ run:
 check:
 	$(PYTHON) -m unittest discover -s tests -v
 check-playground:
+	$(PYTHON) scripts/sync-playground-design.py --check
 	node --test tests/test_playground*.mjs
 check-chan:
 	$(PYTHON) tests/check_chan_examples.py --xu-root "$(XU_ROOT)"

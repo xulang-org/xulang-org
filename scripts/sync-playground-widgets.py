@@ -72,6 +72,8 @@ def selected(path, sig):
     if path == 'ui/widgets/badge_attachment.xu':
         return sig.startswith('pub const BADGE_')
     if path == 'ui/widgets/styled_controls.xu':
+        if sig.startswith(('pub fn (button &Button) visual_state(', 'pub fn (button &Button) style_or(', 'pub fn (button &Button) paint_styled(')):
+            return True
         return (('progress &Progress)' in sig or 'progress $&Progress)' in sig) and 'set_style(' not in sig) or sig.startswith(('pub fn (button &Button) is_', 'pub fn (button $&Button) set_invalid(', 'pub fn (button $&Button) set_read_only('))
     if path == 'ui/widgets/state_style.xu':
         return sig.startswith(('pub const PAINT_', 'pub struct StatePaint', 'pub struct ResolvedStyle', 'pub fn state_paint(', 'pub fn (c &ControlStyle) resolve(', 'fn validate_states(', 'fn copy_states(', 'fn states_equal(', 'fn read_style_color(', 'fn read_style_f64(', 'fn decode_control_style(', 'struct ScalarControlStyle', 'fn empty_scalar_style', 'fn unpack_scalar_style('))
