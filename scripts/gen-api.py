@@ -2409,7 +2409,8 @@ def refresh_examples(site: str, root: str, ref: str, xu_version: str,
     if previous and previous['xu_version'] != xu_version:
         raise ValueError('scoped refresh requires the selected SDK to remain unchanged')
     preserved = {entry['path']: entry for entry in previous['files']} if previous else {}
-    selected = {value for value in paths if not projects or Path(value).parent.as_posix() in projects}
+    selected = {value for value in paths if not projects or
+                any(Path(value).parent.is_relative_to(Path(project)) for project in projects)}
     if projects and set(projects) - {str(Path(value).parent) for value in selected}:
         raise ValueError('unknown example project in scoped refresh')
     # Read and validate all inputs before changing the checked-in snapshot.
@@ -2444,8 +2445,9 @@ def refresh_examples(site: str, root: str, ref: str, xu_version: str,
             record['companions'] = siblings
         if previous:
             record['source_ref'] = ref
-        manifest = checkout / relative.parent / 'xu.xun'
-        if manifest.is_file():
+        manifest = next((checkout / parent / 'xu.xun' for parent in relative.parents
+                         if (checkout / parent / 'xu.xun').is_file()), None)
+        if manifest:
             sdk = re.search(r'^xu:\s*!ver\s+(\S+)', manifest.read_text(encoding='utf-8'), re.M)
             if sdk and sdk[1] != xu_version:
                 record['required_sdk'] = sdk[1]

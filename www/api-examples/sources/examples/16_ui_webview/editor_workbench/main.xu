@@ -3,13 +3,15 @@
 #ui/draw
 #ui/widgets
 #ui/layout
+tokens #xuui_tokens
 demo #"github.com/xulang-org/examples/ui_demo"
 
 struct Model{
     title widgets.Editor
     body widgets.Editor
     context draw.Context
-    theme widgets.Theme
+    styles widgets.Styles
+    dark bool
     header int
     title_id int
     body_id int
@@ -29,19 +31,19 @@ fn (model $&Model) paint(id int, bounds &layout.Rect, frame $&draw.Frame) bool {
         << false}
     << true
 }
-fn (model $&Model) draw_node(id int, frame $&draw.Frame) int {
-    theme := model.theme
-    if id == model.title_id{control := $&model.title
-        control.paint(frame, &theme) or >> }
-    else if id == model.body_id{control := $&model.body
-        control.paint(frame, &theme) or >> }
-    else if id == model.header{
-        demo.text(&model.context, frame, 0.0, 0.0, 14.0, demo.accent(), "08 / INPUT + TEXTAREA + DESKTOP") or >>
-        demo.text(&model.context, frame, 0.0, 27.0, 24.0, demo.ink(), "A small native writing desk") or >>
-        demo.text(&model.context, frame, 0.0, 62.0, 13.0, demo.muted(), "Tab / Shift+Tab · drag selection · copy / cut / paste · arrows / Home / End") or >>
-    } else if id == model.footer{
-        demo.text(&model.context, frame, 0.0, 0.0, 13.0, demo.accent(), "Changes: " + str(model.changes) + "  |  " + model.status) or >>
-        demo.text(&model.context, frame, 0.0, 27.0, 12.0, demo.muted(), "Use the Document menu: toggle editing, reset, query screens. Escape quits.") or >>
+fn (model $&Model) draw_node(id int,frame $&draw.Frame) int {
+    styles := model.styles.clone()
+    if id == model.title_id { control := $&model.title
+        control.paint_styled(frame,&styles) or >> }
+    else if id == model.body_id { control := $&model.body
+        control.paint_styled(frame,&styles) or >> }
+    else if id == model.header {
+        demo.text(&model.context,frame,0.0,0.0,24.0,tokens.text(model.dark),"Writing desk") or >>
+        demo.text(&model.context,frame,0.0,34.0,14.0,tokens.muted(model.dark),"XUUI design standard · native text and menu controls") or >>
+        demo.text(&model.context,frame,0.0,62.0,14.0,tokens.muted(model.dark),"Tab / Shift+Tab · drag selection · copy / cut / paste · arrows / Home / End") or >>
+    } else if id == model.footer {
+        demo.text(&model.context,frame,0.0,0.0,14.0,tokens.brand(model.dark),"Changes: " + str(model.changes) + "  |  " + model.status) or >>
+        demo.text(&model.context,frame,0.0,27.0,14.0,tokens.muted(model.dark),"Use the Document menu: toggle editing, reset, query screens. Escape quits.") or >>
     }
     << 0
 }
@@ -73,22 +75,23 @@ fn (model $&Model) reset() int {
     body.set_value(&"Write here.\n你好，Xu。\n\nSelection and IME are native; layout and painting stay in the retained View.") or >>
     << 0
 }
-fn menus(window &ui.Window, enabled bool) int {
-    $entries :=[ui.submenu("document", "Document", - 1)]
-    $reset := ui.menu_action("reset", "Reset note", 0)
+fn menus(window &ui.Window,enabled bool,dark bool) int {
+    $entries := [ui.submenu("document","Document",-1)]
+    $reset := ui.menu_action("reset","Reset note",0)
     reset.key = 82
     reset.modifiers = ui.MENU_PRIMARY | ui.MOD_SHIFT
     entries.push(reset)
-    entries.push(ui.menu_check("editing", "Enable editing", 0, enabled))
+    entries.push(ui.menu_check("editing","Enable editing",0,enabled))
     entries.push(ui.menu_separator(0))
-    entries.push(ui.submenu("display", "Displays", 0))
-    $query := ui.menu_action("screens", "Query current screens", 4)
+    entries.push(ui.submenu("display","Displays",0))
+    $query := ui.menu_action("screens","Query current screens",4)
     query.key = 68
     query.modifiers = ui.MENU_PRIMARY | ui.MOD_SHIFT
     entries.push(query)
-    $unavailable := ui.menu_action("unavailable", "Unavailable action", 4)
+    $unavailable := ui.menu_action("unavailable","Unavailable action",4)
     unavailable.enabled = false
     entries.push(unavailable)
+    entries.push(ui.menu_check("dark-theme","Dark appearance",0,dark))
     << window.set_menu_entries(entries) or >>
 }
 fn scene(ech chan ui.Event) int {
@@ -97,13 +100,13 @@ fn scene(ech chan ui.Event) int {
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
     window := ui.Window{id: identity.window_id, generation: identity.generation, title: "", width: 0, height: 0, content_kind: ui.CONTENT_DRAW, content_backend_id: identity.canvas_id, closed: 0}
-    menus(&window, true) or >>
+    menus(&window, true, false) or >>
     host := widgets.Host{context: context, identity: identity}
     $column := layout.box_style(layout.BOX_COLUMN)
     column.padding = layout.insets(24.0) or >>
     column.gap = 16.0
     column.cross_alignment = layout.CROSS_STRETCH
-    $view := host.view(&column, demo.background()) or >>
+    $view := host.view(&column, tokens.canvas(false)) or >>
     leaf := layout.box_style(layout.BOX_LEAF)
     header := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 88.0}) or >>
     title_id := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 44.0}) or >>
@@ -114,7 +117,7 @@ fn scene(ech chan ui.Event) int {
     empty := layout.Rect{x: 0.0, y: 0.0, width: 0.0, height: 0.0}
     $model := Model{title: widgets.input(&context, &identity, title_id, &empty, &"Untitled note") or >>,
         body: widgets.text_area(&context, &identity, body_id, &empty, &"Write here.\n你好，Xu。\n\nSelection and IME are native; layout and painting stay in the retained View.") or >>,
-        context: context, theme: widgets.default_theme(), header: header, title_id: title_id, body_id: body_id, footer: footer, changes: 0, status: "Ready"}
+        context: context, styles: tokens.editor_styles(false), dark: false, header: header, title_id: title_id, body_id: body_id, footer: footer, changes: 0, status: "Ready"}
     $dispatcher := widgets.action_dispatcher(&model, &view)
     dispatcher.on(title_id, widgets.ACTION_SUBMIT, submit_title) or >>
     $width := 820.0
@@ -154,7 +157,14 @@ fn scene(ech chan ui.Event) int {
             if event.menu_id == "editing" {enabled = !enabled
                 model.editing(enabled) or >>
                 for id in[title_id, body_id] {view.set_input(id, enabled, enabled) or >> }
-                menus(&window, enabled) or >> }
+                menus(&window, enabled, model.dark) or >> }
+            if event.menu_id == "dark-theme" {
+                model.dark = !model.dark
+                model.styles = tokens.editor_styles(model.dark)
+                view.set_background(tokens.canvas(model.dark))
+                for id in [header,title_id,body_id,footer] { view.mark_paint(id) or >> }
+                menus(&window,enabled,model.dark) or >>
+            }
             if event.menu_id == "screens" {screens.cancel()
                 screens = window.screens_async(&options) or >> }
         }

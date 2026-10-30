@@ -116,7 +116,7 @@ fn main() {
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             site, checkout = root / 'site', root / 'checkout'
-            paths = ['examples/one/main.xu', 'examples/two/main.xu']
+            paths = ['examples/one/main.xu', 'examples/two/main.xu', 'examples/one/tokens/mod.xu']
             (site / 'templates').mkdir(parents=True)
             (site / 'templates/api-examples.json').write_text(json.dumps(paths))
             for path in paths:
@@ -132,6 +132,7 @@ fn main() {
             by_path = {example.path: example for example in examples}
             self.assertEqual(by_path[paths[0]].ref, 'b' * 40)
             self.assertEqual(by_path[paths[1]].ref, 'a' * 40)
+            self.assertEqual(by_path[paths[2]].ref, 'b' * 40)
             self.assertIn('io.read()', by_path[paths[1]].source)
             with self.assertRaisesRegex(ValueError, 'unknown example project'):
                 api.refresh_examples(str(site), str(checkout), 'b' * 40, '0.10.12', ['examples/missing'])
