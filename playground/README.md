@@ -5,10 +5,10 @@ execute inside a worker-owned WASM instance. User source is never translated int
 JavaScript. Canvas is the pixel host for both drawing and real widgets.
 
 The gallery and focused component examples use the pinned
-[xu-ui-design token adapter](design/README.md). Reference colors, styled control
-dimensions and focus treatment are shared with the browser interaction previews.
-Canvas typography, responsive layout, automatic theme switching and per-widget
-accessibility semantics remain incomplete; this is partial design adoption.
+[xu-ui-design token adapter](design/README.md). This maps reference colors and
+styled control dimensions into Xu; Button, Checkbox, Switch, Radio, and Slider
+also use desktop styled painting.
+The browser text host and basic widget geometry retain the limitations below.
 
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
 for a three-page control gallery. `ui-widgets`, `ui-draw`, and `ui-counter`
@@ -152,10 +152,9 @@ count. Run Code, source edits, and example changes reset the session.
   widgets API. Key events and an active drag’s motion/release are queued during replay; new pointer presses while busy are ignored. Stopping/editing discards pending input.
 - 10-second worker timeout for ordinary programs; 30 seconds for programs importing `#ui/widgets`. The VM step limit and fixed 256 MiB initial/maximum memory still bound execution.
 
-Worker initialization runs a silent minimal Xu program before reporting ready.
-This warms the parser, checker and interpreter under the separate 30-second
-loading deadline, keeping cold WASM tiering out of the first user execution's
-execution budget. Initialization output is never shown as user output.
+Worker initialization loads the WASM module before reporting ready. It does not
+compile an extra program during initialization. The checked-MIR cache compiles
+the requested source once and reuses it for subsequent interactions.
 - Commands: 256 KiB / 4096 lines; transform stack: 32; text size: 1–256.
 - No continuous animation, hover tracking while idle, native services/windows,
   WebView, full styled widgets, editable text input, or persistent external effects.
@@ -184,13 +183,12 @@ python3 -m http.server 18110 --bind 127.0.0.1 --directory dist
 ```
 
 The build invokes the scalar link step automatically, including adjustment of
-the SDK memory section to a fixed 256 MiB limit. The arena starts at
-16 MiB and retains parser/checker/MIR allocations for the checked source;
-execution memory after that boundary is recycled. Styled tables and charts
-exceed the original 128 MiB budget even after loading only their dependencies.
-The allocator, linker, build metadata and memory test share the 256 MiB contract;
-programs cannot grow beyond it. The source size, VM step count, input history
-and worker deadlines remain bounded.
+the SDK memory section to a fixed 256 MiB limit. The disposable arena starts at
+16 MiB and retains parser/checker/MIR/UI allocations until evaluation ends.
+Styled tables and charts exceed the original 128 MiB budget even after loading
+only their dependencies. The allocator, linker, build metadata and memory test
+share the 256 MiB contract; programs cannot grow beyond it. The source size,
+VM step count, input history and worker deadlines remain bounded.
 Native SDK methods can emit conservative division warnings; warnings remain
 visible, and a later WASM trap is appended rather than hidden by those warnings.
 The VM supports the scalar maps needed by these controls (int/string keys,
@@ -254,7 +252,7 @@ Controls are little-endian i64. Existing source/stdout/stderr buffers and the
 | Address | Meaning |
 | --- | --- |
 | 1056 | Command byte length, at most 262144 |
-| 1064 | Input record count, at most 64 |
+| 1064 | Input record batch count |
 | 1072 | Next input index |
 | 1080 | An input driver was called (interactive) |
 | 1088 | `next_input` was called (typed input mode) |
@@ -264,7 +262,7 @@ Controls are little-endian i64. Existing source/stdout/stderr buffers and the
 | 140000 | Checked MIR descriptor, descending frame slots |
 | 145904–146007 | Eval checkpoint descriptor: three slices and four scalars |
 | 720000–982143 | UTF-8 newline-delimited drawing commands |
-| 1000000–1005119 | 64 input records of 80 bytes each |
+| 1000000–1005119 | Streaming input batch records of 80 bytes each |
 
 Each input record has eight i64 slots: kind, x, y, key, modifiers, repeat, button,
 buttons, followed by two f64 slots for dx and dy. Pointer coordinates become f64 slots in `ui.InputEvent`; the browser

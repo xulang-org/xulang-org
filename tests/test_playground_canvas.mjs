@@ -40,7 +40,7 @@ test('Xu owns counter state, hit testing, reset, and a fresh session', () => {
   assert.ok(display.some(item => item.op === 'text' && item.args[4] === 'Count: 2'));
   assert.equal(run([plus, reset]).stdout, 'Count: 0\n');
   assert.equal(run([]).stdout, 'Count: 0\n');
-  assert.equal(run(Array(MAX_UI_EVENTS).fill(plus)).stdout, 'Count: 64\n');
+  assert.equal(run(Array(64).fill(plus)).stdout, 'Count: 64\n');
   assert.equal(runtime.run(examples.hello.source).ui, null);
 });
 
@@ -54,7 +54,7 @@ test('edited Xu code changes both state transitions and drawing', () => {
 });
 
 test('UI input and output limits reject overflow; a new run recovers', () => {
-  assert.throws(() => runtime.run('', {events: Array(65).fill({x: 0, y: 0})}), /limit/);
+  assert.throws(() => runtime.run('', {events: Array(MAX_UI_EVENTS + 1).fill({x: 0, y: 0})}), /limit/);
   for (const event of [{x: -1, y: 0}, {x: 640, y: 0}, {x: 0, y: 360}, {x: 1.5, y: 0}, null]) {
     assert.throws(() => runtime.run('', {events: [event]}), /coordinates/);
   }
