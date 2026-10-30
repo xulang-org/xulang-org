@@ -11,6 +11,11 @@ import tempfile
 import re
 
 
+
+def xu_string(text):
+    # `$` starts interpolation inside Xu strings; embedded sources use `$name`/`$&`.
+    return json.dumps(text, ensure_ascii=False).replace('$', '\\$')
+
 def build(root: Path, xu: Path, compiler: Path):
     version = (xu / 'VERSION').read_text().strip()
     expected = os.environ.get('XU_RELEASE_VERSION', version)
@@ -42,10 +47,10 @@ def build(root: Path, xu: Path, compiler: Path):
     manifest.write_text(re.sub(r'(?m)^xu:.*$', 'xu: !ver ' + version, manifest.read_text()))
     embedded = '@main\n\n'
     for name, source in [('runtime', 'src/runtime/str_algo.xu'), ('errors', 'src/errors/mod.xu')]:
-        embedded += f'fn playground_std_{name}() string {{\n    << ' + json.dumps((xu / source).read_text(), ensure_ascii=False) + '\n}\n\n'
+        embedded += f'fn playground_std_{name}() string {{\n    << ' + xu_string((xu / source).read_text()) + '\n}\n\n'
     for name in ('draw', 'browser', 'frame', 'text_input', 'desktop_draw_types', 'desktop_ui', 'desktop_math', 'desktop_time', 'desktop_layout', 'desktop_utf8', 'desktop_codec', 'desktop_widgets'):
         source = root / 'playground/stdlib' / (name + '.xu')
-        embedded += f'fn playground_std_{name}() string {{\n    << ' + json.dumps(source.read_text(), ensure_ascii=False) + '\n}\n\n'
+        embedded += f'fn playground_std_{name}() string {{\n    << ' + xu_string(source.read_text()) + '\n}\n\n'
     (runtime / 'stdlib.xu').write_text(embedded)
     wasm = root / 'build/playground/xu-play.wasm'
     with tempfile.TemporaryDirectory(prefix='xu-play-build-') as temporary:

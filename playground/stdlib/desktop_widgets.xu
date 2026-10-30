@@ -128,13 +128,13 @@ pub fn (button &Button) is_enabled() bool { << button.enabled && !button.closed 
 pub fn (button &Button) bounds() layout.Rect { << copy_rect(&button.bounds) }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (button &mut Button) painted() { button.dirty = false }
+pub fn (button $&Button) painted() { button.dirty = false }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (button &mut Button) invalidate() { button.dirty = true }
+pub fn (button $&Button) invalidate() { button.dirty = true }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (button &mut Button) cancel() {
+pub fn (button $&Button) cancel() {
     if button.pointer_armed || button.keyboard_armed != 0 || button.hovered || button.focused { button.dirty = true }
     button.pointer_armed = false
     button.keyboard_armed = 0
@@ -143,14 +143,14 @@ pub fn (button &mut Button) cancel() {
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (button &mut Button) set_enabled(enabled bool) {
+pub fn (button $&Button) set_enabled(enabled bool) {
     if button.enabled != enabled { button.dirty = true }
     button.enabled = enabled
     if !enabled { button.cancel() }
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (button &mut Button) set_focus(focused bool) {
+pub fn (button $&Button) set_focus(focused bool) {
     value := focused && button.is_enabled()
     if button.focused != value { button.dirty = true }
     button.focused = value
@@ -160,7 +160,7 @@ pub fn (button &mut Button) set_focus(focused bool) {
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (button &mut Button) set_bounds(bounds &layout.Rect) int {
+pub fn (button $&Button) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if button.bounds.x != bounds.x || button.bounds.y != bounds.y || button.bounds.width != bounds.width || button.bounds.height != bounds.height {
         button.bounds = copy_rect(bounds)
@@ -173,15 +173,15 @@ pub fn (button &mut Button) set_bounds(bounds &layout.Rect) int {
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (button &mut Button) input(input &ui.InputEvent) Action {
+pub fn (button $&Button) input(input &ui.InputEvent) Action {
     if !belongs(&button.identity,input) || button.closed { << no_action(button.id,button.dirty) }
     if input.kind == ui.EV_POINTER_CANCEL { button.cancel()
         << no_action(button.id,button.dirty) }
     if !button.is_enabled() { << no_action(button.id,button.dirty) }
     inside := button.bounds.contains(input.x,input.y)
-    mut activated := false
-    mut focus := false
-    mut consumed := false
+    $activated := false
+    $focus := false
+    $consumed := false
     if input.kind == ui.EV_POINTER_MOVE || input.kind == ui.EV_POINTER_ENTER || input.kind == ui.EV_POINTER_LEAVE {
         hot := inside && input.kind != ui.EV_POINTER_LEAVE
         if hot != button.hovered { button.hovered = hot
@@ -216,7 +216,7 @@ pub fn (button &mut Button) input(input &ui.InputEvent) Action {
         activated = !button.read_only
         consumed = true
     }
-    mut kind := ACTION_NONE
+    $kind := ACTION_NONE
     if activated { kind = ACTION_ACTIVATE }
     << Action{kind: kind,id: button.id,needs_paint: button.dirty,request_focus: focus,consumed: consumed,value: 0.0}
 }
@@ -235,17 +235,17 @@ fn (button &Button) fill(theme &Theme) draw.Color {
 }
 
 // Upstream: src/ui/widgets/mod.xu
-fn focus_ring(frame &mut draw.Frame,bounds &layout.Rect,color draw.Color) int {
+fn focus_ring(frame $&draw.Frame,bounds &layout.Rect,color draw.Color) int {
     if bounds.width > 4.0 && bounds.height > 4.0 { frame.stroke_rect(bounds.x + 2.0,bounds.y + 2.0,bounds.width - 4.0,bounds.height - 4.0,color,2.0) or >> }
     << 0
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (button &Button) paint(frame &mut draw.Frame,label &draw.TextLayout,theme &Theme) int {
+pub fn (button &Button) paint(frame $&draw.Frame,label &draw.TextLayout,theme &Theme) int {
     frame.push() or >>
     frame.clip_rect(button.bounds.x,button.bounds.y,button.bounds.width,button.bounds.height) or >>
     frame.fill_rect(button.bounds.x,button.bounds.y,button.bounds.width,button.bounds.height,button.fill(theme)) or >>
-    mut color := theme.foreground
+    $color := theme.foreground
     if !button.is_enabled() { color = theme.muted }
     x := button.bounds.x + (button.bounds.width - label.metrics.width) * 0.5
     y := button.bounds.y + (button.bounds.height - label.metrics.height) * 0.5
@@ -272,20 +272,20 @@ pub fn checkbox(identity &ui.CanvasEvent,id int,bounds &layout.Rect,checked bool
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (checkbox &mut Checkbox) set_focus(focused bool) {
-    control := mut &checkbox.control
+pub fn (checkbox $&Checkbox) set_focus(focused bool) {
+    control := $&checkbox.control
     control.set_focus(focused)
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (checkbox &mut Checkbox) set_enabled(enabled bool) {
-    control := mut &checkbox.control
+pub fn (checkbox $&Checkbox) set_enabled(enabled bool) {
+    control := $&checkbox.control
     control.set_enabled(enabled)
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (checkbox &mut Checkbox) set_bounds(bounds &layout.Rect) int {
-    control := mut &checkbox.control
+pub fn (checkbox $&Checkbox) set_bounds(bounds &layout.Rect) int {
+    control := $&checkbox.control
     << control.set_bounds(bounds) or >>
 }
 
@@ -293,7 +293,7 @@ pub fn (checkbox &mut Checkbox) set_bounds(bounds &layout.Rect) int {
 pub fn (checkbox &Checkbox) needs_paint() bool { << checkbox.control.needs_paint() }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (checkbox &mut Checkbox) painted() { control := mut &checkbox.control
+pub fn (checkbox $&Checkbox) painted() { control := $&checkbox.control
     control.painted() }
 
 // Upstream: src/ui/widgets/mod.xu
@@ -303,27 +303,27 @@ pub fn (checkbox &Checkbox) value() bool { << checkbox.checked }
 pub fn (checkbox &Checkbox) is_indeterminate() bool { << checkbox.indeterminate }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (checkbox &mut Checkbox) set_indeterminate(mixed bool) {
+pub fn (checkbox $&Checkbox) set_indeterminate(mixed bool) {
     if checkbox.indeterminate != mixed { checkbox.indeterminate = mixed
         checkbox.control.dirty = true }
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (checkbox &mut Checkbox) set_value(checked bool) {
+pub fn (checkbox $&Checkbox) set_value(checked bool) {
     if checkbox.indeterminate { checkbox.indeterminate = false
         checkbox.control.dirty = true }
     if checked != checkbox.checked { checkbox.checked = checked
-        control := mut &checkbox.control
+        control := $&checkbox.control
         control.invalidate() }
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (checkbox &mut Checkbox) input(input &ui.InputEvent) Action {
-    control := mut &checkbox.control
-    mut action := control.input(input)
+pub fn (checkbox $&Checkbox) input(input &ui.InputEvent) Action {
+    control := $&checkbox.control
+    $action := control.input(input)
     if action.kind == ACTION_ACTIVATE { checkbox.checked = checkbox.indeterminate || !checkbox.checked
         checkbox.indeterminate = false
-        control := mut &checkbox.control
+        control := $&checkbox.control
         control.invalidate()
         action.kind = ACTION_CHANGE
         action.value = 0.0
@@ -332,17 +332,17 @@ pub fn (checkbox &mut Checkbox) input(input &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (checkbox &Checkbox) paint(frame &mut draw.Frame,label &draw.TextLayout,theme &Theme) int {
+pub fn (checkbox &Checkbox) paint(frame $&draw.Frame,label &draw.TextLayout,theme &Theme) int {
     bounds := copy_rect(&checkbox.control.bounds)
     side := math.min(20.0,math.min(bounds.width,bounds.height))
     x := bounds.x
     y := bounds.y + (bounds.height - side) * 0.5
     frame.push() or >>
     frame.clip_rect(bounds.x,bounds.y,bounds.width,bounds.height) or >>
-    mut fill := checkbox.control.fill(theme)
+    $fill := checkbox.control.fill(theme)
     if (checkbox.checked || checkbox.indeterminate) && checkbox.control.is_enabled() { fill = theme.accent }
     frame.fill_rect(x,y,side,side,fill) or >>
-    mut foreground := theme.foreground
+    $foreground := theme.foreground
     if !checkbox.control.is_enabled() { foreground = theme.muted }
     if checkbox.indeterminate && side >= 8.0 {
         frame.line(x + side * 0.22,y + side * 0.5,x + side * 0.78,y + side * 0.5,foreground,2.0) or >>
@@ -384,10 +384,10 @@ pub fn (progress &Progress) value() f64 { << progress.value }
 pub fn (progress &Progress) needs_paint() bool { << progress.dirty }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (progress &mut Progress) painted() { progress.dirty = false }
+pub fn (progress $&Progress) painted() { progress.dirty = false }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (progress &mut Progress) set_value(value f64) int {
+pub fn (progress $&Progress) set_value(value f64) int {
     if math.is_nan(value) || math.is_inf(value) { >> errors.new("widgets: invalid progress") }
     clamped := math.max(0.0,math.min(1.0,value))
     if clamped != progress.value { progress.value = clamped
@@ -397,7 +397,7 @@ pub fn (progress &mut Progress) set_value(value f64) int {
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (progress &mut Progress) set_bounds(bounds &layout.Rect) int {
+pub fn (progress $&Progress) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if progress.bounds.x != bounds.x || progress.bounds.y != bounds.y || progress.bounds.width != bounds.width || progress.bounds.height != bounds.height {
         progress.bounds = copy_rect(bounds)
@@ -407,7 +407,7 @@ pub fn (progress &mut Progress) set_bounds(bounds &layout.Rect) int {
 }
 
 // Upstream: src/ui/widgets/mod.xu
-pub fn (progress &Progress) paint(frame &mut draw.Frame,theme &Theme) int {
+pub fn (progress &Progress) paint(frame $&draw.Frame,theme &Theme) int {
     frame.fill_rect(progress.bounds.x,progress.bounds.y,progress.bounds.width,progress.bounds.height,theme.normal) or >>
     frame.fill_rect(progress.bounds.x,progress.bounds.y,progress.bounds.width * progress.value,progress.bounds.height,theme.accent) or >>
     << 0
@@ -474,9 +474,9 @@ fn new_editor(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layo
     validate_bounds(bounds) or >>
     for i in 0:value.len { if (value[i] & 255) == 0 || (!multiline && ((value[i] & 255) == 10 || (value[i] & 255) == 13)) { >> errors.new("widgets: invalid editor text") } }
     styles := dark_styles()
-    mut appearance := styles.input.clone()
+    $appearance := styles.input.clone()
     if multiline { appearance = styles.text_area.clone() }
-    mut input_flags := 0
+    $input_flags := 0
     if multiline { input_flags = EDITOR_MULTILINE }
     << Editor{id: id,identity: copy_identity(identity),context: context.clone(),bounds: copy_rect(bounds),input_flags: input_flags,
         reveal_caret: true,clipboard: ui.Request{id: 0,window_id: 0,canvas_id: 0,generation: 0,kind: 0},clipboard_operation: 0,clipboard_revision: 0,enabled: true,focused: false,closed: false,dirty: true,dragging: false,value: value + "",anchor: value.len,focus: value.len,revision: 0,
@@ -524,7 +524,7 @@ fn (editor &Editor) caret_rect() ui.TextInputRect {
 }
 
 // Upstream: src/ui/widgets/editor.xu
-fn (editor &mut Editor) read_state() ui.TextInputState {
+fn (editor $&Editor) read_state() ui.TextInputState {
     if editor.session.id == 0 {
         << ui.TextInputState{input: editor.session,revision: editor.revision,ready: editor.focused,multiline: editor.is_multiline(),
             value: editor.value + "",anchor: editor.anchor,focus: editor.focus,composing: false,preedit: "",replacement_start: 0,replacement_end: 0,preedit_anchor: 0,preedit_focus: 0,caret: editor.caret_rect()}
@@ -539,14 +539,14 @@ fn (editor &mut Editor) read_state() ui.TextInputState {
 }
 
 // Upstream: src/ui/widgets/editor.xu
-fn (editor &mut Editor) drop_layout() {
-    for item in editor.layouts { mut owned := item
+fn (editor $&Editor) drop_layout() {
+    for item in editor.layouts { $owned := item
         owned.dispose() or (err) { -> } }
     editor.layouts = []draw.TextLayout{}
 }
 
 // Upstream: src/ui/widgets/editor.xu
-fn (editor &mut Editor) stash() {
+fn (editor $&Editor) stash() {
     state := editor.session.snapshot() or (err) { << }
     editor.value = state.value + ""
     editor.anchor = state.anchor
@@ -555,19 +555,19 @@ fn (editor &mut Editor) stash() {
 }
 
 // Upstream: src/ui/widgets/editor.xu
-fn (editor &mut Editor) stop_session() bool {
-    session := mut &editor.session
+fn (editor $&Editor) stop_session() bool {
+    session := $&editor.session
     session.stop() or (err) { session.id = 0
         << false }
     << true
 }
 
 // Upstream: src/ui/widgets/editor.xu
-pub fn (editor &mut Editor) focus_session(on bool) int {
+pub fn (editor $&Editor) focus_session(on bool) int {
     if on && (!editor.enabled || editor.closed || editor.bounds.width <= 16.0 || editor.bounds.height <= 16.0) { << 0 }
     if editor.focused == on { << 0 }
     if on && !editor.read_only {
-        mut options := ui.text_input_options(&editor.value,editor.caret_rect())
+        $options := ui.text_input_options(&editor.value,editor.caret_rect())
         options.anchor = editor.anchor
         options.focus = editor.focus
         options.multiline = editor.is_multiline()
@@ -593,8 +593,8 @@ pub fn (editor &mut Editor) focus_session(on bool) int {
 }
 
 // Upstream: src/ui/widgets/editor.xu
-pub fn (editor &mut Editor) paint(frame &mut draw.Frame,theme &Theme) int {
-    mut c := editor.appearance.clone()
+pub fn (editor $&Editor) paint(frame $&draw.Frame,theme &Theme) int {
+    $c := editor.appearance.clone()
     c.radius = 0.0
     c.border_width = 0.0
     c.palette.normal = theme.normal
@@ -610,13 +610,13 @@ pub fn (editor &mut Editor) paint(frame &mut draw.Frame,theme &Theme) int {
 }
 
 // Upstream: src/ui/widgets/editor.xu
-fn (editor &mut Editor) paint_editor(frame &mut draw.Frame,c &ControlStyle) int {
+fn (editor $&Editor) paint_editor(frame $&draw.Frame,c &ControlStyle) int {
     if editor.closed { << 0 }
-    mut value := editor.value + ""
-    mut anchor := editor.anchor
-    mut focus := editor.focus
-    mut composition_start := -1
-    mut composition_end := -1
+    $value := editor.value + ""
+    $anchor := editor.anchor
+    $focus := editor.focus
+    $composition_start := -1
+    $composition_end := -1
     if editor.session.id > 0 { state := editor.read_state() or >>
         value = state.display_value()
         anchor = state.display_anchor()
@@ -624,8 +624,8 @@ fn (editor &mut Editor) paint_editor(frame &mut draw.Frame,c &ControlStyle) int 
         if state.composing { composition_start = state.replacement_start
             composition_end = state.replacement_start + state.preedit.len } }
     options := editor.editor_options()
-    mut reused := editor.layouts.len > 0 && editor.shaped_value == value && editor.shaped_width == options.width
-    mut layouts := []draw.TextLayout{}
+    $reused := editor.layouts.len > 0 && editor.shaped_value == value && editor.shaped_width == options.width
+    $layouts := []draw.TextLayout{}
     if reused { layouts.push(editor.layouts[0]) }
     else { layouts.push(editor.layout_value(&value,&options) or >>) }
     shaped := layouts[0]
@@ -711,7 +711,7 @@ fn (editor &mut Editor) paint_editor(frame &mut draw.Frame,c &ControlStyle) int 
 }
 
 // Upstream: src/ui/widgets/editor.xu
-fn (editor &mut Editor) bind_geometry(shaped &draw.TextLayout,transform &ui.TextInputTransform) {
+fn (editor $&Editor) bind_geometry(shaped &draw.TextLayout,transform &ui.TextInputTransform) {
     shaped.bind_input_transform(&editor.session,editor.revision,transform,false) or (err) { editor.dirty = true
         << }
 }
@@ -748,7 +748,7 @@ fn (editor &Editor) text_origin_y(shaped_height f64) f64 {
 
 // Upstream: src/ui/widgets/editor_styles.xu
 fn (editor &Editor) editor_options() draw.TextOptions {
-    mut options := copy_text_options(&editor.typography)
+    $options := copy_text_options(&editor.typography)
     if editor.is_multiline() {
         options.width = math.max(1.0,editor.bounds.width - editor.left() - editor.right())
         if editor.appearance.align_x > 0.66 { options.align = draw.TEXT_RIGHT }
@@ -760,7 +760,7 @@ fn (editor &Editor) editor_options() draw.TextOptions {
 
 // Upstream: src/ui/widgets/editor_styles.xu
 pub fn (editor &Editor) visual_state() int {
-    mut state := 0
+    $state := 0
     if !editor.enabled { state = state | STATE_DISABLED }
     if editor.focused { state = state | STATE_FOCUSED }
     if editor.hovered { state = state | STATE_HOVERED }
@@ -773,7 +773,7 @@ pub fn (editor &Editor) visual_state() int {
 pub fn (editor &Editor) is_read_only() bool { << editor.read_only }
 
 // Upstream: src/ui/widgets/editor_styles.xu
-pub fn (editor &mut Editor) set_read_only(on bool) int {
+pub fn (editor $&Editor) set_read_only(on bool) int {
     if editor.read_only == on { << 0 }
     focused := editor.focused
     editor.focus_session(false) or >>
@@ -784,14 +784,14 @@ pub fn (editor &mut Editor) set_read_only(on bool) int {
 }
 
 // Upstream: src/ui/widgets/editor_input.xu
-fn (editor &mut Editor) cancel_clipboard() {
+fn (editor $&Editor) cancel_clipboard() {
     if editor.clipboard.id > 0 && editor.clipboard_operation == 1 { editor.clipboard.cancel() }
     editor.clipboard.id = 0
     editor.clipboard_operation = 0
 }
 
 // Upstream: src/ui/widgets/editor_motion.xu
-fn (editor &mut Editor) restart_caret() {
+fn (editor $&Editor) restart_caret() {
     editor.caret_epoch = -1
     editor.caret_alpha = 1.0
     editor.dirty = true
@@ -821,9 +821,9 @@ pub fn (scroll &Scroll) scrollbar_track() layout.Rect {
 
 // Upstream: src/ui/widgets/scroll_styles.xu
 pub fn (scroll &Scroll) scrollbar_thumb() layout.Rect {
-    mut track := scroll.scrollbar_track()
+    $track := scroll.scrollbar_track()
     if track.width <= 0.0 || track.height <= 0.0 { << track }
-    mut length := track.height
+    $length := track.height
     if scroll.axis == AXIS_HORIZONTAL { length = track.width }
     thumb := math.min(length,math.max(scroll.appearance.min_height * scroll.density,length * scroll.viewport() / scroll.content))
     position := (length - thumb) * scroll.offset / math.max(1.0,scroll.content - scroll.viewport())
@@ -835,12 +835,12 @@ pub fn (scroll &Scroll) scrollbar_thumb() layout.Rect {
 }
 
 // Upstream: src/ui/widgets/scroll_styles.xu
-fn (scroll &mut Scroll) bar_input(input &ui.InputEvent) Action {
+fn (scroll $&Scroll) bar_input(input &ui.InputEvent) Action {
     track := scroll.scrollbar_track()
     thumb := scroll.scrollbar_thumb()
-    mut position := input.y
-    mut start := thumb.y
-    mut travel := track.height - thumb.height
+    $position := input.y
+    $start := thumb.y
+    $travel := track.height - thumb.height
     if scroll.axis == AXIS_HORIZONTAL { position = input.x
         start = thumb.x
         travel = track.width - thumb.width }
@@ -849,7 +849,7 @@ fn (scroll &mut Scroll) bar_input(input &ui.InputEvent) Action {
         if scroll.bar_hovered != hot { scroll.bar_hovered = hot
             scroll.dirty = true }
     }
-    mut consumed := false
+    $consumed := false
     old := scroll.offset
     if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT && track.contains(input.x,input.y) {
         consumed = true
@@ -857,7 +857,7 @@ fn (scroll &mut Scroll) bar_input(input &ui.InputEvent) Action {
             scroll.drag_position = position
             scroll.drag_offset = scroll.offset
             scroll.dirty = true }
-        else { mut direction := 1.0
+        else { $direction := 1.0
             if position < start { direction = -1.0 }
             scroll.set_offset(scroll.offset + direction * scroll.viewport()) or >> }
     }
@@ -868,7 +868,7 @@ fn (scroll &mut Scroll) bar_input(input &ui.InputEvent) Action {
     if scroll.dragging_bar && input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT { scroll.dragging_bar = false
         scroll.dirty = true
         consumed = true }
-    mut kind := ACTION_NONE
+    $kind := ACTION_NONE
     if old != scroll.offset { kind = ACTION_SCROLL }
     << Action{kind: kind,id: scroll.id,needs_paint: scroll.dirty,request_focus: consumed,consumed: consumed,value: scroll.offset}
 }
@@ -926,10 +926,10 @@ pub fn (scroll &Scroll) offset() f64 { << scroll.offset }
 pub fn (scroll &Scroll) needs_paint() bool { << scroll.dirty }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &mut Scroll) painted() { scroll.dirty = false }
+pub fn (scroll $&Scroll) painted() { scroll.dirty = false }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &mut Scroll) set_focus(focused bool) {
+pub fn (scroll $&Scroll) set_focus(focused bool) {
     next := focused && scroll.enabled && !scroll.closed
     if scroll.focused != next { scroll.dirty = true }
     scroll.focused = next
@@ -939,7 +939,7 @@ pub fn (scroll &mut Scroll) set_focus(focused bool) {
 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &mut Scroll) set_offset(offset f64) int {
+pub fn (scroll $&Scroll) set_offset(offset f64) int {
     if math.is_nan(offset) || math.is_inf(offset) || math.abs(offset) > f64(layout.MAX_EXTENT) { >> errors.new("widgets: invalid scroll offset") }
     next := math.max(0.0,math.min(offset,math.max(0.0,scroll.content - scroll.viewport())))
     if next != scroll.offset { scroll.offset = next
@@ -948,7 +948,7 @@ pub fn (scroll &mut Scroll) set_offset(offset f64) int {
 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &mut Scroll) set_content_extent(extent f64) int {
+pub fn (scroll $&Scroll) set_content_extent(extent f64) int {
     if math.is_nan(extent) || math.is_inf(extent) || extent < 0.0 || extent > f64(layout.MAX_EXTENT) { >> errors.new("widgets: invalid content extent") }
     if scroll.content != extent { scroll.content = extent
         scroll.dirty = true }
@@ -957,7 +957,7 @@ pub fn (scroll &mut Scroll) set_content_extent(extent f64) int {
 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &mut Scroll) set_bounds(bounds &layout.Rect) int {
+pub fn (scroll $&Scroll) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if scroll.bounds.x != bounds.x || scroll.bounds.y != bounds.y || scroll.bounds.width != bounds.width || scroll.bounds.height != bounds.height {
         scroll.bounds = copy_rect(bounds)
@@ -968,7 +968,7 @@ pub fn (scroll &mut Scroll) set_bounds(bounds &layout.Rect) int {
 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &mut Scroll) input(input &ui.InputEvent) Action {
+pub fn (scroll $&Scroll) input(input &ui.InputEvent) Action {
     if scroll.closed || !scroll.enabled || !belongs(&scroll.identity,input) { << no_action(scroll.id,scroll.dirty) }
     if input.kind == ui.EV_POINTER_CANCEL { scroll.set_focus(false)
         << no_action(scroll.id,scroll.dirty) }
@@ -976,10 +976,10 @@ pub fn (scroll &mut Scroll) input(input &ui.InputEvent) Action {
         action := scroll.bar_input(input) or >>
         if action.consumed { << action }
     }
-    mut next := scroll.offset
-    mut candidate := false
+    $next := scroll.offset
+    $candidate := false
     if input.kind == ui.EV_POINTER_SCROLL && scroll.bounds.contains(input.x,input.y) {
-        mut delta := input.dy
+        $delta := input.dy
         if scroll.axis == AXIS_HORIZONTAL { delta = input.dx }
         if math.is_nan(delta) || math.is_inf(delta) || math.abs(delta) > f64(layout.MAX_EXTENT) { << no_action(scroll.id,scroll.dirty) }
         next = math.max(0.0,math.min(scroll.offset + delta,math.max(0.0,scroll.content - scroll.viewport())))
@@ -1006,12 +1006,12 @@ pub fn (scroll &mut Scroll) input(input &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &Scroll) begin(frame &mut draw.Frame) int {
+pub fn (scroll &Scroll) begin(frame $&draw.Frame) int {
     if scroll.closed { >> errors.new("widgets: scroll owner is closed") }
     frame.push() or >>
     frame.clip_rect(scroll.bounds.x,scroll.bounds.y,scroll.bounds.width,scroll.bounds.height) or >>
-    mut x := scroll.bounds.x
-    mut y := scroll.bounds.y
+    $x := scroll.bounds.x
+    $y := scroll.bounds.y
     if scroll.axis == AXIS_VERTICAL { y = y - scroll.offset }
     else { x = x - scroll.offset }
     frame.translate(x,y) or >>
@@ -1019,7 +1019,7 @@ pub fn (scroll &Scroll) begin(frame &mut draw.Frame) int {
 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &Scroll) end(frame &mut draw.Frame) int { << frame.pop() or >> }
+pub fn (scroll &Scroll) end(frame $&draw.Frame) int { << frame.pop() or >> }
 
 // Upstream: src/ui/widgets/scroll.xu
 pub struct FocusGroup {
@@ -1043,10 +1043,10 @@ pub fn focus_group(identity &ui.CanvasEvent,ids []int) FocusGroup {
 pub fn (focus &FocusGroup) current() int { << focus.current }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (focus &mut FocusGroup) clear() { focus.current = 0 }
+pub fn (focus $&FocusGroup) clear() { focus.current = 0 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (focus &mut FocusGroup) focus(id int) int {
+pub fn (focus $&FocusGroup) focus(id int) int {
     if focus.closed { >> errors.new("widgets: focus owner is closed") }
     if id == 0 { focus.current = 0
         << 0 }
@@ -1056,7 +1056,7 @@ pub fn (focus &mut FocusGroup) focus(id int) int {
 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (focus &mut FocusGroup) input(input &ui.InputEvent) Action {
+pub fn (focus $&FocusGroup) input(input &ui.InputEvent) Action {
     if focus.closed || !belongs(&focus.identity,input) { << no_action(focus.current,false) }
     if input.kind == ui.EV_POINTER_CANCEL {
         changed := focus.current != 0
@@ -1064,7 +1064,7 @@ pub fn (focus &mut FocusGroup) input(input &ui.InputEvent) Action {
         << Action{kind: ACTION_NONE,id: 0,needs_paint: changed,request_focus: changed,consumed: false,value: 0.0}
     }
     if input.kind != ui.EV_KEY_DOWN || input.key != ui.KEY_TAB || focus.ids.len == 0 { << no_action(focus.current,false) }
-    mut index := 0 - 1
+    $index := 0 - 1
     for i in 0:focus.ids.len { if focus.ids[i] == focus.current { index = i } }
     if (input.modifiers & ui.MOD_SHIFT) != 0 {
         if index <= 0 { index = focus.ids.len - 1 }
@@ -1078,9 +1078,9 @@ pub fn (focus &mut FocusGroup) input(input &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (focus &mut FocusGroup) set_items(ids []int) int {
+pub fn (focus $&FocusGroup) set_items(ids []int) int {
     if focus.closed || ids.len > 512 { >> errors.new("widgets: invalid focus update") }
-    mut found := false
+    $found := false
     for i in 0:ids.len {
         if ids[i] <= 0 { >> errors.new("widgets: invalid focus id") }
         for j in 0:i { if ids[i] == ids[j] { >> errors.new("widgets: duplicate focus id") } }
@@ -1095,7 +1095,7 @@ pub fn (focus &mut FocusGroup) set_items(ids []int) int {
 pub fn (scroll &Scroll) is_enabled() bool { << scroll.enabled && !scroll.closed }
 
 // Upstream: src/ui/widgets/scroll.xu
-pub fn (scroll &mut Scroll) set_enabled(enabled bool) {
+pub fn (scroll $&Scroll) set_enabled(enabled bool) {
     if scroll.enabled != enabled { scroll.enabled = enabled
         scroll.dirty = true }
     if !enabled { scroll.set_focus(false) }
@@ -1117,7 +1117,7 @@ pub struct Switch {
 // Upstream: src/ui/widgets/controls_basic.xu
 pub fn switch_control(identity &ui.CanvasEvent,id int,bounds &layout.Rect,checked bool) Switch {
     control := button(identity,id,bounds) or >>
-    mut target := 0.0
+    $target := 0.0
     if checked { target = 1.0 }
     position := tween(target) or >>
     motion := motion_spec()
@@ -1134,20 +1134,20 @@ pub fn (sw &Switch) bounds() layout.Rect { << sw.control.bounds() }
 pub fn (sw &Switch) needs_paint() bool { << sw.control.needs_paint() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) painted() {
-    control := mut &sw.control
+pub fn (sw $&Switch) painted() {
+    control := $&sw.control
     control.painted()
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) invalidate() {
-    control := mut &sw.control
+pub fn (sw $&Switch) invalidate() {
+    control := $&sw.control
     control.invalidate()
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) cancel() {
-    control := mut &sw.control
+pub fn (sw $&Switch) cancel() {
+    control := $&sw.control
     control.cancel()
 }
 
@@ -1155,8 +1155,8 @@ pub fn (sw &mut Switch) cancel() {
 pub fn (sw &Switch) is_enabled() bool { << sw.control.is_enabled() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) set_enabled(enabled bool) {
-    control := mut &sw.control
+pub fn (sw $&Switch) set_enabled(enabled bool) {
+    control := $&sw.control
     control.set_enabled(enabled)
 }
 
@@ -1164,8 +1164,8 @@ pub fn (sw &mut Switch) set_enabled(enabled bool) {
 pub fn (sw &Switch) is_focused() bool { << sw.control.is_focused() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) set_focus(focused bool) {
-    control := mut &sw.control
+pub fn (sw $&Switch) set_focus(focused bool) {
+    control := $&sw.control
     control.set_focus(focused)
 }
 
@@ -1179,8 +1179,8 @@ pub fn (sw &Switch) is_pressed() bool { << sw.control.is_pressed() }
 pub fn (sw &Switch) is_invalid() bool { << sw.control.is_invalid() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) set_invalid(invalid bool) {
-    control := mut &sw.control
+pub fn (sw $&Switch) set_invalid(invalid bool) {
+    control := $&sw.control
     control.set_invalid(invalid)
 }
 
@@ -1188,14 +1188,14 @@ pub fn (sw &mut Switch) set_invalid(invalid bool) {
 pub fn (sw &Switch) is_read_only() bool { << sw.control.is_read_only() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) set_read_only(read_only bool) {
-    control := mut &sw.control
+pub fn (sw $&Switch) set_read_only(read_only bool) {
+    control := $&sw.control
     control.set_read_only(read_only)
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) set_bounds(bounds &layout.Rect) int {
-    control := mut &sw.control
+pub fn (sw $&Switch) set_bounds(bounds &layout.Rect) int {
+    control := $&sw.control
     << control.set_bounds(bounds) or >>
 }
 
@@ -1203,22 +1203,22 @@ pub fn (sw &mut Switch) set_bounds(bounds &layout.Rect) int {
 pub fn (sw &Switch) value() bool { << sw.checked }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) set_value(checked bool) {
+pub fn (sw $&Switch) set_value(checked bool) {
     if sw.checked != checked {
         sw.checked = checked
-        control := mut &sw.control
+        control := $&sw.control
         control.invalidate()
     }
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &mut Switch) input(input &ui.InputEvent) Action {
-    control := mut &sw.control
-    mut action := control.input(input)
+pub fn (sw $&Switch) input(input &ui.InputEvent) Action {
+    control := $&sw.control
+    $action := control.input(input)
     if action.kind == ACTION_ACTIVATE && sw.pending { action.kind = ACTION_NONE }
     if action.kind == ACTION_ACTIVATE {
         sw.checked = !sw.checked
-        control := mut &sw.control
+        control := $&sw.control
         control.invalidate()
         action.kind = ACTION_CHANGE
         action.value = 0.0
@@ -1228,7 +1228,7 @@ pub fn (sw &mut Switch) input(input &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (sw &Switch) paint(frame &mut draw.Frame,label &draw.TextLayout,theme &Theme) int {
+pub fn (sw &Switch) paint(frame $&draw.Frame,label &draw.TextLayout,theme &Theme) int {
     bounds := copy_rect(&sw.control.bounds)
     track_h := math.min(20.0,bounds.height)
     track_w := math.min(36.0,bounds.width)
@@ -1236,15 +1236,15 @@ pub fn (sw &Switch) paint(frame &mut draw.Frame,label &draw.TextLayout,theme &Th
     y := bounds.y + (bounds.height - track_h) * 0.5
     frame.push() or >>
     frame.clip_rect(bounds.x,bounds.y,bounds.width,bounds.height) or >>
-    mut fill := sw.control.fill(theme)
+    $fill := sw.control.fill(theme)
     if sw.checked && sw.control.is_enabled() { fill = theme.accent }
     track := layout.Rect{x: x,y: y,width: track_w,height: track_h}
     rounded_fill(frame,&track,track_h * 0.5,fill) or >>
-    mut foreground := theme.foreground
+    $foreground := theme.foreground
     if !sw.control.is_enabled() { foreground = theme.muted }
     inset := 3.0
     thumb_d := math.max(4.0,track_h - inset * 2.0)
-    mut thumb_x := x + inset
+    $thumb_x := x + inset
     if sw.checked { thumb_x = x + track_w - inset - thumb_d }
     thumb := layout.Rect{x: thumb_x,y: y + (track_h - thumb_d) * 0.5,width: thumb_d,height: thumb_d}
     rounded_fill(frame,&thumb,thumb_d * 0.5,foreground) or >>
@@ -1283,10 +1283,10 @@ pub fn (r &Radio) option() int { << r.option_val }
 pub fn (r &Radio) value() bool { << r.checked }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) set_value(selected bool) {
+pub fn (r $&Radio) set_value(selected bool) {
     if r.checked != selected {
         r.checked = selected
-        control := mut &r.control
+        control := $&r.control
         control.invalidate()
     }
 }
@@ -1295,20 +1295,20 @@ pub fn (r &mut Radio) set_value(selected bool) {
 pub fn (r &Radio) needs_paint() bool { << r.control.needs_paint() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) painted() {
-    control := mut &r.control
+pub fn (r $&Radio) painted() {
+    control := $&r.control
     control.painted()
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) invalidate() {
-    control := mut &r.control
+pub fn (r $&Radio) invalidate() {
+    control := $&r.control
     control.invalidate()
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) cancel() {
-    control := mut &r.control
+pub fn (r $&Radio) cancel() {
+    control := $&r.control
     control.cancel()
 }
 
@@ -1316,8 +1316,8 @@ pub fn (r &mut Radio) cancel() {
 pub fn (r &Radio) is_enabled() bool { << r.control.is_enabled() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) set_enabled(enabled bool) {
-    control := mut &r.control
+pub fn (r $&Radio) set_enabled(enabled bool) {
+    control := $&r.control
     control.set_enabled(enabled)
 }
 
@@ -1325,8 +1325,8 @@ pub fn (r &mut Radio) set_enabled(enabled bool) {
 pub fn (r &Radio) is_focused() bool { << r.control.is_focused() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) set_focus(focused bool) {
-    control := mut &r.control
+pub fn (r $&Radio) set_focus(focused bool) {
+    control := $&r.control
     control.set_focus(focused)
 }
 
@@ -1340,8 +1340,8 @@ pub fn (r &Radio) is_pressed() bool { << r.control.is_pressed() }
 pub fn (r &Radio) is_invalid() bool { << r.control.is_invalid() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) set_invalid(invalid bool) {
-    control := mut &r.control
+pub fn (r $&Radio) set_invalid(invalid bool) {
+    control := $&r.control
     control.set_invalid(invalid)
 }
 
@@ -1349,25 +1349,25 @@ pub fn (r &mut Radio) set_invalid(invalid bool) {
 pub fn (r &Radio) is_read_only() bool { << r.control.is_read_only() }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) set_read_only(read_only bool) {
-    control := mut &r.control
+pub fn (r $&Radio) set_read_only(read_only bool) {
+    control := $&r.control
     control.set_read_only(read_only)
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) set_bounds(bounds &layout.Rect) int {
-    control := mut &r.control
+pub fn (r $&Radio) set_bounds(bounds &layout.Rect) int {
+    control := $&r.control
     << control.set_bounds(bounds) or >>
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &mut Radio) input(input &ui.InputEvent) Action {
-    control := mut &r.control
-    mut action := control.input(input)
+pub fn (r $&Radio) input(input &ui.InputEvent) Action {
+    control := $&r.control
+    $action := control.input(input)
     if action.kind == ACTION_ACTIVATE {
         if !r.checked {
             r.checked = true
-            control := mut &r.control
+            control := $&r.control
             control.invalidate()
             action.kind = ACTION_CHANGE
             action.value = f64(r.option_val)
@@ -1379,18 +1379,18 @@ pub fn (r &mut Radio) input(input &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (r &Radio) paint(frame &mut draw.Frame,label &draw.TextLayout,theme &Theme) int {
+pub fn (r &Radio) paint(frame $&draw.Frame,label &draw.TextLayout,theme &Theme) int {
     bounds := copy_rect(&r.control.bounds)
     side := math.min(20.0,math.min(bounds.width,bounds.height))
     x := bounds.x
     y := bounds.y + (bounds.height - side) * 0.5
     frame.push() or >>
     frame.clip_rect(bounds.x,bounds.y,bounds.width,bounds.height) or >>
-    mut fill := r.control.fill(theme)
+    $fill := r.control.fill(theme)
     if r.checked && r.control.is_enabled() { fill = theme.accent }
     box := layout.Rect{x: x,y: y,width: side,height: side}
     rounded_fill(frame,&box,side * 0.5,fill) or >>
-    mut foreground := theme.foreground
+    $foreground := theme.foreground
     if !r.control.is_enabled() { foreground = theme.muted }
     if r.checked && side >= 6.0 {
         dot := side * 0.45
@@ -1433,7 +1433,7 @@ pub struct Slider {
 
 // Upstream: src/ui/widgets/controls_basic.xu
 fn clamp_slider_value(min_val f64,max_val f64,step_val f64,raw f64) f64 {
-    mut v := math.max(min_val,math.min(max_val,raw))
+    $v := math.max(min_val,math.min(max_val,raw))
     if step_val > 0.0 && max_val > min_val {
         steps := math.round((v - min_val) / step_val)
         v = math.max(min_val,math.min(max_val,min_val + steps * step_val))
@@ -1481,13 +1481,13 @@ pub fn (s &Slider) ratio() f64 {
 pub fn (s &Slider) needs_paint() bool { << s.dirty }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) painted() { s.dirty = false }
+pub fn (s $&Slider) painted() { s.dirty = false }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) invalidate() { s.dirty = true }
+pub fn (s $&Slider) invalidate() { s.dirty = true }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) cancel() {
+pub fn (s $&Slider) cancel() {
     if s.dragging || s.hovered || s.focused { s.dirty = true }
     s.dragging = false
     s.hovered = false
@@ -1501,7 +1501,7 @@ pub fn (s &mut Slider) cancel() {
 pub fn (s &Slider) is_enabled() bool { << s.enabled && !s.closed && s.bounds.width > 0.0 && s.bounds.height > 0.0 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_enabled(enabled bool) {
+pub fn (s $&Slider) set_enabled(enabled bool) {
     if s.enabled != enabled { s.dirty = true }
     s.enabled = enabled
     if !enabled { s.cancel() }
@@ -1511,7 +1511,7 @@ pub fn (s &mut Slider) set_enabled(enabled bool) {
 pub fn (s &Slider) is_focused() bool { << s.focused }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_focus(focused bool) {
+pub fn (s $&Slider) set_focus(focused bool) {
     next := focused && s.is_enabled()
     if s.focused != next { s.dirty = true }
     s.focused = next
@@ -1531,7 +1531,7 @@ pub fn (s &Slider) is_dragging() bool { << s.dragging }
 pub fn (s &Slider) is_invalid() bool { << s.invalid }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_invalid(invalid bool) {
+pub fn (s $&Slider) set_invalid(invalid bool) {
     if s.invalid != invalid {
         s.invalid = invalid
         s.dirty = true
@@ -1542,7 +1542,7 @@ pub fn (s &mut Slider) set_invalid(invalid bool) {
 pub fn (s &Slider) is_read_only() bool { << s.read_only }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_read_only(read_only bool) {
+pub fn (s $&Slider) set_read_only(read_only bool) {
     if s.read_only != read_only {
         s.read_only = read_only
         s.dragging = false
@@ -1551,7 +1551,7 @@ pub fn (s &mut Slider) set_read_only(read_only bool) {
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_value(value f64) int {
+pub fn (s $&Slider) set_value(value f64) int {
     if math.is_nan(value) || math.is_inf(value) { >> errors.new("widgets: invalid slider value") }
     next := clamp_slider_value(s.min_val,s.max_val,s.step_val,value)
     if next != s.val {
@@ -1562,7 +1562,7 @@ pub fn (s &mut Slider) set_value(value f64) int {
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_range(min f64,max f64) int {
+pub fn (s $&Slider) set_range(min f64,max f64) int {
     if math.is_nan(min) || math.is_inf(min) || math.is_nan(max) || math.is_inf(max) || max <= min {
         >> errors.new("widgets: invalid slider range")
     }
@@ -1575,7 +1575,7 @@ pub fn (s &mut Slider) set_range(min f64,max f64) int {
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_step(step f64) int {
+pub fn (s $&Slider) set_step(step f64) int {
     if math.is_nan(step) || math.is_inf(step) || step < 0.0 || step > (s.max_val - s.min_val) {
         >> errors.new("widgets: invalid slider step")
     }
@@ -1587,7 +1587,7 @@ pub fn (s &mut Slider) set_step(step f64) int {
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_bounds(bounds &layout.Rect) int {
+pub fn (s $&Slider) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if s.bounds.x != bounds.x || s.bounds.y != bounds.y || s.bounds.width != bounds.width || s.bounds.height != bounds.height {
         s.bounds = copy_rect(bounds)
@@ -1609,7 +1609,7 @@ fn (s &Slider) value_at_x(x f64) f64 {
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) input(input &ui.InputEvent) Action {
+pub fn (s $&Slider) input(input &ui.InputEvent) Action {
     if !belongs(&s.identity,input) || s.closed { << no_action(s.id,s.dirty) }
     if input.kind == ui.EV_POINTER_CANCEL {
         s.cancel()
@@ -1617,10 +1617,10 @@ pub fn (s &mut Slider) input(input &ui.InputEvent) Action {
     }
     if !s.is_enabled() { << no_action(s.id,s.dirty) }
     inside := s.bounds.contains(input.x,input.y)
-    mut changed := false
-    mut committed := false
-    mut focus := false
-    mut consumed := false
+    $changed := false
+    $committed := false
+    $focus := false
+    $consumed := false
     if input.kind == ui.EV_POINTER_MOVE || input.kind == ui.EV_POINTER_ENTER || input.kind == ui.EV_POINTER_LEAVE {
         hot := inside && input.kind != ui.EV_POINTER_LEAVE
         if hot != s.hovered {
@@ -1666,10 +1666,10 @@ pub fn (s &mut Slider) input(input &ui.InputEvent) Action {
         s.pending = false
         consumed = true
     } else if input.kind == ui.EV_KEY_DOWN && s.focused && !s.read_only {
-        mut delta := s.step_val
+        $delta := s.step_val
         if delta <= 0.0 { delta = (s.max_val - s.min_val) * 0.05 }
-        mut candidate := s.val
-        mut handled := false
+        $candidate := s.val
+        $handled := false
         if input.key == ui.KEY_LEFT || input.key == ui.KEY_DOWN {
             candidate = s.val - delta
             handled = true
@@ -1701,14 +1701,14 @@ pub fn (s &mut Slider) input(input &ui.InputEvent) Action {
             }
         }
     }
-    mut kind := ACTION_NONE
+    $kind := ACTION_NONE
     if changed && !s.commit_only { kind = ACTION_CHANGE }
     if committed { kind = ACTION_COMMIT }
     << Action{kind: kind,id: s.id,needs_paint: s.dirty,request_focus: focus,consumed: consumed,value: s.val}
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &Slider) paint(frame &mut draw.Frame,theme &Theme) int {
+pub fn (s &Slider) paint(frame $&draw.Frame,theme &Theme) int {
     b := s.bounds
     thumb := math.min(16.0,math.min(b.width,b.height))
     track_h := math.min(6.0,b.height)
@@ -1726,7 +1726,7 @@ pub fn (s &Slider) paint(frame &mut draw.Frame,theme &Theme) int {
 }
 
 // Upstream: src/ui/widgets/controls_basic.xu
-pub fn (s &mut Slider) set_commit_only(enabled bool) { s.commit_only = enabled
+pub fn (s $&Slider) set_commit_only(enabled bool) { s.commit_only = enabled
     s.pending = false }
 
 // Upstream: src/ui/widgets/controls_data.xu
@@ -1789,13 +1789,13 @@ pub fn (lb &ListBox) scroll_offset() f64 { << lb.scroll_y }
 pub fn (lb &ListBox) needs_paint() bool { << lb.dirty }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) painted() { lb.dirty = false }
+pub fn (lb $&ListBox) painted() { lb.dirty = false }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) invalidate() { lb.dirty = true }
+pub fn (lb $&ListBox) invalidate() { lb.dirty = true }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) cancel() {
+pub fn (lb $&ListBox) cancel() {
     lb.scroll_dragging = false
     if lb.armed_idx >= 0 || lb.hovered_idx >= 0 || lb.hovered || lb.focused { lb.dirty = true }
     lb.armed_idx = -1
@@ -1808,7 +1808,7 @@ pub fn (lb &mut ListBox) cancel() {
 pub fn (lb &ListBox) is_enabled() bool { << lb.enabled && !lb.closed && lb.bounds.width > 0.0 && lb.bounds.height > 0.0 }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) set_enabled(enabled bool) {
+pub fn (lb $&ListBox) set_enabled(enabled bool) {
     if lb.enabled != enabled { lb.dirty = true }
     lb.enabled = enabled
     if !enabled { lb.cancel() }
@@ -1818,7 +1818,7 @@ pub fn (lb &mut ListBox) set_enabled(enabled bool) {
 pub fn (lb &ListBox) is_focused() bool { << lb.focused }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) set_focus(focused bool) {
+pub fn (lb $&ListBox) set_focus(focused bool) {
     next := focused && lb.is_enabled()
     if lb.focused != next { lb.dirty = true }
     lb.focused = next
@@ -1835,7 +1835,7 @@ pub fn (lb &ListBox) is_hovered() bool { << lb.hovered }
 pub fn (lb &ListBox) is_invalid() bool { << lb.invalid }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) set_invalid(invalid bool) {
+pub fn (lb $&ListBox) set_invalid(invalid bool) {
     if lb.invalid != invalid {
         lb.invalid = invalid
         lb.dirty = true
@@ -1846,7 +1846,7 @@ pub fn (lb &mut ListBox) set_invalid(invalid bool) {
 pub fn (lb &ListBox) is_read_only() bool { << lb.read_only }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) set_read_only(read_only bool) {
+pub fn (lb $&ListBox) set_read_only(read_only bool) {
     if lb.read_only != read_only {
         lb.read_only = read_only
         lb.armed_idx = -1
@@ -1862,7 +1862,7 @@ fn (lb &ListBox) max_scroll() f64 {
 }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) set_scroll_offset(offset f64) int {
+pub fn (lb $&ListBox) set_scroll_offset(offset f64) int {
     if math.is_nan(offset) || math.is_inf(offset) { >> errors.new("widgets: invalid list_box scroll offset") }
     next := math.max(0.0,math.min(lb.max_scroll(),offset))
     if next != lb.scroll_y {
@@ -1873,13 +1873,13 @@ pub fn (lb &mut ListBox) set_scroll_offset(offset f64) int {
 }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) ensure_visible(index int) {
+pub fn (lb $&ListBox) ensure_visible(index int) {
     if index < 0 || index >= lb.count_val { << }
     rh := lb.row_h
     viewport_h := math.max(0.0,lb.bounds.height - lb.padding.top - lb.padding.bottom)
     top := f64(index) * rh
     bottom := top + rh
-    mut next := lb.scroll_y
+    $next := lb.scroll_y
     if top < next { next = top }
     else if bottom > next + viewport_h { next = bottom - viewport_h }
     next = math.max(0.0,math.min(lb.max_scroll(),next))
@@ -1890,7 +1890,7 @@ pub fn (lb &mut ListBox) ensure_visible(index int) {
 }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) set_count(count int) int {
+pub fn (lb $&ListBox) set_count(count int) int {
     if count < 0 || count > 4096 { >> errors.new("widgets: invalid list_box count") }
     if lb.count_val != count {
         lb.count_val = count
@@ -1904,7 +1904,7 @@ pub fn (lb &mut ListBox) set_count(count int) int {
 }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) set_selected(index int) int {
+pub fn (lb $&ListBox) set_selected(index int) int {
     if index < -1 || (lb.count_val > 0 && index >= lb.count_val) || (lb.count_val == 0 && index != -1) {
         >> errors.new("widgets: list_box index out of range")
     }
@@ -1917,7 +1917,7 @@ pub fn (lb &mut ListBox) set_selected(index int) int {
 }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) set_bounds(bounds &layout.Rect) int {
+pub fn (lb $&ListBox) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if lb.bounds.x != bounds.x || lb.bounds.y != bounds.y || lb.bounds.width != bounds.width || lb.bounds.height != bounds.height {
         lb.bounds = copy_rect(bounds)
@@ -1946,7 +1946,7 @@ fn (lb &ListBox) hit_row(x f64,y f64) int {
 }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &mut ListBox) input(input &ui.InputEvent) Action {
+pub fn (lb $&ListBox) input(input &ui.InputEvent) Action {
     if !belongs(&lb.identity,input) || lb.closed { << no_action(lb.id,lb.dirty) }
     if input.kind == ui.EV_POINTER_CANCEL {
         lb.cancel()
@@ -1957,13 +1957,13 @@ pub fn (lb &mut ListBox) input(input &ui.InputEvent) Action {
     if scroll.consumed { << scroll }
     inside := lb.bounds.contains(input.x,input.y)
     row := lb.hit_row(input.x,input.y)
-    mut kind := ACTION_NONE
-    mut focus := false
-    mut consumed := false
-    mut out_val := f64(lb.selected_val)
+    $kind := ACTION_NONE
+    $focus := false
+    $consumed := false
+    $out_val := f64(lb.selected_val)
     if input.kind == ui.EV_POINTER_MOVE || input.kind == ui.EV_POINTER_ENTER || input.kind == ui.EV_POINTER_LEAVE {
         hot := inside && input.kind != ui.EV_POINTER_LEAVE
-        mut next_row := -1
+        $next_row := -1
         if hot { next_row = row }
         if hot != lb.hovered || next_row != lb.hovered_idx {
             lb.hovered = hot
@@ -1989,7 +1989,7 @@ pub fn (lb &mut ListBox) input(input &ui.InputEvent) Action {
             lb.armed_idx = -1
             lb.dirty = true
         }
-        mut next_row := -1
+        $next_row := -1
         if inside { next_row = row }
         if lb.hovered != inside || lb.hovered_idx != next_row { lb.dirty = true }
         lb.hovered = inside
@@ -2006,9 +2006,9 @@ pub fn (lb &mut ListBox) input(input &ui.InputEvent) Action {
             }
         }
     } else if input.kind == ui.EV_KEY_DOWN && lb.focused && !lb.read_only && lb.count_val > 0 {
-        mut candidate := lb.selected_val
+        $candidate := lb.selected_val
         if candidate < 0 { candidate = 0 }
-        mut handled := false
+        $handled := false
         if input.key == ui.KEY_UP {
             candidate = max_int(0,candidate - 1)
             handled = true
@@ -2043,7 +2043,7 @@ pub fn (lb &mut ListBox) input(input &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &ListBox) paint(frame &mut draw.Frame,labels &[]draw.TextLayout,theme &Theme) int {
+pub fn (lb &ListBox) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &Theme) int {
     b := lb.bounds
     rh := math.max(16.0,lb.row_h)
     frame.push() or >>
@@ -2108,7 +2108,7 @@ pub fn tabs(identity &ui.CanvasEvent,id int,bounds &layout.Rect,count int,select
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn segmented(identity &ui.CanvasEvent,id int,bounds &layout.Rect,count int,selected int) Tabs {
-    mut result := tabs(identity,id,bounds,count,selected) or >>
+    $result := tabs(identity,id,bounds,count,selected) or >>
     result.segmented_val = true
     << result
 }
@@ -2132,13 +2132,13 @@ pub fn (t &Tabs) hovered_item() int { << t.hovered_idx }
 pub fn (t &Tabs) needs_paint() bool { << t.dirty }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) painted() { t.dirty = false }
+pub fn (t $&Tabs) painted() { t.dirty = false }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) invalidate() { t.dirty = true }
+pub fn (t $&Tabs) invalidate() { t.dirty = true }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) cancel() {
+pub fn (t $&Tabs) cancel() {
     if t.armed_idx >= 0 || t.hovered_idx >= 0 || t.hovered || t.focused { t.dirty = true }
     t.armed_idx = -1
     t.hovered_idx = -1
@@ -2150,7 +2150,7 @@ pub fn (t &mut Tabs) cancel() {
 pub fn (t &Tabs) is_enabled() bool { << t.enabled && !t.closed && t.bounds.width > 0.0 && t.bounds.height > 0.0 }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_enabled(enabled bool) {
+pub fn (t $&Tabs) set_enabled(enabled bool) {
     if t.enabled != enabled { t.dirty = true }
     t.enabled = enabled
     if !enabled { t.cancel() }
@@ -2160,7 +2160,7 @@ pub fn (t &mut Tabs) set_enabled(enabled bool) {
 pub fn (t &Tabs) is_focused() bool { << t.focused }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_focus(focused bool) {
+pub fn (t $&Tabs) set_focus(focused bool) {
     next := focused && t.is_enabled()
     if t.focused != next { t.dirty = true }
     t.focused = next
@@ -2177,7 +2177,7 @@ pub fn (t &Tabs) is_hovered() bool { << t.hovered }
 pub fn (t &Tabs) is_invalid() bool { << t.invalid }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_invalid(invalid bool) {
+pub fn (t $&Tabs) set_invalid(invalid bool) {
     if t.invalid != invalid {
         t.invalid = invalid
         t.dirty = true
@@ -2188,7 +2188,7 @@ pub fn (t &mut Tabs) set_invalid(invalid bool) {
 pub fn (t &Tabs) is_read_only() bool { << t.read_only }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_read_only(read_only bool) {
+pub fn (t $&Tabs) set_read_only(read_only bool) {
     if t.read_only != read_only {
         t.read_only = read_only
         t.armed_idx = -1
@@ -2197,7 +2197,7 @@ pub fn (t &mut Tabs) set_read_only(read_only bool) {
 }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_count(count int) int {
+pub fn (t $&Tabs) set_count(count int) int {
     if count <= 0 || count > 64 { >> errors.new("widgets: invalid tabs count") }
     if t.count_val != count {
         t.count_val = count
@@ -2210,7 +2210,7 @@ pub fn (t &mut Tabs) set_count(count int) int {
 }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_selected(index int) int {
+pub fn (t $&Tabs) set_selected(index int) int {
     if index < 0 || index >= t.count_val { >> errors.new("widgets: tab index out of range") }
     if t.selected_val != index {
         t.selected_val = index
@@ -2221,7 +2221,7 @@ pub fn (t &mut Tabs) set_selected(index int) int {
 }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_bounds(bounds &layout.Rect) int {
+pub fn (t $&Tabs) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if t.bounds.x != bounds.x || t.bounds.y != bounds.y || t.bounds.width != bounds.width || t.bounds.height != bounds.height {
         t.bounds = copy_rect(bounds)
@@ -2250,13 +2250,13 @@ fn min_int(a int,b int) int {
 fn (t &Tabs) item_rect(index int,density f64,padding &layout.Insets,gap f64) layout.Rect {
     if index < 0 || index >= t.count_val { << screen_empty() }
     available := math.max(0.0,t.bounds.width - padding.left - padding.right - f64(t.count_val-1)*gap)
-    mut fixed := 0.0
-    mut automatic := t.count_val
+    $fixed := 0.0
+    $automatic := t.count_val
     if t.item_widths.len == t.count_val { for width in t.item_widths { if width > 0.0 { fixed = fixed + width*density
         automatic -= 1 } } }
     automatic_width := math.max(0.0,(available-fixed)/f64(max_int(1,automatic)))
-    mut x := t.bounds.x+padding.left
-    mut width := automatic_width
+    $x := t.bounds.x+padding.left
+    $width := automatic_width
     for i in 0:index+1 {
         width = automatic_width
         if t.item_widths.len == t.count_val && t.item_widths[i] > 0.0 { width = t.item_widths[i]*density }
@@ -2274,9 +2274,9 @@ fn (t &Tabs) hit_item(x f64,y f64) int {
 }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_item_widths(widths &[]f64) int {
+pub fn (t $&Tabs) set_item_widths(widths &[]f64) int {
     if widths.len != 0 && widths.len != t.count_val { >> errors.new("widgets: expected one width per tab") }
-    mut values := []f64{}
+    $values := []f64{}
     for width in widths { if !finite_metric(width,4096.0) || (width > 0.0 && width < 24.0) { >> errors.new("widgets: invalid tab width") }
         values.push(width) }
     t.item_widths=values
@@ -2286,12 +2286,12 @@ pub fn (t &mut Tabs) set_item_widths(widths &[]f64) int {
 }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) set_automatic_activation(automatic bool) { t.automatic=automatic
+pub fn (t $&Tabs) set_automatic_activation(automatic bool) { t.automatic=automatic
     t.active_idx=t.selected_val
     t.dirty=true }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &mut Tabs) input(input &ui.InputEvent) Action {
+pub fn (t $&Tabs) input(input &ui.InputEvent) Action {
     if !belongs(&t.identity,input) || t.closed { << no_action(t.id,t.dirty) }
     if input.kind == ui.EV_POINTER_CANCEL {
         t.cancel()
@@ -2300,12 +2300,12 @@ pub fn (t &mut Tabs) input(input &ui.InputEvent) Action {
     if !t.is_enabled() { << no_action(t.id,t.dirty) }
     inside := t.bounds.contains(input.x,input.y)
     hit := t.hit_item(input.x,input.y)
-    mut changed := false
-    mut focus := false
-    mut consumed := false
+    $changed := false
+    $focus := false
+    $consumed := false
     if input.kind == ui.EV_POINTER_MOVE || input.kind == ui.EV_POINTER_ENTER || input.kind == ui.EV_POINTER_LEAVE {
         hot := inside && input.kind != ui.EV_POINTER_LEAVE
-        mut next_idx := -1
+        $next_idx := -1
         if hot { next_idx = hit }
         if hot != t.hovered || next_idx != t.hovered_idx {
             t.hovered = hot
@@ -2330,14 +2330,14 @@ pub fn (t &mut Tabs) input(input &ui.InputEvent) Action {
             t.armed_idx = -1
             t.dirty = true
         }
-        mut next_idx := -1
+        $next_idx := -1
         if inside { next_idx = hit }
         if t.hovered != inside || t.hovered_idx != next_idx { t.dirty = true }
         t.hovered = inside
         t.hovered_idx = next_idx
     } else if input.kind == ui.EV_KEY_DOWN && t.focused && !t.read_only {
-        mut candidate := t.active_idx
-        mut handled := false
+        $candidate := t.active_idx
+        $handled := false
         if input.key == ui.KEY_LEFT || input.key == ui.KEY_UP {
             candidate = max_int(0,t.active_idx - 1)
             handled = true
@@ -2364,13 +2364,13 @@ pub fn (t &mut Tabs) input(input &ui.InputEvent) Action {
             }
         }
     }
-    mut kind := ACTION_NONE
+    $kind := ACTION_NONE
     if changed { kind = ACTION_CHANGE }
     << Action{kind: kind,id: t.id,needs_paint: t.dirty,request_focus: focus,consumed: consumed,value: f64(t.selected_val)}
 }
 
 // Upstream: src/ui/widgets/controls_nav.xu
-pub fn (t &Tabs) paint(frame &mut draw.Frame,labels &[]draw.TextLayout,theme &Theme) int {
+pub fn (t &Tabs) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &Theme) int {
     b := t.bounds
     frame.push() or >>
     frame.clip_rect(b.x,b.y,b.width,b.height) or >>
@@ -2422,7 +2422,7 @@ pub fn divider(bounds &layout.Rect,axis int) Divider {
 pub fn (div &Divider) axis() int { << div.axis_val }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (div &mut Divider) set_axis(axis int) int {
+pub fn (div $&Divider) set_axis(axis int) int {
     if axis < AXIS_VERTICAL || axis > AXIS_HORIZONTAL { >> errors.new("widgets: invalid divider axis") }
     if div.axis_val != axis {
         div.axis_val = axis
@@ -2435,7 +2435,7 @@ pub fn (div &mut Divider) set_axis(axis int) int {
 pub fn (div &Divider) bounds() layout.Rect { << copy_rect(&div.bounds) }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (div &mut Divider) set_bounds(bounds &layout.Rect) int {
+pub fn (div $&Divider) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if div.bounds.x != bounds.x || div.bounds.y != bounds.y || div.bounds.width != bounds.width || div.bounds.height != bounds.height {
         div.bounds = copy_rect(bounds)
@@ -2448,16 +2448,16 @@ pub fn (div &mut Divider) set_bounds(bounds &layout.Rect) int {
 pub fn (div &Divider) needs_paint() bool { << div.dirty }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (div &mut Divider) painted() { div.dirty = false }
+pub fn (div $&Divider) painted() { div.dirty = false }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (div &mut Divider) invalidate() { div.dirty = true }
+pub fn (div $&Divider) invalidate() { div.dirty = true }
 
 // Upstream: src/ui/widgets/controls_display.xu
 pub fn (div &Divider) is_enabled() bool { << div.enabled }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (div &mut Divider) set_enabled(enabled bool) {
+pub fn (div $&Divider) set_enabled(enabled bool) {
     if div.enabled != enabled {
         div.enabled = enabled
         div.dirty = true
@@ -2468,7 +2468,7 @@ pub fn (div &mut Divider) set_enabled(enabled bool) {
 pub fn (div &Divider) is_invalid() bool { << div.invalid }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (div &mut Divider) set_invalid(invalid bool) {
+pub fn (div $&Divider) set_invalid(invalid bool) {
     if div.invalid != invalid {
         div.invalid = invalid
         div.dirty = true
@@ -2479,7 +2479,7 @@ pub fn (div &mut Divider) set_invalid(invalid bool) {
 pub fn (div &Divider) is_selected() bool { << div.selected }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (div &mut Divider) set_selected(selected bool) {
+pub fn (div $&Divider) set_selected(selected bool) {
     if div.selected != selected {
         div.selected = selected
         div.dirty = true
@@ -2487,9 +2487,9 @@ pub fn (div &mut Divider) set_selected(selected bool) {
 }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (div &Divider) paint(frame &mut draw.Frame,theme &Theme) int {
+pub fn (div &Divider) paint(frame $&draw.Frame,theme &Theme) int {
     b := div.bounds
-    mut color := theme.muted
+    $color := theme.muted
     if div.selected { color = theme.accent }
     if div.axis_val == AXIS_HORIZONTAL {
         y := b.y + b.height * 0.5
@@ -2525,7 +2525,7 @@ pub fn badge(bounds &layout.Rect) Badge {
 pub fn (bg &Badge) bounds() layout.Rect { << copy_rect(&bg.bounds) }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) set_bounds(bounds &layout.Rect) int {
+pub fn (bg $&Badge) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if bg.bounds.x != bounds.x || bg.bounds.y != bounds.y || bg.bounds.width != bounds.width || bg.bounds.height != bounds.height {
         bg.bounds = copy_rect(bounds)
@@ -2538,16 +2538,16 @@ pub fn (bg &mut Badge) set_bounds(bounds &layout.Rect) int {
 pub fn (bg &Badge) needs_paint() bool { << bg.dirty }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) painted() { bg.dirty = false }
+pub fn (bg $&Badge) painted() { bg.dirty = false }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) invalidate() { bg.dirty = true }
+pub fn (bg $&Badge) invalidate() { bg.dirty = true }
 
 // Upstream: src/ui/widgets/controls_display.xu
 pub fn (bg &Badge) is_enabled() bool { << bg.enabled }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) set_enabled(enabled bool) {
+pub fn (bg $&Badge) set_enabled(enabled bool) {
     if bg.enabled != enabled {
         bg.enabled = enabled
         bg.dirty = true
@@ -2558,7 +2558,7 @@ pub fn (bg &mut Badge) set_enabled(enabled bool) {
 pub fn (bg &Badge) is_selected() bool { << bg.selected }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) set_selected(selected bool) {
+pub fn (bg $&Badge) set_selected(selected bool) {
     if bg.selected != selected {
         bg.selected = selected
         bg.dirty = true
@@ -2569,7 +2569,7 @@ pub fn (bg &mut Badge) set_selected(selected bool) {
 pub fn (bg &Badge) is_invalid() bool { << bg.invalid }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) set_invalid(invalid bool) {
+pub fn (bg $&Badge) set_invalid(invalid bool) {
     if bg.invalid != invalid {
         bg.invalid = invalid
         bg.dirty = true
@@ -2580,7 +2580,7 @@ pub fn (bg &mut Badge) set_invalid(invalid bool) {
 pub fn (bg &Badge) is_focused() bool { << bg.focused && bg.enabled }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) set_focus(focused bool) {
+pub fn (bg $&Badge) set_focus(focused bool) {
     next := focused && bg.enabled
     if bg.focused != next {
         bg.focused = next
@@ -2592,7 +2592,7 @@ pub fn (bg &mut Badge) set_focus(focused bool) {
 pub fn (bg &Badge) is_hovered() bool { << bg.hovered }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) set_hovered(hovered bool) {
+pub fn (bg $&Badge) set_hovered(hovered bool) {
     if bg.hovered != hovered {
         bg.hovered = hovered
         bg.dirty = true
@@ -2600,9 +2600,9 @@ pub fn (bg &mut Badge) set_hovered(hovered bool) {
 }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &Badge) paint(frame &mut draw.Frame,label &draw.TextLayout,theme &Theme) int {
+pub fn (bg &Badge) paint(frame $&draw.Frame,label &draw.TextLayout,theme &Theme) int {
     b := bg.bounds
-    mut fill := theme.normal
+    $fill := theme.normal
     if !bg.enabled { fill = theme.disabled }
     else if bg.selected { fill = theme.accent }
     rounded_fill(frame,&b,b.height * 0.5,fill) or >>
@@ -2634,7 +2634,7 @@ pub fn card(bounds &layout.Rect) Card {
 pub fn (cd &Card) bounds() layout.Rect { << copy_rect(&cd.bounds) }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &mut Card) set_bounds(bounds &layout.Rect) int {
+pub fn (cd $&Card) set_bounds(bounds &layout.Rect) int {
     validate_bounds(bounds) or >>
     if cd.bounds.x != bounds.x || cd.bounds.y != bounds.y || cd.bounds.width != bounds.width || cd.bounds.height != bounds.height {
         cd.bounds = copy_rect(bounds)
@@ -2647,16 +2647,16 @@ pub fn (cd &mut Card) set_bounds(bounds &layout.Rect) int {
 pub fn (cd &Card) needs_paint() bool { << cd.dirty }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &mut Card) painted() { cd.dirty = false }
+pub fn (cd $&Card) painted() { cd.dirty = false }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &mut Card) invalidate() { cd.dirty = true }
+pub fn (cd $&Card) invalidate() { cd.dirty = true }
 
 // Upstream: src/ui/widgets/controls_display.xu
 pub fn (cd &Card) is_enabled() bool { << cd.enabled }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &mut Card) set_enabled(enabled bool) {
+pub fn (cd $&Card) set_enabled(enabled bool) {
     if cd.enabled != enabled {
         cd.enabled = enabled
         cd.dirty = true
@@ -2667,7 +2667,7 @@ pub fn (cd &mut Card) set_enabled(enabled bool) {
 pub fn (cd &Card) is_selected() bool { << cd.selected }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &mut Card) set_selected(selected bool) {
+pub fn (cd $&Card) set_selected(selected bool) {
     if cd.selected != selected {
         cd.selected = selected
         cd.dirty = true
@@ -2678,7 +2678,7 @@ pub fn (cd &mut Card) set_selected(selected bool) {
 pub fn (cd &Card) is_invalid() bool { << cd.invalid }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &mut Card) set_invalid(invalid bool) {
+pub fn (cd $&Card) set_invalid(invalid bool) {
     if cd.invalid != invalid {
         cd.invalid = invalid
         cd.dirty = true
@@ -2689,7 +2689,7 @@ pub fn (cd &mut Card) set_invalid(invalid bool) {
 pub fn (cd &Card) is_focused() bool { << cd.focused && cd.enabled }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &mut Card) set_focus(focused bool) {
+pub fn (cd $&Card) set_focus(focused bool) {
     next := focused && cd.enabled
     if cd.focused != next {
         cd.focused = next
@@ -2701,7 +2701,7 @@ pub fn (cd &mut Card) set_focus(focused bool) {
 pub fn (cd &Card) is_hovered() bool { << cd.hovered }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &mut Card) set_hovered(hovered bool) {
+pub fn (cd $&Card) set_hovered(hovered bool) {
     if cd.hovered != hovered {
         cd.hovered = hovered
         cd.dirty = true
@@ -2709,7 +2709,7 @@ pub fn (cd &mut Card) set_hovered(hovered bool) {
 }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (cd &Card) paint(frame &mut draw.Frame,theme &Theme) int {
+pub fn (cd &Card) paint(frame $&draw.Frame,theme &Theme) int {
     b := cd.bounds
     rounded_fill(frame,&b,10.0,theme.normal) or >>
     rounded_stroke(frame,&b,10.0,theme.muted,1.0) or >>
@@ -2717,7 +2717,7 @@ pub fn (cd &Card) paint(frame &mut draw.Frame,theme &Theme) int {
 }
 
 // Upstream: src/ui/widgets/controls_display.xu
-pub fn (bg &mut Badge) set_tone(tone int) int {
+pub fn (bg $&Badge) set_tone(tone int) int {
     if tone<BADGE_NEUTRAL || tone>BADGE_ERROR { >> errors.new("widgets: invalid badge tone") }
     bg.tone=tone
     bg.dirty=true
@@ -2759,15 +2759,15 @@ fn (lb &ListBox) scrollbar_thumb() layout.Rect {
 }
 
 // Upstream: src/ui/widgets/data_scrollbar.xu
-fn (lb &mut ListBox) scrollbar_input(input &ui.InputEvent) Action {
-    mut consumed := false
+fn (lb $&ListBox) scrollbar_input(input &ui.InputEvent) Action {
+    $consumed := false
     if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT && lb.scrollbar_contains(input.x,input.y) {
         thumb := lb.scrollbar_thumb()
         if input.y >= thumb.y && input.y < thumb.y + thumb.height {
             lb.scroll_dragging = true
             lb.scroll_grab = input.y - thumb.y
         } else {
-            mut direction := 1.0
+            $direction := 1.0
             if input.y < thumb.y { direction = -1.0 }
             page := math.max(lb.row_h,lb.bounds.height - lb.padding.top - lb.padding.bottom)
             lb.set_scroll_offset(lb.scroll_y + direction * page) or >>
@@ -2788,7 +2788,7 @@ fn (lb &mut ListBox) scrollbar_input(input &ui.InputEvent) Action {
         lb.dirty = true
         consumed = true
     }
-    mut action := no_action(lb.id,lb.dirty)
+    $action := no_action(lb.id,lb.dirty)
     if consumed { action.kind = ACTION_SCROLL
         action.value = lb.scroll_y
         action.consumed = true
@@ -2836,7 +2836,7 @@ pub fn (button &Button) is_hovered() bool { << button.hovered }
 pub fn (button &Button) is_pressed() bool { << !button.read_only && ((button.pointer_armed && button.hovered) || button.keyboard_armed != 0) }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (button &mut Button) set_read_only(read_only bool) {
+pub fn (button $&Button) set_read_only(read_only bool) {
     if button.read_only != read_only {
         button.read_only = read_only
         button.pointer_armed = false
@@ -2861,7 +2861,7 @@ pub fn (progress &Progress) is_focused() bool { << progress.focused && progress.
 pub fn (progress &Progress) is_selected() bool { << progress.selected }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (progress &mut Progress) set_focus(focused bool) {
+pub fn (progress $&Progress) set_focus(focused bool) {
     value := focused && progress.enabled
     if progress.focused != value {
         progress.focused = value
@@ -2870,7 +2870,7 @@ pub fn (progress &mut Progress) set_focus(focused bool) {
 }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (progress &mut Progress) set_selected(selected bool) {
+pub fn (progress $&Progress) set_selected(selected bool) {
     if progress.selected != selected {
         progress.selected = selected
         progress.dirty = true
@@ -2879,7 +2879,7 @@ pub fn (progress &mut Progress) set_selected(selected bool) {
 
 // Upstream: src/ui/widgets/styled_controls.xu
 pub fn (progress &Progress) visual_state() int {
-    mut state := 0
+    $state := 0
     if !progress.enabled { state = state | STATE_DISABLED }
     if progress.invalid { state = state | STATE_INVALID }
     if progress.selected { state = state | STATE_SELECTED }
@@ -2897,7 +2897,7 @@ pub fn (progress &Progress) style_or(styles &Styles) ControlStyle {
 }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (progress &mut Progress) clear_style() {
+pub fn (progress $&Progress) clear_style() {
     if progress.custom.active {
         progress.custom.active = false
         progress.dirty = true
@@ -2913,8 +2913,8 @@ pub fn (progress &Progress) measure_styled(styles &Styles) layout.Size {
 }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (progress &Progress) paint_styled(frame &mut draw.Frame,styles &Styles) int {
-    mut c := progress.style_or(styles)
+pub fn (progress &Progress) paint_styled(frame $&draw.Frame,styles &Styles) int {
+    $c := progress.style_or(styles)
     b := progress.bounds
     d := styles.density
     state := progress.visual_state()
@@ -2922,7 +2922,7 @@ pub fn (progress &Progress) paint_styled(frame &mut draw.Frame,styles &Styles) i
     if progress.invalid { c.palette.foreground = c.palette.invalid }
     radius := c.radius * d
     if (c.shadow.value() & 255) > 0 {
-        mut steps := 1
+        $steps := 1
         if c.shadow_blur > 0.0 { steps = 8 }
         for i in 0:steps {
             spread := (c.shadow_spread + c.shadow_blur * f64(steps - i) / f64(steps)) * d
@@ -2961,11 +2961,11 @@ pub fn (progress &Progress) paint_styled(frame &mut draw.Frame,styles &Styles) i
 }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (button &mut Button) set_invalid(invalid bool) { if button.invalid != invalid { button.invalid = invalid
+pub fn (button $&Button) set_invalid(invalid bool) { if button.invalid != invalid { button.invalid = invalid
     button.dirty = true } }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (progress &mut Progress) set_enabled(enabled bool) {
+pub fn (progress $&Progress) set_enabled(enabled bool) {
     if progress.enabled != enabled {
         progress.enabled = enabled
         if !enabled { progress.focused = false }
@@ -2974,11 +2974,11 @@ pub fn (progress &mut Progress) set_enabled(enabled bool) {
 }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (progress &mut Progress) set_invalid(invalid bool) { if progress.invalid != invalid { progress.invalid = invalid
+pub fn (progress $&Progress) set_invalid(invalid bool) { if progress.invalid != invalid { progress.invalid = invalid
     progress.dirty = true } }
 
 // Upstream: src/ui/widgets/styled_controls.xu
-pub fn (progress &mut Progress) set_buffer(value f64) int {
+pub fn (progress $&Progress) set_buffer(value f64) int {
     if !finite_metric(value,1.0) || value<progress.value { >> errors.new("widgets: buffered progress must contain completed progress") }
     progress.buffer=value
     progress.buffered=true
@@ -3046,11 +3046,11 @@ pub struct ResolvedStyle {
 
 // Upstream: src/ui/widgets/state_style.xu
 pub fn (c &ControlStyle) resolve(state int) ResolvedStyle {
-    mut border := c.palette.border
+    $border := c.palette.border
     if (state & STATE_INVALID) != 0 { border = c.palette.invalid }
-    mut opacity := c.icon_opacity
+    $opacity := c.icon_opacity
     if (state & STATE_DISABLED) != 0 { opacity = opacity * c.disabled_icon_opacity }
-    mut result := ResolvedStyle{background: state_fill(&c.palette,state),foreground: state_ink(&c.palette,state),border: border,
+    $result := ResolvedStyle{background: state_fill(&c.palette,state),foreground: state_ink(&c.palette,state),border: border,
         focus: c.palette.focus,selection: c.palette.selection,selection_text: c.palette.selection_text,placeholder: c.palette.placeholder,icon_opacity: opacity}
     for rule in c.states {
         if (state & rule.when) == rule.when && (state & rule.unless) == 0 {
@@ -3079,7 +3079,7 @@ fn validate_states(c &ControlStyle) int {
 
 // Upstream: src/ui/widgets/state_style.xu
 fn copy_states(c &ControlStyle) []StatePaint {
-    mut result := []StatePaint{}
+    $result := []StatePaint{}
     for rule in c.states { result.push(rule) }
     << result
 }
@@ -3135,7 +3135,7 @@ fn decode_control_style(data &string,fallback &ControlStyle) ControlStyle {
     padding := layout.Insets{
         left: read_style_f64(data,84),top: read_style_f64(data,92),
         right: read_style_f64(data,100),bottom: read_style_f64(data,108)}
-    mut states := []StatePaint{}
+    $states := []StatePaint{}
     for i in 0:states_len {
         base := 300 + i * 48
         states.push(StatePaint{
@@ -3191,7 +3191,7 @@ struct SelectionMotion { progress Tween
 
 // Upstream: src/ui/widgets/selection_motion.xu
 fn selection_motion(selected bool) SelectionMotion {
-    mut value := 0.0
+    $value := 0.0
     if selected { value = 1.0 }
     progress := tween(value) or >>
     << SelectionMotion{progress: progress,spec: motion_spec(),ready: false}
@@ -3382,11 +3382,11 @@ pub fn dark_styles() Styles {
         accent: draw.rgb(232,132,113),on_accent: draw.rgb(24,26,29),focus: draw.rgb(242,200,190),
         border: draw.rgb(74,80,88),invalid: draw.rgb(251,113,133),invalid_fill: draw.rgb(65,34,44),
         read_only: draw.rgb(29,32,36),selection: draw.rgb(180,57,45),selection_text: draw.rgb(255,255,255),placeholder: draw.rgb(158,167,178)}
-    mut c := ControlStyle{palette: p,font: font_style(15.0),inherit_font: true,padding: layout.Insets{left: 8.0,top: 8.0,right: 8.0,bottom: 8.0},
+    $c := ControlStyle{palette: p,font: font_style(15.0),inherit_font: true,padding: layout.Insets{left: 8.0,top: 8.0,right: 8.0,bottom: 8.0},
         radius: 6.0,border_width: 1.0,focus_width: 1.5,focus_inset: 3.0,min_width: 64.0,min_height: 36.0,
         gap: 8.0,indicator_size: 20.0,mark_width: 2.0,caret_width: 1.5,preedit_width: 1.0,
         shadow_x: 0.0,shadow_y: 0.0,shadow_spread: 0.0,shadow_blur: 0.0,align_x: 0.5,align_y: 0.5,shadow: draw.rgba(0,0,0,0),icon_size: 18.0,icon_placement: ICON_LEADING,icon_opacity: 1.0,disabled_icon_opacity: 0.4,states: []StatePaint{}}
-    mut result := Styles{font: font_style(15.0),text_scale: 1.0,density: 1.0,background: draw.rgb(24,26,29),
+    $result := Styles{font: font_style(15.0),text_scale: 1.0,density: 1.0,background: draw.rgb(24,26,29),
         button: c.clone(),checkbox: c.clone(),input: c.clone(),text_area: c.clone(),progress: c.clone(),scroll: c.clone()}
     result.button.padding.left = 14.0
     result.button.padding.right = 14.0
@@ -3407,11 +3407,11 @@ pub fn dark_styles() Styles {
     result.scroll.indicator_size = 10.0
     result.scroll.min_height = 24.0
     result.scroll.padding = layout.Insets{left: 3.0,top: 3.0,right: 3.0,bottom: 3.0}
-    mut hover := state_paint(STATE_HOVERED)
+    $hover := state_paint(STATE_HOVERED)
     hover.unless = STATE_DISABLED | STATE_INVALID | STATE_READ_ONLY
     hover.fields = PAINT_BORDER
     hover.border = draw.rgb(108,116,126)
-    mut focus := state_paint(STATE_FOCUSED)
+    $focus := state_paint(STATE_FOCUSED)
     focus.unless = STATE_DISABLED | STATE_INVALID
     focus.fields = PAINT_BORDER
     focus.border = p.focus
@@ -3427,8 +3427,8 @@ pub fn dark_styles() Styles {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn light_styles() Styles {
-    mut result := dark_styles()
-    mut p := result.button.palette
+    $result := dark_styles()
+    $p := result.button.palette
     p.normal = draw.rgb(243,242,238)
     p.hovered = draw.rgb(234,233,229)
     p.pressed = draw.rgb(222,221,216)
@@ -3451,11 +3451,11 @@ pub fn light_styles() Styles {
     result.text_area.palette = p
     result.progress.palette = p
     result.scroll.palette = p
-    mut hover := state_paint(STATE_HOVERED)
+    $hover := state_paint(STATE_HOVERED)
     hover.unless = STATE_DISABLED | STATE_INVALID | STATE_READ_ONLY
     hover.fields = PAINT_BORDER
     hover.border = draw.rgb(143,150,159)
-    mut focus := state_paint(STATE_FOCUSED)
+    $focus := state_paint(STATE_FOCUSED)
     focus.unless = STATE_DISABLED | STATE_INVALID
     focus.fields = PAINT_BORDER
     focus.border = p.focus
@@ -3471,8 +3471,8 @@ pub fn light_styles() Styles {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn contrast_styles() Styles {
-    mut result := dark_styles()
-    mut p := result.button.palette
+    $result := dark_styles()
+    $p := result.button.palette
     p.normal = draw.rgb(0,0,0)
     p.hovered = draw.rgb(32,32,32)
     p.pressed = draw.rgb(64,64,64)
@@ -3631,9 +3631,9 @@ pub fn (styles &Styles) validate() int {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) text_options(control &ControlStyle) draw.TextOptions {
-    mut font := copy_font(&control.font)
+    $font := copy_font(&control.font)
     if control.inherit_font { font = copy_font(&styles.font) }
-    mut options := draw.text_options(font.size * styles.text_scale)
+    $options := draw.text_options(font.size * styles.text_scale)
     options.family = font.family
     options.weight = font.weight
     options.italic = font.italic
@@ -3669,7 +3669,7 @@ fn rounded_path(bounds &layout.Rect,radius f64) draw.Path {
     h := bounds.height
     r := math.min(radius,math.min(w,h) * 0.5)
     k := r * 0.5522847498307936
-    mut p := draw.new_path(400)
+    $p := draw.new_path(400)
     p.move_to(x + r,y) or >>
     p.line_to(x + w - r,y) or >>
     p.cubic_to(x + w - r + k,y,x + w,y + r - k,x + w,y + r) or >>
@@ -3684,7 +3684,7 @@ fn rounded_path(bounds &layout.Rect,radius f64) draw.Path {
 }
 
 // Upstream: src/ui/widgets/style.xu
-fn rounded_fill(frame &mut draw.Frame,bounds &layout.Rect,radius f64,color draw.Color) int {
+fn rounded_fill(frame $&draw.Frame,bounds &layout.Rect,radius f64,color draw.Color) int {
     if bounds.width <= 0.0 || bounds.height <= 0.0 || (color.value() & 255) == 0 { << 0 }
     if radius <= 0.0 { << frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,color) or >> }
     path := rounded_path(bounds,radius) or >>
@@ -3692,7 +3692,7 @@ fn rounded_fill(frame &mut draw.Frame,bounds &layout.Rect,radius f64,color draw.
 }
 
 // Upstream: src/ui/widgets/style.xu
-fn rounded_stroke(frame &mut draw.Frame,bounds &layout.Rect,radius f64,color draw.Color,width f64) int {
+fn rounded_stroke(frame $&draw.Frame,bounds &layout.Rect,radius f64,color draw.Color,width f64) int {
     if width < 0.000001 || bounds.width <= width || bounds.height <= width || (color.value() & 255) == 0 { << 0 }
     inset := width * 0.5
     inner := layout.Rect{x: bounds.x + inset,y: bounds.y + inset,width: bounds.width - width,height: bounds.height - width}
@@ -3702,11 +3702,11 @@ fn rounded_stroke(frame &mut draw.Frame,bounds &layout.Rect,radius f64,color dra
 }
 
 // Upstream: src/ui/widgets/style.xu
-fn style_box(frame &mut draw.Frame,bounds &layout.Rect,style &ControlStyle,density f64,state int) int {
+fn style_box(frame $&draw.Frame,bounds &layout.Rect,style &ControlStyle,density f64,state int) int {
     radius := style.radius * density
     if (style.shadow.value() & 255) > 0 {
         // Bounded layered penumbra; no offscreen surface or backend blur needed.
-        mut steps := 1
+        $steps := 1
         if style.shadow_blur > 0.0 { steps = 8 }
         for i in 0:steps {
             spread := (style.shadow_spread + style.shadow_blur * f64(steps - i) / f64(steps)) * density
@@ -3741,7 +3741,7 @@ pub fn (c &ControlStyle) same_as(other &ControlStyle) bool { << control_equal(c,
 pub fn (c &ControlStyle) same_metrics(other &ControlStyle) bool { << measure_equal(c,other) }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn paint_box_styled(frame &mut draw.Frame,bounds &layout.Rect,styles &Styles,control &ControlStyle,state int) int {
+pub fn paint_box_styled(frame $&draw.Frame,bounds &layout.Rect,styles &Styles,control &ControlStyle,state int) int {
     << style_box(frame,bounds,control,styles.density,state) or >>
 }
 
@@ -3774,7 +3774,7 @@ pub fn (label &StyledLabel) style_or(fallback &ControlStyle) ControlStyle {
 }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn (label &mut StyledLabel) clear_style() {
+pub fn (label $&StyledLabel) clear_style() {
     if label.custom_style.len > 0 {
         label.custom_style = ""
         label.dirty = true
@@ -3782,7 +3782,7 @@ pub fn (label &mut StyledLabel) clear_style() {
 }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn (label &mut StyledLabel) set_text(value &string) { if label.value != value + "" { label.value = value + ""
+pub fn (label $&StyledLabel) set_text(value &string) { if label.value != value + "" { label.value = value + ""
     label.dirty = true } }
 
 // Upstream: src/ui/widgets/style.xu
@@ -3791,7 +3791,7 @@ fn options_equal(a &draw.TextOptions,b &draw.TextOptions) bool {
 }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn (label &mut StyledLabel) measure_styled(styles &Styles,control &ControlStyle) layout.Size {
+pub fn (label $&StyledLabel) measure_styled(styles &Styles,control &ControlStyle) layout.Size {
     effective := label.style_or(control)
     options := styles.text_options(&effective)
     if label.dirty || label.ellipsis_width >= 0.0 || label.layouts.len == 0 || !options_equal(&label.options,&options) {
@@ -3806,9 +3806,9 @@ pub fn (label &mut StyledLabel) measure_styled(styles &Styles,control &ControlSt
 }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn (label &mut StyledLabel) measure_wrapped(styles &Styles,control &ControlStyle,width f64) layout.Size {
+pub fn (label $&StyledLabel) measure_wrapped(styles &Styles,control &ControlStyle,width f64) layout.Size {
     effective := label.style_or(control)
-    mut options := styles.text_options(&effective)
+    $options := styles.text_options(&effective)
     if !finite_metric(width,100000.0) || width<=0.0 { >> errors.new("widgets: invalid wrapped text width") }
     options.width=width
     if label.dirty || label.ellipsis_width >= 0.0 || label.layouts.len==0 || !options_equal(&label.options,&options) {
@@ -3823,7 +3823,7 @@ pub fn (label &mut StyledLabel) measure_wrapped(styles &Styles,control &ControlS
 }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn (label &mut StyledLabel) measure_box_styled(styles &Styles,fallback &ControlStyle) layout.Size {
+pub fn (label $&StyledLabel) measure_box_styled(styles &Styles,fallback &ControlStyle) layout.Size {
     c := label.style_or(fallback)
     size := label.measure_styled(styles,&c) or >>
     << layout.Size{width: math.max(c.min_width * styles.density,size.width + (c.padding.left + c.padding.right) * styles.density),
@@ -3831,7 +3831,7 @@ pub fn (label &mut StyledLabel) measure_box_styled(styles &Styles,fallback &Cont
 }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn (label &mut StyledLabel) paint_text_styled(frame &mut draw.Frame,bounds &layout.Rect,styles &Styles,fallback &ControlStyle,state int) int {
+pub fn (label $&StyledLabel) paint_text_styled(frame $&draw.Frame,bounds &layout.Rect,styles &Styles,fallback &ControlStyle,state int) int {
     c := label.style_or(fallback)
     _ := label.measure_styled(styles,&c) or >>
     shaped := label.layouts[0]
@@ -3848,15 +3848,15 @@ pub fn (label &mut StyledLabel) paint_text_styled(frame &mut draw.Frame,bounds &
 }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn (label &mut StyledLabel) paint_styled(frame &mut draw.Frame,bounds &layout.Rect,styles &Styles,fallback &ControlStyle,state int) int {
+pub fn (label $&StyledLabel) paint_styled(frame $&draw.Frame,bounds &layout.Rect,styles &Styles,fallback &ControlStyle,state int) int {
     c := label.style_or(fallback)
     style_box(frame,bounds,&c,styles.density,state) or >>
     << label.paint_text_styled(frame,bounds,styles,&c,state) or >>
 }
 
 // Upstream: src/ui/widgets/style.xu
-pub fn (label &mut StyledLabel) dispose() {
-    for item in label.layouts { mut owned := item
+pub fn (label $&StyledLabel) dispose() {
+    for item in label.layouts { $owned := item
         owned.dispose() or (err) { -> } }
     label.ellipsis_width = -1.0
     label.layouts = []draw.TextLayout{}
@@ -3886,7 +3886,7 @@ pub fn (s &Styles) clone() Styles { << Styles{font: copy_font(&s.font),text_scal
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) switch_style() ControlStyle {
-    mut c := styles.checkbox.clone()
+    $c := styles.checkbox.clone()
     c.indicator_size = math.max(20.0,c.indicator_size)
     c.radius = 999.0
     c.mark_width = 3.0
@@ -3895,14 +3895,14 @@ pub fn (styles &Styles) switch_style() ControlStyle {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) radio_style() ControlStyle {
-    mut c := styles.checkbox.clone()
+    $c := styles.checkbox.clone()
     c.radius = 999.0
     << c
 }
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) slider_style() ControlStyle {
-    mut c := styles.progress.clone()
+    $c := styles.progress.clone()
     c.min_width = math.max(120.0,c.min_width)
     c.min_height = styles.button.min_height
     c.indicator_size = 18.0
@@ -3915,7 +3915,7 @@ pub fn (styles &Styles) slider_style() ControlStyle {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) tabs_style() ControlStyle {
-    mut c := styles.button.clone()
+    $c := styles.button.clone()
     c.padding = layout.Insets{left: 4.0,top: 4.0,right: 4.0,bottom: 4.0}
     c.gap = 4.0
     c.min_width = 160.0
@@ -3926,7 +3926,7 @@ pub fn (styles &Styles) tabs_style() ControlStyle {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) select_style() ControlStyle {
-    mut c := styles.button.clone()
+    $c := styles.button.clone()
     c.align_x = 0.0
     c.padding = layout.Insets{left: 12.0,top: 8.0,right: 12.0,bottom: 8.0}
     c.indicator_size = 12.0
@@ -3937,7 +3937,7 @@ pub fn (styles &Styles) select_style() ControlStyle {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) divider_style() ControlStyle {
-    mut c := styles.button.clone()
+    $c := styles.button.clone()
     c.min_width = 60.0
     c.min_height = 16.0
     c.border_width = math.max(1.0,styles.button.border_width)
@@ -3948,7 +3948,7 @@ pub fn (styles &Styles) divider_style() ControlStyle {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) badge_style() ControlStyle {
-    mut c := styles.button.clone()
+    $c := styles.button.clone()
     c.radius = 999.0
     c.min_width = 24.0
     c.min_height = 22.0
@@ -3960,7 +3960,7 @@ pub fn (styles &Styles) badge_style() ControlStyle {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) card_style() ControlStyle {
-    mut c := styles.button.clone()
+    $c := styles.button.clone()
     c.radius = 10.0
     c.padding = layout.Insets{left: 14.0,top: 14.0,right: 14.0,bottom: 14.0}
     c.min_width = 148.0
@@ -3972,7 +3972,7 @@ pub fn (styles &Styles) card_style() ControlStyle {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) stepper_style() ControlStyle {
-    mut c := styles.button.clone()
+    $c := styles.button.clone()
     c.min_width = 112.0
     c.min_height = 36.0
     c.indicator_size = 32.0
@@ -3983,7 +3983,7 @@ pub fn (styles &Styles) stepper_style() ControlStyle {
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) list_box_style() ControlStyle {
-    mut c := styles.input.clone()
+    $c := styles.input.clone()
     c.min_width = 140.0
     c.min_height = 96.0
     c.indicator_size = 28.0

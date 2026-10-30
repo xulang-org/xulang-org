@@ -27,10 +27,10 @@ class WidgetSourceTests(unittest.TestCase):
         signatures = [d['signature'] for d in manifest['declarations']]
         for kind in ('Button', 'Checkbox', 'Switch', 'Slider', 'Radio', 'ListBox', 'Tabs'):
             self.assertTrue(any('&' + kind + ') paint(' in s for s in signatures), kind)
-            self.assertTrue(any('&mut ' + kind + ') input(' in s for s in signatures), kind)
+            self.assertTrue(any('$&' + kind + ') input(' in s for s in signatures), kind)
         self.assertTrue(any('button_size(' in s for s in signatures))
         for kind in ('Card', 'Badge', 'Progress', 'Editor'):
-            self.assertTrue(any('&' + ('mut ' if kind == 'Editor' else '') + kind + ') paint(' in s for s in signatures), kind)
+            self.assertTrue(any(('$&' if kind == 'Editor' else '&') + kind + ') paint(' in s for s in signatures), kind)
         self.assertTrue(any('StyledLabel) paint_text_styled(' in s for s in signatures))
         self.assertTrue(any('Scroll) begin(' in s for s in signatures))
         self.assertFalse(any('pub struct Screen' in s or 'pub struct Host' in s for s in signatures))

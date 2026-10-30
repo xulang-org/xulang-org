@@ -17,23 +17,23 @@ struct Model {
     changes int
     status string
 }
-fn (model &mut Model) input(id int,kind int,event &ui.InputEvent) widgets.Action {
-    if id == model.title_id { control := mut &model.title
+fn (model $&Model) input(id int,kind int,event &ui.InputEvent) widgets.Action {
+    if id == model.title_id { control := $&model.title
         << control.route(kind,event) or >> }
-    if id == model.body_id { control := mut &model.body
+    if id == model.body_id { control := $&model.body
         << control.route(kind,event) or >> }
     << widgets.Action{kind: 0,id: id,needs_paint: false,request_focus: false,consumed: false,value: 0.0}
 }
-fn (model &mut Model) paint(id int,bounds &layout.Rect,frame &mut draw.Frame) bool {
+fn (model $&Model) paint(id int,bounds &layout.Rect,frame $&draw.Frame) bool {
     model.draw_node(id,frame) or (err) { eprintln(err.msg())
         << false }
     << true
 }
-fn (model &mut Model) draw_node(id int,frame &mut draw.Frame) int {
+fn (model $&Model) draw_node(id int,frame $&draw.Frame) int {
     theme := model.theme
-    if id == model.title_id { control := mut &model.title
+    if id == model.title_id { control := $&model.title
         control.paint(frame,&theme) or >> }
-    else if id == model.body_id { control := mut &model.body
+    else if id == model.body_id { control := $&model.body
         control.paint(frame,&theme) or >> }
     else if id == model.header {
         demo.text(&model.context,frame,0.0,0.0,14.0,demo.accent(),"08 / INPUT + TEXTAREA + DESKTOP") or >>
@@ -45,48 +45,48 @@ fn (model &mut Model) draw_node(id int,frame &mut draw.Frame) int {
     }
     << 0
 }
-fn (model &mut Model) place(view &mut widgets.View) int {
-    title := mut &model.title
+fn (model $&Model) place(view $&widgets.View) int {
+    title := $&model.title
     widgets.place_editor(view,title) or >>
-    body := mut &model.body
+    body := $&model.body
     widgets.place_editor(view,body) or >>
     << 0
 }
-fn (model &mut Model) native_event(event &ui.Event) bool {
-    title := mut &model.title
+fn (model $&Model) native_event(event &ui.Event) bool {
+    title := $&model.title
     first := title.event(event) or >>
-    body := mut &model.body
+    body := $&model.body
     second := body.event(event) or >>
     << first.kind == widgets.ACTION_CHANGE || second.kind == widgets.ACTION_CHANGE
 }
-fn (model &mut Model) editing(on bool) int {
-    title := mut &model.title
+fn (model $&Model) editing(on bool) int {
+    title := $&model.title
     title.enable(on) or >>
-    body := mut &model.body
+    body := $&model.body
     body.enable(on) or >>
     << 0
 }
-fn (model &mut Model) reset() int {
-    title := mut &model.title
+fn (model $&Model) reset() int {
+    title := $&model.title
     title.set_value(&"Untitled note") or >>
-    body := mut &model.body
+    body := $&model.body
     body.set_value(&"Write here.\n你好，Xu。\n\nSelection and IME are native; layout and painting stay in the retained View.") or >>
     << 0
 }
 fn menus(window &ui.Window,enabled bool) int {
-    mut entries := [ui.submenu("document","Document",-1)]
-    mut reset := ui.menu_action("reset","Reset note",0)
+    $entries := [ui.submenu("document","Document",-1)]
+    $reset := ui.menu_action("reset","Reset note",0)
     reset.key = 82
     reset.modifiers = ui.MENU_PRIMARY | ui.MOD_SHIFT
     entries.push(reset)
     entries.push(ui.menu_check("editing","Enable editing",0,enabled))
     entries.push(ui.menu_separator(0))
     entries.push(ui.submenu("display","Displays",0))
-    mut query := ui.menu_action("screens","Query current screens",4)
+    $query := ui.menu_action("screens","Query current screens",4)
     query.key = 68
     query.modifiers = ui.MENU_PRIMARY | ui.MOD_SHIFT
     entries.push(query)
-    mut unavailable := ui.menu_action("unavailable","Unavailable action",4)
+    $unavailable := ui.menu_action("unavailable","Unavailable action",4)
     unavailable.enabled = false
     entries.push(unavailable)
     << window.set_menu_entries(entries) or >>
@@ -99,11 +99,11 @@ fn scene(ech chan ui.Event) int {
     window := ui.Window{id: identity.window_id,generation: identity.generation,title: "",width: 0,height: 0,content_kind: ui.CONTENT_DRAW,content_backend_id: identity.canvas_id,closed: 0}
     menus(&window,true) or >>
     host := widgets.Host{context: context,identity: identity}
-    mut column := layout.box_style(layout.BOX_COLUMN)
+    $column := layout.box_style(layout.BOX_COLUMN)
     column.padding = layout.insets(24.0) or >>
     column.gap = 16.0
     column.cross_alignment = layout.CROSS_STRETCH
-    mut view := host.view(&column,demo.background()) or >>
+    $view := host.view(&column,demo.background()) or >>
     leaf := layout.box_style(layout.BOX_LEAF)
     header := view.add(view.root(),&leaf,&layout.Size{width: 500.0,height: 88.0}) or >>
     title_id := view.add(view.root(),&leaf,&layout.Size{width: 500.0,height: 44.0}) or >>
@@ -112,23 +112,23 @@ fn scene(ech chan ui.Event) int {
     for id in [header,title_id,body_id,footer] { view.set_boundary(id,true) or >> }
     for id in [title_id,body_id] { view.set_input(id,true,true) or >> }
     empty := layout.Rect{x: 0.0,y: 0.0,width: 0.0,height: 0.0}
-    mut model := Model{title: widgets.input(&context,&identity,title_id,&empty,&"Untitled note") or >>,
+    $model := Model{title: widgets.input(&context,&identity,title_id,&empty,&"Untitled note") or >>,
         body: widgets.text_area(&context,&identity,body_id,&empty,&"Write here.\n你好，Xu。\n\nSelection and IME are native; layout and painting stay in the retained View.") or >>,
         context: context,theme: widgets.default_theme(),header: header,title_id: title_id,body_id: body_id,footer: footer,changes: 0,status: "Ready"}
-    mut width := 820.0
-    mut height := 620.0
-    mut enabled := true
+    $width := 820.0
+    $height := 620.0
+    $enabled := true
     options := ui.RequestOptions{timeout_ms: 5000}
-    mut screens := window.screens_async(&options) or >>
+    $screens := window.screens_async(&options) or >>
     while true {
         constraints := layout.tight(width,height) or >>
         _ := view.layout(&constraints) or >>
-        model.place(mut &view) or >>
-        submitted := widgets.present(mut &view,&constraints,mut &model) or >>
+        model.place($&view) or >>
+        submitted := widgets.present($&view,&constraints,$&model) or >>
         if submitted {
-            first := mut &model.title
+            first := $&model.title
             first.painted()
-            second := mut &model.body
+            second := $&model.body
             second.painted()
         }
         event := demo.next(ech)
@@ -137,7 +137,7 @@ fn scene(ech chan ui.Event) int {
         if event.kind == ui.EV_CANVAS_METRICS { metrics := ui.metrics_of(&event) or >>
             width = metrics.width
             height = metrics.height }
-        actions := widgets.dispatch_event(mut &view,&event,mut &model) or >>
+        actions := widgets.dispatch_event($&view,&event,$&model) or >>
         if model.native_event(&event) or >> { model.changes = model.changes + 1
             view.mark_paint(footer) or >> }
         for action in actions { if action.kind == widgets.ACTION_SUBMIT { model.status = "Title submitted: " + model.title.value()
@@ -171,7 +171,7 @@ fn scene(ech chan ui.Event) int {
 fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
     << } }
 fn main() int {
-    mut app := demo.app("Xu UI / Writing Desk",820,620) or (err) { eprintln(err.msg())
+    $app := demo.app("Xu UI / Writing Desk",820,620) or (err) { eprintln(err.msg())
         << 1 }
     xu worker(app.event_ch)
     << app.run() or (err) { eprintln(err.msg())

@@ -13,7 +13,7 @@ Xu uses static typing, ownership inference, borrow checking, and deterministic r
 
 Ownership and borrow diagnostics constrain value use and mutable access. Shared mutable state in concurrent code still requires appropriate synchronization. Native code, FFI, and concurrent libraries have their own safety requirements; this is not a blanket guarantee against every data race or undefined behavior. See https://xulang.org/docs/lang/memory/ and https://xulang.org/docs/lang/concurrency/.
 
-Parameters, fields, and receivers use `name Type`, without a colon. Bindings use `name := value`, with `mut` for reassignment. `<<` returns, `>>` throws, and `or (err) { ... }` handles errors. Error text is obtained with `err.msg()`.
+Parameters, fields, and receivers use `name Type`, without a colon. Bindings use `name := value`, with a `$` prefix (`$name := value`) for reassignment; `$&T` is an exclusive borrow. `<<` returns, `>>` throws, and `or (err) { ... }` handles errors. Error text is obtained with `err.msg()`.
 
 ## Complete examples
 
@@ -47,7 +47,7 @@ fn main() int {
     xu worker(2, results)
     xu worker(3, results)
 
-    mut total := 0
+    $total := 0
     for i in 0:3 {
         value := <-results
         total += value
@@ -149,7 +149,7 @@ const MAX = 100
 
 fn main() int {
     name := "Xu"
-    mut age := 20
+    $age := 20
     age += 1
     println(name)
     println(age)
@@ -171,12 +171,12 @@ fn (c Counter) get() int {
     << c.n
 }
 
-fn (c &mut Counter) inc() {
+fn (c $&Counter) inc() {
     c.n += 1
 }
 
 fn main() int {
-    mut counter := Counter{n: 10}
+    $counter := Counter{n: 10}
     println(counter.get())
     counter.inc()
     println(counter.get())
@@ -186,7 +186,7 @@ fn main() int {
 
 ### Borrowing
 
-`&T` denotes a shared borrow; `&mut T` denotes an exclusive mutable borrow. Follow compiler diagnostics for inferred ownership and borrow lifetimes.
+`&T` denotes a shared borrow; `$&T` denotes an exclusive mutable borrow. Follow compiler diagnostics for inferred ownership and borrow lifetimes.
 
 ```xu
 @main
@@ -199,7 +199,7 @@ fn len_of(s &string) int {
     << s.len
 }
 
-fn append_bang(s &mut string) {
+fn append_bang(s $&string) {
     s.push_str("!")
 }
 
@@ -208,8 +208,8 @@ fn main() int {
     println(len_of(&msg))
     println(msg)
 
-    mut owned := "hi"
-    append_bang(mut &owned)
+    $owned := "hi"
+    append_bang($&owned)
     println(owned)
 
     take(owned)

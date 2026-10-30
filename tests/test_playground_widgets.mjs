@@ -55,11 +55,11 @@ test('mouse, key, slider dragging, Shift+Tab, and cancellation drive Xu control 
 
 test('editable Xu code changes widget state and native theme painting', () => {
   const edited = source.replace('count += 1', 'count += 7').replace('theme := widgets.default_theme()',
-    'mut theme := widgets.default_theme()\n    theme.hovered = draw.rgb(220,40,80)');
+    '$theme := widgets.default_theme()\n    theme.hovered = draw.rgb(220,40,80)');
   const result = run(click(80,120), edited);
   assert.match(result.stdout, /Count: 7/);
   assert.match(result.ui.commands, /#dc2850ff/);
-  assert.match(run(click(80,120), source.replace('mut count := 0', 'button.set_enabled(false)\n    mut count := 0')).stdout, /Count: 0/);
+  assert.match(run(click(80,120), source.replace('$count := 0', 'button.set_enabled(false)\n    $count := 0')).stdout, /Count: 0/);
 });
 
 test('typed input rejects invalid records and Canvas validates fractional paths and text', () => {
@@ -88,7 +88,7 @@ fn probe() int {
     reference := plain.caret(3,false) or >>
     assert(hit.index == 3)
     assert(hit.x == reference.x)
-    mut frame := context.new_frame(8192)
+    $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.text_layout(&masked,0.0,0.0,draw.rgb(255,255,255)) or >>
     frame.present() or >>
@@ -120,7 +120,7 @@ fn paint() int {
     println(hit.index)
     selection := masked.selection_rects(1,8) or >>
     println(int(selection[0].width))
-    mut frame := context.new_frame(16)
+    $frame := context.new_frame(16)
     frame.begin() or >>
     frame.text_layout(&masked,0.0,0.0,draw.rgb(255,255,255)) or >>
     frame.present() or >>

@@ -30,11 +30,11 @@ struct Model {
     value_label int
     note int
 }
-fn (m &Model) fill_table(screen &mut widgets.Screen) int {
+fn (m &Model) fill_table(screen $&widgets.Screen) int {
     names := ["Compiler","Widgets","Runtime","Desktop","Examples","Tooling"]
     states := ["Ready","Review","Ready","Draft","Ready","Review"]
     clocks := ["10:30","11:15","09:40","12:00","10:05","08:50"]
-    mut order := [0,1,2,3,4,5]
+    $order := [0,1,2,3,4,5]
     col := screen.sort_column(m.table) or >>
     if col == 0 { order = [0,3,4,2,5,1] }
     if col == 1 { order = [3,0,2,4,1,5] }
@@ -42,7 +42,7 @@ fn (m &Model) fill_table(screen &mut widgets.Screen) int {
     desc := screen.sort_descending(m.table) or >>
     page := (screen.selected(m.pager) or >>) + 1
     for row in 0:6 {
-        mut slot := row
+        $slot := row
         if desc { slot = 5 - row }
         i := order[slot]
         screen.set_cell(m.table,row,0,names[i] + " / " + str(page)) or >>
@@ -51,7 +51,7 @@ fn (m &Model) fill_table(screen &mut widgets.Screen) int {
     }
     << 0
 }
-fn (m &mut Model) layout(screen &mut widgets.Screen) int {
+fn (m $&Model) layout(screen $&widgets.Screen) int {
     width := screen.width()
     height := screen.height()
     row := screen.row_height()
@@ -88,18 +88,18 @@ fn (m &mut Model) layout(screen &mut widgets.Screen) int {
     screen.place(m.modal_actions[1],234.0,210.0,194.0,row) or >>
     << 0
 }
-fn (m &mut Model) update(screen &mut widgets.Screen,action widgets.Action) int {
+fn (m $&Model) update(screen $&widgets.Screen,action widgets.Action) int {
     if action.kind == widgets.ACTION_KEY && int(action.value) == ui.KEY_ESCAPE { screen.close() or >> }
     if action.kind == widgets.ACTION_ACTIVATE {
         for i in 0:3 { if action.id == m.nav[i] { m.page = i } }
         if action.id == m.settings[0] { m.theme = (m.theme + 1) % 3
             current := screen.styles()
-            mut next := widgets.preset_styles(m.theme) or >>
+            $next := widgets.preset_styles(m.theme) or >>
             next.text_scale = current.text_scale
             next.density = current.density
             screen.set_styles(&next) or >> }
         if action.id == m.settings[1] || action.id == m.settings[2] {
-            mut styles := screen.styles()
+            $styles := screen.styles()
             if action.id == m.settings[1] { if styles.text_scale == 1.0 { styles.text_scale = 1.4 }
                 else { styles.text_scale = 1.0 } }
             else { if styles.density == 1.0 { styles.density = 0.8 }
@@ -124,12 +124,12 @@ fn (m &mut Model) update(screen &mut widgets.Screen,action widgets.Action) int {
     }
     << 0
 }
-fn new_model(screen &mut widgets.Screen) Model {
-    mut nav := []int{}
+fn new_model(screen $&widgets.Screen) Model {
+    $nav := []int{}
     for text in ["Data","Inputs","Overlays"] { nav.push(screen.button(text) or >>) }
-    mut settings := []int{}
+    $settings := []int{}
     for text in ["Theme","Text size","Density"] { settings.push(screen.button(text) or >>) }
-    mut pages := []int{}
+    $pages := []int{}
     for i in 0:3 { pages.push(screen.group() or >>) }
     headings := [screen.label("XUUI / COMPONENT CATALOG",12.0,true) or >>,
         screen.label("Native components, working together.",26.0,false) or >>,
@@ -145,14 +145,14 @@ fn new_model(screen &mut widgets.Screen) Model {
     color := screen.color_picker(draw.rgba(59,130,246,220)) or >>
     spinner := screen.spinner() or >>
     value_label := screen.label("Value:    Selected tags: 1",14.0,false) or >>
-    mut overlay_buttons := []int{}
+    $overlay_buttons := []int{}
     for text in ["Open popover","Open modal","Show toast","Hover / focus me"] { overlay_buttons.push(screen.button(text) or >>) }
     popover := screen.popover(overlay_buttons[0],"An anchored panel for related actions.") or >>
     modal := screen.modal("Keep focus where it belongs","Screen owns focus, input isolation and restoration.") or >>
     _ := screen.tooltip(overlay_buttons[3],"Pointer and keyboard share this hint.") or >>
     modal_actions := [screen.button("Complete action") or >>,screen.button("Close") or >>]
     for id in modal_actions { screen.set_parent(id,modal) or >> }
-    mut captions := []int{}
+    $captions := []int{}
     for text in ["TABLE / sort columns · select rows · scroll","TREE / expand · navigate",
         "COMBO BOX / type to filter · native IME","MULTI SELECT / independent choices",
         "COLOR PICKER / red · green · blue · alpha","Loading indicator · respects reduced motion",
@@ -184,16 +184,16 @@ fn new_model(screen &mut widgets.Screen) Model {
 fn scene(events chan ui.Event) int {
     ready := demo.ready(events) or >>
     if ready.kind == ui.EV_EXIT { << 0 }
-    mut screen := widgets.screen(&ready) or >>
+    $screen := widgets.screen(&ready) or >>
     screen.resize(1040.0,820.0) or >>
     screen.set_min_size(1040,760) or >>
-    mut model := new_model(mut &screen) or (err) { screen.dispose()
+    $model := new_model($&screen) or (err) { screen.dispose()
         >> err }
-    << widgets.run_screen(mut &screen,events,mut &model) or >>
+    << widgets.run_screen($&screen,events,$&model) or >>
 }
 fn worker(events chan ui.Event) { scene(events) or (err) { demo.fail(err.msg())
     << } }
-fn launch() int { mut app := demo.app("Xu UI / Component Catalog",1040,820) or >>
+fn launch() int { $app := demo.app("Xu UI / Component Catalog",1040,820) or >>
     xu worker(app.event_ch)
     << app.run() or >> }
 fn main() int { << launch() or (err) { eprintln(err.msg())

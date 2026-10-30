@@ -5,16 +5,16 @@ prometheus #github.com/xulang-org/packages/prometheus
 
 fn verify_prometheus_metrics() {
     println("--- 1. Testing Prometheus Metrics & Exposition Formatting ---")
-    mut reg := prometheus.new_registry()
+    $reg := prometheus.new_registry()
 
     // 1. Counter with Labels
-    mut http_requests := prometheus.new_counter("http_requests_total", "Total incoming HTTP requests")
-    mut lbl1 := []prometheus.Label{}
+    $http_requests := prometheus.new_counter("http_requests_total", "Total incoming HTTP requests")
+    $lbl1 := []prometheus.Label{}
     lbl1.push(prometheus.Label{name: "method", value: "GET"})
     lbl1.push(prometheus.Label{name: "handler", value: "/api/orders"})
     http_requests.inc_labels(lbl1, 100)
 
-    mut lbl2 := []prometheus.Label{}
+    $lbl2 := []prometheus.Label{}
     lbl2.push(prometheus.Label{name: "method", value: "POST"})
     lbl2.push(prometheus.Label{name: "handler", value: "/api/orders"})
     http_requests.inc_labels(lbl2, 25)
@@ -23,7 +23,7 @@ fn verify_prometheus_metrics() {
     println("   [PASS] Counter registered with 2 labeled series.")
 
     // 2. Gauge
-    mut mem_usage := prometheus.new_gauge("process_memory_bytes", "Resident memory bytes")
+    $mem_usage := prometheus.new_gauge("process_memory_bytes", "Resident memory bytes")
     mem_usage.set("134217728")
     reg.register_gauge(mem_usage)
     println("   [PASS] Gauge registered.")
@@ -43,7 +43,7 @@ fn verify_prometheus_metrics() {
 
 fn verify_prometheus_pool() {
     println("\n--- 2. Testing Prometheus Pusher Connection Pool ---")
-    mut p := prometheus.open_pool("http://127.0.0.1:9091", 5)
+    $p := prometheus.open_pool("http://127.0.0.1:9091", 5)
 
     // 1. Connection Reuse Test
     fd1 := p.get_conn()
@@ -70,8 +70,8 @@ fn verify_prometheus_pool() {
     p.put_conn(fd3)
 
     // 3. High-level push delegation to Pushgateway
-    mut test_reg := prometheus.new_registry()
-    mut counter := prometheus.new_counter("xu_push_counter_total", "Test counter pushed to Pushgateway")
+    $test_reg := prometheus.new_registry()
+    $counter := prometheus.new_counter("xu_push_counter_total", "Test counter pushed to Pushgateway")
     counter.inc_by(42)
     test_reg.register_counter(counter)
 

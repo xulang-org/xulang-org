@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 
 const bytes = readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url));
-const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url)));
-const source = examples['ui-counter'].source;
+const examples = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url))).projects;
+const source = examples['ui-counter'].files['main.xu'];
 
 test('cached MIR replays from zero and recycles the execution arena across long sessions', async () => {
   const runtime = await createRuntime(bytes);
@@ -40,7 +40,7 @@ test('cached MIR replays from zero and recycles the execution arena across long 
 
 test('compile diagnostics survive reuse; parser and execution traps discard the interrupted instance', async () => {
   const runtime = await createRuntime(bytes);
-  const recursive = examples.recursion.source;
+  const recursive = examples.recursion.files['main.xu'];
   const first = runtime.run(recursive, {profile:true});
   const again = runtime.run(recursive, {profile:true});
   assert.equal(again.stdout, first.stdout);
@@ -52,7 +52,7 @@ test('compile diagnostics survive reuse; parser and execution traps discard the 
   assert.match(broken.stderr, /error:/);
   // Exponential strings trap at the fixed arena limit, exercising an
   // interrupted wasm stack rather than an ordinary VM diagnostic.
-  const bad = '@main\nfn main() int { mut s := "x"\n for i in 0:32 { s = s + s }\n println(s)\n << 0 }';
+  const bad = '@main\nfn main() int { $s := "x"\n for i in 0:32 { s = s + s }\n println(s)\n << 0 }';
   for (let i = 0; i < 2; i++) {
     const trapped = runtime.run(bad, {profile:true});
     assert.equal(trapped.exit, 1);
@@ -68,7 +68,7 @@ test('compile diagnostics survive reuse; parser and execution traps discard the 
 test('incremental input snapshots match full replay through clicks, history rewrites and page changes', async () => {
   const fast = await createRuntime(bytes);
   const reference = await createRuntime(bytes, {checkpoints:false});
-  const gallery = examples['ui-gallery'].source;
+  const gallery = examples['ui-gallery'].files['main.xu'];
   const click = (x,y) => [{kind:72,x,y,button:1,buttons:1}, {kind:73,x,y,button:1}];
   const histories = [[], click(100,125), [...click(100,125), ...click(260,125)],
     [...click(100,125), ...click(520,62)], // rewrite history: no snapshot reuse

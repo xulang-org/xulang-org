@@ -92,7 +92,7 @@ The original text is never included in the masked layout's Canvas paint command.
 ## Floating-point VM support
 
 Widget geometry uses real IEEE binary64 values. The development wasm32 backend
-supports typed f64 arithmetic; the selected 0.10.11 SDK predates that support.
+supports typed f64 arithmetic; the selected 0.10.12 SDK predates that support.
 The MIR interpreter represents VM values as
 integer bit patterns. Its `vm_fp_*` functions are still trap stubs: numeric
 `f64(int)` / `int(f64)` casts convert values and cannot reinterpret those bits.

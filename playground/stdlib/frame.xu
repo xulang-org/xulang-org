@@ -10,7 +10,7 @@
 fn scalar(value f64) string { <<< 1 }
 fn color_text(color Color) string {
     digits := "0123456789abcdef"
-    mut out := "#"
+    $out := "#"
     packed := color.value()
     for i in 0:8 { out = out + string_from_byte(digits[(packed >> ((7 - i) * 4)) & 15]) }
     << out
@@ -20,35 +20,35 @@ pub struct Context { canvas_id int
 pub fn default_context() Context { << Context{canvas_id: 1,generation: 1} }
 pub struct Frame { active bool }
 pub fn (context &Context) new_frame(capacity int) Frame { << Frame{active: false} }
-pub fn (frame &mut Frame) begin() int { frame.active = true
+pub fn (frame $&Frame) begin() int { frame.active = true
     << begin() }
-pub fn (frame &mut Frame) present() int { frame.active = false
+pub fn (frame $&Frame) present() int { frame.active = false
     << present() }
-pub fn (frame &mut Frame) cancel() { frame.active = false
+pub fn (frame $&Frame) cancel() { frame.active = false
     cancel() }
 fn (frame &Frame) writable() int {
     if !frame.active { >> errors.new("draw: frame is not writable") }
     << 0
 }
-pub fn (frame &mut Frame) clear(color Color) int { frame.writable() or >>
+pub fn (frame $&Frame) clear(color Color) int { frame.writable() or >>
     << set_bg(color_text(color)) }
-pub fn (frame &mut Frame) push() int { frame.writable() or >>
+pub fn (frame $&Frame) push() int { frame.writable() or >>
     << push() }
-pub fn (frame &mut Frame) pop() int { frame.writable() or >>
+pub fn (frame $&Frame) pop() int { frame.writable() or >>
     << pop() }
-pub fn (frame &mut Frame) clip_rect(x f64,y f64,w f64,h f64) int {
+pub fn (frame $&Frame) clip_rect(x f64,y f64,w f64,h f64) int {
     frame.writable() or >>
     << cmd("clip_rect\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(w) + "\t" + scalar(h))
 }
-pub fn (frame &mut Frame) fill_rect(x f64,y f64,w f64,h f64,color Color) int {
+pub fn (frame $&Frame) fill_rect(x f64,y f64,w f64,h f64,color Color) int {
     frame.writable() or >>
     << cmd("fill_rect\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(w) + "\t" + scalar(h) + "\t" + color_text(color))
 }
-pub fn (frame &mut Frame) stroke_rect(x f64,y f64,w f64,h f64,color Color,width f64) int {
+pub fn (frame $&Frame) stroke_rect(x f64,y f64,w f64,h f64,color Color,width f64) int {
     frame.writable() or >>
     << cmd("stroke_rect\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(w) + "\t" + scalar(h) + "\t" + color_text(color) + "\t" + scalar(width))
 }
-pub fn (frame &mut Frame) line(x1 f64,y1 f64,x2 f64,y2 f64,color Color,width f64) int {
+pub fn (frame $&Frame) line(x1 f64,y1 f64,x2 f64,y2 f64,color Color,width f64) int {
     frame.writable() or >>
     << cmd("line\t" + scalar(x1) + "\t" + scalar(y1) + "\t" + scalar(x2) + "\t" + scalar(y2) + "\t" + color_text(color) + "\t" + scalar(width))
 }
@@ -66,7 +66,7 @@ pub fn (context &Context) layout_masked_text(value &string,options &TextOptions)
 }
 fn (context &Context) layout_text_mode(value &string,options &TextOptions,masked bool) TextLayout {
     if options.size < 1.0 || options.size > 256.0 || math.is_nan(options.size) { >> errors.new("draw: invalid browser text size") }
-    mut cells := 0
+    $cells := 0
     for i in 0:value.len {
         c := value[i] & 255
         if c < 128 || c >= 192 { cells += 1 }
@@ -76,27 +76,27 @@ fn (context &Context) layout_text_mode(value &string,options &TextOptions,masked
     metrics := TextMetrics{width: width,height: height,baseline: options.size,lines: 1,ink_x: 0.0,ink_y: 0.0,ink_width: width,ink_height: height}
     // A negative handle marks concealed text; keep the original UTF-8 bytes
     // for caret/selection queries and mask only the emitted paint command.
-    mut id := retain(value)
+    $id := retain(value)
     if masked { id = 0 - id }
     << TextLayout{metrics: metrics,id: id,canvas_id: context.canvas_id,generation: context.generation}
 }
 fn layout_source(layout &TextLayout) string {
-    mut id := layout.id
+    $id := layout.id
     if id < 0 { id = 0 - id }
     << lookup(id)
 }
 fn layout_display(layout &TextLayout) string {
     value := layout_source(layout)
     if layout.id >= 0 { << value }
-    mut masked := ""
+    $masked := ""
     for i in 0:value.len {
         c := value[i] & 255
         if c < 128 || c >= 192 { masked = masked + "*" }
     }
     << masked
 }
-pub fn (layout &mut TextLayout) dispose() int { << 0 }
-pub fn (frame &mut Frame) text_layout(label &TextLayout,x f64,y f64,color Color) int {
+pub fn (layout $&TextLayout) dispose() int { << 0 }
+pub fn (frame $&Frame) text_layout(label &TextLayout,x f64,y f64,color Color) int {
     frame.writable() or >>
     << cmd("layout_text\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(label.metrics.baseline) + "\t" + color_text(color) + "\t" + scalar(label.metrics.width) + "\t" + clean(layout_display(label)))
 }
@@ -106,21 +106,21 @@ pub fn (frame &mut Frame) text_layout(label &TextLayout,x f64,y f64,color Color)
 pub const FILL_NONZERO = 0
 pub struct Path { commands string }
 pub fn new_path(capacity int) Path { << Path{commands: ""} }
-pub fn (path &mut Path) move_to(x f64,y f64) int {
+pub fn (path $&Path) move_to(x f64,y f64) int {
     path.commands = path.commands + "path_move\t" + scalar(x) + "\t" + scalar(y) + "\n"
     << 0
 }
-pub fn (path &mut Path) line_to(x f64,y f64) int {
+pub fn (path $&Path) line_to(x f64,y f64) int {
     path.commands = path.commands + "path_line\t" + scalar(x) + "\t" + scalar(y) + "\n"
     << 0
 }
-pub fn (path &mut Path) cubic_to(x1 f64,y1 f64,x2 f64,y2 f64,x f64,y f64) int {
+pub fn (path $&Path) cubic_to(x1 f64,y1 f64,x2 f64,y2 f64,x f64,y f64) int {
     path.commands = path.commands + "path_cubic\t" + scalar(x1) + "\t" + scalar(y1) + "\t" + scalar(x2) + "\t" + scalar(y2) + "\t" + scalar(x) + "\t" + scalar(y) + "\n"
     << 0
 }
-pub fn (path &mut Path) close() int { path.commands = path.commands + "path_close\n"
+pub fn (path $&Path) close() int { path.commands = path.commands + "path_close\n"
     << 0 }
-pub fn (frame &mut Frame) fill_path(path &Path,color Color,rule int) int {
+pub fn (frame $&Frame) fill_path(path &Path,color Color,rule int) int {
     frame.writable() or >>
     cmd("path_begin")
     // cmd adds a newline; trim the path's final newline before transport.
@@ -128,7 +128,7 @@ pub fn (frame &mut Frame) fill_path(path &Path,color Color,rule int) int {
     << cmd("path_fill\t" + color_text(color))
 }
 
-pub fn (frame &mut Frame) stroke_path(path &Path,color Color,options &StrokeOptions) int {
+pub fn (frame $&Frame) stroke_path(path &Path,color Color,options &StrokeOptions) int {
     frame.writable() or >>
     if options.cap != CAP_BUTT || options.join != JOIN_MITER || options.dashes.len > 0 {
         >> errors.new("draw: unsupported browser stroke options")
@@ -140,7 +140,7 @@ pub fn (frame &mut Frame) stroke_path(path &Path,color Color,options &StrokeOpti
 
 
 pub fn (context &Context) clone() Context { << Context{canvas_id: context.canvas_id,generation: context.generation} }
-pub fn (frame &mut Frame) translate(x f64,y f64) int {
+pub fn (frame $&Frame) translate(x f64,y f64) int {
     frame.writable() or >>
     << cmd("translate\t" + scalar(x) + "\t" + scalar(y))
 }
@@ -159,12 +159,12 @@ pub fn (layout &TextLayout) bind_input_transform(input &ui.TextInput,revision in
 pub fn (layout &TextLayout) caret(index int,trailing bool) TextHit {
     value := layout_source(layout)
     if index < 0 || index > value.len { >> errors.new("draw: invalid browser caret index") }
-    mut cells := 0
-    mut position := 0
+    $cells := 0
+    $position := 0
     while position < index { position += utf8.decode_width(&value,position) or >>
         cells += 1 }
     if position != index { >> errors.new("draw: caret index must be a UTF-8 boundary") }
-    mut length := 0
+    $length := 0
     if index < value.len { length = utf8.decode_width(&value,index) or >> }
     if trailing && length > 0 { cells += 1 }
     << TextHit{index: index,length: length,trailing: trailing,inside: true,x: f64(cells) * layout.metrics.baseline * 0.6,y: 0.0,height: layout.metrics.height}
@@ -173,7 +173,7 @@ pub fn (layout &TextLayout) selection_rects(start int,end int) []TextSelectionRe
     if end < start { >> errors.new("draw: invalid browser selection") }
     left := layout.caret(start,false) or >>
     right := layout.caret(end,false) or >>
-    mut rects := []TextSelectionRect{}
+    $rects := []TextSelectionRect{}
     if end > start { rects.push(TextSelectionRect{x: left.x,y: 0.0,width: right.x - left.x,height: layout.metrics.height}) }
     << rects
 }
