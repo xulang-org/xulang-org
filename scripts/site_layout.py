@@ -2,6 +2,7 @@
 
 from html import escape
 from html.parser import HTMLParser
+from collections.abc import Iterable
 import json
 from pathlib import Path
 import re
@@ -41,20 +42,25 @@ _CURATED_API_GROUPS = [
     ('xi-shield-check', '密码与国密', 'Crypto', 'crypto/aes crypto/cipher crypto/sm2 crypto/sm3 crypto/sm4 crypto/sm9 crypto/zuc crypto/gmtls crypto/tls crypto/rand crypto/rsa crypto/sha256 crypto/sha512 crypto/sha1 crypto/sha3 crypto/md5 crypto/hmac crypto/x509 crypto/x509/pkix crypto/ecdsa crypto/ed25519 crypto/des crypto/rc4 crypto/subtle crypto/password crypto/jwt'.split()),
     ('xi-package', '压缩 / 图像 / 数学', 'Compress / image / math', 'compress/gzip image math'.split()),
     ('xi-database', '数据库', 'Database', 'database/sql database/sql/driver'.split()),
-    ('xi-package', '扩展包', 'External packages', ['packages/' + name for name in
+    ('xi-package', '扩展包', 'Extensions', ['packages/' + name for name in
         'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite websocket zookeeper'.split()]),
     ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/widgets ui/webview'.split()),
 ]
 
 
-def api_groups(root: Path | None = None) -> list[tuple[str, str, str, list[str]]]:
-    """Discover released API pages while preserving curated groups and order."""
+def api_pages(root: Path | None = None) -> set[str]:
+    """Discover released pages, including widget details but excluding previews."""
     api_root = (root or Path(__file__).resolve().parents[1]) / 'content/en/api'
-    on_disk = {
+    return {
         page.relative_to(api_root).with_suffix('').as_posix()
         for page in api_root.rglob('*.html')
         if page.name != 'index.html' and 'preview' not in page.relative_to(api_root).parts
     }
+
+
+def group_api_packages(packages: Iterable[str]) -> list[tuple[str, str, str, list[str]]]:
+    """Apply the same curated topic order to generated packages and disk pages."""
+    on_disk = set(packages)
     groups = [
         (icon, zh, en, [package for package in packages if not package or package in on_disk])
         for icon, zh, en, packages in _CURATED_API_GROUPS
@@ -72,6 +78,46 @@ def api_groups(root: Path | None = None) -> list[tuple[str, str, str, list[str]]
     if other:
         groups.append(('xi-package', '其他', 'Other', other))
     return [group for group in groups if group[3]]
+
+
+def api_groups(root: Path | None = None) -> list[tuple[str, str, str, list[str]]]:
+    return group_api_packages(api_pages(root))
+
+
+def widget_catalog(root: Path | None = None) -> dict:
+    path = (root or Path(__file__).resolve().parents[1]) / 'templates/widgets.json'
+    return json.loads(path.read_text(encoding='utf-8')) if path.is_file() else {}
+
+
+def api_sections(packages: Iterable[str], root: Path | None = None) -> list[tuple]:
+    """Three primary buckets shared by the API index and every released sidebar."""
+    standard, ui, extensions = [], [], []
+    for icon, zh, en, members in group_api_packages(packages):
+        if en == 'API':
+            continue
+        if en == 'UI':
+            modules = [p for p in members if not p.startswith('ui/widgets/')]
+            widgets = set(members) - set(modules)
+            if modules:
+                ui.append((icon, '包', 'Packages', modules))
+            catalog = widget_catalog(root)
+            for category, labels in catalog.get('groups', {}).items():
+                paths = ['ui/widgets/' + c['slug'] for c in catalog['components']
+                         if c['group'] == category and 'ui/widgets/' + c['slug'] in widgets]
+                if paths:
+                    ui.append(('xi-package', labels[0], labels[1], paths))
+                    widgets.difference_update(paths)
+            if widgets:
+                ui.append(('xi-package', '其他控件', 'Other widgets', sorted(widgets)))
+        elif en == 'Extensions':
+            extensions.append((icon, '集成', 'Integrations', members))
+        else:
+            standard.append((icon, zh, en, members))
+    return [
+        ('standard-library', 'xi-cpu', '标准库', 'Standard library', standard),
+        ('ui', 'xi-xuui', 'UI', 'UI', ui),
+        ('extensions', 'xi-package', '扩展包', 'Extensions', extensions),
+    ]
 
 
 API_GROUPS = api_groups()
@@ -150,10 +196,39 @@ def side_link(href: str, label: str, route: str) -> str:
     return f'<li><a{active} href="{href}">{escape(label)}</a></li>'
 
 
+def api_sidebar_sections(route: str, en: bool, tree: list[tuple], root: Path | None = None) -> list[str]:
+    prefix = '' if en else '/zh'
+    index = prefix + '/api'
+    widget_names = {'ui/widgets/' + c['slug']: c['name']
+                    for c in widget_catalog(root).get('components', [])}
+    sections = ['<ul class="side-api-index">' + side_link(index, 'API index' if en else 'API 索引', route) + '</ul>']
+    for key, icon, zh, english, topics in tree:
+        paths = [p for _icon, _zh, _en, members in topics for p in members]
+        is_open = route in [index + '/' + p for p in paths] or (route == index and key == 'standard-library')
+        opened = ' open' if is_open else ''
+        sections.append(f'<details class="side-api-bucket" data-api-section="{key}"{opened}>'
+                        f'<summary><i class="xi {icon}" aria-hidden="true"></i> '
+                        f'<span>{escape(english if en else zh)}</span><span class="side-badge">{len(paths)}</span></summary>')
+        for _icon, topic_zh, topic_en, members in topics:
+            opened = ' open' if any(route == index + '/' + p for p in members) else ''
+            sections.append(f'<details class="side-api-topic"{opened}><summary>'
+                            f'<span>{escape(topic_en if en else topic_zh)}</span> <span class="side-badge">{len(members)}</span></summary>'
+                            '<ul class="side-api-links">')
+            for package in members:
+                label = '#' + package.removeprefix('packages/')
+                if package.startswith('ui/widgets/'):
+                    label = widget_names.get(package, package.rsplit('/', 1)[1])
+                sections.append(side_link(index + '/' + package, label, route))
+            sections.append('</ul></details>')
+        sections.append('</details>')
+    return sections
+
+
 def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None) -> str:
     prefix = '' if en else '/zh'
     rest = route if en else route.removeprefix('/zh')
     groups = []
+    api_tree = None
     if rest.startswith('/docs/'):
         for icon, zh, english, links in DOC_GROUPS:
             groups.append((icon, english if en else zh, [
@@ -167,28 +242,8 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
               for package in ('ui', 'ui/draw', 'ui/layout', 'ui/widgets', 'ui/webview')],
             (prefix + '/api', 'Released SDK API' if en else '正式 SDK API'),
         ]))
-    elif rest == '/api/ui/widgets' or rest.startswith('/api/ui/widgets/'):
-        groups.append(('xi-xuui', 'UI', [
-            (prefix + '/api', 'API'), (prefix + '/api/ui', 'UI'),
-            (prefix + '/api/ui/widgets', 'Widgets'),
-            (prefix + '/api/ui/draw', '#ui/draw'), (prefix + '/api/ui/layout', '#ui/layout'),
-            (prefix + '/api/ui/webview', '#ui/webview'),
-        ]))
-        catalog_path = (root or Path(__file__).resolve().parents[1]) / 'templates/widgets.json'
-        if catalog_path.is_file():
-            catalog = json.loads(catalog_path.read_text(encoding='utf-8'))
-            for category, labels in catalog['groups'].items():
-                groups.append(('xi-package', labels[en], [
-                    (prefix + '/api/ui/widgets/' + c['slug'], c['name'])
-                    for c in catalog['components'] if c['group'] == category
-                ]))
     elif rest == '/api' or rest.startswith('/api/'):
-        for icon, zh, english, packages in api_groups(root):
-            groups.append((icon, english if en else zh, [
-                (prefix + '/api' + ('/' + package if package else ''),
-                 '#' + package.removeprefix('packages/') if package else ('Index' if en else '索引'))
-                for package in packages
-            ]))
+        api_tree = api_sections(api_pages(root), root)
     elif rest == '/blog' or rest.startswith('/blog/'):
         groups.append(('xi-chat', 'Blog', [
             (prefix + '/blog', 'Index' if en else '博客索引'),
@@ -203,7 +258,7 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
             (prefix + '/blog/packages-0-1-1', 'packages 0.1.1'),
             (prefix + '/blog/xu-0-1-0', 'Xu 0.1.0'),
         ]))
-    if not groups:
+    if not groups and api_tree is None:
         return ''
 
     # 判断是否有任何一个组命中当前路由
@@ -213,7 +268,7 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
             matched_idx = idx
             break
 
-    sections = []
+    sections = api_sidebar_sections(route, en, api_tree, root) if api_tree is not None else []
     for idx, (icon, label, links) in enumerate(groups):
         # 激活规则：
         # 1. 命中当前路由的组必定展开；

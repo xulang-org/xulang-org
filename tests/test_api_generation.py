@@ -4,6 +4,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import re
 from pathlib import Path
 import sys
 import tempfile
@@ -18,6 +19,93 @@ spec.loader.exec_module(api)
 
 
 class APIGenerationTests(unittest.TestCase):
+    def test_bilingual_indexes_have_three_sections_topics_and_browser_captures(self):
+        class Index(HTMLParser):
+            def __init__(self, source):
+                super().__init__()
+                self.sections, self.headings, self.images, self.links, self.topics = [], [], [], [], []
+                self.section = None
+                self.heading = None
+                self.feed(source)
+
+            def handle_starttag(self, tag, attrs):
+                attrs = dict(attrs)
+                if tag == 'section':
+                    self.section = attrs.get('id')
+                    self.sections.append(self.section)
+                elif tag == 'h2':
+                    self.heading = ''
+                elif tag == 'img':
+                    self.images.append((self.section, attrs))
+                elif tag == 'a':
+                    self.links.append((self.section, attrs['href']))
+                elif tag == 'details':
+                    self.topics.append((self.section, attrs))
+
+            def handle_data(self, data):
+                if self.heading is not None:
+                    self.heading += data
+
+            def handle_endtag(self, tag):
+                if tag == 'h2':
+                    self.headings.append(self.heading)
+                    self.heading = None
+                elif tag == 'section':
+                    self.section = None
+
+        packages = [api.Package(p, '#' + p) for p in ('fmt', 'encoding/json', 'net/http', 'ui', 'ui/widgets', 'packages/future')]
+        for lang, prefix, headings in (('en', '', ['Standard library', 'UI', 'Extensions']),
+                                       ('zh', '/zh', ['标准库', 'UI', '扩展包'])):
+            for kind, source in (('snapshot', (ROOT / f'content/{lang}/api/index.html').read_text()),
+                                 ('generated', api.render_index(packages, lang, '0.10.12'))):
+                with self.subTest(lang=lang, source=kind):
+                    parsed = Index(source)
+                    self.assertEqual(parsed.sections, ['api-standard-library', 'api-ui', 'api-extensions'])
+                    self.assertEqual(parsed.headings, headings)
+                    for section in parsed.sections:
+                        self.assertIn((None, '#' + section), parsed.links)
+                    self.assertTrue(any(section == 'api-standard-library' for section, _attrs in parsed.topics))
+                    self.assertTrue(all('open' not in attrs for section, attrs in parsed.topics if section == 'api-standard-library'))
+                    self.assertEqual(len(parsed.images), 1)
+                    section, img = parsed.images[0]
+                    self.assertEqual(section, 'api-ui')
+                    self.assertEqual(img['src'], f'/img/api/ui-browser-{lang}.png')
+                    self.assertTrue((ROOT / 'www' / img['src'].lstrip('/')).is_file())
+                    self.assertIn('浏览器' if lang == 'zh' else 'Browser capture', img['alt'])
+                    for section, href in parsed.links:
+                        if href.startswith(prefix + '/api/packages/'):
+                            self.assertEqual(section, 'api-extensions')
+                        elif href == prefix + '/api/ui' or href.startswith(prefix + '/api/ui/'):
+                            self.assertEqual(section, 'api-ui')
+                    catalog = json.loads((ROOT / 'templates/widgets.json').read_text())
+                    for category in catalog['groups']:
+                        self.assertIn(('api-ui', prefix + '/api/ui/widgets#components-' + category), parsed.links)
+
+    def test_index_preserves_every_package_and_links_to_real_widget_categories(self):
+        for lang, prefix in (('en', ''), ('zh', '/zh')):
+            with self.subTest(lang=lang):
+                root = ROOT / f'content/{lang}/api'
+                source = (root / 'index.html').read_text()
+                packages = {p.relative_to(root).with_suffix('').as_posix() for p in root.rglob('*.html')
+                            if p.name != 'index.html' and 'preview' not in p.relative_to(root).parts
+                            and not p.relative_to(root).as_posix().startswith('ui/widgets/')}
+                hrefs = re.findall(r'<a href="([^"#?]+)"', source)
+                self.assertEqual({href for href in hrefs if href.startswith(prefix + '/api/')},
+                                 {prefix + '/api/' + p for p in packages})
+                module = (root / 'ui/widgets.html').read_text()
+                for category in json.loads((ROOT / 'templates/widgets.json').read_text())['groups']:
+                    self.assertIn('id="components-' + category + '"', module)
+
+    def test_index_uses_staged_english_capture_fallback(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            image = root / 'www/img/api/ui-browser.png'
+            image.parent.mkdir(parents=True)
+            image.write_bytes((ROOT / 'www/img/api/ui-browser.png').read_bytes())
+            rendered = api.render_index([api.Package('ui', '#ui')], 'en', '0.10.12', root=root)
+            self.assertIn('<img src="/img/api/ui-browser.png"', rendered)
+            self.assertNotIn('ui-browser-en.png', rendered)
+
     def test_widget_factories_do_not_override_same_named_input_methods(self):
         saved = api.OVERRIDES.copy()
         try:

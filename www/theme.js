@@ -135,13 +135,16 @@
     var side = btn.closest('.side');
     if (!side) return;
     var groups = side.querySelectorAll('.side-group');
-    var allOpen = Array.from(groups).every(function (g) { return g.classList.contains('is-open'); });
+    var apiGroups = side.querySelectorAll('.side-api-bucket, .side-api-topic');
+    var allOpen = Array.from(groups).every(function (g) { return g.classList.contains('is-open'); }) &&
+      Array.from(apiGroups).every(function (g) { return g.open; });
     var nextState = !allOpen;
     groups.forEach(function (g) {
       g.classList.toggle('is-open', nextState);
       var h = g.querySelector('button.side-h');
       if (h) h.setAttribute('aria-expanded', String(nextState));
     });
+    apiGroups.forEach(function (g) { g.open = nextState; });
     side.querySelectorAll('.side-toggle-all-btn, .side-footer-btn').forEach(function (b) {
       if (b.querySelector('.xi-sliders')) b.setAttribute('data-expanded', String(nextState));
     });
