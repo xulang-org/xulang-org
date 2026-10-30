@@ -48,15 +48,28 @@ fn main() int {
 '''
 
 
-def source(name, slug):
+def source(name, slug, description=''):
     constructor, initial, kind = CONTROLS[slug]
     static = kind in ('styled-label', 'card', 'divider')
     interactive = kind in ('button', 'label', 'slider', 'tabs', 'list', 'scroll')
-    bounds = 'box(32.0,104.0,550.0,44.0)'
-    if kind in ('list', 'scroll', 'card'):
-        bounds = 'box(32.0,86.0,550.0,160.0)'
-    if kind == 'progress':
-        bounds = 'box(32.0,116.0,550.0,22.0)'
+    bounds = 'box(48.0,104.0,240.0,44.0)'
+    if slug in ('checkbox', 'switch', 'radio'):
+        bounds = 'box(48.0,104.0,260.0,44.0)'
+    elif slug == 'slider':
+        bounds = 'box(48.0,104.0,360.0,44.0)'
+    elif slug in ('tabs', 'segmented'):
+        bounds = 'box(48.0,104.0,480.0,44.0)'
+    elif kind in ('list', 'scroll', 'card'):
+        bounds = 'box(48.0,96.0,544.0,180.0)'
+    elif kind == 'progress':
+        bounds = 'box(48.0,116.0,400.0,22.0)'
+    elif kind == 'badge':
+        bounds = 'box(48.0,116.0,100.0,36.0)'
+    elif kind == 'styled-label':
+        bounds = 'box(48.0,104.0,544.0,44.0)'
+    elif kind == 'divider':
+        bounds = 'box(48.0,120.0,544.0,20.0)'
+
     code = PREFIX + f'    bounds := {bounds}\n    $control := widgets.{constructor}' + ('' if kind == 'styled-label' else ' or >>') + '\n'
     if not static:
         labels = {'button': 'Count +1 / 计数 +1', 'checkbox': 'Receive updates / 接收更新',
@@ -68,18 +81,19 @@ def source(name, slug):
     if kind in ('tabs', 'list', 'scroll'):
         code += '    $labels := []draw.TextLayout{}\n    for value in ["Overview","Activity","Settings"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n'
     if not interactive and not static:
-        code += '    $trigger := widgets.button(&identity,2,&box(32.0,260.0,280.0,40.0)) or >>\n'
+        code += '    $trigger := widgets.button(&identity,2,&box(48.0,260.0,240.0,40.0)) or >>\n'
         code += '    $trigger_label := widgets.styled_label(&context,&"' + labels[slug] + '")\n'
-    event_code = f'    $focus := widgets.focus_group(&identity,[{1 if interactive else 2}]) or >>\n'
+    focus_id = 1 if interactive else 2
+    event_code = f'    $focus := widgets.focus_group(&identity,[{focus_id}]) or >>\n'
     event_code += '''    while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
         navigation := focus.input(&event)
 '''
     focus_control = 'control' if interactive else 'trigger'
-    event_code += f'        {focus_control}.set_focus(focus.current() == {1 if interactive else 2})\n        if navigation.consumed {{ -> }}\n'
+    event_code += f'        {focus_control}.set_focus(focus.current() == {focus_id})\n        if navigation.consumed {{ -> }}\n'
     event_code += f'        action := {focus_control}.input(&event)' + (' or >>' if kind in ('list', 'scroll') else '') + '\n'
-    event_code += f'        if action.request_focus {{ focus.focus({1 if interactive else 2}) or >> }}\n'
+    event_code += f'        if action.request_focus {{ focus.focus({focus_id}) or >> }}\n'
     event_code += '        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n'
     if kind == 'progress':
         event_code += '        if action.kind == widgets.ACTION_ACTIVATE { control.set_value(f64(count % 11) / 10.0) or >> }\n'
@@ -99,16 +113,15 @@ def source(name, slug):
     else:
         message = '"Count: " + str(count)'
     code += '    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n'
-    code += f'    draw.text(32,24,24,"#f5f0ed","{name}")\n'
+    code += '    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(25,22,28)) or >>\n'
+    code += '    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(62,54,69),1.0) or >>\n'
+    code += f'    draw.text(32,22,20,"#f5f0ed","XUUI  /  {name}")\n'
+    code += f'    draw.text(32,48,12,"#b3aab6","{description}")\n'
     if kind == 'badge':
         code += '    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) or >>\n    control.paint($&frame,&badge_label,&theme) or >>\n'
-    elif kind == 'button':
+    elif kind in ('button', 'label'):
         code += '    control.paint_styled($&frame,$&styled,&styles) or >>\n'
-    elif kind == 'label':
-        code += '    control.paint_styled($&frame,$&styled,&styles) or >>\n'
-    elif kind == 'slider':
-        code += '    control.paint_styled($&frame,&styles) or >>\n'
-    elif kind == 'progress':
+    elif kind in ('slider', 'progress'):
         code += '    control.paint_styled($&frame,&styles) or >>\n'
     elif kind in ('tabs', 'list'):
         code += '    control.paint($&frame,&labels,&theme) or >>\n'
@@ -123,10 +136,10 @@ def source(name, slug):
     else:
         code += '    control.paint($&frame,&theme) or >>\n'
     if kind == 'card':
-        code += '    draw.text(48,110,20,"#f5f0ed","Xu workspace")\n    draw.text(48,146,16,"#b3aab6","A place for your next idea.")\n'
+        code += '    draw.text(64,124,18,"#f5f0ed","Workspace configuration")\n    draw.text(64,158,13,"#b3aab6","Header, body and footer keep distinct spacing.")\n'
     if not interactive and not static:
         code += '    trigger.paint_styled($&frame,$&trigger_label,&styles) or >>\n'
-    code += '    draw.text(32,320,16,"#b3aab6",' + message + ')\n    println(' + message + ')\n'
+    code += '    draw.text(32,326,13,"#b3aab6",' + message + ')\n    println(' + message + ')\n'
     return code + SUFFIX, initial + '\n'
 
 
@@ -138,7 +151,8 @@ def generate(root=ROOT, check=False):
     for c in widgets['components']:
         if c['slug'] not in CONTROLS and c['slug'] not in CASES:
             continue
-        code, expected = (source if c['slug'] in CONTROLS else portable_source)(c['name'], c['slug'])
+        desc = c['description'].get('zh', '')
+        code, expected = (source if c['slug'] in CONTROLS else portable_source)(c['name'], c['slug'], desc)
         key = 'widget-' + c['slug']
         catalog['projects'][key] = dict(group='ui', component=c['slug'], title={lang: c['name'] for lang in ('zh', 'en')},
             description=c['description'], exercise=c['exercise'], entry='main.xu', files={'main.xu': code}, expected={'kind': 'stdout', 'value': expected})

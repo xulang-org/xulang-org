@@ -221,16 +221,21 @@
     open(active);
     save();
   }
-  function showConsole() { el('console-tab').click(); }
-  var resultTabs = [el('console-tab'), el('preview-tab')];
+  function showConsole() {
+    var tab = el('console-tab');
+    if (tab && typeof tab.click === 'function') tab.click();
+  }
+  var consoleTab = el('console-tab');
+  var previewTab = el('preview-tab');
+  var resultTabs = (consoleTab && previewTab) ? [consoleTab, previewTab] : [];
   resultTabs.forEach(function (button, index) {
     button.addEventListener('click', function () {
       resultTabs.forEach(function (tab, i) {
         tab.setAttribute('aria-selected', String(i === index));
         tab.tabIndex = i === index ? 0 : -1;
       });
-      el('console-panel').hidden = index !== 0;
-      el('preview-panel').hidden = index !== 1;
+      if (el('console-panel')) el('console-panel').hidden = index !== 0;
+      if (el('preview-panel')) el('preview-panel').hidden = index !== 1;
     });
     button.addEventListener('keydown', function (event) { tabKeys(event, resultTabs); });
   });
