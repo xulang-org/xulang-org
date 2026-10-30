@@ -5,12 +5,12 @@
 #math
 demo #"github.com/xulang-org/examples/ui_demo"
 
-fn paint(context &draw.Context,frame &mut draw.Frame,input &ui.TextInput) int {
+fn paint(context &draw.Context,frame $&draw.Frame,input &ui.TextInput) int {
     state := input.snapshot() or >>
     value := state.display_value()
     println("Text revision: " + str(state.revision) + " / display bytes: " + str(value.len))
     options := draw.text_options(28.0)
-    mut text := context.layout_text(&value,&options) or >>
+    $text := context.layout_text(&value,&options) or >>
     text.bind_input(input,state.revision,44.0,180.0) or >>
     frame.begin() or >>
     frame.set_bg(demo.background()) or >>
@@ -44,14 +44,14 @@ fn scene(ech chan ui.Event) int {
     seed := "你好，Xu 👩‍💻 · café"
     caret := ui.TextInputRect{x: 44.0,y: 180.0,width: 2.0,height: 36.0}
     options := ui.text_input_options(&seed,caret)
-    mut input := ui.start_text_input(identity.canvas_id,identity.generation,&options) or >>
-    mut frame := context.new_frame(4096)
-    paint(&context,mut &frame,&input) or >>
+    $input := ui.start_text_input(identity.canvas_id,identity.generation,&options) or >>
+    $frame := context.new_frame(4096)
+    paint(&context,$&frame,&input) or >>
     while true {
         event := demo.next(ech)
         if event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <- }
         if event.window_id != identity.window_id { -> }
-        mut dirty := event.kind == ui.EV_CANVAS_METRICS
+        $dirty := event.kind == ui.EV_CANVAS_METRICS
         if event.kind >= ui.EV_TEXT_COMMIT && event.kind <= ui.EV_TEXT_SURROUNDING_DELETE {
             edit := ui.text_edit_of(&event) or >>
             if edit.input.id == input.id {
@@ -75,7 +75,7 @@ fn scene(ech chan ui.Event) int {
                 }
             }
         }
-        if dirty { paint(&context,mut &frame,&input) or >> }
+        if dirty { paint(&context,$&frame,&input) or >> }
     }
     frame.dispose()
     input.stop() or (err) { << 0 }
@@ -84,7 +84,7 @@ fn scene(ech chan ui.Event) int {
 fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
     << } }
 fn launch() int {
-    mut app := demo.app("Xu UI / Native Text Input",860,430) or >>
+    $app := demo.app("Xu UI / Native Text Input",860,430) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }

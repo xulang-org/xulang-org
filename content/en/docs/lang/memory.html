@@ -5,12 +5,12 @@
 <tr><th>Form</th><th>Meaning</th></tr>
 <tr><td>by-value <code>string</code> / <code>[]T</code></td><td>move</td></tr>
 <tr><td><code>&amp;x</code></td><td>shared borrow</td></tr>
-<tr><td><code>mut &amp;x</code> (<code>x</code> must be <code>mut</code>)</td><td>exclusive borrow</td></tr>
-<tr><td><code>*r</code></td><td>deref a scalar (writes need <code>&amp;mut</code>)</td></tr>
+<tr><td><code>$&amp;x</code> (<code>x</code> must be declared <code>$x</code>)</td><td>exclusive borrow</td></tr>
+<tr><td><code>*r</code></td><td>deref a scalar (writes need <code>$&amp;</code>)</td></tr>
 </table>
-<p>While a shared borrow is live you cannot write / move / take <code>&amp;mut</code>. There is no <code>unsafe</code> keyword. Hosted targets reject volatile stores to arbitrary addresses.</p>
+<p>While a shared borrow is live you cannot write / move / take <code>$&amp;</code>. There is no <code>unsafe</code> keyword. Hosted targets reject volatile stores to arbitrary addresses.</p>
 <h2>Borrow Diagnostics in 0.9.4</h2>
-<p>Borrow checking traverses nested expressions. For example, <code>f(mut &amp;v, &amp;v)</code> takes exclusive and shared borrows of <code>v</code> simultaneously and is rejected even inside <code>int(f64(f(mut &amp;v, &amp;v)) * 32.0)</code>. Pass separate values, or split the operations so mutable use ends before taking a shared borrow.</p>
+<p>Borrow checking traverses nested expressions. For example, <code>f($&amp;v, &amp;v)</code> takes exclusive and shared borrows of <code>v</code> simultaneously and is rejected even inside <code>int(f64(f($&amp;v, &amp;v)) * 32.0)</code>. Pass separate values, or split the operations so mutable use ends before taking a shared borrow.</p>
 <p>Borrows taken inside a loop remain live across its back edge; a later iteration that conflicts with a still-live borrow is rejected. If upgrading exposes these diagnostics, adjust borrow scopes or ownership transfers. See the <a href="/en/blog/xu-0-9-4">0.9.4 release announcement</a> for migration details.</p>
 <p>File and Conn are affine resources: moves transfer ownership and scope exit closes them. Their native handles are package-private. Borrow the resource for I/O and observe explicit EOF/error data and write-progress results when using the progress APIs.</p>
 <p><a href="/en/api/io">I/O API</a> · <a href="/en/api/os">OS API</a></p>

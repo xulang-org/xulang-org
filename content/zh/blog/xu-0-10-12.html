@@ -1,0 +1,14 @@
+<!--title: Xu 0.10.12：可变标记与 Windows 网络修复-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.10.12：可变标记与 Windows 网络修复</h1>
+<p class="meta">2026-10-29 · <a href="https://github.com/xulang-org/xu/releases/tag/v0.10.12">Xu v0.10.12</a></p>
+<p>Xu 0.10.12 已正式发布。这个版本统一了可变绑定与可写借用的文档写法，并修复 Windows socket 就绪检查和 TCP/UDP 错误返回处理。请一起升级编译器、标准库和产品工具。</p>
+<h2>可变绑定与可写借用</h2>
+<p>可变绑定使用 <code>$name :=</code>，可写借用表达式使用 <code>$&amp;value</code>，可写引用类型使用 <code>$&amp;T</code>。产品源码、示例（包括 XACP 示例）及编译器诊断已统一采用这些标记。不可变赋值和可变借用的诊断现在分别建议 <code>$x := value</code> 与 <code>$&amp;owner</code>。</p>
+<p>迁移时请同步检查变量声明、借用表达式和参数类型，参阅<a href="/docs/start">语言入门</a>及随 SDK 提供的示例。</p>
+<h2>Windows 网络修复</h2>
+<p>socket 就绪检查现在完整初始化 <code>WSAPOLLFD</code> 的事件字段，并拒绝被零扩展的 <code>SOCKET_ERROR</code>。此前残留的栈标志可能使非阻塞检查返回错误的大正数，导致 HTTP 接收循环在处理已连接客户端前阻塞于 <code>accept</code>。</p>
+<p>Winsock 适配层对 32 位状态和字节数统一执行符号扩展，同时保留指针宽度的 SOCKET 句柄。TCP/UDP 收发错误不再被误判为成功字节数或异常长度的接收字符串；公共 API 和 ABI 保持兼容。</p>
+<h2>安装与横测</h2>
+<p>通过<a href="/download">下载页</a>升级完整 SDK，并用 <a href="https://github.com/xulang-org/xu/releases/download/v0.10.12/SHA256SUMS">SHA-256 摘要</a>核对发行附件。完整发布说明见<a href="https://github.com/xulang-org/xu/blob/v0.10.12/RELEASES.zh-CN.md">版本文档</a>。</p>
+<p>官网<a href="/benchmarks">横测页</a>也已更新至 0.10.12：48 项负载覆盖 macOS、Linux、Windows 的 ARM64 和 x64。每个平台的结果均核验编译器身份、源码闭包与标准输出；具体环境和测量方法以横测页为准。</p>

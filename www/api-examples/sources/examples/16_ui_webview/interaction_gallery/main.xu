@@ -8,7 +8,7 @@
 #errors
 demo #"github.com/xulang-org/examples/ui_demo"
 
-struct Model {
+struct Model{
     tree int
     name int
     search int
@@ -32,289 +32,234 @@ struct Model {
     compact bool
     reduced bool
     fail_next bool
+    appearance_dirty bool
     task_id int
     completed int
     running bool
     checksum int
     next_work time.Instant
 }
-fn make_model(screen &mut widgets.Screen) Model {
-    mut name_decoration := widgets.field_decoration(&"Output name")
+fn make_model(screen $&widgets.Screen) Model{
+    $name_decoration := widgets.field_decoration(&"Output name")
     name_decoration.helper = "A persistent label, native text selection and IME"
     name_decoration.error = "Enter an output name before building."
     name_decoration.clearable = true
-    name := screen.field("",&name_decoration) or >>
-    mut search_decoration := widgets.field_decoration(&"Find a component")
+    name := screen.field("", &name_decoration) or >>
+    $search_decoration := widgets.field_decoration(&"Find a component")
     search_decoration.helper = "Matching nodes keep their ancestor path"
     search_decoration.clearable = true
-    search := screen.field("",&search_decoration) or >>
+    search := screen.field("", &search_decoration) or >>
     tree := screen.tree() or >>
-    root := screen.tree_add(tree,-1,"xu-workbench") or >>
-    src := screen.tree_add(tree,root,"src") or >>
-    entry := screen.tree_add(tree,src,"main.xu") or >>
-    controls := screen.tree_add(tree,src,"widgets") or >>
-    for label in ["tree_view.xu","task_button.xu","field.xu","table.xu"] {
-        node := screen.tree_add(tree,controls,label) or >>
-        screen.set_tree_action(tree,node,true) or >>
+    root := screen.tree_add(tree, - 1, "xu-workbench") or >>
+    src := screen.tree_add(tree, root, "src") or >>
+    entry := screen.tree_add(tree, src, "main.xu") or >>
+    controls := screen.tree_add(tree, src, "widgets") or >>
+    for label in["tree_view.xu", "task_button.xu", "field.xu", "table.xu"] {
+        node := screen.tree_add(tree, controls, label) or >>
+        screen.set_tree_action(tree, node, true) or >>
     }
-    manifest := screen.tree_add(tree,root,"xu.xun") or >>
-    screen.set_tree_metadata(tree,entry,"entry") or >>
-    screen.set_tree_metadata(tree,manifest,"module") or >>
-    for node in [root,src,controls] { screen.set_expanded(tree,node,true) or >> }
+    manifest := screen.tree_add(tree, root, "xu.xun") or >>
+    screen.set_tree_metadata(tree, entry, "entry") or >>
+    screen.set_tree_metadata(tree, manifest, "module") or >>
+    for node in[root, src, controls] {screen.set_expanded(tree, node, true) or >> }
     task := screen.task_button("Build project") or >>
-    screen.set_task_labels(task,"Building","Built · run again","Retry build","Build again") or >>
-    table := screen.table(&["Component","Experience","Status"],18,0) or >>
-    screen.set_table_column(table,0,144.0,0.0) or >>
-    screen.set_table_column(table,1,340.0,0.0) or >>
-    screen.set_table_column(table,2,128.0,0.0) or >>
-    names := ["TreeView","TaskButton","Field","Table","Select","Popover"]
-    details := ["Find and reveal","Real task progress","Floating label / native IME","Resizable columns","Keyboard choices","Anchored feedback"]
+    screen.set_task_labels(task, "Building", "Built · run again", "Retry build", "Build again") or >>
+    table := screen.table(&["Component", "Experience", "Status"], 18, 0) or >>
+    screen.set_table_column(table, 0, 144.0, 0.0) or >>
+    screen.set_table_column(table, 1, 340.0, 0.0) or >>
+    screen.set_table_column(table, 2, 128.0, 0.0) or >>
+    names :=["TreeView", "TaskButton", "Field", "Table", "Select", "Popover"]
+    details :=["Find and reveal", "Real task progress", "Floating label / native IME", "Resizable columns", "Keyboard choices", "Anchored feedback"]
     for row in 0:18 {
         index := row % 6
-        screen.set_cell(table,row,0,names[index]) or >>
-        screen.set_cell(table,row,1,details[index]) or >>
-        screen.set_cell(table,row,2,"Ready") or >>
+        screen.set_cell(table, row, 0, names[index]) or >>
+        screen.set_cell(table, row, 1, details[index]) or >>
+        screen.set_cell(table, row, 2, "Ready") or >>
     }
-    headings := [screen.label("XUUI / INTERACTION LAB",12.0,true) or >>,
-        screen.label("Precision in every interaction.",25.0,false) or >>,
-        screen.label("WORKSPACE",12.0,true) or >>,screen.label("BUILD CONFIGURATION",12.0,true) or >>,
-        screen.label("COMPONENTS / scroll, select and sort",12.0,true) or >>]
+    headings :=[screen.label("XUUI / INTERACTION LAB", 12.0, true) or >>,
+    screen.label("Precision in every interaction.", 25.0, false) or >>,
+    screen.label("WORKSPACE", 12.0, true) or >>, screen.label("BUILD CONFIGURATION", 12.0, true) or >>,
+    screen.label("COMPONENTS / scroll, select and sort", 12.0, true) or >>]
     work_group := screen.group() or >>
     basic_group := screen.group() or >>
-    for id in [tree,name,search,task,table,headings[2],headings[3],headings[4]] { screen.set_parent(id,work_group) or >> }
+    for id in[tree, name, search, task, table, headings[2], headings[3], headings[4]] {screen.set_parent(id, work_group) or >> }
     extras := extra_controls(screen) or >>
-    for id in extras { screen.set_parent(id,basic_group) or >> }
+    for id in extras{screen.set_parent(id, basic_group) or >> }
     cancel := screen.button("Cancel task") or >>
-    screen.set_parent(cancel,work_group) or >>
+    screen.set_parent(cancel, work_group) or >>
     controls_page := screen.button("All controls") or >>
     styles := screen.styles()
     primary_style := styles.button_variant(widgets.BUTTON_PRIMARY) or >>
-    screen.set_control_style(task,&primary_style) or >>
-    << Model{tree: tree,name: name,search: search,task: task,cancel: cancel,
-        table: table,theme: screen.button("Theme") or >>,guides: screen.button("Tree guides") or >>,
-        density: screen.button("Density") or >>,effects: screen.button("Motion") or >>,failure: screen.button("Fail next build") or >>,
-        message: screen.label("Local work batches report completed items. No simulated percentage clock.",13.0,true) or >>,
-        headings: headings,controls_page: controls_page,work_group: work_group,basic_group: basic_group,extras: extras,show_controls: false,theme_index: 1,guided: false,compact: false,reduced: false,fail_next: false,
-        task_id: 0,completed: 0,running: false,checksum: 0,next_work: time.zero_instant()}
+    screen.set_control_style(task, &primary_style) or >>
+    << Model{tree: tree, name: name, search: search, task: task, cancel: cancel,
+        table: table, theme: screen.button("Theme") or >>, guides: screen.button("Tree guides") or >>,
+        density: screen.button("Density") or >>, effects: screen.button("Motion") or >>, failure: screen.button("Fail next build") or >>,
+        message: screen.label("Local work batches report completed items. No simulated percentage clock.", 13.0, true) or >>,
+        headings: headings, controls_page: controls_page, work_group: work_group, basic_group: basic_group, extras: extras, show_controls: false, theme_index: 1, guided: false, compact: false, reduced: false, fail_next: false, appearance_dirty: true,
+        task_id: 0, completed: 0, running: false, checksum: 0, next_work: time.zero_instant()}
 }
-fn (m &Model) layout(screen &mut widgets.Screen) int {
+fn (m &Model) layout(screen $&widgets.Screen) int {
     width := screen.width()
     height := screen.height()
     left := 310.0
-    screen.place(m.headings[0],28.0,24.0,width - 56.0,22.0) or >>
-    screen.place(m.headings[1],28.0,54.0,width - 56.0,36.0) or >>
-    buttons := [m.theme,m.guides,m.density,m.effects,m.failure,m.controls_page]
-    for i in 0:buttons.len { screen.place(buttons[i],28.0 + f64(i) * 144.0,111.0,132.0,36.0) or >> }
-    screen.set_visible(m.work_group,!m.show_controls) or >>
-    screen.set_visible(m.basic_group,m.show_controls) or >>
-    screen.set_selected_button(m.controls_page,m.show_controls) or >>
-    extra_layout(screen,&m.extras) or >>
-    screen.set_selected_button(m.guides,m.guided) or >>
-    screen.set_selected_button(m.effects,m.reduced) or >>
-    screen.set_selected_button(m.failure,m.fail_next) or >>
-    screen.place(m.headings[2],28.0,173.0,left - 24.0,24.0) or >>
-    screen.place(m.search,28.0,208.0,left - 24.0,80.0) or >>
-    screen.place(m.tree,28.0,302.0,left - 24.0,height - 352.0) or >>
+    screen.place(m.headings[0], 28.0, 24.0, width - 56.0, 22.0) or >>
+    screen.place(m.headings[1], 28.0, 54.0, width - 56.0, 36.0) or >>
+    buttons :=[m.theme, m.guides, m.density, m.effects, m.failure, m.controls_page]
+    for i in 0:buttons.len{screen.place(buttons[i], 28.0 + f64(i) * 144.0, 111.0, 132.0, 36.0) or >> }
+    screen.set_visible(m.work_group, !m.show_controls) or >>
+    screen.set_visible(m.basic_group, m.show_controls) or >>
+    screen.set_selected_button(m.controls_page, m.show_controls) or >>
+    extra_layout(screen, &m.extras) or >>
+    screen.set_selected_button(m.guides, m.guided) or >>
+    screen.set_selected_button(m.effects, m.reduced) or >>
+    screen.set_selected_button(m.failure, m.fail_next) or >>
+    screen.place(m.headings[2], 28.0, 173.0, left - 24.0, 24.0) or >>
+    screen.place(m.search, 28.0, 208.0, left - 24.0, 80.0) or >>
+    screen.place(m.tree, 28.0, 302.0, left - 24.0, height - 352.0) or >>
     x := left + 36.0
     right_width := width - x - 28.0
-    screen.place(m.headings[3],x,173.0,right_width,24.0) or >>
-    screen.place(m.name,x,208.0,right_width,86.0) or >>
-    screen.place(m.task,x,307.0,230.0,40.0) or >>
-    screen.place(m.cancel,x + 246.0,307.0,136.0,40.0) or >>
-    screen.set_enabled(m.cancel,m.running) or >>
-    screen.place(m.headings[4],x,377.0,right_width,24.0) or >>
-    screen.place(m.table,x,413.0,right_width,height - 493.0) or >>
-    screen.place(m.message,28.0,height - 41.0,width - 56.0,24.0) or >>
+    screen.place(m.headings[3], x, 173.0, right_width, 24.0) or >>
+    screen.place(m.name, x, 208.0, right_width, 86.0) or >>
+    screen.place(m.task, x, 307.0, 230.0, 40.0) or >>
+    screen.place(m.cancel, x + 246.0, 307.0, 136.0, 40.0) or >>
+    screen.set_enabled(m.cancel, m.running) or >>
+    screen.place(m.headings[4], x, 377.0, right_width, 24.0) or >>
+    screen.place(m.table, x, 413.0, right_width, height - 493.0) or >>
+    screen.place(m.message, 28.0, height - 41.0, width - 56.0, 24.0) or >>
     << 0
 }
-fn (m &mut Model) update(screen &mut widgets.Screen,action widgets.Action) int {
-    if action.kind == widgets.ACTION_CHANGE {
-        if action.id == m.search { query := screen.text_value(m.search) or >>
-            screen.set_tree_filter(m.tree,query) or >> }
-        if action.id == m.name { screen.set_field_invalid(m.name,false) or >> }
-    }
-    if action.kind == widgets.ACTION_ITEM_ACTION { _ := screen.notify("Node action · " + str(int(action.value))) or >> }
-    if action.kind == widgets.ACTION_COMMIT && action.id == m.extras[5] { screen.set_text(m.message,"Slider committed · " + str(int(action.value))) or >> }
-    if action.kind == widgets.ACTION_NOTICE_ACTION { screen.set_text(m.message,"Notification action · " + str(int(action.value))) or >> }
-    if action.kind != widgets.ACTION_ACTIVATE { << 0 }
-    if action.id == m.controls_page { m.show_controls = !m.show_controls }
-    if action.id == m.extras[19] {
-        mut notice := widgets.notice(&"Saved a local configuration")
-        notice.action = "Undo"
-        _ := screen.enqueue_notice(&notice) or >>
-    }
-
-    if action.id == m.theme {
-        m.theme_index = (m.theme_index + 1) % 3
-        current := screen.styles()
-        mut styles := widgets.preset_styles(m.theme_index) or >>
-        styles.density = current.density
-        screen.set_styles(&styles) or >>
-        primary_style := styles.button_variant(widgets.BUTTON_PRIMARY) or >>
-        screen.set_control_style(m.task,&primary_style) or >>
-    }
-    if action.id == m.guides {
-        m.guided = !m.guided
-        mut appearance := widgets.tree_appearance()
-        appearance.guides = m.guided
-        screen.set_tree_appearance(m.tree,&appearance) or >>
-    }
-    if action.id == m.density {
-        m.compact = !m.compact
-        mut styles := screen.styles()
-        styles.density = 1.0
-        if m.compact { styles.density = 0.85 }
-        screen.set_styles(&styles) or >>
-    }
-    if action.id == m.effects { m.reduced = !m.reduced
-        screen.set_reduced_motion(m.reduced) }
-    if action.id == m.failure { m.fail_next = !m.fail_next }
-    if action.id == m.task && !m.running {
-        name := screen.text_value(m.name) or >>
-        if name.len == 0 { screen.set_field_invalid(m.name,true) or >>
-            screen.focus(m.name) or >>
-            << 0 }
-        m.task_id = m.task_id + 1
-        m.completed = 0
-        m.checksum = 0
-        m.running = true
-        m.next_work = time.instant()
-        screen.begin_task(m.task,m.task_id) or >>
-    }
-    if action.id == m.cancel && m.running {
-        _ := screen.complete_task(m.task,m.task_id,widgets.TASK_CANCELLED) or >>
-        m.running = false
-        screen.set_text(m.message,"Task cancelled. Completed work remains " + str(m.completed) + "/48.") or >>
-    }
-    << 0
-}
-fn (m &mut Model) work(screen &mut widgets.Screen,now time.Instant) int {
-    if !m.running || now.before(m.next_work) { << 0 }
+fn (m $&Model) work(screen $&widgets.Screen, now time.Instant) int {
+    if !m.running || now.before(m.next_work) { << 0}
     // Each progress update follows an actual bounded work batch. The pause
     // represents an application work queue and never changes the percentage.
-    for i in 0:5000 { m.checksum = (m.checksum + i * (m.completed + 1)) % 1000003 }
+    for i in 0:5000 {m.checksum =(m.checksum + i *(m.completed + 1)) % 1000003}
     m.completed = m.completed + 1
-    _ := screen.set_task_progress(m.task,m.task_id,f64(m.completed) / 48.0) or >>
+    _ := screen.set_task_progress(m.task, m.task_id, f64(m.completed) / 48.0) or >>
     m.next_work = now.add(time.milliseconds(35) or >>) or >>
     if m.fail_next && m.completed == 18 {
-        _ := screen.complete_task(m.task,m.task_id,widgets.TASK_ERROR) or >>
+        _ := screen.complete_task(m.task, m.task_id, widgets.TASK_ERROR) or >>
         m.running = false
         m.fail_next = false
-        screen.set_text(m.message,"Example failure. Retry starts a new task; stale progress is rejected.") or >>
+        screen.set_text(m.message, "Example failure. Retry starts a new task; stale progress is rejected.") or >>
     } else if m.completed == 48 {
-        _ := screen.complete_task(m.task,m.task_id,widgets.TASK_SUCCESS) or >>
+        _ := screen.complete_task(m.task, m.task_id, widgets.TASK_SUCCESS) or >>
         m.running = false
-        screen.set_text(m.message,"48/48 work batches completed · checksum " + str(m.checksum)) or >>
+        screen.set_text(m.message, "48/48 work batches completed · checksum " + str(m.checksum)) or >>
     }
     << 0
 }
-fn extra_controls(screen &mut widgets.Screen) []int {
-    mut ids := []int{}
+fn extra_controls(screen $&widgets.Screen)[]int {
+    $ids :=[]int {}
     ids.push(screen.card() or >>)
-    ids.push(screen.label("CONTROLS / keyboard, pointer and state",12.0,true) or >>)
-    ids.push(screen.checkbox("Keep generated files",true) or >>)
-    ids.push(screen.switch_control("Live preview",true) or >>)
-    ids.push(screen.radio("Use workspace settings",1,true) or >>)
-    ids.push(screen.slider(0.0,100.0,40.0) or >>)
-    ids.push(screen.stepper(1.0,16.0,1.0,4.0) or >>)
-    ids.push(screen.tabs(&["Files","History","Output"],0) or >>)
-    ids.push(screen.segmented(&["Desktop","Tablet","Phone"],0) or >>)
-    ids.push(screen.select_box(&["Xu source","Configuration","Plain text"],0) or >>)
-    ids.push(screen.list_box(&["Compiler","Widgets","Runtime","Desktop","Examples","Tooling"],0) or >>)
+    ids.push(screen.label("CONTROLS / keyboard, pointer and state", 12.0, true) or >>)
+    ids.push(screen.checkbox("Keep generated files", true) or >>)
+    ids.push(screen.switch_control("Live preview", true) or >>)
+    ids.push(screen.radio("Use workspace settings", 1, true) or >>)
+    ids.push(screen.slider(0.0, 100.0, 40.0) or >>)
+    ids.push(screen.stepper(1.0, 16.0, 1.0, 4.0) or >>)
+    ids.push(screen.tabs(&["Files", "History", "Output"], 0) or >>)
+    ids.push(screen.segmented(&["Desktop", "Tablet", "Phone"], 0) or >>)
+    ids.push(screen.select_box(&["Xu source", "Configuration", "Plain text"], 0) or >>)
+    ids.push(screen.list_box(&["Compiler", "Widgets", "Runtime", "Desktop", "Examples", "Tooling"], 0) or >>)
     ids.push(screen.progress(0.62) or >>)
     ids.push(screen.badge("Ready") or >>)
     ids.push(screen.divider(widgets.AXIS_HORIZONTAL) or >>)
-    ids.push(screen.radio_group(&["Use local build","Use cached build","Build dependencies"],0) or >>)
+    ids.push(screen.radio_group(&["Use local build", "Use cached build", "Build dependencies"], 0) or >>)
     ids.push(screen.input("Native input · 中文") or >>)
     ids.push(screen.text_area("A multi-line editor.\nSelection, clipboard and native IME remain available.") or >>)
-    ids.push(screen.date_picker(time.date(2026,10,25,10,30,0,0)) or >>)
-    ids.push(screen.time_picker(time.date(2026,10,25,10,30,0,0)) or >>)
+    ids.push(screen.date_picker(time.date(2026, 10, 25, 10, 30, 0, 0)) or >>)
+    ids.push(screen.time_picker(time.date(2026, 10, 25, 10, 30, 0, 0)) or >>)
     ids.push(screen.button("Queue notification") or >>)
-    _ := screen.tooltip(ids[19],"Repeated notifications queue; hover or focus pauses expiry.") or >>
-    screen.set_slider_commit_only(ids[5],true) or >>
-    screen.set_checkbox_indeterminate(ids[2],true) or >>
-    screen.set_select_option_enabled(ids[9],2,false) or >>
-    screen.set_badge_tone(ids[12],widgets.BADGE_SUCCESS) or >>
-    screen.set_progress_buffer(ids[11],0.84) or >>
-    screen.set_date_options(ids[17],time.date(2026,10,25,0,0,0,0),true) or >>
-    screen.set_clock_format(ids[18],true,true) or >>
+    _ := screen.tooltip(ids[19], "Repeated notifications queue; hover or focus pauses expiry.") or >>
+    screen.set_slider_commit_only(ids[5], true) or >>
+    screen.set_checkbox_indeterminate(ids[2], true) or >>
+    screen.set_select_option_enabled(ids[9], 2, false) or >>
+    screen.set_badge_tone(ids[12], widgets.BADGE_SUCCESS) or >>
+    screen.set_progress_buffer(ids[11], 0.84) or >>
+    screen.set_date_options(ids[17], time.date(2026, 10, 25, 0, 0, 0, 0), true) or >>
+    screen.set_clock_format(ids[18], true, true) or >>
     << ids
 }
-fn extra_layout(screen &mut widgets.Screen,ids &[]int) int {
+fn extra_layout(screen $&widgets.Screen, ids &[]int) int {
     gap := 28.0
-    width := (screen.width() - 84.0) * 0.5
+    width :=(screen.width() - 84.0) * 0.5
     right := 56.0 + width
-    screen.place(ids[0],gap,628.0,width,112.0) or >>
-    screen.place(ids[1],gap,173.0,screen.width()-56.0,24.0) or >>
-    for i in 2:5 { screen.place(ids[i],gap,211.0+f64(i-2)*46.0,width,36.0) or >> }
-    screen.place(ids[5],gap,357.0,width-136.0,36.0) or >>
-    screen.place(ids[6],gap+width-124.0,357.0,124.0,36.0) or >>
-    screen.place(ids[7],gap,412.0,width,36.0) or >>
-    screen.place(ids[8],gap,466.0,width,36.0) or >>
-    screen.place(ids[11],gap,522.0,width-120.0,12.0) or >>
-    screen.place(ids[12],gap+width-100.0,510.0,100.0,32.0) or >>
-    screen.place(ids[13],gap,607.0,width,1.0) or >>
-    screen.place(ids[14],right,211.0,width,126.0) or >>
-    screen.place(ids[9],right,357.0,width,36.0) or >>
-    screen.place(ids[10],right,412.0,width,158.0) or >>
-    screen.place(ids[15],right,590.0,width,36.0) or >>
-    screen.place(ids[16],right,644.0,width,96.0) or >>
-    screen.place(ids[17],gap,560.0,(width-16.0)*0.5,36.0) or >>
-    screen.place(ids[18],gap+(width+16.0)*0.5,560.0,(width-16.0)*0.5,36.0) or >>
-    screen.place(ids[19],gap+16.0,665.0,width-32.0,38.0) or >>
+    screen.place(ids[0], gap, 628.0, width, 112.0) or >>
+    screen.place(ids[1], gap, 173.0, screen.width() - 56.0, 24.0) or >>
+    for i in 2:5 {screen.place(ids[i], gap, 211.0 + f64(i - 2) * 46.0, width, 36.0) or >> }
+    screen.place(ids[5], gap, 357.0, width - 136.0, 36.0) or >>
+    screen.place(ids[6], gap + width - 124.0, 357.0, 124.0, 36.0) or >>
+    screen.place(ids[7], gap, 412.0, width, 36.0) or >>
+    screen.place(ids[8], gap, 466.0, width, 36.0) or >>
+    screen.place(ids[11], gap, 522.0, width - 120.0, 12.0) or >>
+    screen.place(ids[12], gap + width - 100.0, 510.0, 100.0, 32.0) or >>
+    screen.place(ids[13], gap, 607.0, width, 1.0) or >>
+    screen.place(ids[14], right, 211.0, width, 126.0) or >>
+    screen.place(ids[9], right, 357.0, width, 36.0) or >>
+    screen.place(ids[10], right, 412.0, width, 158.0) or >>
+    screen.place(ids[15], right, 590.0, width, 36.0) or >>
+    screen.place(ids[16], right, 644.0, width, 96.0) or >>
+    screen.place(ids[17], gap, 560.0,(width - 16.0) * 0.5, 36.0) or >>
+    screen.place(ids[18], gap +(width + 16.0) * 0.5, 560.0,(width - 16.0) * 0.5, 36.0) or >>
+    screen.place(ids[19], gap + 16.0, 665.0, width - 32.0, 38.0) or >>
     << 0
 }
-fn next_event(events chan ui.Event,deadline time.Instant) ui.Event {
-    if deadline.is_zero() { << <-events }
+fn next_event(events chan ui.Event, deadline time.Instant) ui.Event{
+    if deadline.is_zero() { << <- events}
     delay := deadline.since(time.instant())
-    if delay.nanoseconds() <= 0 { << ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: "",width: 0,height: 0} }
+    if delay.nanoseconds() <= 0 { << ui.Event{kind: ui.EV_NONE, window_id: 0, menu_id: "", width: 0, height: 0}}
     timer := delay.timer()
     select {
-        event := <-events { timer.stop()
-            << event }
-        _ := <-timer.c { timer.stop() }
+        event := <- events{timer.stop()
+            << event}
+        _ := <- timer.c{timer.stop()}
     }
-    << ui.Event{kind: ui.EV_NONE,window_id: 0,menu_id: "",width: 0,height: 0}
+    << ui.Event{kind: ui.EV_NONE, window_id: 0, menu_id: "", width: 0, height: 0}
 }
 fn scene(events chan ui.Event) int {
     ready := demo.ready(events) or >>
-    if ready.kind == ui.EV_EXIT { << 0 }
-    mut screen := widgets.screen(&ready) or >>
-    screen.resize(1000.0,820.0) or >>
-    screen.set_min_size(900,720) or >>
-    mut model := make_model(mut &screen) or (err) { screen.dispose()
-        >> err }
-    model.layout(mut &screen) or >>
+    if ready.kind == ui.EV_EXIT{ << 0}
+    $screen := widgets.screen(&ready) or >>
+    screen.resize(1000.0, 820.0) or >>
+    screen.set_min_size(900, 720) or >>
+    $model := make_model($&screen) or(err) {screen.dispose()
+        >> err}
+    apply_appearance($&model, $&screen) or >>
+    model.layout($&screen) or >>
     _ := screen.render() or >>
+    $dispatcher := register_actions(&model, &screen) or >>
     while screen.is_open() {
         now := time.instant()
-        model.work(mut &screen,now) or >>
-        model.layout(mut &screen) or >>
-        mut deadline := screen.advance(now) or (err) { >> errors.new("gallery animation: " + err.msg()) }
-        for action in screen.take_actions() { model.update(mut &screen,action) or >> }
-        _ := screen.render() or (err) { >> errors.new("gallery render: " + err.msg()) }
-        if model.running && (deadline.is_zero() || model.next_work.before(deadline)) { deadline = model.next_work }
-        event := next_event(events,deadline) or >>
-        mut actions := screen.event(&event) or >>
-        mut count := 0
+        apply_appearance($&model, $&screen) or >>
+        register_notices(&screen, $&dispatcher) or >>
+        model.work($&screen, now) or >>
+        model.layout($&screen) or >>
+        $deadline := screen.advance(now) or(err) { >> errors.new("gallery animation: " + err.msg())}
+        for action in screen.take_actions() {_ := dispatcher.dispatch(&action, $&model, $&screen) or >> }
+        apply_appearance($&model, $&screen) or >>
+        _ := screen.render() or(err) { >> errors.new("gallery render: " + err.msg())}
+        if model.running &&(deadline.is_zero() || model.next_work.before(deadline)) {deadline = model.next_work}
+        event := next_event(events, deadline) or >>
+        $actions := screen.event(&event) or >>
+        $count := 0
         while screen.is_open() && count < 128 {
             pending := ui.poll_chan(events)
-            if pending.kind == ui.EV_NONE { <- }
+            if pending.kind == ui.EV_NONE{ <- }
             more := screen.event(&pending) or >>
-            for action in more { actions.push(action) }
+            for action in more{actions.push(action)}
             count += 1
         }
-        for action in actions { model.update(mut &screen,action) or >> }
+        for action in actions{_ := dispatcher.dispatch(&action, $&model, $&screen) or >> }
     }
     screen.dispose()
     << 0
 }
-fn worker(events chan ui.Event) { scene(events) or (err) { demo.fail(err.msg())
-    << } }
+fn worker(events chan ui.Event) {scene(events) or(err) {demo.fail(err.msg())
+        << }}
 fn launch() int {
-    mut app := demo.app("XUUI / Interaction Lab",1000,820) or >>
+    $app := demo.app("XUUI / Interaction Lab", 1000, 820) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }
-fn main() int { << launch() or (err) { eprintln(err.msg())
-    << 1 } }
+fn main() int { << launch() or(err) {eprintln(err.msg())
+        << 1}}

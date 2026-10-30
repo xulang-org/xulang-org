@@ -1,0 +1,114 @@
+@main
+
+#ui
+#ui/widgets
+
+fn choose_theme(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    m.theme_index =(m.theme_index + 1) % 3
+    m.appearance_dirty = true
+    << ""
+}
+fn choose_scale(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    if m.text_scale == 1.0 {m.text_scale = 1.4} else {m.text_scale = 1.0}
+    m.appearance_dirty = true
+    << ""
+}
+fn choose_density(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    if m.density_scale == 1.0 {m.density_scale = 0.8} else {m.density_scale = 1.0}
+    m.appearance_dirty = true
+    << ""
+}
+fn cycle_option(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    sel := $&m.select_ctrl
+    next_opt :=(sel.selected() + 1) % 3
+    sel.set_selected(next_opt) or(err) { << err.msg()}
+    lbl := $&m.select_label
+    if next_opt == 0 {lbl.set_text(&"Option: Auto")}
+    if next_opt == 1 {lbl.set_text(&"Option: Manual")}
+    if next_opt == 2 {lbl.set_text(&"Option: Locked")}
+    screen.mark_measure(41) or(err) { << err.msg()}
+    screen.mark_paint(41) or(err) { << err.msg()}
+    << ""
+}
+fn scroll(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    screen.set_scroll(16, 0.0, action.value) or(err) { << err.msg()}
+    << ""
+}
+fn toggle_badge(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    bdg := $&m.badge
+    bdg.set_selected(action.value > 0.5)
+    blbl := $&m.badge_label
+    if action.value > 0.5 {blbl.set_text(&"Active")} else {blbl.set_text(&"Paused")}
+    screen.mark_measure(37) or(err) { << err.msg()}
+    screen.mark_paint(37) or(err) { << err.msg()}
+    << ""
+}
+fn radio_a_changed(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    rb := $&m.radio_b
+    rb.set_value(false)
+    screen.mark_paint(34) or(err) { << err.msg()}
+    << ""
+}
+fn radio_b_changed(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    ra := $&m.radio_a
+    ra.set_value(false)
+    screen.mark_paint(33) or(err) { << err.msg()}
+    << ""
+}
+fn slider_changed(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    prog := $&m.progress
+    prog.set_value(action.value / 100.0) or(err) { << err.msg()}
+    screen.mark_paint(11) or(err) { << err.msg()}
+    << ""
+}
+fn stepper_changed(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    lbl := $&m.stepper_label
+    lbl.set_text(&str(int(action.value)))
+    screen.mark_measure(36) or(err) { << err.msg()}
+    prog := $&m.progress
+    prog.set_value(action.value / 100.0) or(err) { << err.msg()}
+    screen.mark_paint(11) or(err) { << err.msg()}
+    << ""
+}
+fn tabs_changed(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    clbl := $&m.card_label
+    if action.value == 0.0 {clbl.set_text(&"Card · Overview")}
+    if action.value == 1.0 {clbl.set_text(&"Card · Tokens")}
+    if action.value == 2.0 {clbl.set_text(&"Card · Segmented")}
+    screen.mark_measure(42) or(err) { << err.msg()}
+    screen.mark_paint(42) or(err) { << err.msg()}
+    << ""
+}
+fn option_changed(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    lbl := $&m.select_label
+    if action.value == 0.0 {lbl.set_text(&"Option: Auto")}
+    if action.value == 1.0 {lbl.set_text(&"Option: Manual")}
+    if action.value == 2.0 {lbl.set_text(&"Option: Locked")}
+    screen.mark_measure(41) or(err) { << err.msg()}
+    screen.mark_paint(41) or(err) { << err.msg()}
+    << ""
+}
+fn row_changed(m $&Model, screen $&widgets.View, action &widgets.Action) string {
+    clbl := $&m.card_label
+    clbl.set_text(&("Card · Row " + str(int(action.value) + 1)))
+    screen.mark_measure(42) or(err) { << err.msg()}
+    screen.mark_paint(42) or(err) { << err.msg()}
+    << ""
+}
+fn register_actions(m &Model, screen &widgets.View) widgets.ActionDispatcher#Model, widgets.View, widgets.Action{
+    $d := widgets.action_dispatcher(m, screen)
+    d.on(4, widgets.ACTION_ACTIVATE, choose_theme) or >>
+    d.on(5, widgets.ACTION_ACTIVATE, choose_scale) or >>
+    d.on(6, widgets.ACTION_ACTIVATE, choose_density) or >>
+    d.on(41, widgets.ACTION_ACTIVATE, cycle_option) or >>
+    d.on(16, widgets.ACTION_SCROLL, scroll) or >>
+    d.on(32, widgets.ACTION_CHANGE, toggle_badge) or >>
+    d.on(33, widgets.ACTION_CHANGE, radio_a_changed) or >>
+    d.on(34, widgets.ACTION_CHANGE, radio_b_changed) or >>
+    d.on(35, widgets.ACTION_CHANGE, slider_changed) or >>
+    d.on(36, widgets.ACTION_CHANGE, stepper_changed) or >>
+    d.on(40, widgets.ACTION_CHANGE, tabs_changed) or >>
+    d.on(41, widgets.ACTION_CHANGE, option_changed) or >>
+    d.on(43, widgets.ACTION_CHANGE, row_changed) or >>
+    << d
+}

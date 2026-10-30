@@ -5,86 +5,82 @@
 #math
 demo #"github.com/xulang-org/examples/ui_demo"
 
-fn document(title string,tone string) string {
+fn document(title string, tone string) string {
     << "<!doctype html><html><head><meta charset='utf-8'><title>" + title + "</title><style>body{margin:0;padding:28px;font:15px -apple-system,system-ui;color:#252521;background:#faf9f6}small{letter-spacing:.14em;color:#797970}h1{font-size:28px;font-weight:600;letter-spacing:-.04em;margin:16px 0}p{line-height:1.65;color:#6b6b63}input,button{box-sizing:border-box;font:inherit;border-radius:8px;padding:12px;width:100%;margin:8px 0}input{border:1px solid #d8d8cf;background:white;outline-color:" + tone + "}button{border:0;background:" + tone + ";color:white;cursor:pointer}output{display:block;min-height:42px;padding:12px 0;line-height:1.5;color:" + tone + "}</style></head><body><small>EMBEDDED WEBVIEW</small><h1>" + title + "</h1><p>This document has its own viewport, focus and request identity.</p><input aria-label='Message' value='Hello from " + title + "'><button onclick='send()'>Ask native Xu</button><output aria-live='polite'>Ready for an independent native request.</output><p>Tab moves inside this document.<br>Ctrl + Tab returns to the native controls.</p><script>async function send(){let out=document.querySelector('output');out.textContent='Waiting…';try{out.textContent=await window.__XU__.invoke('echo',document.querySelector('input').value)}catch(e){out.textContent=e.message}}</script></body></html>"
 }
 fn route(request webview.InvokeRequest) string {
-    target := request.target() or (err) { << "Target closed: " + err.msg() }
+    target := request.target() or(err) { << "Target closed: " + err.msg()}
     script := "document.title"
     options := ui.RequestOptions{timeout_ms: 3000}
-    result := ui.webview_request_wait(&target,ui.REQUEST_WEBVIEW_EVAL,&script,&options) or (err) { << err.msg() }
+    result := ui.webview_request_wait(&target, ui.REQUEST_WEBVIEW_EVAL, &script, &options) or(err) { << err.msg()}
     << result.value + " · " + request.payload + " · view " + str(target.canvas_id)
 }
-fn ipc(events chan ui.Event,emits chan string) {
-    webview.bind_ipc_requests_www(":mem:",route,emits,events) or (err) { eprintln(err.msg())
+fn ipc(events chan ui.Event, emits chan string) {
+    webview.bind_ipc_requests_www(":mem:", route, emits, events) or(err) {eprintln(err.msg())
         << }
 }
 fn scene(events chan ui.Event) int {
     ready := demo.ready(events) or >>
-    if ready.kind == ui.EV_EXIT { << 0 }
-    mut screen := widgets.screen(&ready) or >>
-    screen.resize(1020.0,720.0) or >>
-    screen.set_min_size(760,580) or >>
-    title := screen.label("Web content. Native composition.",26.0,false) or >>
-    subtitle := screen.label("Two independent WebViews inside a Canvas window",13.0,true) or >>
+    if ready.kind == ui.EV_EXIT{ << 0}
+    $screen := widgets.screen(&ready) or >>
+    screen.resize(1020.0, 720.0) or >>
+    screen.set_min_size(760, 580) or >>
+    title := screen.label("Web content. Native composition.", 26.0, false) or >>
+    subtitle := screen.label("Two independent WebViews inside a Canvas window", 13.0, true) or >>
     hide := screen.button("Hide left") or >>
     reload := screen.button("Reload right") or >>
     close := screen.button("Dispose left") or >>
     modal_button := screen.button("Open modal") or >>
     left := screen.webview() or >>
     right := screen.webview() or >>
-    status := screen.label("Resize the window, edit both pages, or test their native requests.",13.0,true) or >>
-    modal := screen.modal("Native overlay","The WebViews resume when this dialog closes.") or >>
+    status := screen.label("Resize the window, edit both pages, or test their native requests.", 13.0, true) or >>
+    modal := screen.modal("Native overlay", "The WebViews resume when this dialog closes.") or >>
     dismiss := screen.button("Close dialog") or >>
-    screen.set_parent(dismiss,modal) or >>
-    screen.place(dismiss,24.0,175.0,180.0,38.0) or >>
-    screen.load_web_html(left,document("Editor preview","#b64c3c")) or >>
-    screen.load_web_html(right,document("Reference panel","#386f6b")) or >>
-    mut hidden := false
-    mut disposed := false
+    screen.set_parent(dismiss, modal) or >>
+    screen.place(dismiss, 24.0, 175.0, 180.0, 38.0) or >>
+    screen.load_web_html(left, document("Editor preview", "#b64c3c")) or >>
+    screen.load_web_html(right, document("Reference panel", "#386f6b")) or >>
+    $model := Model{left: left, right: right, hide: hide, close: close, status: status, modal: modal, hidden: false, disposed: false}
+    $dispatcher := widgets.action_dispatcher(&model, &screen)
+    dispatcher.on(hide, widgets.ACTION_ACTIVATE, toggle_left) or >>
+    dispatcher.on(reload, widgets.ACTION_ACTIVATE, reload_right) or >>
+    dispatcher.on(close, widgets.ACTION_ACTIVATE, dispose_left) or >>
+    dispatcher.on(modal_button, widgets.ACTION_ACTIVATE, open_modal) or >>
+    dispatcher.on(dismiss, widgets.ACTION_ACTIVATE, close_modal) or >>
+    for id in[left, right] {
+        dispatcher.on(id, widgets.ACTION_WEB_LOADED, web_loaded) or >>
+        dispatcher.on(id, widgets.ACTION_WEB_FAILED, web_failed) or >>
+    }
     while screen.is_open() {
         width := screen.width()
         height := screen.height()
-        half := (width - 76.0) * 0.5
-        screen.place(title,28.0,25.0,width-56.0,38.0) or >>
-        screen.place(subtitle,28.0,69.0,width-56.0,25.0) or >>
-        screen.place(hide,28.0,112.0,136.0,38.0) or >>
-        screen.place(reload,174.0,112.0,146.0,38.0) or >>
-        screen.place(close,330.0,112.0,136.0,38.0) or >>
-        screen.place(modal_button,476.0,112.0,136.0,38.0) or >>
-        screen.place(left,28.0,174.0,half,math.max(300.0,height-245.0)) or >>
-        screen.place(right,48.0+half,174.0,half,math.max(300.0,height-245.0)) or >>
-        screen.place(status,28.0,height-49.0,width-56.0,28.0) or >>
+        half :=(width - 76.0) * 0.5
+        screen.place(title, 28.0, 25.0, width - 56.0, 38.0) or >>
+        screen.place(subtitle, 28.0, 69.0, width - 56.0, 25.0) or >>
+        screen.place(hide, 28.0, 112.0, 136.0, 38.0) or >>
+        screen.place(reload, 174.0, 112.0, 146.0, 38.0) or >>
+        screen.place(close, 330.0, 112.0, 136.0, 38.0) or >>
+        screen.place(modal_button, 476.0, 112.0, 136.0, 38.0) or >>
+        screen.place(left, 28.0, 174.0, half, math.max(300.0, height - 245.0)) or >>
+        screen.place(right, 48.0 + half, 174.0, half, math.max(300.0, height - 245.0)) or >>
+        screen.place(status, 28.0, height - 49.0, width - 56.0, 28.0) or >>
         _ := screen.render() or >>
         for action in screen.next(events) or >> {
-            if action.kind == widgets.ACTION_ACTIVATE {
-                if action.id == hide && !disposed { hidden = !hidden
-                    screen.set_visible(left,!hidden) or >>
-                    if hidden { screen.set_text(hide,"Show left") or >> } else { screen.set_text(hide,"Hide left") or >> } }
-                if action.id == reload { screen.webview_command(right,"reload") or >> }
-                if action.id == close && !disposed { screen.close_webview(left) or >>
-                    disposed = true
-                    screen.set_enabled(hide,false) or >>
-                    screen.set_enabled(close,false) or >> }
-                if action.id == modal_button { screen.open(modal) or >> }
-                if action.id == dismiss { screen.close_overlay(modal) or >> }
-            }
-            if action.kind == widgets.ACTION_WEB_LOADED { screen.set_text(status,"WebView " + str(action.id) + " loaded independently") or >> }
-            if action.kind == widgets.ACTION_WEB_FAILED { screen.set_text(status,"WebView " + str(action.id) + " failed to load") or >> }
+            _ := dispatcher.dispatch(&action, $&model, $&screen) or >>
         }
     }
     screen.dispose()
     << 0
 }
-fn worker(events chan ui.Event) { scene(events) or (err) { demo.fail(err.msg())
-    << } }
+fn worker(events chan ui.Event) {scene(events) or(err) {demo.fail(err.msg())
+        << }}
 fn launch() int {
-    mut app := demo.app("XUUI / WebView Components",1020,720) or >>
+    $app := demo.app("XUUI / WebView Components", 1020, 720) or >>
     _ := ui.register_content_plugin(ui.content_plugin_webview())
-    emits := chan string{cap: 64}
-    xu ipc(app.event_ch,emits)
+    emits := chan string {cap: 64}
+    xu ipc(app.event_ch, emits)
     xu worker(app.event_ch)
     << app.run() or >>
 }
-fn main() int { << launch() or (err) { eprintln(err.msg())
-    << 1 } }
+fn main() int { << launch() or(err) {eprintln(err.msg())
+        << 1}}
