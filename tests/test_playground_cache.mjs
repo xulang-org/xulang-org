@@ -40,7 +40,7 @@ test('cached MIR replays from zero and recycles the execution arena across long 
 
 test('compile diagnostics survive reuse; parser and execution traps discard the interrupted instance', async () => {
   const runtime = await createRuntime(bytes);
-  const recursive = examples.recursion.source;
+  const recursive = examples.recursion.files['main.xu'];
   const first = runtime.run(recursive, {profile:true});
   const again = runtime.run(recursive, {profile:true});
   assert.equal(again.stdout, first.stdout);
