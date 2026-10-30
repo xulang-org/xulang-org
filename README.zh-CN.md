@@ -135,6 +135,16 @@ make clean                       # 清理 dist/ 与 build/playground/
 
 产物输出至已忽略的 `dist/` 与 `build/`。正文片段通过 `<!--title: ...-->` 声明标题，生成 `docs/start/index.html` 等目录路由。
 
+### 共享站点元数据
+
+状态页的包数来自生成的 `content/{en,zh}/api/index.html` 清单。构建器检查中英清单相同且包页面存在；控件详情与开发预览页不计入包数。新增包时通过 API 生成器更新清单。
+
+`templates/releases.json` 同时提供中英版本记录、博客索引的近期发布条目与侧栏发布链接。新增版本时更新此文件，并新增对应的双语博文；较早的历史博文仍由正文维护。首页横幅、页头和页脚不显示 SDK 补丁版本；下载、文档与 API 区保留版本身份，结构化软件元数据仍准确标识选定 SDK。
+
+手动选择语言将 `xu-lang=en` 或 `xu-lang=zh` 写入 localStorage 及有效期一年的 SameSite=Lax cookie。localStorage 按来源共享，cookie 的路径限定在部署前缀。语言链接还附带 `?lang=en` 或 `?lang=zh`，因此存储被禁用时本次选择仍生效。优先级为有效查询参数、localStorage、cookie；只有英文首页入口会自动选择中文，先遵循已存选择，再参考简体中文浏览器语言。若所有存储都被禁用，之后不带查询参数的访问将再次使用浏览器语言。
+
+sitemap 有意省略 `lastmod`：检出时间和 API 重新生成时间不能证明编辑日期，重复构建不应制造内容更新。只有具备可靠的逐页内容历史（包含共享依赖）后才应添加日期。
+
 ### API 内容与示例
 
 手写说明保存在 `templates/api-guides/{en,zh}/`，生成时与所选 SDK 的公开声明合并。示例从官方 examples 仓库的固定提交导入；`www/api-examples/` 中的快照支持本地与 CI 独立构建。

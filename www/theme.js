@@ -1,4 +1,35 @@
 (function () {
+  // Language choice is independent of theme. Only an unprefixed home visit is automatic.
+  var languageKey = 'xu-lang';
+  var locationURL = new URL(window.location.href);
+  var script = document.currentScript;
+  var base = script ? new URL(script.src, window.location.href).pathname.replace(/\/theme\.js$/, '') : '';
+  function validLanguage(value) { return value === 'en' || value === 'zh'; }
+  function saveLanguage(value) {
+    try { localStorage.setItem(languageKey, value); } catch (e) {}
+    try {
+      document.cookie = languageKey + '=' + value + '; Max-Age=31536000; Path=' + (base || '/') + '; SameSite=Lax';
+    } catch (e) {}
+  }
+  var preference = '';
+  try { preference = localStorage.getItem(languageKey); } catch (e) {}
+  if (!validLanguage(preference)) {
+    var cookie;
+    try { cookie = (document.cookie || '').match(/(?:^|;\s*)xu-lang=(en|zh)(?:;|$)/); } catch (e) {}
+    preference = cookie ? cookie[1] : '';
+  }
+  // Explicit links also work when both persistence mechanisms are blocked.
+  var explicit = locationURL.searchParams.get('lang');
+  if (validLanguage(explicit)) {
+    preference = explicit;
+    saveLanguage(explicit);
+  }
+  var homePath = locationURL.pathname.replace(/\/+$/, '') || '/';
+  if (homePath === (base || '/') && preference !== 'en' &&
+      (preference === 'zh' || /^zh(?:-cn|-hans)?$/i.test(navigator.language || ''))) {
+    window.location.replace(base + '/zh/' + locationURL.search + locationURL.hash);
+  }
+
   var key = 'xu-theme';
   try {
     var saved = localStorage.getItem(key);
@@ -10,6 +41,17 @@
   } catch (e) {}
 
   document.addEventListener('DOMContentLoaded', function () {
+    var languageSwitch = document.getElementById('language-switch');
+    if (languageSwitch) {
+      languageSwitch.addEventListener('click', function () {
+        var choice = languageSwitch.getAttribute('hreflang') === 'en' ? 'en' : 'zh';
+        saveLanguage(choice);
+      });
+      var destination = new URL(languageSwitch.href, window.location.href);
+      destination.searchParams.set('lang', languageSwitch.getAttribute('hreflang') === 'en' ? 'en' : 'zh');
+      languageSwitch.href = destination.href;
+    }
+
     // Theme toggle
     var themeBtn = document.getElementById('theme-toggle-btn');
     if (themeBtn) {
