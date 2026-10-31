@@ -2,8 +2,8 @@
 <p class="crumb"><a href="/docs/start">文档</a> / </p>
 <h1>UI / WebView</h1>
 <p class="banner">Xu {{xu_version}} 正式 SDK 包含绘图、保留布局、编辑控件、人体工学 Screen 上下文、结构化菜单、屏幕查询、桌面与 WebView 异步请求，以及统一样式控件。请从<a href="/download">下载页面</a>安装对应版本。</p>
-<p><code>#ui</code> 管理窗口、事件与桌面服务；<code>#ui/draw</code> 记录绘图帧；<code>#ui/layout</code> 计算布局；<code>#ui/widgets</code> 管理控件、交互与保留场景；<code>#ui/webview</code> 承载网页及请求桥接。</p>
-<p><a href="/zh/api/ui"><code>#ui</code></a> · <a href="/zh/api/ui/draw"><code>#ui/draw</code></a> · <a href="/zh/api/ui/layout"><code>#ui/layout</code></a> · <a href="/zh/api/ui/widgets"><code>#ui/widgets</code></a> · <a href="/zh/api/ui/webview"><code>#ui/webview</code></a></p>
+<p><code>#ui</code> 管理窗口、事件与桌面服务；<code>#ui/draw</code> 记录绘图帧；<code>#ui/layout</code> 计算布局；<code>#ui/chart</code> 绘制原生图表与数据可视化；<code>#ui/widgets</code> 管理控件、交互与保留场景；<code>#ui/webview</code> 承载网页及请求桥接。</p>
+<p><a href="/zh/api/ui"><code>#ui</code></a> · <a href="/zh/api/ui/draw"><code>#ui/draw</code></a> · <a href="/zh/api/ui/layout"><code>#ui/layout</code></a> · <a href="/zh/api/ui/chart"><code>#ui/chart</code></a> · <a href="/zh/api/ui/widgets"><code>#ui/widgets</code></a> · <a href="/zh/api/ui/webview"><code>#ui/webview</code></a></p>
 <h2 id="platform-boundaries">浏览器画布与原生 / WebView 边界</h2>
 <p><strong>浏览器画布：</strong>可先运行<a href="/playground?example=ui-counter">演练场计数器项目</a>。WASM 解释器与画布适配器只实现绘图和控件交互的子集。此浏览器路径不提供原生窗口、桌面服务、系统对话框、原生 IME 行为或 <code>ui/webview</code> 宿主；浏览器输出不能证明桌面能力对等。</p>
 <p><strong>原生 / WebView：</strong>需要本机 SDK 与目标系统库：macOS 的 AppKit / WebKit、Windows 原生宿主 / WebView2、Linux 的 GTK4 / WebKitGTK 6.0。打包前执行 <code>xu doctor --desktop --target &lt;target&gt;</code>。跨目标构建成功仅证明代码生成；GUI 交互、IME、资源释放和 WebView 行为仍需目标机验收，此处各平台结果仍属待验。</p>
@@ -21,7 +21,8 @@ XU_UI_PACK=1 bin/xu build /path/to/examples/examples/16_ui_webview/style_gallery
 <tr><td>样式</td><td><a href="/zh/api/ui/widgets#example-9beafed00ebd"><code>style_gallery</code></a></td><td>主题、缩放、密度、局部主题、状态、图标与滚动条</td></tr>
 <tr><td>桌面应用</td><td><a href="/zh/api/ui#example-3333a8369d2f"><code>desktop_services</code></a>、<a href="/zh/api/ui#example-029ecd67df0f"><code>multiwindow</code></a>、<a href="/zh/api/ui/widgets#example-b1a0463173fe"><code>workbench</code></a></td><td>异步服务、窗口身份与综合应用</td></tr>
 <tr><td>网页</td><td><a href="/zh/api/ui/webview#example-9bee402dcd14"><code>webview_requests</code></a>、<a href="/zh/api/ui/webview#example-efd1ed863bda"><code>open</code></a>、<a href="/zh/api/ui#example-87c5e058faf2"><code>shaped</code></a>、<a href="/zh/api/ui/webview#example-41d09e469fb1"><code>remote</code></a></td><td>请求生命周期、网页壳、透明窗口和远程内容</td></tr>
-<tr><td>扩展控件</td><td><a href="/zh/api/ui/widgets#example-f3f5764ed94e"><code>controls_gallery</code></a></td><td>Switch / Radio / Slider / Stepper / Tabs / Select / ListBox / Badge / Divider / Card / StyleSwitcher</td></tr></tbody></table>
+<tr><td>扩展控件</td><td><a href="/zh/api/ui/widgets#example-f3f5764ed94e"><code>controls_gallery</code></a></td><td>Switch / Radio / Slider / Stepper / Tabs / Select / ListBox / Badge / Divider / Card / StyleSwitcher</td></tr>
+<tr><td>图表与可视化</td><td><a href="/zh/api/ui/chart"><code>chart</code></a>、<a href="/zh/api/ui/widgets#example-b1a0463173fe"><code>component_workshop</code></a></td><td>折线、面积、柱状、环形、散点、热力、桑基、雷达、箱线等 30 种图表及视口交互</td></tr></tbody></table>
 <p>正式 SDK 的示例启动器会设置 <code>XU_UI_PACK=1</code>，使桌面 worker 使用较大的 UI 栈；直接运行打包命令时同样设置该编译配置。</p>
 <h2 id="frames">绘图帧与资源</h2>
 <p>一个 worker 消费 <code>App.event_ch</code>；等待 <code>canvas_ready</code> 后，用 <code>draw.context_of</code> 取得 Context。Context 与资源属于 canvas_id / generation，关闭窗口后失效。每次以 <code>Context.new_frame</code> / <code>Frame.begin</code> 开始，记录完整帧后只调用一次 <code>present</code>；失败时 <code>cancel</code>。空闲时保留上一帧，不持续重绘。可先合并排队事件，再提交一次绘制。</p>

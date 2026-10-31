@@ -5,7 +5,7 @@
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#net/http2</code></p>
 <p class="meta">counts: 7 fns, 5 methods, 5 types, 1 consts, 0 ifaces</p>
-<p class="lead">Minimal HTTP/2 client (RFC 7540 / HPACK RFC 7541 subset). v1 * frame codec (encode_frame / decode_frame) * GET headers HPACK (static table + raw literals, no Huffman) * h2c TcpClient (prior knowledge) * TlsClient via dial_tls (ClientHello ALPN offers h2 + http/1.1) Throw note: method may-throw is matched by caller-module name only (check_06_throw.ast_method_call_propagates_throw), so `conn.read` from net.http2 does not see tls.Conn.read&#x27;s throw. tls_read_exact therefore absorbs errors with `or (err) { &lt;&lt; got }` instead of `or &gt;&gt;`. Not in v1: POST/DATA out, HPACK Huffman, dynamic table, flow control, GOAWAY retry, server push. Default timeout in nanoseconds for an HTTP/2 TLS connection.</p>
+<p class="lead">Minimal HTTP/2 client (RFC 9113 / HPACK RFC 7541 subset). v1 * frame codec (encode_frame / decode_frame) * GET headers HPACK (static table + raw literals, no Huffman) * h2c TcpClient (prior knowledge) * TlsClient via dial_tls (ClientHello ALPN offers h2 + http/1.1) TCP and TLS share completion and field-block validation. Responses are limited to 4096 received frames, 64 KiB field blocks and 16 MiB bodies the advertised incoming frame limit remains 16 KiB. Limit exhaustion and transport/protocol failure close the connection and return ok=false. Still excluded: HPACK Huffman/dynamic indexes, flow control, GOAWAY retry and server push. TLS POST supports one DATA frame of at most 16 KiB. Default timeout in nanoseconds for an HTTP/2 TLS connection.</p>
 <article class="api-item" id="const-PREFACE">
 <h2><code>const PREFACE</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PREFACE = <span class="syn-str">"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"</span></code></pre></div>
@@ -123,7 +123,7 @@
 <h2><code>parse_status</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> parse_status(blk <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>parse_status extracts :status from a HEADERS payload.</p>
+<p>Unsupported or malformed blocks have no usable status in this compatibility API.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>blk</code> <span class="type">string</span></dt><dd>blk (string)</dd>
@@ -141,42 +141,6 @@
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
-<article class="api-item" id="dial_tcp">
-<h2><code>dial_tcp</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dial_tcp(addr <span class="syn-type">string</span>) TcpClient</code></pre></div>
-<h3>Purpose</h3>
-<p>dial_tcp speaks prior-knowledge h2c (no TLS). Throws on failure.</p>
-<h3>Parameters</h3>
-<dl class="api-params">
-<dt><code>addr</code> <span class="type">string</span></dt><dd>address (string)</dd>
-</dl>
-<h3>Returns</h3>
-<p>TcpClient — a value of this type</p>
-</article>
-<article class="api-item" id="--TcpClient-get">
-<h2><code>($&amp;TcpClient) get</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">$&amp;</span>TcpClient) get(authority <span class="syn-type">string</span>, path <span class="syn-type">string</span>) Response</code></pre></div>
-<h3>Purpose</h3>
-<p>Get issues GET on a new stream and collects the body.</p>
-<h3>Parameters</h3>
-<dl class="api-params">
-<dt><code>t</code> <span class="type">$&amp;TcpClient</span></dt><dd>receiver $&amp;TcpClient (exclusive borrow)</dd>
-<dt><code>authority</code> <span class="type">string</span></dt><dd>authority (string)</dd>
-<dt><code>path</code> <span class="type">string</span></dt><dd>filesystem path (string)</dd>
-</dl>
-<h3>Returns</h3>
-<p>Response — a value of this type</p>
-</article>
-<article class="api-item" id="--TcpClient-close">
-<h2><code>($&amp;TcpClient) close</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">$&amp;</span>TcpClient) close()</code></pre></div>
-<h3>Purpose</h3>
-<p>Operation on `$&amp;TcpClient`: close the resource.</p>
-<h3>Parameters</h3>
-<dl class="api-params">
-<dt><code>t</code> <span class="type">$&amp;TcpClient</span></dt><dd>receiver $&amp;TcpClient (exclusive borrow)</dd>
-</dl>
-</article>
 <article class="api-item" id="struct-TlsClient">
 <h2><code>struct TlsClient</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> TlsClient {
@@ -187,11 +151,23 @@
 <h3>Parameters</h3>
 <p class="api-none">none</p>
 </article>
+<article class="api-item" id="dial_tcp">
+<h2><code>dial_tcp</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dial_tcp(addr <span class="syn-type">string</span>) TcpClient</code></pre></div>
+<h3>Purpose</h3>
+<p>dial_tcp speaks prior-knowledge h2c. Failed prefaces close the connection. Throws on failure.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>addr</code> <span class="type">string</span></dt><dd>address (string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>TcpClient — a value of this type</p>
+</article>
 <article class="api-item" id="dial_tls">
 <h2><code>dial_tls</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dial_tls(addr <span class="syn-type">string</span>, server_name <span class="syn-type">string</span>) TlsClient</code></pre></div>
 <h3>Purpose</h3>
-<p>dial_tls connects with ALPN h2 and performs the HTTP/2 preface. Throws on failure.</p>
+<p>dial_tls verifies the peer, offers h2 ALPN and completes the HTTP/2 preface. Throws on failure.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>addr</code> <span class="type">string</span></dt><dd>address (string)</dd>
@@ -200,11 +176,25 @@
 <h3>Returns</h3>
 <p>TlsClient — a value of this type</p>
 </article>
+<article class="api-item" id="--TcpClient-get">
+<h2><code>($&amp;TcpClient) get</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">$&amp;</span>TcpClient) get(authority <span class="syn-type">string</span>, path <span class="syn-type">string</span>) Response</code></pre></div>
+<h3>Purpose</h3>
+<p>Success requires a complete current stream. Failures preserve received data for diagnostics and retire the connection; partial responses are never reused.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">$&amp;TcpClient</span></dt><dd>receiver $&amp;TcpClient (exclusive borrow)</dd>
+<dt><code>authority</code> <span class="type">string</span></dt><dd>authority (string)</dd>
+<dt><code>path</code> <span class="type">string</span></dt><dd>filesystem path (string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Response — a value of this type</p>
+</article>
 <article class="api-item" id="--TlsClient-get">
 <h2><code>($&amp;TlsClient) get</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">$&amp;</span>TlsClient) get(authority <span class="syn-type">string</span>, path <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
-<p>get issues GET over TLS.</p>
+<p>Execute `get` on `$&amp;TlsClient`.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">$&amp;TlsClient</span></dt><dd>receiver $&amp;TlsClient (exclusive borrow)</dd>
@@ -218,7 +208,7 @@
 <h2><code>($&amp;TlsClient) post</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">$&amp;</span>TlsClient) post(authority <span class="syn-type">string</span>, path <span class="syn-type">string</span>, content_type <span class="syn-type">string</span>, authorization <span class="syn-type">string</span>, body <span class="syn-type">string</span>) Response</code></pre></div>
 <h3>Purpose</h3>
-<p>post issues POST with a body (HEADERS then DATA+END_STREAM).</p>
+<p>POST remains the single-DATA-frame subset; oversized requests fail explicitly.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>t</code> <span class="type">$&amp;TlsClient</span></dt><dd>receiver $&amp;TlsClient (exclusive borrow)</dd>
@@ -230,6 +220,16 @@
 </dl>
 <h3>Returns</h3>
 <p>Response — a value of this type</p>
+</article>
+<article class="api-item" id="--TcpClient-close">
+<h2><code>($&amp;TcpClient) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (t <span class="syn-borrow">$&amp;</span>TcpClient) close()</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on `$&amp;TcpClient`: close the resource.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>t</code> <span class="type">$&amp;TcpClient</span></dt><dd>receiver $&amp;TcpClient (exclusive borrow)</dd>
+</dl>
 </article>
 <article class="api-item" id="--TlsClient-close">
 <h2><code>($&amp;TlsClient) close</code></h2>

@@ -44,7 +44,7 @@ _CURATED_API_GROUPS = [
     ('xi-database', '数据库', 'Database', 'database/sql database/sql/driver'.split()),
     ('xi-package', '扩展包', 'Extensions', ['packages/' + name for name in
         'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite websocket zookeeper'.split()]),
-    ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/widgets ui/webview'.split()),
+    ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/chart ui/widgets ui/webview'.split()),
 ]
 
 
@@ -239,7 +239,7 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
         groups.append(('xi-xuui', 'Development preview' if en else '开发预览', [
             (prefix + '/api/preview', 'Index' if en else '索引'),
             *[(prefix + '/api/preview/' + package, '#' + package)
-              for package in ('ui', 'ui/draw', 'ui/layout', 'ui/widgets', 'ui/webview')],
+              for package in ('ui', 'ui/draw', 'ui/layout', 'ui/chart', 'ui/widgets', 'ui/webview')],
             (prefix + '/api', 'Released SDK API' if en else '正式 SDK API'),
         ]))
     elif rest == '/api' or rest.startswith('/api/'):
