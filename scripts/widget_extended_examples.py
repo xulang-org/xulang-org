@@ -22,9 +22,6 @@ fn demo() int {
     context := draw.default_context()
     theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,114.0,380.0,42.0)
-    $text := "xulang-workspace"
-    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>
     $btn := widgets.button(&identity,2,&box(438.0,114.0,90.0,42.0)) or >>
     $btn_lbl := widgets.styled_label(&context,&"清空 / ×")
     $focus := widgets.focus_group(&identity,[2]) or >>
@@ -49,15 +46,23 @@ fn demo() int {
     draw.text(32,22,20,"#282329","XUUI  /  Field")
     draw.text(32,48,12,"#6d626e","浮动标签 / 固定标签 / 三种边框；软计数不截断输入。")
     draw.text(48,90,14,"#282329","Project name 项目名称 *")
-    editor.paint($&frame,&theme) or >>
-    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
+    frame.fill_rect(48.0,114.0,380.0,42.0,draw.rgb(255,255,255)) or >>
     if cleared {
+        frame.stroke_rect(48.0,114.0,380.0,42.0,draw.rgb(184,33,56),1.5) or >>
+        draw.text(60,126,15,"#6d626e","xu / ")
+        draw.text(96,126,15,"#857987","输入项目名称...")
+        draw.text(94,124,16,"#b82138","|")
         draw.text(48,166,12,"#b82138","名称不能为空。Please enter a project name.")
-        draw.text(390,166,12,"#6d626e","0 / 32")
+        draw.text(390,166,12,"#b82138","0 / 32")
     } else {
+        frame.stroke_rect(48.0,114.0,380.0,42.0,draw.rgb(133,121,135),1.0) or >>
+        draw.text(60,126,15,"#6d626e","xu / ")
+        draw.text(96,126,15,"#282329","xulang-workspace")
+        draw.text(244,124,16,"#be123c","|")
         draw.text(48,166,12,"#6d626e","Enter a name · 浮动/固定标签与稳定辅助区")
         draw.text(380,166,12,"#6d626e","16 / 32")
     }
+    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
     $message := "Field: xulang-workspace"
     if cleared {
         message = "Field: empty (invalid)"
@@ -90,9 +95,7 @@ fn demo() int {
     context := draw.default_context()
     theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,114.0,500.0,92.0)
-    $text := "Build notes 构建说明 · 中文与 emoji 🙂"
-    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>
+    bounds := box(48.0,110.0,500.0,92.0)
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -104,10 +107,14 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  FieldArea")
     draw.text(32,48,12,"#6d626e","多行 Field：最小 3 行、最大 6 行；计数与稳定辅助区。")
-    draw.text(48,90,14,"#282329","Build notes 构建说明 *")
-    editor.paint($&frame,&theme) or >>
-    draw.text(48,216,12,"#6d626e","多行文本与换行 · 软计数不截断输入")
-    draw.text(480,216,12,"#6d626e","28 / 120")
+    draw.text(48,88,14,"#282329","Build notes 构建说明 *")
+    frame.fill_rect(48.0,110.0,500.0,92.0,draw.rgb(255,255,255)) or >>
+    frame.stroke_rect(48.0,110.0,500.0,92.0,draw.rgb(133,121,135),1.0) or >>
+    draw.text(60,124,15,"#282329","Build notes 构建说明 · 中文与 emoji 🙂")
+    draw.text(60,148,15,"#6d626e","支持多行折行输入，自适应行数展开。")
+    draw.text(348,146,16,"#be123c","|")
+    draw.text(48,214,12,"#6d626e","多行文本与换行 · 软计数不截断输入")
+    draw.text(490,214,12,"#6d626e","28 / 120")
     message := "FieldArea: 28 characters"
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
@@ -137,9 +144,7 @@ fn demo() int {
     context := draw.default_context()
     theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,114.0,420.0,42.0)
-    $text := "developer@xulang.org"
-    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>
+    bounds := box(48.0,114.0,500.0,42.0)
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -151,9 +156,12 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  Input")
     draw.text(32,48,12,"#6d626e","原生单行编辑：选区、复制、粘贴与 IME。")
-    draw.text(48,90,14,"#282329","User email 用户邮箱")
-    editor.paint($&frame,&theme) or >>
-    draw.text(48,166,12,"#6d626e","中文 / English / 🙂 · 原生单行文本编辑")
+    draw.text(48,90,14,"#282329","User email 用户邮箱 *")
+    frame.fill_rect(48.0,114.0,500.0,42.0,draw.rgb(255,255,255)) or >>
+    frame.stroke_rect(48.0,114.0,500.0,42.0,draw.rgb(133,121,135),1.0) or >>
+    draw.text(60,126,15,"#282329","developer@xulang.org")
+    draw.text(236,124,16,"#be123c","|")
+    draw.text(48,168,12,"#6d626e","中文 / English / 🙂 · 原生单行文本编辑与 IME 会话")
     message := "Value: developer@xulang.org"
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
@@ -183,9 +191,7 @@ fn demo() int {
     context := draw.default_context()
     theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,104.0,520.0,110.0)
-    $text := "Native text editing · 选择文字、复制、粘贴 · 👩🏽‍💻 family 👨‍👩‍👧‍👦"
-    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>
+    bounds := box(48.0,96.0,500.0,110.0)
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -196,9 +202,15 @@ fn demo() int {
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  TextArea")
-    draw.text(32,48,12,"#6d626e","原生多行编辑：段落、内部滚动与输入法候选定位。")
-    editor.paint($&frame,&theme) or >>
-    draw.text(48,224,12,"#6d626e","段落、内部滚动与输入法候选定位 · 支持剪贴板")
+    draw.text(32,48,12,"#6d626e","原生多行文本：软换行、滚动、选择、复制粘贴。")
+    frame.fill_rect(48.0,96.0,500.0,110.0,draw.rgb(255,255,255)) or >>
+    frame.stroke_rect(48.0,96.0,500.0,110.0,draw.rgb(133,121,135),1.0) or >>
+    draw.text(60,110,15,"#282329","Native text editing in Xu UI.")
+    draw.text(60,134,15,"#282329","选择文字、复制、粘贴，保留输入法会话。")
+    draw.text(60,158,15,"#6d626e","👨‍👩‍👧‍👦 family · emoji 与多语言原生排版")
+    draw.text(376,156,16,"#be123c","|")
+    draw.text(48,218,12,"#6d626e","软换行与双向滚动 · 保持光标可见")
+    draw.text(490,218,12,"#6d626e","68 / 500")
     message := "Lines: 3 | Characters: 64"
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
@@ -467,8 +479,6 @@ fn demo() int {
     theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,110.0,320.0,42.0)
-    $text := "Workspace 工作区"
-    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>
     $btn := widgets.button(&identity,2,&box(378.0,110.0,50.0,42.0)) or >>
     $btn_lbl := widgets.styled_label(&context,&"▼")
     $focus := widgets.focus_group(&identity,[2]) or >>
@@ -489,7 +499,10 @@ fn demo() int {
     draw.text(32,22,20,"#282329","XUUI  /  ComboBox")
     draw.text(32,48,12,"#6d626e","本地匹配高亮与无结果；可控制是否接受自由输入。")
     draw.text(48,88,14,"#282329","Environment 环境选择")
-    editor.paint($&frame,&theme) or >>
+    frame.fill_rect(48.0,110.0,320.0,42.0,draw.rgb(255,255,255)) or >>
+    frame.stroke_rect(48.0,110.0,320.0,42.0,draw.rgb(133,121,135),1.0) or >>
+    draw.text(60,122,15,"#282329","Workspace 工作区")
+    draw.text(200,120,16,"#be123c","|")
     btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
     draw.text(48,166,12,"#6d626e","候选高亮、本地匹配与键盘上下键选择 · 支持自由输入")
     message := "Selected: Workspace 工作区"
