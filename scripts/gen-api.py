@@ -2791,13 +2791,11 @@ def render_index(packages: list[Package], lang: str, xu_version: str, examples: 
                     body.append(f'<li><a href="{prefix}/api/ui/widgets#components-{esc(category)}">{esc(labels[lang == "en"])}</a></li>')
                 body.append('</ul>')
         if key == 'ui' and ui and not preview_digest:
-            filename = 'ui-browser-zh.png' if lang == 'zh' else 'ui-browser-en.png'
-            if lang == 'en' and not (root / 'www/img/api' / filename).is_file():
-                filename = 'ui-browser.png'
+            filename = f'ui-native-controls-gallery-{lang}.png'
             if (root / 'www/img/api' / filename).is_file():
-                alt = '浏览器中的 UI 文档与演练场截图' if lang == 'zh' else 'Browser capture of UI documentation and playground'
-                caption = ('UI 演练场与组件目录的浏览器截图。' if lang == 'zh' else 'The UI playground and component catalog, captured in a browser.')
-                body.append(f'<figure class="api-ui-capture"><a href="/img/api/{filename}"><img src="/img/api/{filename}" alt="{alt}" width="1366" height="900" loading="lazy"></a><figcaption>{caption}</figcaption></figure>')
+                alt = ('原生 xu ui 桌面窗口运行 controls_gallery 示例。' if lang == 'zh' else 'Native xu ui desktop window running the controls_gallery example.')
+                caption = alt
+                body.append(f'<figure class="api-ui-capture"><a href="/img/api/{filename}"><img src="/img/api/{filename}" alt="{alt}" width="790" height="586" loading="lazy"></a><figcaption>{caption}</figcaption></figure>')
         if not topics:
             body.append('<p>' + ('此快照未包含该分类的包。' if lang == 'zh' else 'No packages in this section in this snapshot.') + '</p>')
         body.append('</section>')

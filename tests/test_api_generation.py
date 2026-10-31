@@ -5,6 +5,7 @@ import importlib.util
 import io
 import json
 import re
+import struct
 from pathlib import Path
 import sys
 import tempfile
@@ -19,7 +20,7 @@ spec.loader.exec_module(api)
 
 
 class APIGenerationTests(unittest.TestCase):
-    def test_bilingual_indexes_have_three_sections_topics_and_browser_captures(self):
+    def test_bilingual_indexes_have_three_sections_topics_and_native_captures(self):
         class Index(HTMLParser):
             def __init__(self, source):
                 super().__init__()
@@ -69,9 +70,13 @@ class APIGenerationTests(unittest.TestCase):
                     self.assertEqual(len(parsed.images), 1)
                     section, img = parsed.images[0]
                     self.assertEqual(section, 'api-ui')
-                    self.assertEqual(img['src'], f'/img/api/ui-browser-{lang}.png')
-                    self.assertTrue((ROOT / 'www' / img['src'].lstrip('/')).is_file())
-                    self.assertIn('浏览器' if lang == 'zh' else 'Browser capture', img['alt'])
+                    self.assertEqual(img['src'], f'/img/api/ui-native-controls-gallery-{lang}.png')
+                    image = (ROOT / 'www' / img['src'].lstrip('/')).read_bytes()
+                    self.assertEqual(image[:8], b'\x89PNG\r\n\x1a\n')
+                    self.assertEqual((int(img['width']), int(img['height'])), struct.unpack('>II', image[16:24]))
+                    caption = ('原生 xu ui 桌面窗口运行 controls_gallery 示例。' if lang == 'zh' else 'Native xu ui desktop window running the controls_gallery example.')
+                    self.assertEqual(img['alt'], caption)
+                    self.assertIn(f'<figcaption>{caption}</figcaption>', source)
                     for section, href in parsed.links:
                         if href.startswith(prefix + '/api/packages/'):
                             self.assertEqual(section, 'api-extensions')
@@ -96,15 +101,16 @@ class APIGenerationTests(unittest.TestCase):
                 for category in json.loads((ROOT / 'templates/widgets.json').read_text())['groups']:
                     self.assertIn('id="components-' + category + '"', module)
 
-    def test_index_uses_staged_english_capture_fallback(self):
+    def test_index_uses_only_staged_locale_native_capture(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            image = root / 'www/img/api/ui-browser.png'
+            image = root / 'www/img/api/ui-native-controls-gallery-en.png'
             image.parent.mkdir(parents=True)
-            image.write_bytes((ROOT / 'www/img/api/ui-browser.png').read_bytes())
+            image.write_bytes((ROOT / 'www/img/api/ui-native-controls-gallery-en.png').read_bytes())
             rendered = api.render_index([api.Package('ui', '#ui')], 'en', '0.10.12', root=root)
-            self.assertIn('<img src="/img/api/ui-browser.png"', rendered)
-            self.assertNotIn('ui-browser-en.png', rendered)
+            self.assertIn('<img src="/img/api/ui-native-controls-gallery-en.png"', rendered)
+            rendered = api.render_index([api.Package('ui', '#ui')], 'zh', '0.10.12', root=root)
+            self.assertNotIn('api-ui-capture', rendered)
 
     def test_widget_factories_do_not_override_same_named_input_methods(self):
         saved = api.OVERRIDES.copy()
