@@ -99,3 +99,18 @@ test('selecting a template does not load it before Open project is pressed', () 
   assert.equal(changed, true);
   assert.equal(page.get('ex').value, 'checkout');
 });
+
+test('category navigation translates vertical mouse wheel to horizontal scrolling', () => {
+  const page = mount();
+  const nav = page.get('library-groups');
+  let prevented = false;
+  nav.scrollLeft = 0;
+  nav.dispatchEvent({
+    type: 'wheel',
+    deltaY: 60,
+    deltaX: 0,
+    preventDefault() { prevented = true; }
+  });
+  assert.equal(prevented, true);
+  assert.equal(nav.scrollLeft, 60);
+});

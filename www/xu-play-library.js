@@ -148,6 +148,15 @@
   });
   el('library-close').addEventListener('click', function () { dialog.close(); });
   el('library-search').addEventListener('input', render);
+  var navGroups = el('library-groups');
+  if (navGroups) {
+    navGroups.addEventListener('wheel', function (event) {
+      if (event.deltaY && !event.deltaX) {
+        event.preventDefault();
+        navGroups.scrollLeft += event.deltaY;
+      }
+    }, { passive: false });
+  }
   el('library-reset').addEventListener('click', function () {
     group = 'all';
     el('library-search').value = '';
