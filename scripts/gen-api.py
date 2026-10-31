@@ -109,7 +109,7 @@ def parse_receiver(recv: str) -> tuple[str, str]:
 
 def placeholder_name(typ: str) -> str:
     t = typ.strip()
-    t = re.sub(r"^(?:\$&|&mut\s+)", "", t)
+    t = re.sub(r"^\$&", "", t)
     t = re.sub(r"^&\s*", "", t)
     t = re.sub(r"^\[\]", "", t)
     t = t.split(".")[-1]
@@ -407,9 +407,7 @@ def parse_struct_fields(block: str) -> list[Field]:
         if t.startswith("pub "):
             pub = True
             t = t[4:].strip()
-        if t.startswith("mut "):
-            t = t[4:].strip()
-        elif t.startswith("$"):
+        if t.startswith("$"):
             t = t[1:].strip()
         m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(.+?)$", t.rstrip(","))
         if not m:
@@ -1557,9 +1555,9 @@ def param_meaning(pkg, fn: str, p: Param, lang: str) -> str:
     zh = lang == "zh"
     if p.is_recv:
         if zh:
-            mut = "可变借用" if p.typ.startswith(("$&", "&mut")) else ("借用" if p.typ.startswith("&") else "值接收者")
+            mut = "可变借用" if p.typ.startswith("$&") else ("借用" if p.typ.startswith("&") else "值接收者")
             return f"接收者 {p.typ}（{mut}）"
-        mut = "exclusive borrow" if p.typ.startswith(("$&", "&mut")) else ("borrow" if p.typ.startswith("&") else "value receiver")
+        mut = "exclusive borrow" if p.typ.startswith("$&") else ("borrow" if p.typ.startswith("&") else "value receiver")
         return f"receiver {p.typ} ({mut})"
     if p.variadic or p.typ.startswith("<->"):
         inner = p.typ.replace("<->", "").strip()
@@ -1606,9 +1604,9 @@ def param_meaning(pkg, fn: str, p: Param, lang: str) -> str:
 def type_note(typ: str, zh: bool) -> str:
     t = typ.strip()
     bits = []
-    if t.startswith("$&") or t.startswith("&mut "):
+    if t.startswith("$&"):
         bits.append("独占借用" if zh else "exclusive borrow")
-        t = t[2:] if t.startswith("$&") else t[5:]
+        t = t[2:]
     elif t.startswith("&"):
         bits.append("借用，调用方仍持有" if zh else "borrowed; caller keeps it")
         t = t[1:].lstrip()
@@ -1647,7 +1645,7 @@ def pkg_id(pkg) -> str:
 
 def lookup_override(pkg, item: Item, lang: str):
     p = pkg_id(pkg)
-    receiver = re.sub(r'^(?:\$&|&(?:mut\s+)?)', '', item.recv_type).strip()
+    receiver = re.sub(r'^(?:\$&|&)', '', item.recv_type).strip()
     for key in ((p, item.recv_type, item.name), (p, receiver, item.name), (p, item.name)):
         if key in OVERRIDES:
             return OVERRIDES[key][lang]
@@ -2318,9 +2316,9 @@ def highlight_xu(sig: str) -> str:
         r'(?P<cmt>//[^\n]*|/\*[\s\S]*?\*/)'
         r'|(?P<str>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`[^`]*`)'
         r'|(?P<import>#[A-Za-z0-9_/]+)'
-        r'|(?P<borrow>\$&|&\s*mut\b|mut\s*&)'
+        r'|(?P<borrow>\$&)'
         r'|(?P<flow>>>|<<|:=|<-|->)'
-        r'|(?P<kw>\b(?:pub|fn|struct|mut|const|affine|defer|xu|if|else|match|return|interface|type|chan|or|for|while|in)\b@?)'
+        r'|(?P<kw>\b(?:pub|fn|struct|const|affine|defer|xu|if|else|match|return|interface|type|chan|or|for|while|in)\b@?)'
         r'|(?P<type>\b(?:int|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|string|bool|char|void|any|error|byte|rune|Self)\b)'
     )
     parts = []

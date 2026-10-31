@@ -19,7 +19,7 @@
   var expanded = new Set(['']);
   var removed = null;
   var saveTimer;
-  var token = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|#[\w/]+|\b(?:fn|pub|mut|const|if|else|match|for|while|break|continue|xu|true|false|struct|enum|impl|or|int|i64|f64|bool|string|byte)\b|\b\d+(?:\.\d+)?\b|@main|<<|>>/g;
+  var token = /\/\/[^\n]*|\/\*[\s\S]*?\*\/|"(?:\\.|[^"\\])*"|#[\w/]+|\b(?:fn|pub|const|if|else|match|for|while|break|continue|xu|true|false|struct|enum|impl|or|int|i64|f64|bool|string|byte)\b|\b\d+(?:\.\d+)?\b|@main|<<|>>/g;
 
   function icon(name) {
     var node = document.createElement('i');
