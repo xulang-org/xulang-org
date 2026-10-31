@@ -179,3 +179,11 @@ test('documentation snippets replace the custom entry without losing other examp
   page.workspace.setExample('hello', 'original');
   assert.match(page.workspace.getSource(), /first/);
 });
+test('reset restores default template code after edits', () => {
+  const page = mount();
+  page.workspace.setExample('arithmetic', {source: '@main\nfn main() int { println(1 + 2)\n << 0 }'});
+  page.edit('@main\nfn main() int { println(999)\n << 0 }');
+  assert.match(page.workspace.getSource(), /999/);
+  page.get('xu-play-reset').click();
+  assert.match(page.workspace.getSource(), /1 \+ 2/);
+});
