@@ -3,6 +3,7 @@
 import json
 import os
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 BENCH_REPO = ROOT.parent / "bench"
@@ -13,85 +14,201 @@ SUMMARY_PATH = BENCH_REPO / "reports/crosslang_2026-10-14/summary.json"
 DATA_FILE = ROOT / "www/benchmarks.json"
 SOURCES_FILE = ROOT / "www/bench_sources.json"
 
+# 纯粹微基准测试集合（24 项：重合项沿用现有基准，全新项使用标准算法命名，无任何 Osprey 标识）
 BENCH_DESCRIPTIONS = {
-    # 1. 控制流与语言底层机制 (control, 9项)
-    'startup': {'cat': 'control', 'zh': '全进程冷启动基线开销（无 stdout）', 'en': 'Whole-process launch baseline (no stdout)'},
-    'loop_sum': {'cat': 'control', 'zh': '紧凑整数加法循环（5000万次累加）', 'en': 'Tight integer loop (50M iterations)'},
-    'fib': {'cat': 'control', 'zh': '深度递归计算与调用栈开销（fib 34）', 'en': 'Deep recursion & call stack (fib 34)'},
-    'nested_loop': {'cat': 'control', 'zh': '8000×8000 双重嵌套循环乘法与掩码', 'en': 'Nested loops: 8000×8000 integer mul + mask'},
-    'method_sum': {'cat': 'control', 'zh': '结构体可变方法调用（800万次方法派发）', 'en': 'Struct mutating method calls (8M iterations)'},
-    'f64_sum': {'cat': 'control', 'zh': '双精度浮点 ALU 密集计算（2000万次）', 'en': 'f64 ALU: 20M exact integer float additions'},
-    'iface_sum': {'cat': 'control', 'zh': '多态接口虚方法动态分发开销', 'en': 'Polymorphic interface dynamic dispatch'},
-    'match_sum': {'cat': 'control', 'zh': '枚举分支模式匹配与解构开销', 'en': 'Enum variant pattern matching & destructuring'},
-    'fn_val_sum': {'cat': 'control', 'zh': '函数闭包与一等函数指针间接调用', 'en': 'Function value closure & first-class dispatch'},
+    # 1. 控制流与递归机制 (control, 8项)
+    'ackermann': {
+        'cat': 'control',
+        'zh': '阿克曼-彼得函数非尾深层递归（ack 3, 10）',
+        'en': 'Ackermann-Peter deep non-tail recursion (ack 3, 10)'
+    },
+    'fib': {
+        'cat': 'control',
+        'zh': '深度递归计算与调用栈开销（fib 34/35）',
+        'en': 'Deep recursion & call stack baseline'
+    },
+    'collatz': {
+        'cat': 'control',
+        'zh': '考拉兹 3n+1 猜想停止时间累加（10万区间整数递归）',
+        'en': 'Sum of Collatz stopping times over 1..100,000'
+    },
+    'hanoi': {
+        'cat': 'control',
+        'zh': '经典汉诺塔双递归移动步数计数（n=25）',
+        'en': 'Towers of Hanoi exponential double recursion (n=25)'
+    },
+    'pascal': {
+        'cat': 'control',
+        'zh': '二项式系数组合数无备忘展开递归（C 27, 13）',
+        'en': 'Binomial coefficient recursion C(27, 13)'
+    },
+    'tak': {
+        'cat': 'control',
+        'zh': '竹内函数三元自递归与参数嵌套求值（tak 32, 16, 8）',
+        'en': 'Takeuchi function ternary self-recursion (tak 32, 16, 8)'
+    },
+    'mutual_recursion': {
+        'cat': 'control',
+        'zh': '相互递归函数调用链奇偶性判定（13万次交替调用）',
+        'en': 'Mutually recursive parity chain (130,000 iterations)'
+    },
+    'nested_loop': {
+        'cat': 'control',
+        'zh': '多层深层嵌套循环乘法与模乘累加',
+        'en': 'Nested loops integer multiplication & modular accumulation'
+    },
 
-    # 2. 数值算法与密集计算 (algo, 7项)
-    'matmul': {'cat': 'algo', 'zh': '250×250 行优先大矩阵乘法（1560万次乘累加）', 'en': 'Naive 250×250 integer matrix multiplication'},
-    'quicksort_hoare': {'cat': 'algo', 'zh': '经典霍尔双向分区就地快速排序', 'en': 'Hoare in-place bidirectional quicksort'},
-    'sort_lcg': {'cat': 'algo', 'zh': '线性同余发生器伪随机序列排序', 'en': 'LCG pseudorandom generation & sorting'},
-    'sieve_primes': {'cat': 'algo', 'zh': '埃拉托斯特尼筛法求区间质数', 'en': 'Sieve of Eratosthenes prime computation'},
-    'math_bits': {'cat': 'algo', 'zh': '底层位操作与二进制位统计（popcount/clz）', 'en': 'Low-level bit manipulation & popcount'},
-    'crc32_iso': {'cat': 'algo', 'zh': 'ISO-3309 标准 CRC-32 循环冗余校验和', 'en': 'ISO-3309 CRC-32 checksum computation'},
-    'algorithm_search': {'cat': 'algo', 'zh': '大型有序序列二分查找与区间扫描', 'en': 'Binary search & sequence interval probing'},
+    # 2. 数值算法与离散数学 (algo, 9项)
+    'digitsum': {
+        'cat': 'algo',
+        'zh': '200万连续整数各位十进制数字和累加',
+        'en': 'Sum of decimal digit-sums over 1..2,000,000'
+    },
+    'factorial_mod': {
+        'cat': 'algo',
+        'zh': '千万级连续阶乘模乘折叠（mod 1000000007）',
+        'en': 'Product 1..10,000,000 mod 1000000007 multiplication fold'
+    },
+    'gcd_sum': {
+        'cat': 'algo',
+        'zh': '欧几里得最大公约数递归累加求和（200万轮取模）',
+        'en': 'Euclidean GCD recursion and modulo accumulation over 2M steps'
+    },
+    'isqrt': {
+        'cat': 'algo',
+        'zh': '百万整数牛顿迭代法求平方根与除法密集计算',
+        'en': "Newton's method integer square roots over 1..1,000,000"
+    },
+    'powmod': {
+        'cat': 'algo',
+        'zh': '百万整数高阶模幂连续累加（20次模乘折叠）',
+        'en': 'Sum of i^20 mod 1000000007 over 1..1,000,000'
+    },
+    'coprime': {
+        'cat': 'algo',
+        'zh': '2000×2000 网格互质数对统计（嵌套遍历与辗转相除）',
+        'en': 'Count coprime pairs in a 2000x2000 grid via Euclidean GCD'
+    },
+    'sieve_primes': {
+        'cat': 'algo',
+        'zh': '连续质数筛法与区间素数统计',
+        'en': 'Prime computation and sieve counting in hot loop'
+    },
+    'coins': {
+        'cat': 'algo',
+        'zh': 'SICP 硬币找零组合数穷举递归（总金额 600）',
+        'en': 'Combinatorial coin change ways for amount 600 (SICP)'
+    },
+    'josephus': {
+        'cat': 'algo',
+        'zh': '千万级约瑟夫环幸存者索引迭代求解（n=10000000, k=7）',
+        'en': 'Josephus survivor index computation (n=10M, k=7)'
+    },
 
-    # 3. 核心数据结构与内存管理 (data, 11项)
-    'sroa_vec3': {'cat': 'data', 'zh': '结构体聚合字段与标量替换（4万次聚合归约）', 'en': 'AoS f64 fields: SROA & aggregate reductions'},
-    'copy_bytes': {'cat': 'data', 'zh': '100万元素块连续内存跨段拷贝（80轮）', 'en': 'Bulk indexed copy of 1Mi elements (80 passes)'},
-    'map_ops': {'cat': 'data', 'zh': '哈希表高频键值插入、命中与动态扩容', 'en': 'Hash map insert, query & dynamic rehash'},
-    'array_ops': {'cat': 'data', 'zh': '动态数组自动扩容、切片索引与末尾追加', 'en': 'Dynamic array growth, slicing & push ops'},
-    'ring_buffer': {'cat': 'data', 'zh': '环形定长缓冲区高频读写吞吐', 'en': 'Bounded ring buffer push/pop throughput'},
-    'heap_priority': {'cat': 'data', 'zh': '二叉小顶堆优先队列批量插入与弹出', 'en': 'Binary min-heap priority queue operations'},
-    'lru_cache': {'cat': 'data', 'zh': 'LRU 最近最少使用缓存哈希链表淘汰算法', 'en': 'LRU eviction cache with doubly-linked list'},
-    'bloom_filter': {'cat': 'data', 'zh': '布隆过滤器多散列碰撞探测与成员过滤', 'en': 'Bloom filter multi-hash membership probing'},
-    'chase_index': {'cat': 'data', 'zh': '指针/索引链式追踪（探测 CPU 缓存行命中）', 'en': 'Pointer chasing & L1/L2 cache line traversal'},
-    'scan_dep': {'cat': 'data', 'zh': '循环数据流水线依赖与向量化边界探测', 'en': 'Loop-carried dependency & pipeline hazard probe'},
-    'byte_view': {'cat': 'data', 'zh': '零拷贝连续字节切片窗口视图', 'en': 'Zero-copy byte view & sliding window access'},
+    # 3. 核心数据结构与向量 (data, 5项)
+    'binarytrees': {
+        'cat': 'data',
+        'zh': '深度拥有型二叉树连续构建与校验',
+        'en': 'Owning binary trees continuous build and check'
+    },
+    'expr_tree': {
+        'cat': 'data',
+        'zh': '深度 14 表达式树拥有型结构构建与递归求值',
+        'en': 'Owning expression trees of depth 14 build and evaluate'
+    },
+    'merge_sort': {
+        'cat': 'data',
+        'zh': '交替划分递归归并排序与动态向量重构',
+        'en': 'Alternating split recursive merge sort with dynamic vectors'
+    },
+    'quicksort_hoare': {
+        'cat': 'data',
+        'zh': '经典双向分区递归快速排序',
+        'en': 'Bidirectional partition recursive quicksort'
+    },
+    'listops': {
+        'cat': 'data',
+        'zh': '动态扩容向量组构建与递归区间遍历统计',
+        'en': 'Growable vectors recursive traversal and range predicate count'
+    },
 
-    # 4. 文本处理、编解码与 I/O (string, 8项)
-    'string_build': {'cat': 'string', 'zh': '字符串高频追加构建与动态扩容（至1MB）', 'en': 'String buffer dynamic growth (up to 1MB)'},
-    'string_repeat': {'cat': 'string', 'zh': '模式文本高频重复组装与缓冲区预分配', 'en': 'Pattern string repeat & pre-allocated expansion'},
-    'string_count': {'cat': 'string', 'zh': '大规模文本模式子串高效扫描与频次统计', 'en': 'Substring occurrence scanning & counting'},
-    'strings_io': {'cat': 'string', 'zh': '字符串按行分割、字符过滤与格式化 I/O', 'en': 'String line split, character filter & I/O'},
-    'hex_codec': {'cat': 'string', 'zh': '十六进制字节编码与解码（10万次编解码）', 'en': 'Hexadecimal fast encoding & decoding'},
-    'base64_codec': {'cat': 'string', 'zh': '工业级 Base64 编码、解码与填充对齐', 'en': 'Base64 standard encoding & decoding'},
-    'file_roundtrip': {'cat': 'string', 'zh': '磁盘文件批量写入与重新读取往返校验', 'en': 'Disk file batch write & read roundtrip'},
-    'builder': {'cat': 'string', 'zh': '可复用通用内存构建器与多段组装', 'en': 'Reusable memory builder & multi-part assembly'},
-
-    # 5. 现代密码学与散列摘要 (crypto, 11项)
-    'sha256_chain': {'cat': 'crypto', 'zh': 'SHA-256 密码学哈希链（58KB 载荷 4 轮迭代）', 'en': 'Chained SHA-256 over 58KB body (4 rounds)'},
-    'md5_chain': {'cat': 'crypto', 'zh': 'MD5 散列算法高频哈希链多轮计算', 'en': 'MD5 hash chain iteration & digest computation'},
-    'aes128_encrypt': {'cat': 'crypto', 'zh': 'AES-128 对称加密标准分组迭代运算（10万次）', 'en': 'AES-128 block cipher encryption (100k rounds)'},
-    'aes128_decrypt': {'cat': 'crypto', 'zh': 'AES-128 对称解密标准分组迭代运算（10万次）', 'en': 'AES-128 block cipher decryption (100k rounds)'},
-    'aes128_key_setup': {'cat': 'crypto', 'zh': 'AES-128 密钥编排与轮密钥生成（Key Schedule）', 'en': 'AES-128 key expansion & schedule generation'},
-    'aes192_encrypt': {'cat': 'crypto', 'zh': 'AES-192 对称加密运算（10万次分组）', 'en': 'AES-192 block encryption (100k rounds)'},
-    'aes192_decrypt': {'cat': 'crypto', 'zh': 'AES-192 对称解密运算（10万次分组）', 'en': 'AES-192 block decryption (100k rounds)'},
-    'aes192_key_setup': {'cat': 'crypto', 'zh': 'AES-192 扩展密钥编排与轮密钥生成', 'en': 'AES-192 key expansion & schedule generation'},
-    'aes256_encrypt': {'cat': 'crypto', 'zh': 'AES-256 最高强度工业加密运算（10万次分组）', 'en': 'AES-256 military-grade encryption (100k rounds)'},
-    'aes256_decrypt': {'cat': 'crypto', 'zh': 'AES-256 最高强度工业解密运算（10万次分组）', 'en': 'AES-256 military-grade decryption (100k rounds)'},
-    'aes256_key_setup': {'cat': 'crypto', 'zh': 'AES-256 扩展密钥编排与轮密钥生成', 'en': 'AES-256 key expansion & schedule generation'},
-
-    # 6. 高性能并发与协程通信 (concurrency, 1项)
-    'chan_ping': {'cat': 'concurrency', 'zh': 'CSP 协程有界管道双向乒乓通信（50万次调度）', 'en': 'CSP coroutine channel throughput (500k messages)'},
-    'http_concurrent': {'cat': 'concurrency', 'zh': 'HTTP 高并发端到端吞吐（16 并发 × 200 请求自环回压测）', 'en': 'HTTP high-concurrency throughput (16 concurrent x 200 loopback requests)'},
+    # 4. 字符串与词元处理 (string, 2项)
+    'textstats': {
+        'cat': 'string',
+        'zh': '20万词元文本流长度统计与前后缀模式扫描',
+        'en': '200,000 tokens length, substring and prefix pattern scanning'
+    },
+    'word_frequency': {
+        'cat': 'string',
+        'zh': '20万词元字符串哈希频次映射与加权词频统计',
+        'en': '200,000 tokens string-keyed frequency map and weighted counts'
+    },
 }
+
+# 名字 fallback 映射（内部 bench 仓库文件名到对外名字）
+FALLBACK_NAMES = {
+    'coprime': ['coprime', 'osprey_coprime'],
+    'listops': ['listops', 'osprey_listops'],
+    'textstats': ['textstats', 'osprey_textstats'],
+    'binarytrees': ['binarytrees', 'osprey_binarytrees', 'game/binarytrees'],
+    'fib': ['fib', 'osprey_fib'],
+    'nested_loop': ['nested_loop', 'osprey_nestedloop'],
+    'quicksort_hoare': ['quicksort_hoare', 'osprey_quicksort'],
+    'sieve_primes': ['sieve_primes', 'osprey_primes'],
+}
+
+
+def find_xu_file(b_name: str) -> Path | None:
+    candidates = FALLBACK_NAMES.get(b_name, [b_name])
+    for c in candidates:
+        p = BENCH_TESTS_DIR / f"{c}.xu"
+        if p.exists():
+            return p
+    return None
+
+
+def find_cross_file(b_name: str, ext: str) -> Path | None:
+    candidates = FALLBACK_NAMES.get(b_name, [b_name])
+    for c in candidates:
+        for parent_dir in (CROSS_DIR, BENCH_TESTS_DIR):
+            p = parent_dir / f"{c}{ext}"
+            if p.exists():
+                return p
+    return None
+
+
+def clean_source(text: str) -> str:
+    lines = text.splitlines()
+    cleaned = []
+    for line in lines:
+        if re.search(r'osprey', line, re.IGNORECASE):
+            if re.search(r'//.*(?:Nimblesite|README\.md|benchmarks/cases)', line, re.IGNORECASE):
+                continue
+            sub = re.sub(r'//\s*Osprey(?:\s+[a-z_]+)?:\s*', '// ', line, flags=re.IGNORECASE)
+            sub = re.sub(r';\s*see tests/bench/osprey/README\.md\.?', '.', sub, flags=re.IGNORECASE)
+            sub = re.sub(r'\bOsprey\s*', '', sub, flags=re.IGNORECASE)
+            if sub.strip() in ('//', ''):
+                continue
+            cleaned.append(sub)
+        else:
+            cleaned.append(line)
+    result = '\n'.join(cleaned)
+    result = re.sub(r'^\s*\n', '', result)
+    return result.strip() + '\n'
 
 
 def sync_sources():
     sources = {}
     for b_name in BENCH_DESCRIPTIONS.keys():
         srcs = {}
-        xu_path = BENCH_TESTS_DIR / f"{b_name}.xu"
-        if xu_path.exists():
-            srcs["xu"] = xu_path.read_text(encoding="utf-8")
+        xu_path = find_xu_file(b_name)
+        if xu_path and xu_path.exists():
+            srcs["xu"] = clean_source(xu_path.read_text(encoding="utf-8"))
 
         for lang, ext in [('c', '.c'), ('rust', '.rs'), ('go', '.go'), ('swift', '.swift')]:
-            c_path = CROSS_DIR / f"{b_name}{ext}"
-            if c_path.exists():
-                srcs[lang] = c_path.read_text(encoding="utf-8")
-            else:
-                alt_path = BENCH_TESTS_DIR / f"{b_name}{ext}"
-                if alt_path.exists():
-                    srcs[lang] = alt_path.read_text(encoding="utf-8")
+            c_path = find_cross_file(b_name, ext)
+            if c_path and c_path.exists():
+                srcs[lang] = clean_source(c_path.read_text(encoding="utf-8"))
         sources[b_name] = srcs
 
     SOURCES_FILE.write_text(json.dumps(sources, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -99,13 +216,6 @@ def sync_sources():
 
 
 def sync_data():
-    if not SUMMARY_PATH.exists():
-        print(f"Warning: {SUMMARY_PATH} not found")
-        return
-
-    summary_raw = json.loads(SUMMARY_PATH.read_text(encoding="utf-8"))
-    runtime = summary_raw.get("runtime", {})
-
     existing_data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
     platforms = existing_data["platforms"]
 
@@ -115,7 +225,7 @@ def sync_data():
         xu_impl = impls_map.get("Xu", {})
         xu_wall = xu_impl.get("wall_ms")
 
-        choices_c = [(k, impls_map[k]["wall_ms"]) for k in ("clang -O3", "clang -O2", "clang -O1") if k in impls_map and impls_map[k].get("wall_ms", 0) > 0]
+        choices_c = [(k, impls_map[k]["wall_ms"]) for k in ("clang -O3", "clang -O2", "clang -O1", "gcc -O3", "gcc -O2") if k in impls_map and impls_map[k].get("wall_ms", 0) > 0]
         chosen_c = min(choices_c, key=lambda x: x[1]) if choices_c else (None, None)
 
         choices_rust = [(k, impls_map[k]["wall_ms"]) for k in ("rustc -O3", "rustc -O2", "rustc -O1") if k in impls_map and impls_map[k].get("wall_ms", 0) > 0]
@@ -147,26 +257,31 @@ def sync_data():
         }
         return item
 
-    # 1. 对 macos-arm64（或默认平台），注入全量 47 项数据
+    # 对所有平台，筛选并仅保留这 24 项微基准
     for pid, pdata in platforms.items():
         curr_benches = {b["name"]: b for b in pdata.get("benches", [])}
         new_bench_list = []
         for b_name in BENCH_DESCRIPTIONS.keys():
-            if b_name in curr_benches:
-                item = curr_benches[b_name]
+            # 尝试直接按 b_name 查找，若找不到则尝试映射别名（例如 osprey_coprime）
+            item = None
+            for candidate in FALLBACK_NAMES.get(b_name, [b_name]):
+                if candidate in curr_benches:
+                    item = curr_benches[candidate].copy()
+                    break
+            if item:
                 meta_info = BENCH_DESCRIPTIONS[b_name]
+                item["name"] = b_name
                 item["desc_zh"] = meta_info["zh"]
                 item["desc_en"] = meta_info["en"]
                 item["category"] = meta_info["cat"]
                 new_bench_list.append(item)
-            elif b_name in runtime:
-                impls = runtime[b_name]
-                item = build_bench_item(b_name, impls)
-                new_bench_list.append(item)
+            else:
+                # 构造占位数据对象
+                new_bench_list.append(build_bench_item(b_name, {}))
         pdata["benches"] = new_bench_list
 
-    existing_data["benches"] = platforms["macos-arm64"]["benches"]
-    existing_data["metadata"]["total_benches"] = len(existing_data["benches"])
+    existing_data["benches"] = platforms.get("macos-arm64", {}).get("benches", [])
+    existing_data["metadata"]["total_benches"] = len(BENCH_DESCRIPTIONS)
 
     DATA_FILE.write_text(json.dumps(existing_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"✓ Synchronized {len(existing_data['benches'])} benchmark items to {DATA_FILE}")
