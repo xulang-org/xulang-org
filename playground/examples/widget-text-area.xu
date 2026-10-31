@@ -8,15 +8,63 @@
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
 fn demo() int {
-    identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,96.0,500.0,110.0)
+    $line1 := "Native text editing in Xu UI."
+    $focused := false
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == 72 {
+            px := event.x
+            py := event.y
+            if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
+                focused = true
+            } else {
+                focused = false
+            }
+        }
+        if event.kind == 78 {
+            if event.key == 257 { focused = !focused }
+            if focused {
+                if event.key == 259 {
+                    if line1.len > 0 { line1 = line1[0:line1.len - 1] }
+                } else if event.key == 256 {
+                    focused = false
+                } else if line1.len < 100 {
+                    shift := (event.modifiers & 1) != 0
+                    ch := char_from_key(event.key, shift)
+                    if ch.len > 0 { line1 = line1 + ch }
+                }
+            }
+        }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
@@ -25,15 +73,33 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  TextArea")
     draw.text(32,48,12,"#6d626e","原生多行文本：软换行、滚动、选择、复制粘贴。")
-    frame.fill_rect(48.0,96.0,500.0,110.0,draw.rgb(255,255,255)) or >>
-    frame.stroke_rect(48.0,96.0,500.0,110.0,draw.rgb(133,121,135),1.0) or >>
-    draw.text(60,110,15,"#282329","Native text editing in Xu UI.")
-    draw.text(60,134,15,"#282329","选择文字、复制、粘贴，保留输入法会话。")
-    draw.text(60,158,15,"#6d626e","👨‍👩‍👧‍👦 family · emoji 与多语言原生排版")
-    draw.text(376,156,16,"#be123c","|")
-    draw.text(48,218,12,"#6d626e","软换行与双向滚动 · 保持光标可见")
-    draw.text(490,218,12,"#6d626e","68 / 500")
-    message := "Lines: 3 | Characters: 64"
+
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    if focused {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
+    } else {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+    }
+
+    bx := int(bounds.x)
+    by := int(bounds.y)
+    bw := int(bounds.width)
+    bh := int(bounds.height)
+
+    draw.text(bx + 12,by + 14,15,"#282329",line1 + "")
+    if focused {
+        $caret_x := bx + 12 + int(f64(line1.len) * 8.6)
+        if caret_x > bx + bw - 20 { caret_x = bx + bw - 20 }
+        draw.text(caret_x,by + 12,16,"#be123c","|")
+    }
+    draw.text(bx + 12,by + 38,15,"#282329","选择文字、复制、粘贴，保留输入法会话。")
+    draw.text(bx + 12,by + 62,15,"#6d626e","👨‍👩‍👧‍👦 family · emoji 与多语言")
+
+    total_chars := line1.len + 35
+    draw.text(bx,by + bh + 8,12,"#6d626e","软换行与双向滚动 · 保持光标可见")
+    draw.text(bx + bw - 60,by + bh + 8,12,"#6d626e",str(total_chars) + " / 500")
+
+    message := "Lines: 3 | Characters: " + str(total_chars)
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
     frame.present() or >>

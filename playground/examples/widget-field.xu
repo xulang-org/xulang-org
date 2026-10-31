@@ -8,25 +8,66 @@
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
 fn demo() int {
-    identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
-    $btn := widgets.button(&identity,2,&box(438.0,114.0,90.0,42.0)) or >>
-    $btn_lbl := widgets.styled_label(&context,&"清空 / ×")
-    $focus := widgets.focus_group(&identity,[2]) or >>
-    $cleared := false
+    bounds := box(48.0,110.0,440.0,48.0)
+    clear_box := box(446.0,117.0,32.0,32.0)
+    $text := "xulang-workspace"
+    $focused := false
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
-        nav := focus.input(&event)
-        btn.set_focus(focus.current() == 2)
-        if nav.consumed { -> }
-        act := btn.input(&event)
-        if act.request_focus { focus.focus(2) or >> }
-        if act.kind == widgets.ACTION_ACTIVATE {
-            cleared = true
+        if event.kind == 72 {
+            px := event.x
+            py := event.y
+            if px >= clear_box.x && px <= clear_box.x + clear_box.width && py >= clear_box.y && py <= clear_box.y + clear_box.height {
+                text = ""
+                focused = true
+            } else if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
+                focused = true
+            } else {
+                focused = false
+            }
+        }
+        if event.kind == 78 {
+            if event.key == 257 { focused = !focused }
+            if focused {
+                if event.key == 259 {
+                    if text.len > 0 { text = text[0:text.len - 1] }
+                } else if event.key == 256 {
+                    focused = false
+                } else if text.len < 32 {
+                    shift := (event.modifiers & 1) != 0
+                    ch := char_from_key(event.key, shift)
+                    if ch.len > 0 { text = text + ch }
+                }
+            }
         }
     }
     $frame := context.new_frame(8192)
@@ -36,28 +77,62 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  Field")
     draw.text(32,48,12,"#6d626e","浮动标签 / 固定标签 / 三种边框；软计数不截断输入。")
-    draw.text(48,90,14,"#282329","Project name 项目名称 *")
-    frame.fill_rect(48.0,114.0,380.0,42.0,draw.rgb(255,255,255)) or >>
-    if cleared {
-        frame.stroke_rect(48.0,114.0,380.0,42.0,draw.rgb(184,33,56),1.5) or >>
-        draw.text(60,126,15,"#6d626e","xu / ")
-        draw.text(96,126,15,"#857987","输入项目名称...")
-        draw.text(94,124,16,"#b82138","|")
-        draw.text(48,166,12,"#b82138","名称不能为空。Please enter a project name.")
-        draw.text(390,166,12,"#b82138","0 / 32")
+
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    is_invalid := text.len == 0
+    if is_invalid {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(184,33,56),1.5) or >>
+    } else if focused {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
     } else {
-        frame.stroke_rect(48.0,114.0,380.0,42.0,draw.rgb(133,121,135),1.0) or >>
-        draw.text(60,126,15,"#6d626e","xu / ")
-        draw.text(96,126,15,"#282329","xulang-workspace")
-        draw.text(244,124,16,"#be123c","|")
-        draw.text(48,166,12,"#6d626e","Enter a name · 浮动/固定标签与稳定辅助区")
-        draw.text(380,166,12,"#6d626e","16 / 32")
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
     }
-    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
-    $message := "Field: xulang-workspace"
-    if cleared {
-        message = "Field: empty (invalid)"
+
+    bx := int(bounds.x)
+    by := int(bounds.y)
+    bw := int(bounds.width)
+    bh := int(bounds.height)
+
+    // Floating notch and label matching component_workshop
+    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,150.0,14.0,draw.rgb(255,253,251)) or >>
+    if is_invalid {
+        draw.text(bx + 16,by - 6,12,"#b82138","Project name 项目名称 *")
+    } else if focused {
+        draw.text(bx + 16,by - 6,12,"#282329","Project name 项目名称 *")
+    } else {
+        draw.text(bx + 16,by - 6,12,"#6d626e","Project name 项目名称 *")
     }
+
+    // Inside box: prefix, value, caret, clear icon
+    draw.text(bx + 16,by + 16,15,"#6d626e","xu / ")
+    if text.len > 0 {
+        draw.text(bx + 52,by + 16,15,"#282329",text + "")
+        if focused {
+            caret_x := bx + 52 + int(f64(text.len) * 8.6)
+            draw.text(caret_x,by + 14,16,"#be123c","|")
+        }
+        cx := clear_box.x + 16.0
+        cy := clear_box.y + 16.0
+        frame.line(cx - 5.0,cy - 5.0,cx + 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) or >>
+        frame.line(cx + 5.0,cy - 5.0,cx - 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) or >>
+    } else {
+        draw.text(bx + 52,by + 16,15,"#857987","输入项目名称...")
+        if focused {
+            draw.text(bx + 50,by + 14,16,"#be123c","|")
+        }
+    }
+
+    // Helper text & counter below
+    if is_invalid {
+        draw.text(bx,by + bh + 8,12,"#b82138","名称不能为空。Please enter a project name.")
+        draw.text(bx + bw - 50,by + bh + 8,12,"#b82138","0 / 32")
+    } else {
+        draw.text(bx,by + bh + 8,12,"#6d626e","Enter a name · Native IME / selection / clipboard")
+        draw.text(bx + bw - 50,by + bh + 8,12,"#6d626e",str(text.len) + " / 32")
+    }
+
+    $message := "Field: " + text
+    if is_invalid { message = "Field: empty (invalid)" }
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
     frame.present() or >>
