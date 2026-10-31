@@ -234,7 +234,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
             pages[route] = source
     if '/' not in pages or '/zh' not in pages:
         raise ValueError('both Chinese and English home pages are required')
-    match = re.search(r'^xu:\s*!ver\s+(\d+\.\d+\.\d+)\s*$', (root / 'xu.xun').read_text(), re.MULTILINE)
+    match = re.search(r'^xu:\s*!ver\s+(\d+\.\d+\.\d+)\s*$', (root / 'xu.xun').read_text(encoding='utf-8'), re.MULTILINE)
     if not match:
         raise ValueError('missing Xu version in xu.xun')
     xu_version = xu_version or match[1]
@@ -244,14 +244,14 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         record = wasm.parent / 'build.json'
         if not record.is_file():
             raise ValueError('WASM build version is missing; run make wasm')
-        built = json.loads(record.read_text())
+        built = json.loads(record.read_text(encoding='utf-8'))
         if built.get('xu_version') != xu_version:
             raise ValueError(f'WASM version does not match Xu {xu_version}; run make wasm with the matching SDK')
         if built.get('wasm_sha256') != hashlib.sha256(wasm.read_bytes()).hexdigest():
             raise ValueError('WASM build checksum does not match; run make wasm')
     for source in pages.values():
         if 'api' in source.relative_to(root / 'content').parts:
-            text = source.read_text()
+            text = source.read_text(encoding='utf-8')
             recorded = re.search(r'<!--xu-api-version:\s*(.*?)-->', text)
             relative = source.relative_to(root / 'content')
             if relative.parts[1:3] == ('api', 'preview'):
@@ -262,7 +262,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
                 continue
             if not recorded or recorded[1].strip() != xu_version:
                 raise ValueError(f'API version does not match Xu {xu_version}; regenerate API from the matching SDK')
-    benchmark = json.loads((root / 'www/benchmarks.json').read_text())
+    benchmark = json.loads((root / 'www/benchmarks.json').read_text(encoding='utf-8'))
     measured = benchmark['metadata']['xu_version']
     if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', measured):
         raise ValueError('Benchmark version must be an official release')
@@ -272,7 +272,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     # SDK advances. Both visible measurement banners must match the data.
     for lang in ('en', 'zh'):
         source = root / 'content' / lang / 'benchmarks.html'
-        labels = re.findall(r'(?:Measured|实测) Xu v(\d+\.\d+\.\d+)', source.read_text())
+        labels = re.findall(r'(?:Measured|实测) Xu v(\d+\.\d+\.\d+)', source.read_text(encoding='utf-8'))
         if labels != [measured]:
             raise ValueError(f'Benchmark measurement label does not match {measured}: {lang}')
     asset_key = playground_asset_key(root, wasm)

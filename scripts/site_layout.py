@@ -142,7 +142,7 @@ def shared_content(root: Path) -> dict[str, dict[str, str]]:
     """Expand bilingual pages from the generated inventory and release metadata."""
     inventories = {}
     for lang in ('en', 'zh'):
-        inventory = PackageInventory((root / f'content/{lang}/api/index.html').read_text()).packages
+        inventory = PackageInventory((root / f'content/{lang}/api/index.html').read_text(encoding='utf-8')).packages
         for package in inventory:
             if not (root / f'content/{lang}/api/{package}.html').is_file():
                 raise ValueError(f'API inventory points to a missing package: {lang}/{package}')

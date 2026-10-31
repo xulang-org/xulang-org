@@ -21,11 +21,11 @@ def project_source(project: dict) -> str:
 
 
 def render_corpora(root: Path, xu_version: str) -> dict[str, str]:
-    metadata = json.loads((root / 'www/benchmarks.json').read_text())['metadata']
-    playground = json.loads((root / 'www/xu-play-examples.json').read_text())
+    metadata = json.loads((root / 'www/benchmarks.json').read_text(encoding='utf-8'))['metadata']
+    playground = json.loads((root / 'www/xu-play-examples.json').read_text(encoding='utf-8'))
     examples = {name: project_source(item) for name, item in playground['projects'].items()}
-    examples['errors'] = (root / 'www/api-examples/sources/examples/05_errors/main.xu').read_text()
-    tutorial = (root / 'content/en/docs/tutorial/06.html').read_text()
+    examples['errors'] = (root / 'www/api-examples/sources/examples/05_errors/main.xu').read_text(encoding='utf-8')
+    tutorial = (root / 'content/en/docs/tutorial/06.html').read_text(encoding='utf-8')
     examples['ownership'] = unescape(re.search(r'<pre><code>(.*?)</code></pre>', tutorial, re.S)[1])
     values = {
         'xu_version': xu_version,
@@ -37,7 +37,7 @@ def render_corpora(root: Path, xu_version: str) -> dict[str, str]:
     }
 
     def expand(name: str) -> str:
-        source = (root / 'templates/llms' / name).read_text()
+        source = (root / 'templates/llms' / name).read_text(encoding='utf-8')
 
         def replace(match: re.Match) -> str:
             key = match[1]
@@ -58,6 +58,6 @@ def render_corpora(root: Path, xu_version: str) -> dict[str, str]:
 
 if __name__ == '__main__':
     root = Path(__file__).resolve().parents[1]
-    for name, source in render_corpora(root, (root / 'VERSION').read_text().strip()).items():
+    for name, source in render_corpora(root, (root / 'VERSION').read_text(encoding='utf-8').strip()).items():
         (root / 'www' / name).write_text(source, encoding='utf-8')
         print('wrote www/' + name)
