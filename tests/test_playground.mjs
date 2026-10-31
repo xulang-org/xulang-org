@@ -37,7 +37,8 @@ const expected = {
   'ui-draw': 'Canvas frame presented.\n',
   'ui-counter': 'Count: 0\n',
   'ui-gallery': 'Page: 0 | Count: 0 | Check: false | Switch: false | Slider: 40 | Radio: 0 | List: 0 | Scroll: 0\n',
-  'ui-widgets': 'Count: 0 | Checkbox: false | Switch: false | Slider: 40\n'
+  'ui-widgets': 'Count: 0 | Checkbox: false | Switch: false | Slider: 40\n',
+  'ui-chart': 'Selected point: 0\n'
 };
 
 for (const [name, example] of Object.entries(examples)) {

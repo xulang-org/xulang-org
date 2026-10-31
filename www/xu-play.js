@@ -306,6 +306,7 @@
       if (!window.XuPlayCanvas) throw new Error('Canvas host is unavailable');
       inputMode = !!result.ui.input;
       var committed = window.XuPlayCanvas.render(canvas, result.ui.commands);
+      lastRenderedCommands = committed ? result.ui.commands : null;
       panel.hidden = !committed;
       if (committed && workspace) {
         var previewTab = document.getElementById('xu-play-preview-tab');
@@ -555,8 +556,10 @@
         if (inputMode) {
           var key = inputKey(event.key);
           if (key) {
-            event.preventDefault();
-            appendInput({kind: 78, key: key, modifiers: event.shiftKey ? 1 : 0, repeat: event.repeat ? 1 : 0});
+            if (!(event.ctrlKey || event.metaKey) || ['a','A','c','C','v','V','x','X','z','Z'].includes(event.key)) {
+              event.preventDefault();
+            }
+            appendInput({kind: 78, key: key, modifiers: inputModifiers(event), repeat: event.repeat ? 1 : 0});
             if (event.key === 'Escape' && canvas.blur) canvas.blur();
           }
         } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); clickAt(320, 180); }
@@ -567,16 +570,29 @@
         if (running) queuedInputs.push(input);
         else { clicks.push(input); execute(); }
       }
+      function inputModifiers(event) {
+        return (event.shiftKey ? 1 : 0) | (event.ctrlKey ? 2 : 0) | (event.altKey ? 4 : 0) | (event.metaKey ? 8 : 0);
+      }
       function inputKey(key) {
-        return {' ': 32, Escape: 256, Tab: 257, Enter: 258, ArrowLeft: 261, ArrowRight: 262,
-          ArrowUp: 263, ArrowDown: 264, Home: 265, End: 266, PageUp: 267, PageDown: 268}[key] || 0;
+        var map = {
+          ' ': 32, Escape: 256, Tab: 257, Enter: 258, Backspace: 259, Delete: 260,
+          ArrowLeft: 261, ArrowRight: 262, ArrowUp: 263, ArrowDown: 264,
+          Home: 265, End: 266, PageUp: 267, PageDown: 268, Insert: 269
+        };
+        if (Object.prototype.hasOwnProperty.call(map, key)) return map[key];
+        if (typeof key === 'string' && key.length === 1) {
+          var code = key.charCodeAt(0);
+          if (code >= 97 && code <= 122) return code - 32;
+          if (code >= 32 && code <= 126) return code;
+        }
+        return 0;
       }
       function pointerInput(kind, event) {
         var bounds = canvas.getBoundingClientRect();
         if (!bounds.width || !bounds.height) return;
         appendInput({kind: kind,
-          x: Math.floor((event.clientX - bounds.left) * 640 / bounds.width),
-          y: Math.floor((event.clientY - bounds.top) * 360 / bounds.height),
+          x: Math.max(0, Math.min(639, Math.floor((event.clientX - bounds.left) * 640 / bounds.width))),
+          y: Math.max(0, Math.min(359, Math.floor((event.clientY - bounds.top) * 360 / bounds.height))),
           button: event.button === 0 ? 1 : event.button === 2 ? 2 : event.button === 1 ? 3 : 0, buttons: event.buttons || 0});
       }
       canvas.addEventListener('pointerdown', function (event) {
@@ -608,8 +624,8 @@
         if (!bounds.width || !bounds.height) return;
         var unit = event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? 360 : 1;
         appendInput({kind: 80,
-          x: Math.floor((event.clientX - bounds.left) * 640 / bounds.width),
-          y: Math.floor((event.clientY - bounds.top) * 360 / bounds.height),
+          x: Math.max(0, Math.min(639, Math.floor((event.clientX - bounds.left) * 640 / bounds.width))),
+          y: Math.max(0, Math.min(359, Math.floor((event.clientY - bounds.top) * 360 / bounds.height))),
           dx: Math.max(-100000, Math.min(100000, event.deltaX * unit)),
           dy: Math.max(-100000, Math.min(100000, event.deltaY * unit))});
       }, {passive: false});
@@ -622,7 +638,7 @@
       canvas.addEventListener('keyup', function (event) {
         if (!inputMode) return;
         var key = inputKey(event.key);
-        if (key) { event.preventDefault(); appendInput({kind: 79, key: key}); }
+        if (key) { event.preventDefault(); appendInput({kind: 79, key: key, modifiers: inputModifiers(event)}); }
       });
       canvas.addEventListener('blur', function (event) {
         if (event && event.relatedTarget === button) return;

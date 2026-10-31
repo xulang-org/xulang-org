@@ -84,7 +84,8 @@
         if (!drafts[key]) return false;
       } else if (project.hidden || (group !== 'all' && project.group !== group)) return false;
       var words = query.split(/\s+/);
-      var haystack = [key, project.title.zh, project.title.en, project.description.zh, project.description.en].concat(filePaths(project)).join(' ').toLowerCase();
+      var exercise = project.exercise ? [project.exercise.zh, project.exercise.en] : [];
+      var haystack = [key, project.title.zh, project.title.en, project.description.zh, project.description.en].concat(exercise).concat(filePaths(project)).join(' ').toLowerCase();
       return words.every(function (word) { return haystack.includes(word); });
     });
     var navigation = el('library-groups');

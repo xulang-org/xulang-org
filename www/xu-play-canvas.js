@@ -2,6 +2,7 @@
 (function (root) {
   'use strict';
   var WIDTH = 640, HEIGHT = 360, MAX_EVENTS = 100000;
+  var fontStack = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
   // Argument types: number, color, text. Validate before touching a canvas.
   var signatures = {
     begin: '', present: '', cancel: '', push: '', pop: '', origin: '',
@@ -72,9 +73,12 @@
     staging.width = Math.round(WIDTH * ratio); staging.height = Math.round(HEIGHT * ratio);
     var ctx = staging.getContext('2d');
     if (!ctx) throw Error('Canvas 2D is unavailable');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     function origin() { ctx.setTransform(ratio, 0, 0, ratio, 0, 0); }
     origin();
     var pen = {fill: '#000000', stroke: '-', width: 1}, stack = [];
+    var fontStack = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
     function paint(fill, stroke, width) {
       if (fill !== '-') { ctx.fillStyle = fill; ctx.fill(); }
@@ -110,15 +114,25 @@
       }
       else if (op === 'layout_text') {
         if (a[3] !== '-' && a[4] > 0 && a[5]) {
-          ctx.save(); ctx.font = a[2] + 'px monospace'; ctx.textBaseline = 'top';
+          ctx.save();
+          ctx.font = a[2] + 'px ' + fontStack;
+          ctx.textBaseline = 'top';
           ctx.fillStyle = a[3];
           var measured = ctx.measureText(a[5]).width;
           ctx.translate(a[0], a[1]);
-          if (measured > 0) ctx.scale(a[4] / measured, 1);
+          if (measured > 0) {
+            var hasCJK = /[\u3000-\u9fff\uff00-\uffef]/.test(a[5]);
+            var scale = 1;
+            if (measured > a[4]) {
+              var ratio = a[4] / measured;
+              scale = hasCJK ? Math.max(0.88, ratio) : ratio;
+            }
+            if (scale !== 1) ctx.scale(scale, 1);
+          }
           ctx.fillText(a[5], 0, 0); ctx.restore();
         }
       } else if (op === 'text') {
-        if (a[3] !== '-') { ctx.font = a[2] + 'px system-ui, sans-serif'; ctx.textBaseline = 'top'; ctx.fillStyle = a[3]; ctx.fillText(a[4], a[0], a[1]); }
+        if (a[3] !== '-') { ctx.font = a[2] + 'px ' + fontStack; ctx.textBaseline = 'top'; ctx.fillStyle = a[3]; ctx.fillText(a[4], a[0], a[1]); }
       } else if (op === 'line') {
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a[2], a[3]); paint('-', a[4], a[5]);
       } else {
@@ -128,7 +142,18 @@
           ctx.arc(a[0], a[1], a[2], 0, 2 * Math.PI);
           if (a.length === 6) { fill = a[3]; stroke = a[4]; width = a[5]; }
         } else if (op === 'round_rect') {
-          ctx.roundRect(a[0], a[1], a[2], a[3], a[4]); fill = a[5]; stroke = a[6]; width = a[7];
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(a[0], a[1], a[2], a[3], a[4]);
+          } else {
+            var rx = a[0], ry = a[1], rw = a[2], rh = a[3], r = Math.min(a[4], Math.min(rw / 2, rh / 2));
+            ctx.moveTo(rx + r, ry);
+            ctx.arcTo(rx + rw, ry, rx + rw, ry + rh, r);
+            ctx.arcTo(rx + rw, ry + rh, rx, ry + rh, r);
+            ctx.arcTo(rx, ry + rh, rx, ry, r);
+            ctx.arcTo(rx, ry, rx + rw, ry, r);
+            ctx.closePath();
+          }
+          fill = a[5]; stroke = a[6]; width = a[7];
         } else {
           ctx.rect(a[0], a[1], a[2], a[3]);
           if (op === 'fill_rect') { fill = a[4]; stroke = '-'; }
@@ -141,8 +166,18 @@
     var target = canvas.getContext('2d');
     if (!target) throw Error('Canvas 2D is unavailable');
     canvas.width = staging.width; canvas.height = staging.height;
+    target.imageSmoothingEnabled = true;
+    target.imageSmoothingQuality = 'high';
     target.drawImage(staging, 0, 0);
     return true;
   }
-  root.XuPlayCanvas = {render: render, frame: frame, draw: draw, width: WIDTH, height: HEIGHT, maxEvents: MAX_EVENTS};
+  function measureText(text, size, font) {
+    if (typeof document === 'undefined') return {width: (text ? text.length : 0) * (size || 14) * 0.6};
+    var measureCanvas = document.createElement('canvas');
+    var ctx = measureCanvas.getContext('2d');
+    if (!ctx) return {width: (text ? text.length : 0) * (size || 14) * 0.6};
+    ctx.font = (size || 14) + 'px ' + (font || fontStack);
+    return ctx.measureText(text || '');
+  }
+  root.XuPlayCanvas = {render: render, frame: frame, draw: draw, measureText: measureText, fontStack: fontStack, width: WIDTH, height: HEIGHT, maxEvents: MAX_EVENTS};
 })(typeof window === 'undefined' ? globalThis : window);

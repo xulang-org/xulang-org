@@ -574,6 +574,17 @@ test('widgets preserve real down/up, drag, key release, blur, and pending input 
   assert.deepEqual(Array.from(events.slice(-2),e=>e.kind), [78,79]);
   assert.equal(events.at(-2).key, 257);
   assert.equal(events.at(-2).modifiers, 1);
+  canvas.listeners.keydown({key:'Backspace',ctrlKey:true,preventDefault(){}});
+  workers[0].respond(result);
+  const backspaceEvent = workers[0].messages.at(-1).events.at(-1);
+  assert.equal(backspaceEvent.kind, 78);
+  assert.equal(backspaceEvent.key, 259);
+  assert.equal(backspaceEvent.modifiers, 2);
+  canvas.listeners.keydown({key:'a',preventDefault(){}});
+  workers[0].respond(result);
+  const charEvent = workers[0].messages.at(-1).events.at(-1);
+  assert.equal(charEvent.kind, 78);
+  assert.equal(charEvent.key, 65);
   workers[0].respond(result);
   const posts = workers[0].messages.length;
   canvas.listeners.blur({relatedTarget:elements['xu-play-run']});

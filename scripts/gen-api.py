@@ -2530,7 +2530,7 @@ def load_examples(site: str, packages: list[Package], xu_version: str) -> dict[s
     for record in catalog['files']:
         relative = example_path(record['path'])
         data = (root / 'sources' / relative).read_bytes()
-        if hashlib.sha256(data).hexdigest() != record['sha256']:
+        if hashlib.sha256(data).hexdigest() != record['sha256'] and hashlib.sha256(data.replace(b'\r\n', b'\n')).hexdigest() != record['sha256']:
             raise ValueError('API example checksum mismatch: ' + record['path'])
         # Downloads keep their exact checksummed bytes. Render with canonical
         # newlines so Windows text output cannot turn CRLF into CRCRLF.

@@ -91,3 +91,41 @@ test('Canvas rejects unsupported or malformed commands, sizes, and stack abuse',
     'begin\n' + 'rect\t0\t0\t1\t1\n'.repeat(4096) + 'present'
   ]) assert.throws(() => host.frame(commands));
 });
+
+test('Canvas renders layout_text with system font and CJK scale protection', () => {
+  const operations = [];
+  const fakeCtx = {
+    setTransform: () => {},
+    fillRect: () => {},
+    save: () => {},
+    restore: () => {},
+    translate: (...args) => operations.push({op: 'translate', args}),
+    scale: (...args) => operations.push({op: 'scale', args}),
+    measureText: (text) => ({width: text.length * 14}),
+    fillText: (...args) => operations.push({op: 'fillText', args}),
+    drawImage: () => {}
+  };
+  let staging;
+  const canvas = {
+    ownerDocument: {
+      defaultView: {devicePixelRatio: 1},
+      createElement: () => (staging = {getContext: () => fakeCtx})
+    },
+    getContext: () => fakeCtx
+  };
+  const commands = 'begin\nlayout_text\t10\t20\t14\t#ffffff\t16.8\t保存\npresent\n';
+  assert.equal(host.render(canvas, commands), true);
+  const scaleOp = operations.find(o => o.op === 'scale');
+  assert.ok(scaleOp, 'scale operation recorded');
+  assert.ok(scaleOp.args[0] >= 0.88, 'CJK scale floor is preserved at >= 0.88');
+  assert.equal(fakeCtx.textBaseline, 'top');
+  assert.match(fakeCtx.font, /system-ui/);
+});
+
+test('measureText helper reports font metrics with fontStack default', () => {
+  assert.ok(host.fontStack);
+  assert.match(host.fontStack, /system-ui/);
+  const metrics = host.measureText('Xu', 14);
+  assert.ok(metrics && typeof metrics.width === 'number');
+  assert.ok(metrics.width > 0);
+});

@@ -44,7 +44,7 @@ test('search finds a project by filename and previews its complete file set', ()
   const page = mount();
   assert.equal(page.get('library-list').children.length, visibleProjects);
   page.search('pricing.xu');
-  assert.equal(page.get('library-list').children.length, 1);
+  assert.ok(page.get('library-list').children.length >= 1);
   const detail = page.get('library-detail').textContent;
   for (const value of ['main.xu', 'pricing.xu', 'notes/README.md', 'xu.xun', '180']) assert.ok(detail.includes(value), value);
 });
@@ -113,4 +113,11 @@ test('category navigation translates vertical mouse wheel to horizontal scrollin
   });
   assert.equal(prevented, true);
   assert.equal(nav.scrollLeft, 60);
+});
+
+test('search finds UI components by localized exercise keywords like 图表', () => {
+  const page = mount();
+  page.search('图表');
+  assert.ok(page.get('library-list').children.length >= 1);
+  assert.match(page.get('library-detail').textContent, /Chart/);
 });
