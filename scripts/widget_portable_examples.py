@@ -114,8 +114,10 @@ fn demo() int {
         code += '    control.paint_popup_styled($&frame,&styles) or >>\n'
     if slug == 'split-view':
         code += '''    panes := control.layout()
-    frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(35,31,39)) or >>
-    frame.fill_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(44,39,49)) or >>
+    frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(246,243,239)) or >>
+    frame.stroke_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(217,208,217),1.0) or >>
+    frame.fill_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(238,234,231)) or >>
+    frame.stroke_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(217,208,217),1.0) or >>
 '''
     code += f'    message := {summary}\n    draw.text(32,326,13,"#6d626e",message + "")\n    println(message)\n'
     code += '''    frame.present() or >>
