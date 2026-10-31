@@ -7,14 +7,14 @@ const catalog = JSON.parse(readFileSync(new URL('../www/widgets.json', import.me
 const script = readFileSync(new URL('../www/widget-experience.js', import.meta.url), 'utf8');
 
 // Browser plumbing only: exercise the production controller and real catalog.
-async function mount(slug, language = 'en') {
+async function mount(slug, language = 'en', parameter = 'widget') {
   const timers = new Map();
   let nextTimer = 0;
   const document = {documentElement: {lang: language}, activeElement: null};
   class Element {
     constructor(tag) {
       this.tagName = tag; this.children = []; this.attributes = {}; this.dataset = {};
-      this.listeners = {}; this.value = ''; this.hidden = false;
+      this.listeners = {}; this.value = ''; this.hidden = false; this.style = {};
       this.classList = {add: () => {}};
     }
     set textContent(value) { this.text = value; this.children = []; }
@@ -47,7 +47,7 @@ async function mount(slug, language = 'en') {
     'xu-play-workspace': workspace, 'xu-play-help': help})[id];
   document.createElement = tag => new Element(tag);
   document.body = new Element('body'); document.currentScript = {src: 'https://example.org/repo/widget-experience.js'};
-  const location = {href: 'https://example.org/repo/playground/?widget=' + slug, hash: ''};
+  const location = {href: 'https://example.org/repo/playground/?' + parameter + '=' + slug, hash: ''};
   vm.runInNewContext(script, {document, location, URL, Event: class {constructor(type) {this.type = type;}},
     history: {replaceState: (_, __, url) => {location.href = String(url);}},
     fetch: async () => ({ok: true, json: async () => catalog}),
@@ -62,14 +62,35 @@ async function mount(slug, language = 'en') {
     flush: () => {const pending = [...timers.values()]; timers.clear(); pending.forEach(t => t.fn());}};
 }
 
-test('all component entries render and browsing hides the previous project', async () => {
+test('all component entries render previews alongside Xu links and browsing hides the previous project', async () => {
   const page = await mount('button');
   for (const c of catalog.components) {
     page.choose(c.name);
     assert.equal(page.find(el => el.tagName === 'h3').textContent, c.name);
+    assert.ok(page.find(el => el.className === 'widget-demo-stage').children.length, c.slug + ' has a preview');
+    assert.ok(page.find(el => el.getAttribute('role') === 'status'), c.slug + ' has feedback');
+    assert.equal(page.find(el => el.className === 'widget-preview-kind').textContent, 'Interactive preview · does not execute Xu');
+    if (c.project) {
+      assert.equal(page.find(el => el.tagName === 'a' && el.className === 'btn pri').href,
+        'https://example.org/repo/playground/?example=' + c.project + '#xu-play-workspace');
+    }
     assert.equal(page.document.activeElement.tagName, 'h3');
     assert.equal(page.workspace.hidden, true);
     assert.equal(page.help.hidden, true);
+  }
+});
+
+test('opening a Xu example keeps the workspace visible and selects its component in both languages', async () => {
+  for (const lang of ['en', 'zh-CN']) {
+    const page = await mount('widget-input', lang, 'example');
+    assert.equal(page.find(el => el.tagName === 'h3').textContent, 'Input');
+    assert.equal(page.workspace.hidden, false);
+    assert.equal(page.help.hidden, false);
+    assert.ok(page.find(el => el.tagName === 'input'));
+    assert.equal(page.find(el => el.className === 'widget-preview-kind').textContent,
+      lang === 'en' ? 'Interactive preview · does not execute Xu' : '交互预览 · 不执行 Xu');
+    assert.equal(page.find(el => el.tagName === 'a' && el.className === 'btn pri').href,
+      'https://example.org/repo/' + (lang === 'en' ? '' : 'zh/') + 'playground/?example=widget-input#xu-play-workspace');
   }
 });
 
