@@ -4,31 +4,49 @@ import argparse
 import json
 from pathlib import Path
 from widget_portable_examples import CASES, source as portable_source
+from widget_extended_examples import EXTENDED_CASES
 
 ROOT = Path(__file__).resolve().parents[1]
 
 WIDGET_ZH_NAMES = {
+    'styled-label': '样式文本',
     'button': '按钮',
+    'icon-button': '图标按钮',
+    'input': '单行输入',
+    'text-area': '多行文本',
+    'field': '字段输入',
+    'field-area': '多行字段',
+    'tree-view': '树形视图',
+    'task-button': '任务按钮',
     'checkbox': '复选框',
     'switch': '开关',
     'radio': '单选框',
+    'radio-group': '单选组',
     'slider': '滑块',
+    'stepper': '步进器',
+    'select': '下拉选择',
+    'combo-box': '组合框',
+    'multi-select': '多项选择',
+    'date-picker': '日期选择',
+    'time-picker': '时间选择',
+    'color-picker': '取色器',
     'tabs': '标签页',
     'segmented': '分段控制',
     'list-box': '列表框',
+    'table': '数据表格',
+    'pagination': '分页器',
+    'breadcrumbs': '面包屑导航',
     'progress': '进度条',
+    'spinner': '加载指示器',
     'divider': '分割线',
     'badge': '徽标',
     'card': '卡片',
     'scroll': '滚动容器',
-    'radio-group': '单选组',
-    'stepper': '步进器',
-    'select': '下拉选择',
-    'multi-select': '多项选择',
-    'color-picker': '取色器',
-    'table': '数据表格',
-    'pagination': '分页器',
-    'breadcrumbs': '面包屑导航',
+    'popover': '气泡框',
+    'tooltip': '文字提示',
+    'toast-host': '消息通知',
+    'modal': '对话框',
+    'web-view': '网页视图',
     'button-group': '按钮组',
     'chart': '图表',
     'range-slider': '双向范围滑块',
@@ -36,7 +54,7 @@ WIDGET_ZH_NAMES = {
     'menu': '下拉菜单',
     'context-menu': '右键菜单',
     'split-button': '拆分按钮',
-    'styled-label': '样式文本',
+    'password-input': '密码输入',
 }
 
 CONTROLS = {
@@ -182,24 +200,36 @@ def generate(root=ROOT, check=False):
     widgets = json.loads((root / 'templates/widgets.json').read_text(encoding='utf-8'))
     outputs = {}
     has_widgets = any(g['id'] == 'widgets' for g in catalog['groups'])
+    widgets_group = {
+        'id': 'widgets',
+        'title': {'zh': 'XUUI 组件库 · 46 个完整控件', 'en': 'XUUI Component Catalog (46 widgets)'},
+        'description': {
+            'zh': '涵盖全部 46 种 XUUI 标准控件：表单输入、按钮、选择、数据表格、图表、层级树、浮层对话框与分栏视图。参考 component_workshop 规范打造。',
+            'en': 'All 46 XUUI standard interactive controls: forms, buttons, selectors, tables, charts, tree views, overlays, dialogs, and split views, modeled after component_workshop.'
+        }
+    }
     if not has_widgets:
-        catalog['groups'].append({
-            'id': 'widgets',
-            'title': {'zh': '组件库 · 29 个标准控件', 'en': 'Component catalog (29 widgets)'},
-            'description': {
-                'zh': '涵盖全部 29 种 XUUI 标准控件：按钮、表单输入、选择、数据表格、图表、菜单与分栏视图。',
-                'en': 'All 29 XUUI standard interactive controls: buttons, inputs, tables, charts, menus, and split views.'
-            }
-        })
+        catalog['groups'].append(widgets_group)
+    else:
+        for idx, g in enumerate(catalog['groups']):
+            if g['id'] == 'widgets':
+                catalog['groups'][idx] = widgets_group
     for c in widgets['components']:
-        if c['slug'] not in CONTROLS and c['slug'] not in CASES:
-            continue
+        slug = c['slug']
         desc = c['description'].get('zh', '')
-        code, expected = (source if c['slug'] in CONTROLS else portable_source)(c['name'], c['slug'], desc)
-        key = 'widget-' + c['slug']
-        zh_title = f"{WIDGET_ZH_NAMES.get(c['slug'], c['name'])} · {c['name']}"
-        catalog['projects'][key] = dict(group='widgets', component=c['slug'], title={'zh': zh_title, 'en': c['name']},
-            description=c['description'], exercise=c['exercise'], entry='main.xu', files={'main.xu': code}, expected={'kind': 'stdout', 'value': expected})
+        if slug in EXTENDED_CASES:
+            expected, code = EXTENDED_CASES[slug]
+            expected_val = expected + '\n'
+        elif slug in CONTROLS:
+            code, expected_val = source(c['name'], slug, desc)
+        elif slug in CASES:
+            code, expected_val = portable_source(c['name'], slug, desc)
+        else:
+            continue
+        key = 'widget-' + slug
+        zh_title = f"{WIDGET_ZH_NAMES.get(slug, c['name'])} · {c['name']}"
+        catalog['projects'][key] = dict(group='widgets', component=slug, title={'zh': zh_title, 'en': c['name']},
+            description=c['description'], exercise=c['exercise'], entry='main.xu', files={'main.xu': code}, expected={'kind': 'stdout', 'value': expected_val})
         outputs[root / f'playground/examples/{key}.xu'] = code
     outputs[path] = json.dumps(catalog, ensure_ascii=False, indent=2) + '\n'
     changed = [p for p, text in outputs.items() if not p.exists() or p.read_text(encoding='utf-8') != text]

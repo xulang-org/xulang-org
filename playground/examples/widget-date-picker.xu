@@ -1,0 +1,50 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    $btn := widgets.button(&identity,1,&box(48.0,96.0,180.0,36.0)) or >>
+    $lbl := widgets.styled_label(&context,&"2026-10-31 ▾")
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        btn.set_focus(focus.current() == 1)
+        if nav.consumed { -> }
+        act := btn.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  DatePicker")
+    draw.text(32,48,12,"#6d626e","今天 / 清空；Page Up/Down 快速翻月，Shift 切年。")
+    btn.paint_styled($&frame,$&lbl,&styles) or >>
+    draw.text(48,148,12,"#6d626e","日  一  二  三  四  五  六")
+    draw.text(48,172,13,"#282329","25  26  27  28  29  30")
+    frame.fill_rect(244.0,166.0,28.0,22.0,draw.rgb(190,18,60)) or >>
+    draw.text(248,172,13,"#ffffff","31")
+    draw.text(48,206,12,"#6d626e","PageUp/Down 快速翻月 · Shift 切年 · 今天/清空快捷动作")
+    message := "Date: 2026-10-31"
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

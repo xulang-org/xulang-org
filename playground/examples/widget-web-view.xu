@@ -1,0 +1,53 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,92.0,520.0,130.0)
+    $btn := widgets.button(&identity,1,&box(480.0,98.0,76.0,26.0)) or >>
+    $lbl := widgets.styled_label(&context,&"↻ Reload")
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        btn.set_focus(focus.current() == 1)
+        if nav.consumed { -> }
+        act := btn.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  WebView")
+    draw.text(32,48,12,"#6d626e","原生网页子视图作为 Screen 组件，支持裁剪与独立生命周期。")
+    frame.fill_rect(48.0,92.0,520.0,34.0,draw.rgb(238,235,231)) or >>
+    draw.text(60,103,13,"#282329","🔒 https://xulang.org/docs/")
+    btn.paint_styled($&frame,$&lbl,&styles) or >>
+    frame.fill_rect(48.0,126.0,520.0,86.0,draw.rgb(255,255,255)) or >>
+    frame.stroke_rect(48.0,126.0,520.0,86.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(60,138,15,"#282329","WebView is a component.")
+    draw.text(60,162,12,"#6d626e","Native focus, clipping and independent lifecycle.")
+    draw.text(60,182,12,"#be123c","中文 / English / 🙂  [ Submit ]")
+    message := "WebView: ready (URI: https://xulang.org/docs/)"
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

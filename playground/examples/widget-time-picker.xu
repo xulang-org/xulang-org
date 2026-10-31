@@ -1,0 +1,53 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,110.0,260.0,44.0)
+    $btn := widgets.button(&identity,1,&bounds) or >>
+    $lbl := widgets.styled_label(&context,&"14 : 30 : 00")
+    $mode_btn := widgets.button(&identity,2,&box(320.0,110.0,90.0,44.0)) or >>
+    $mode_lbl := widgets.styled_label(&context,&"24-Hour")
+    $focus := widgets.focus_group(&identity,[1,2]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        btn.set_focus(focus.current() == 1)
+        mode_btn.set_focus(focus.current() == 2)
+        if nav.consumed { -> }
+        a1 := btn.input(&event)
+        a2 := mode_btn.input(&event)
+        if a1.request_focus { focus.focus(1) or >> }
+        if a2.request_focus { focus.focus(2) or >> }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  TimePicker")
+    draw.text(32,48,12,"#6d626e","12/24 小时可选；存储保持明确的时间值。")
+    btn.paint_styled($&frame,$&lbl,&styles) or >>
+    mode_btn.paint_styled($&frame,$&mode_lbl,&styles) or >>
+    draw.text(48,172,12,"#6d626e","支持 12/24 小时制切换 · 时分秒步进与滚轮微调")
+    message := "Time: 14:30:00"
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

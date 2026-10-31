@@ -11,7 +11,7 @@
   var tabs = el('file-tabs');
   var lines = el('lines');
   var highlight = el('highlight');
-  var storageKey = 'xu-play-workspace-v3';
+  var storageKey = 'xu-play-workspace-v4';
   var projects = Object.create(null);
   var canonicalTemplates = Object.create(null);
   var currentKey = 'hello';
@@ -41,8 +41,12 @@
   function isObsoleteCode(src) {
     return typeof src === 'string' && (
       src.includes('widgets.default_theme()') ||
+      src.includes('playground.dark_theme()') ||
       src.includes('draw.rgb(16,24,39)') ||
-      src.includes('#101827')
+      src.includes('draw.rgb(16,14,18)') ||
+      src.includes('draw.rgb(35,31,39)') ||
+      src.includes('#101827') ||
+      src.includes('#100e12')
     );
   }
   function defaultFiles(template, key) {

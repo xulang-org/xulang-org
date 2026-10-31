@@ -1,0 +1,54 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,114.0,48.0,48.0)
+    $control := widgets.button(&identity,1,&bounds) or >>
+    $label := widgets.styled_label(&context,&"★")
+    $favorited := false
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        control.set_focus(focus.current() == 1)
+        if nav.consumed { -> }
+        act := control.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+        if act.kind == widgets.ACTION_ACTIVATE { favorited = !favorited }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  IconButton")
+    draw.text(32,48,12,"#6d626e","独立点击目标与动作名称；键盘焦点也能查看提示。")
+    control.paint_styled($&frame,$&label,&styles) or >>
+    $status_text := "Favorite 收藏项目"
+    if favorited {
+        status_text = "Favorited 已收藏"
+    }
+    draw.text(112,128,15,"#282329",status_text)
+    draw.text(112,150,12,"#6d626e","IconButton · 48x48 触摸/点击目标 · 配套 Tooltip")
+    message := "Favorited: " + str(favorited)
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

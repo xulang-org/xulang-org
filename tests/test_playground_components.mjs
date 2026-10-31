@@ -37,6 +37,7 @@ for (const [slug, events, output] of [
   ['context-menu', [{kind:72,x:100,y:108,button:2,buttons:2},{kind:73,x:100,y:108,button:2,buttons:0},...key(264),...key(258)], 'Command: 2\n'],
   ['split-button', click(100,108), 'Command: 1\n'],
   ['chart', click(300,220), 'Selected point: 2\n'],
+  ['field', click(460,130), 'Field: empty (invalid)\n'],
 ]) {
   test('component experience responds through Xu widget logic: ' + slug, async () => {
     const runtime = await createRuntime(module);

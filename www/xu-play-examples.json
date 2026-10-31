@@ -70,12 +70,12 @@
     {
       "id": "widgets",
       "title": {
-        "zh": "组件库 · 29 个标准控件",
-        "en": "Component catalog (29 widgets)"
+        "zh": "XUUI 组件库 · 46 个完整控件",
+        "en": "XUUI Component Catalog (46 widgets)"
       },
       "description": {
-        "zh": "涵盖全部 29 种 XUUI 标准控件：按钮、表单输入、选择、数据表格、图表、菜单与分栏视图。",
-        "en": "All 29 XUUI standard interactive controls: buttons, inputs, tables, charts, menus, and split views."
+        "zh": "涵盖全部 46 种 XUUI 标准控件：表单输入、按钮、选择、数据表格、图表、层级树、浮层对话框与分栏视图。参考 component_workshop 规范打造。",
+        "en": "All 46 XUUI standard interactive controls: forms, buttons, selectors, tables, charts, tree views, overlays, dialogs, and split views, modeled after component_workshop."
       }
     }
   ],
@@ -1402,6 +1402,414 @@
       "expected": {
         "kind": "stdout",
         "value": "Command: 0\n"
+      }
+    },
+    "widget-icon-button": {
+      "group": "widgets",
+      "component": "icon-button",
+      "title": {
+        "zh": "图标按钮 · IconButton",
+        "en": "IconButton"
+      },
+      "description": {
+        "zh": "用图标承载紧凑操作",
+        "en": "Compact actions represented by an icon"
+      },
+      "exercise": {
+        "zh": "切换收藏，保留可理解的文字名称",
+        "en": "Toggle a favorite with an accessible action name"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,48.0,48.0)\n    $control := widgets.button(&identity,1,&bounds) or >>\n    $label := widgets.styled_label(&context,&\"★\")\n    $favorited := false\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := control.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n        if act.kind == widgets.ACTION_ACTIVATE { favorited = !favorited }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  IconButton\")\n    draw.text(32,48,12,\"#6d626e\",\"独立点击目标与动作名称；键盘焦点也能查看提示。\")\n    control.paint_styled($&frame,$&label,&styles) or >>\n    $status_text := \"Favorite 收藏项目\"\n    if favorited {\n        status_text = \"Favorited 已收藏\"\n    }\n    draw.text(112,128,15,\"#282329\",status_text)\n    draw.text(112,150,12,\"#6d626e\",\"IconButton · 48x48 触摸/点击目标 · 配套 Tooltip\")\n    message := \"Favorited: \" + str(favorited)\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Favorited: false\n"
+      }
+    },
+    "widget-input": {
+      "group": "widgets",
+      "component": "input",
+      "title": {
+        "zh": "单行输入 · Input",
+        "en": "Input"
+      },
+      "description": {
+        "zh": "编辑单行文本",
+        "en": "Edit a single line of text"
+      },
+      "exercise": {
+        "zh": "输入项目名并清空",
+        "en": "Enter and clear a project name"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,420.0,42.0)\n    $text := \"developer@xulang.org\"\n    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  Input\")\n    draw.text(32,48,12,\"#6d626e\",\"原生单行编辑：选区、复制、粘贴与 IME。\")\n    draw.text(48,90,14,\"#282329\",\"User email 用户邮箱\")\n    editor.paint($&frame,&theme) or >>\n    draw.text(48,166,12,\"#6d626e\",\"中文 / English / 🙂 · 原生单行文本编辑\")\n    message := \"Value: developer@xulang.org\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Value: developer@xulang.org\n"
+      }
+    },
+    "widget-text-area": {
+      "group": "widgets",
+      "component": "text-area",
+      "title": {
+        "zh": "多行文本 · TextArea",
+        "en": "TextArea"
+      },
+      "description": {
+        "zh": "编辑多行文本",
+        "en": "Edit multiple lines of text"
+      },
+      "exercise": {
+        "zh": "编写一段说明，尝试换行",
+        "en": "Write a description with line breaks"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,104.0,520.0,110.0)\n    $text := \"Native text editing · 选择文字、复制、粘贴 · 👩🏽‍💻 family 👨‍👩‍👧‍👦\"\n    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  TextArea\")\n    draw.text(32,48,12,\"#6d626e\",\"原生多行编辑：段落、内部滚动与输入法候选定位。\")\n    editor.paint($&frame,&theme) or >>\n    draw.text(48,224,12,\"#6d626e\",\"段落、内部滚动与输入法候选定位 · 支持剪贴板\")\n    message := \"Lines: 3 | Characters: 64\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Lines: 3 | Characters: 64\n"
+      }
+    },
+    "widget-field": {
+      "group": "widgets",
+      "component": "field",
+      "title": {
+        "zh": "字段输入 · Field",
+        "en": "Field"
+      },
+      "description": {
+        "zh": "将标签、帮助与校验结合到输入框",
+        "en": "Combine a label, help and validation with an input"
+      },
+      "exercise": {
+        "zh": "留空后提交，再填写名称",
+        "en": "Submit an empty name, then correct it"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,380.0,42.0)\n    $text := \"xulang-workspace\"\n    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>\n    $btn := widgets.button(&identity,2,&box(438.0,114.0,90.0,42.0)) or >>\n    $btn_lbl := widgets.styled_label(&context,&\"清空 / ×\")\n    $focus := widgets.focus_group(&identity,[2]) or >>\n    $cleared := false\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 2)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(2) or >> }\n        if act.kind == widgets.ACTION_ACTIVATE {\n            cleared = true\n        }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  Field\")\n    draw.text(32,48,12,\"#6d626e\",\"浮动标签 / 固定标签 / 三种边框；软计数不截断输入。\")\n    draw.text(48,90,14,\"#282329\",\"Project name 项目名称 *\")\n    editor.paint($&frame,&theme) or >>\n    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>\n    if cleared {\n        draw.text(48,166,12,\"#b82138\",\"名称不能为空。Please enter a project name.\")\n        draw.text(390,166,12,\"#6d626e\",\"0 / 32\")\n    } else {\n        draw.text(48,166,12,\"#6d626e\",\"Enter a name · 浮动/固定标签与稳定辅助区\")\n        draw.text(380,166,12,\"#6d626e\",\"16 / 32\")\n    }\n    $message := \"Field: xulang-workspace\"\n    if cleared {\n        message = \"Field: empty (invalid)\"\n    }\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Field: xulang-workspace\n"
+      }
+    },
+    "widget-field-area": {
+      "group": "widgets",
+      "component": "field-area",
+      "title": {
+        "zh": "多行字段 · FieldArea",
+        "en": "FieldArea"
+      },
+      "description": {
+        "zh": "为多行文本提供标签与校验",
+        "en": "Label and validate longer text"
+      },
+      "exercise": {
+        "zh": "填写说明并观察字数",
+        "en": "Write a description and watch the character count"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,500.0,92.0)\n    $text := \"Build notes 构建说明 · 中文与 emoji 🙂\"\n    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  FieldArea\")\n    draw.text(32,48,12,\"#6d626e\",\"多行 Field：最小 3 行、最大 6 行；计数与稳定辅助区。\")\n    draw.text(48,90,14,\"#282329\",\"Build notes 构建说明 *\")\n    editor.paint($&frame,&theme) or >>\n    draw.text(48,216,12,\"#6d626e\",\"多行文本与换行 · 软计数不截断输入\")\n    draw.text(480,216,12,\"#6d626e\",\"28 / 120\")\n    message := \"FieldArea: 28 characters\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "FieldArea: 28 characters\n"
+      }
+    },
+    "widget-tree-view": {
+      "group": "widgets",
+      "component": "tree-view",
+      "title": {
+        "zh": "树形视图 · TreeView",
+        "en": "TreeView"
+      },
+      "description": {
+        "zh": "浏览可展开的层级节点",
+        "en": "Browse expandable hierarchical nodes"
+      },
+      "exercise": {
+        "zh": "展开目录并选择文件",
+        "en": "Expand a folder and select a file"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    $btn := widgets.button(&identity,1,&box(48.0,96.0,240.0,32.0)) or >>\n    $lbl := widgets.styled_label(&context,&\"▼ src/widgets\")\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  TreeView\")\n    draw.text(32,48,12,\"#6d626e\",\"层级引导、矢量箭头、图标、元数据、筛选和节点动作。\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    draw.text(80,136,14,\"#282329\",\"  ├─ tree_view.xu\")\n    draw.text(80,162,14,\"#282329\",\"  ├─ task_button.xu\")\n    draw.text(80,188,14,\"#282329\",\"  └─ field.xu\")\n    draw.text(48,216,14,\"#6d626e\",\"▶ bench/\")\n    message := \"Selected node: src/widgets\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected node: src/widgets\n"
+      }
+    },
+    "widget-task-button": {
+      "group": "widgets",
+      "component": "task-button",
+      "title": {
+        "zh": "任务按钮 · TaskButton",
+        "en": "TaskButton"
+      },
+      "description": {
+        "zh": "用按钮呈现任务执行状态",
+        "en": "Show task progress inside an action button"
+      },
+      "exercise": {
+        "zh": "开始任务，等待完成后重试",
+        "en": "Start a task, wait for completion and run again"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,220.0,44.0)\n    $control := widgets.button(&identity,1,&bounds) or >>\n    $running := false\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        control.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := control.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n        if act.kind == widgets.ACTION_ACTIVATE { running = !running }\n    }\n    $text_val := \"Build project 构建\"\n    if running {\n        text_val = \"Building (45%)…\"\n    }\n    $label := widgets.styled_label(&context,&text_val)\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  TaskButton\")\n    draw.text(32,48,12,\"#6d626e\",\"真实计算批次驱动进度；任务 ID 拒绝旧回调。\")\n    control.paint_styled($&frame,$&label,&styles) or >>\n    $sub_val := \"点击触发异步计算任务，自动切换状态\"\n    if running {\n        sub_val = \"任务正在后台执行中，进度实时递增\"\n    }\n    draw.text(284,128,14,\"#6d626e\",sub_val)\n    $message := \"Task: idle\"\n    if running {\n        message = \"Task: running\"\n    }\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Task: idle\n"
+      }
+    },
+    "widget-combo-box": {
+      "group": "widgets",
+      "component": "combo-box",
+      "title": {
+        "zh": "组合框 · ComboBox",
+        "en": "ComboBox"
+      },
+      "description": {
+        "zh": "结合输入与候选项选择",
+        "en": "Combine typing with suggested choices"
+      },
+      "exercise": {
+        "zh": "输入文字筛选候选项",
+        "en": "Type to filter the suggestions"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,110.0,320.0,42.0)\n    $text := \"Workspace 工作区\"\n    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>\n    $btn := widgets.button(&identity,2,&box(378.0,110.0,50.0,42.0)) or >>\n    $btn_lbl := widgets.styled_label(&context,&\"▼\")\n    $focus := widgets.focus_group(&identity,[2]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 2)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(2) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  ComboBox\")\n    draw.text(32,48,12,\"#6d626e\",\"本地匹配高亮与无结果；可控制是否接受自由输入。\")\n    draw.text(48,88,14,\"#282329\",\"Environment 环境选择\")\n    editor.paint($&frame,&theme) or >>\n    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>\n    draw.text(48,166,12,\"#6d626e\",\"候选高亮、本地匹配与键盘上下键选择 · 支持自由输入\")\n    message := \"Selected: Workspace 工作区\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Selected: Workspace 工作区\n"
+      }
+    },
+    "widget-date-picker": {
+      "group": "widgets",
+      "component": "date-picker",
+      "title": {
+        "zh": "日期选择 · DatePicker",
+        "en": "DatePicker"
+      },
+      "description": {
+        "zh": "选择日历日期",
+        "en": "Choose a calendar date"
+      },
+      "exercise": {
+        "zh": "更改预约日期并查看结果",
+        "en": "Change an appointment date"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    $btn := widgets.button(&identity,1,&box(48.0,96.0,180.0,36.0)) or >>\n    $lbl := widgets.styled_label(&context,&\"2026-10-31 ▾\")\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  DatePicker\")\n    draw.text(32,48,12,\"#6d626e\",\"今天 / 清空；Page Up/Down 快速翻月，Shift 切年。\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    draw.text(48,148,12,\"#6d626e\",\"日  一  二  三  四  五  六\")\n    draw.text(48,172,13,\"#282329\",\"25  26  27  28  29  30\")\n    frame.fill_rect(244.0,166.0,28.0,22.0,draw.rgb(190,18,60)) or >>\n    draw.text(248,172,13,\"#ffffff\",\"31\")\n    draw.text(48,206,12,\"#6d626e\",\"PageUp/Down 快速翻月 · Shift 切年 · 今天/清空快捷动作\")\n    message := \"Date: 2026-10-31\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Date: 2026-10-31\n"
+      }
+    },
+    "widget-time-picker": {
+      "group": "widgets",
+      "component": "time-picker",
+      "title": {
+        "zh": "时间选择 · TimePicker",
+        "en": "TimePicker"
+      },
+      "description": {
+        "zh": "选择一天中的时刻",
+        "en": "Choose a time of day"
+      },
+      "exercise": {
+        "zh": "调节预约时间",
+        "en": "Adjust an appointment time"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,110.0,260.0,44.0)\n    $btn := widgets.button(&identity,1,&bounds) or >>\n    $lbl := widgets.styled_label(&context,&\"14 : 30 : 00\")\n    $mode_btn := widgets.button(&identity,2,&box(320.0,110.0,90.0,44.0)) or >>\n    $mode_lbl := widgets.styled_label(&context,&\"24-Hour\")\n    $focus := widgets.focus_group(&identity,[1,2]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        mode_btn.set_focus(focus.current() == 2)\n        if nav.consumed { -> }\n        a1 := btn.input(&event)\n        a2 := mode_btn.input(&event)\n        if a1.request_focus { focus.focus(1) or >> }\n        if a2.request_focus { focus.focus(2) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  TimePicker\")\n    draw.text(32,48,12,\"#6d626e\",\"12/24 小时可选；存储保持明确的时间值。\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    mode_btn.paint_styled($&frame,$&mode_lbl,&styles) or >>\n    draw.text(48,172,12,\"#6d626e\",\"支持 12/24 小时制切换 · 时分秒步进与滚轮微调\")\n    message := \"Time: 14:30:00\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Time: 14:30:00\n"
+      }
+    },
+    "widget-spinner": {
+      "group": "widgets",
+      "component": "spinner",
+      "title": {
+        "zh": "加载指示器 · Spinner",
+        "en": "Spinner"
+      },
+      "description": {
+        "zh": "表示尚不能确定进度的等待",
+        "en": "Indicate work with an unknown duration"
+      },
+      "exercise": {
+        "zh": "开始或暂停加载动画",
+        "en": "Start or pause the loading indicator"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,120.0,42.0)\n    $btn := widgets.button(&identity,1,&bounds) or >>\n    $lbl := widgets.styled_label(&context,&\"Stop 停止\")\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  Spinner\")\n    draw.text(32,48,12,\"#6d626e\",\"大小 / 粗细 / 周期可配置；减少动效显示静态反馈。\")\n    frame.stroke_rect(52.0,104.0,36.0,36.0,draw.rgb(190,18,60),3.0) or >>\n    draw.text(104,114,16,\"#282329\",\"Loading assets… 正在加载\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    draw.text(48,172,12,\"#6d626e\",\"周期 900ms · 半径 32px · 线宽 3px · 减少动效自动降级\")\n    message := \"Spinner: running (period: 900ms)\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Spinner: running (period: 900ms)\n"
+      }
+    },
+    "widget-popover": {
+      "group": "widgets",
+      "component": "popover",
+      "title": {
+        "zh": "气泡框 · Popover",
+        "en": "Popover"
+      },
+      "description": {
+        "zh": "在锚点附近展示可操作内容",
+        "en": "Show interactive content beside an anchor"
+      },
+      "exercise": {
+        "zh": "打开偏好设置并应用选择",
+        "en": "Open preferences and apply a choice"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,160.0,42.0)\n    $btn := widgets.button(&identity,1,&bounds) or >>\n    $lbl := widgets.styled_label(&context,&\"偏好设置 ▾\")\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  Popover\")\n    draw.text(32,48,12,\"#6d626e\",\"锚点定位、边缘翻转；外点 / Escape 关闭。\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    frame.fill_rect(228.0,92.0,320.0,116.0,draw.rgb(255,255,255)) or >>\n    frame.stroke_rect(228.0,92.0,320.0,116.0,draw.rgb(190,18,60),1.5) or >>\n    draw.text(244,106,14,\"#282329\",\"Workspace preferences\")\n    draw.text(244,130,12,\"#6d626e\",\"☑ Keep history 保留历史记录\")\n    draw.text(244,152,12,\"#6d626e\",\"☑ Auto save 自动保存\")\n    draw.text(244,178,13,\"#be123c\",\"[ Apply 应用 ]     [ Cancel 取消 ]\")\n    draw.text(48,180,12,\"#6d626e\",\"锚点对齐 · 视口边缘翻转 · Escape 或点击外部收起\")\n    message := \"Popover: open\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Popover: open\n"
+      }
+    },
+    "widget-tooltip": {
+      "group": "widgets",
+      "component": "tooltip",
+      "title": {
+        "zh": "文字提示 · Tooltip",
+        "en": "Tooltip"
+      },
+      "description": {
+        "zh": "为锚点补充简短说明",
+        "en": "Add a short explanation to an anchor"
+      },
+      "exercise": {
+        "zh": "悬停或聚焦帮助按钮",
+        "en": "Hover or focus the help button"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,132.0,240.0,42.0)\n    $btn := widgets.button(&identity,1,&bounds) or >>\n    $lbl := widgets.styled_label(&context,&\"Hover or focus for help\")\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  Tooltip\")\n    draw.text(32,48,12,\"#6d626e\",\"Hover 延迟、focus 立即显示；Escape 抑制重复提示。\")\n    frame.fill_rect(48.0,88.0,420.0,32.0,draw.rgb(40,35,41)) or >>\n    draw.text(60,97,12,\"#fffdfb\",\"Hover waits 500 ms; keyboard focus shows help immediately.\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    draw.text(48,190,12,\"#6d626e\",\"鼠标离开或点击收起；Escape 抑制重复提示\")\n    message := \"Tooltip: visible\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Tooltip: visible\n"
+      }
+    },
+    "widget-toast-host": {
+      "group": "widgets",
+      "component": "toast-host",
+      "title": {
+        "zh": "消息通知 · ToastHost",
+        "en": "ToastHost"
+      },
+      "description": {
+        "zh": "统一呈现短暂通知",
+        "en": "Present transient notifications in one place"
+      },
+      "exercise": {
+        "zh": "显示通知，再手动关闭",
+        "en": "Show a notification and dismiss it"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,200.0,42.0)\n    $btn := widgets.button(&identity,1,&bounds) or >>\n    $lbl := widgets.styled_label(&context,&\"Enqueue notification\")\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  ToastHost\")\n    draw.text(32,48,12,\"#6d626e\",\"最多三条可见通知；队列、去重、优先级与撤销动作。\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    frame.fill_rect(280.0,96.0,300.0,44.0,draw.rgb(255,255,255)) or >>\n    frame.stroke_rect(280.0,96.0,300.0,44.0,draw.rgb(4,120,87),1.5) or >>\n    draw.text(296,110,13,\"#047857\",\"✓ Workspace saved 已成功保存\")\n    frame.fill_rect(280.0,148.0,300.0,44.0,draw.rgb(255,255,255)) or >>\n    frame.stroke_rect(280.0,148.0,300.0,44.0,draw.rgb(0,95,158),1.5) or >>\n    draw.text(296,162,13,\"#005f9e\",\"ℹ Syncing remote changes 同步中…\")\n    draw.text(48,174,12,\"#6d626e\",\"支持去重、优先级与撤销动作 · 最多 3 条同时可见\")\n    message := \"Active toasts: 2\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Active toasts: 2\n"
+      }
+    },
+    "widget-modal": {
+      "group": "widgets",
+      "component": "modal",
+      "title": {
+        "zh": "对话框 · Modal",
+        "en": "Modal"
+      },
+      "description": {
+        "zh": "在独立对话框中完成当前决策",
+        "en": "Complete a focused decision in a dialog"
+      },
+      "exercise": {
+        "zh": "打开确认框，分别取消与确认",
+        "en": "Open a confirmation, cancel it and confirm it"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,114.0,200.0,42.0)\n    $btn := widgets.button(&identity,1,&bounds) or >>\n    $lbl := widgets.styled_label(&context,&\"Open confirmation\")\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  Modal\")\n    draw.text(32,48,12,\"#6d626e\",\"模态焦点循环与恢复；安全动作先获得焦点。\")\n    frame.fill_rect(260.0,88.0,320.0,126.0,draw.rgb(255,255,255)) or >>\n    frame.stroke_rect(260.0,88.0,320.0,126.0,draw.rgb(190,18,60),2.0) or >>\n    draw.text(276,104,15,\"#282329\",\"Apply configuration?\")\n    draw.text(276,128,12,\"#6d626e\",\"Focus stays inside confirmation.\")\n    draw.text(276,146,12,\"#6d626e\",\"Escape returns to trigger.\")\n    draw.text(276,180,13,\"#be123c\",\"[ Cancel 取消 ]   [ Apply 确认应用 ]\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    message := \"Modal: pending\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Modal: pending\n"
+      }
+    },
+    "widget-web-view": {
+      "group": "widgets",
+      "component": "web-view",
+      "title": {
+        "zh": "网页视图 · WebView",
+        "en": "WebView"
+      },
+      "description": {
+        "zh": "在原生界面中嵌入网页",
+        "en": "Embed web content inside a native interface"
+      },
+      "exercise": {
+        "zh": "切换独立预览页面",
+        "en": "Switch between embedded preview pages"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    bounds := box(48.0,92.0,520.0,130.0)\n    $btn := widgets.button(&identity,1,&box(480.0,98.0,76.0,26.0)) or >>\n    $lbl := widgets.styled_label(&context,&\"↻ Reload\")\n    $focus := widgets.focus_group(&identity,[1]) or >>\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        btn.set_focus(focus.current() == 1)\n        if nav.consumed { -> }\n        act := btn.input(&event)\n        if act.request_focus { focus.focus(1) or >> }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  WebView\")\n    draw.text(32,48,12,\"#6d626e\",\"原生网页子视图作为 Screen 组件，支持裁剪与独立生命周期。\")\n    frame.fill_rect(48.0,92.0,520.0,34.0,draw.rgb(238,235,231)) or >>\n    draw.text(60,103,13,\"#282329\",\"🔒 https://xulang.org/docs/\")\n    btn.paint_styled($&frame,$&lbl,&styles) or >>\n    frame.fill_rect(48.0,126.0,520.0,86.0,draw.rgb(255,255,255)) or >>\n    frame.stroke_rect(48.0,126.0,520.0,86.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(60,138,15,\"#282329\",\"WebView is a component.\")\n    draw.text(60,162,12,\"#6d626e\",\"Native focus, clipping and independent lifecycle.\")\n    draw.text(60,182,12,\"#be123c\",\"中文 / English / 🙂  [ Submit ]\")\n    message := \"WebView: ready (URI: https://xulang.org/docs/)\"\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "WebView: ready (URI: https://xulang.org/docs/)\n"
+      }
+    },
+    "widget-password-input": {
+      "group": "widgets",
+      "component": "password-input",
+      "title": {
+        "zh": "密码输入 · PasswordInput",
+        "en": "PasswordInput"
+      },
+      "description": {
+        "zh": "在掩码显示下编辑密码",
+        "en": "Edit a password with a masked display"
+      },
+      "exercise": {
+        "zh": "输入示例文字，切换显隐",
+        "en": "Enter sample text and toggle visibility"
+      },
+      "entry": "main.xu",
+      "files": {
+        "main.xu": "@main\n#ui\n#ui/draw\n#ui/layout\n#ui/widgets\n#playground\n\nfn box(x f64,y f64,w f64,h f64) layout.Rect {\n    << layout.Rect{x: x,y: y,width: w,height: h}\n}\nfn demo() int {\n    identity := playground.canvas_identity()\n    context := draw.default_context()\n    theme := playground.light_theme()\n    styles := playground.light_styles()\n    $check := widgets.checkbox(&identity,2,&box(428.0,114.0,140.0,42.0),false) or >>\n    $check_lbl := widgets.styled_label(&context,&\"显示密码\")\n    $focus := widgets.focus_group(&identity,[2]) or >>\n    $show_pwd := false\n    while true {\n        event := playground.next_input()\n        if event.kind == 0 { <- }\n        nav := focus.input(&event)\n        check.set_focus(focus.current() == 2)\n        if nav.consumed { -> }\n        act := check.input(&event)\n        if act.request_focus { focus.focus(2) or >> }\n        if act.kind == widgets.ACTION_CHANGE { show_pwd = check.value() }\n    }\n    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n    draw.text(32,22,20,\"#282329\",\"XUUI  /  PasswordInput\")\n    draw.text(32,48,12,\"#6d626e\",\"按 Unicode 字素掩码；显隐切换、原生编辑、只读与禁用，禁止复制或剪切密码。\")\n    draw.text(48,90,14,\"#282329\",\"Password 密码 *\")\n    frame.fill_rect(48.0,114.0,360.0,42.0,draw.rgb(238,235,231)) or >>\n    frame.stroke_rect(48.0,114.0,360.0,42.0,draw.rgb(133,121,135),1.0) or >>\n    if show_pwd {\n        draw.text(60,126,15,\"#282329\",\"Xu-Secret-2026!\")\n    } else {\n        draw.text(60,126,15,\"#282329\",\"•••••••••••••••\")\n    }\n    check.paint_styled($&frame,$&check_lbl,&styles) or >>\n    draw.text(48,168,12,\"#6d626e\",\"显隐切换保留内容与光标 · 禁止复制剪切密码\")\n    $message := \"Password: masked (15 chars)\"\n    if show_pwd {\n        message = \"Password: plain (15 chars)\"\n    }\n    draw.text(32,326,13,\"#6d626e\",message + \"\")\n    println(message)\n    frame.present() or >>\n    << 0\n}\nfn main() int {\n    << demo() or (err) { eprintln(err.msg())\n        << 1 }\n}\n"
+      },
+      "expected": {
+        "kind": "stdout",
+        "value": "Password: masked (15 chars)\n"
       }
     }
   }

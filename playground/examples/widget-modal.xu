@@ -1,0 +1,52 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,114.0,200.0,42.0)
+    $btn := widgets.button(&identity,1,&bounds) or >>
+    $lbl := widgets.styled_label(&context,&"Open confirmation")
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        btn.set_focus(focus.current() == 1)
+        if nav.consumed { -> }
+        act := btn.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  Modal")
+    draw.text(32,48,12,"#6d626e","模态焦点循环与恢复；安全动作先获得焦点。")
+    frame.fill_rect(260.0,88.0,320.0,126.0,draw.rgb(255,255,255)) or >>
+    frame.stroke_rect(260.0,88.0,320.0,126.0,draw.rgb(190,18,60),2.0) or >>
+    draw.text(276,104,15,"#282329","Apply configuration?")
+    draw.text(276,128,12,"#6d626e","Focus stays inside confirmation.")
+    draw.text(276,146,12,"#6d626e","Escape returns to trigger.")
+    draw.text(276,180,13,"#be123c","[ Cancel 取消 ]   [ Apply 确认应用 ]")
+    btn.paint_styled($&frame,$&lbl,&styles) or >>
+    message := "Modal: pending"
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

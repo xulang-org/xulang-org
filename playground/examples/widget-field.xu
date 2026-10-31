@@ -1,0 +1,64 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,114.0,380.0,42.0)
+    $text := "xulang-workspace"
+    $editor := widgets.input(&context,&identity,1,&bounds,&text) or >>
+    $btn := widgets.button(&identity,2,&box(438.0,114.0,90.0,42.0)) or >>
+    $btn_lbl := widgets.styled_label(&context,&"清空 / ×")
+    $focus := widgets.focus_group(&identity,[2]) or >>
+    $cleared := false
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        btn.set_focus(focus.current() == 2)
+        if nav.consumed { -> }
+        act := btn.input(&event)
+        if act.request_focus { focus.focus(2) or >> }
+        if act.kind == widgets.ACTION_ACTIVATE {
+            cleared = true
+        }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  Field")
+    draw.text(32,48,12,"#6d626e","浮动标签 / 固定标签 / 三种边框；软计数不截断输入。")
+    draw.text(48,90,14,"#282329","Project name 项目名称 *")
+    editor.paint($&frame,&theme) or >>
+    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
+    if cleared {
+        draw.text(48,166,12,"#b82138","名称不能为空。Please enter a project name.")
+        draw.text(390,166,12,"#6d626e","0 / 32")
+    } else {
+        draw.text(48,166,12,"#6d626e","Enter a name · 浮动/固定标签与稳定辅助区")
+        draw.text(380,166,12,"#6d626e","16 / 32")
+    }
+    $message := "Field: xulang-workspace"
+    if cleared {
+        message = "Field: empty (invalid)"
+    }
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}
