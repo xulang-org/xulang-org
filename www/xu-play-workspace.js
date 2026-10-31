@@ -11,8 +11,9 @@
   var tabs = el('file-tabs');
   var lines = el('lines');
   var highlight = el('highlight');
-  var storageKey = 'xu-play-workspace-v1';
+  var storageKey = 'xu-play-workspace-v2';
   var projects = Object.create(null);
+  var canonicalTemplates = Object.create(null);
   var currentKey = 'hello';
   var active = 'main.xu';
   var files;
@@ -37,6 +38,13 @@
     return path.length <= 160 && /^[a-zA-Z0-9_./-]+$/.test(path) &&
       path.split('/').every(function (part) { return part && part !== '.' && part !== '..'; });
   }
+  function isObsoleteCode(src) {
+    return typeof src === 'string' && (
+      src.includes('widgets.default_theme()') ||
+      src.includes('draw.rgb(16,24,39)') ||
+      src.includes('#101827')
+    );
+  }
   function defaultFiles(template, key) {
     var result = Object.create(null);
     if (template && template.files) {
@@ -53,6 +61,7 @@
       Object.keys(saved.projects).slice(0, 32).forEach(function (key) {
         var value = saved.projects[key];
         if (!value || typeof value !== 'object' || typeof value['main.xu'] !== 'string') return;
+        if (isObsoleteCode(value['main.xu'])) return;
         var restored = Object.create(null);
         Object.keys(value).slice(0, 32).forEach(function (path) {
           if (validPath(path) && typeof value[path] === 'string') restored[path] = value[path];
@@ -201,11 +210,15 @@
     updateCode();
   }
   function setExample(key, template) {
+    if (template) canonicalTemplates[key] = template;
     save();
     removed = null;
     el('undo-remove').hidden = true;
     var replacePlaceholder = placeholder && key === currentKey && files['main.xu'] === initialSource && Object.keys(files).length === 2;
     currentKey = key;
+    if (projects[key] && isObsoleteCode(projects[key]['main.xu'])) {
+      delete projects[key];
+    }
     files = (!replacePlaceholder && projects[key]) || defaultFiles(template, key);
     placeholder = false;
     projects[key] = files;
@@ -239,6 +252,22 @@
     });
     button.addEventListener('keydown', function (event) { tabKeys(event, resultTabs); });
   });
+    var resetBtn = el('reset');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', function () {
+      var template = canonicalTemplates[currentKey];
+      if (!template) return;
+      delete projects[currentKey];
+      placeholder = false;
+      files = defaultFiles(template, currentKey);
+      projects[currentKey] = files;
+      active = 'main.xu';
+      editor.value = files[active];
+      open(active);
+      save();
+      if (el('save-state')) el('save-state').textContent = text('已恢复为默认模板代码', 'Restored to default template');
+    });
+  }
   el('clear').addEventListener('click', function () { el('out').textContent = ''; });
   el('remove').addEventListener('click', function () {
     if (active === 'main.xu' || active === 'xu.xun') return;

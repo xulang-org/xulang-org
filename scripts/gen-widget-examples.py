@@ -6,6 +6,39 @@ from pathlib import Path
 from widget_portable_examples import CASES, source as portable_source
 
 ROOT = Path(__file__).resolve().parents[1]
+
+WIDGET_ZH_NAMES = {
+    'button': '按钮',
+    'checkbox': '复选框',
+    'switch': '开关',
+    'radio': '单选框',
+    'slider': '滑块',
+    'tabs': '标签页',
+    'segmented': '分段控制',
+    'list-box': '列表框',
+    'progress': '进度条',
+    'divider': '分割线',
+    'badge': '徽标',
+    'card': '卡片',
+    'scroll': '滚动容器',
+    'radio-group': '单选组',
+    'stepper': '步进器',
+    'select': '下拉选择',
+    'multi-select': '多项选择',
+    'color-picker': '取色器',
+    'table': '数据表格',
+    'pagination': '分页器',
+    'breadcrumbs': '面包屑导航',
+    'button-group': '按钮组',
+    'chart': '图表',
+    'range-slider': '双向范围滑块',
+    'split-view': '分栏视图',
+    'menu': '下拉菜单',
+    'context-menu': '右键菜单',
+    'split-button': '拆分按钮',
+    'styled-label': '样式文本',
+}
+
 CONTROLS = {
     'button': ('button(&identity,1,&bounds)', 'Count: 0', 'button'),
     'checkbox': ('checkbox(&identity,1,&bounds,false)', 'Value: false', 'label'),
@@ -148,13 +181,24 @@ def generate(root=ROOT, check=False):
     catalog = json.loads(path.read_text(encoding='utf-8'))
     widgets = json.loads((root / 'templates/widgets.json').read_text(encoding='utf-8'))
     outputs = {}
+    has_widgets = any(g['id'] == 'widgets' for g in catalog['groups'])
+    if not has_widgets:
+        catalog['groups'].append({
+            'id': 'widgets',
+            'title': {'zh': '组件库 · 29 个标准控件', 'en': 'Component catalog (29 widgets)'},
+            'description': {
+                'zh': '涵盖全部 29 种 XUUI 标准控件：按钮、表单输入、选择、数据表格、图表、菜单与分栏视图。',
+                'en': 'All 29 XUUI standard interactive controls: buttons, inputs, tables, charts, menus, and split views.'
+            }
+        })
     for c in widgets['components']:
         if c['slug'] not in CONTROLS and c['slug'] not in CASES:
             continue
         desc = c['description'].get('zh', '')
         code, expected = (source if c['slug'] in CONTROLS else portable_source)(c['name'], c['slug'], desc)
         key = 'widget-' + c['slug']
-        catalog['projects'][key] = dict(group='ui', component=c['slug'], title={lang: c['name'] for lang in ('zh', 'en')},
+        zh_title = f"{WIDGET_ZH_NAMES.get(c['slug'], c['name'])} · {c['name']}"
+        catalog['projects'][key] = dict(group='widgets', component=c['slug'], title={'zh': zh_title, 'en': c['name']},
             description=c['description'], exercise=c['exercise'], entry='main.xu', files={'main.xu': code}, expected={'kind': 'stdout', 'value': expected})
         outputs[root / f'playground/examples/{key}.xu'] = code
     outputs[path] = json.dumps(catalog, ensure_ascii=False, indent=2) + '\n'
