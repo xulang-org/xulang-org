@@ -11,7 +11,7 @@
   var tabs = el('file-tabs');
   var lines = el('lines');
   var highlight = el('highlight');
-  var storageKey = 'xu-play-workspace-v2';
+  var storageKey = 'xu-play-workspace-v3';
   var projects = Object.create(null);
   var canonicalTemplates = Object.create(null);
   var currentKey = 'hello';

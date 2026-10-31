@@ -13,7 +13,7 @@ controls, and `playground.dark_styles()` / `light_styles()` for styled controls.
 Use `styles.background` to clear the canvas. Widgets still own state and input;
 the Canvas host receives geometric drawing commands, without widget IDs.
 
-The component experiences and gallery use the dark reference. The adapter maps
+The component experiences and gallery use the light reference. The adapter maps
 semantic colors, control height, padding, corner radii, and focus treatment.
 Button, Checkbox, Switch, Radio, and Slider use desktop styled paint methods
 for rounded borders, selection states, and focus. Their declarations and
