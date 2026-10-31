@@ -17,25 +17,66 @@ EXTENDED_CASES = {
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
 fn demo() int {
-    identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
-    $btn := widgets.button(&identity,2,&box(438.0,114.0,90.0,42.0)) or >>
-    $btn_lbl := widgets.styled_label(&context,&"清空 / ×")
-    $focus := widgets.focus_group(&identity,[2]) or >>
-    $cleared := false
+    bounds := box(48.0,110.0,440.0,48.0)
+    clear_box := box(446.0,117.0,32.0,32.0)
+    $text := "xulang-workspace"
+    $focused := false
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
-        nav := focus.input(&event)
-        btn.set_focus(focus.current() == 2)
-        if nav.consumed { -> }
-        act := btn.input(&event)
-        if act.request_focus { focus.focus(2) or >> }
-        if act.kind == widgets.ACTION_ACTIVATE {
-            cleared = true
+        if event.kind == 72 {
+            px := event.x
+            py := event.y
+            if px >= clear_box.x && px <= clear_box.x + clear_box.width && py >= clear_box.y && py <= clear_box.y + clear_box.height {
+                text = ""
+                focused = true
+            } else if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
+                focused = true
+            } else {
+                focused = false
+            }
+        }
+        if event.kind == 78 {
+            if event.key == 257 { focused = !focused }
+            if focused {
+                if event.key == 259 {
+                    if text.len > 0 { text = text[0:text.len - 1] }
+                } else if event.key == 256 {
+                    focused = false
+                } else if text.len < 32 {
+                    shift := (event.modifiers & 1) != 0
+                    ch := char_from_key(event.key, shift)
+                    if ch.len > 0 { text = text + ch }
+                }
+            }
         }
     }
     $frame := context.new_frame(8192)
@@ -45,28 +86,62 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  Field")
     draw.text(32,48,12,"#6d626e","浮动标签 / 固定标签 / 三种边框；软计数不截断输入。")
-    draw.text(48,90,14,"#282329","Project name 项目名称 *")
-    frame.fill_rect(48.0,114.0,380.0,42.0,draw.rgb(255,255,255)) or >>
-    if cleared {
-        frame.stroke_rect(48.0,114.0,380.0,42.0,draw.rgb(184,33,56),1.5) or >>
-        draw.text(60,126,15,"#6d626e","xu / ")
-        draw.text(96,126,15,"#857987","输入项目名称...")
-        draw.text(94,124,16,"#b82138","|")
-        draw.text(48,166,12,"#b82138","名称不能为空。Please enter a project name.")
-        draw.text(390,166,12,"#b82138","0 / 32")
+
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    is_invalid := text.len == 0
+    if is_invalid {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(184,33,56),1.5) or >>
+    } else if focused {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
     } else {
-        frame.stroke_rect(48.0,114.0,380.0,42.0,draw.rgb(133,121,135),1.0) or >>
-        draw.text(60,126,15,"#6d626e","xu / ")
-        draw.text(96,126,15,"#282329","xulang-workspace")
-        draw.text(244,124,16,"#be123c","|")
-        draw.text(48,166,12,"#6d626e","Enter a name · 浮动/固定标签与稳定辅助区")
-        draw.text(380,166,12,"#6d626e","16 / 32")
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
     }
-    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
-    $message := "Field: xulang-workspace"
-    if cleared {
-        message = "Field: empty (invalid)"
+
+    bx := int(bounds.x)
+    by := int(bounds.y)
+    bw := int(bounds.width)
+    bh := int(bounds.height)
+
+    // Floating notch and label matching component_workshop
+    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,150.0,14.0,draw.rgb(255,253,251)) or >>
+    if is_invalid {
+        draw.text(bx + 16,by - 6,12,"#b82138","Project name 项目名称 *")
+    } else if focused {
+        draw.text(bx + 16,by - 6,12,"#282329","Project name 项目名称 *")
+    } else {
+        draw.text(bx + 16,by - 6,12,"#6d626e","Project name 项目名称 *")
     }
+
+    // Inside box: prefix, value, caret, clear icon
+    draw.text(bx + 16,by + 16,15,"#6d626e","xu / ")
+    if text.len > 0 {
+        draw.text(bx + 52,by + 16,15,"#282329",text + "")
+        if focused {
+            caret_x := bx + 52 + int(f64(text.len) * 8.6)
+            draw.text(caret_x,by + 14,16,"#be123c","|")
+        }
+        cx := clear_box.x + 16.0
+        cy := clear_box.y + 16.0
+        frame.line(cx - 5.0,cy - 5.0,cx + 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) or >>
+        frame.line(cx + 5.0,cy - 5.0,cx - 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) or >>
+    } else {
+        draw.text(bx + 52,by + 16,15,"#857987","输入项目名称...")
+        if focused {
+            draw.text(bx + 50,by + 14,16,"#be123c","|")
+        }
+    }
+
+    // Helper text & counter below
+    if is_invalid {
+        draw.text(bx,by + bh + 8,12,"#b82138","名称不能为空。Please enter a project name.")
+        draw.text(bx + bw - 50,by + bh + 8,12,"#b82138","0 / 32")
+    } else {
+        draw.text(bx,by + bh + 8,12,"#6d626e","Enter a name · Native IME / selection / clipboard")
+        draw.text(bx + bw - 50,by + bh + 8,12,"#6d626e",str(text.len) + " / 32")
+    }
+
+    $message := "Field: " + text
+    if is_invalid { message = "Field: empty (invalid)" }
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
     frame.present() or >>
@@ -90,15 +165,63 @@ fn main() int {
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
 fn demo() int {
-    identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,110.0,500.0,92.0)
+    $text := "Build notes 构建说明 · 中文与 emoji 🙂"
+    $focused := false
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == 72 {
+            px := event.x
+            py := event.y
+            if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
+                focused = true
+            } else {
+                focused = false
+            }
+        }
+        if event.kind == 78 {
+            if event.key == 257 { focused = !focused }
+            if focused {
+                if event.key == 259 {
+                    if text.len > 0 { text = text[0:text.len - 1] }
+                } else if event.key == 256 {
+                    focused = false
+                } else if text.len < 120 {
+                    shift := (event.modifiers & 1) != 0
+                    ch := char_from_key(event.key, shift)
+                    if ch.len > 0 { text = text + ch }
+                }
+            }
+        }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
@@ -107,15 +230,41 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  FieldArea")
     draw.text(32,48,12,"#6d626e","多行 Field：最小 3 行、最大 6 行；计数与稳定辅助区。")
-    draw.text(48,88,14,"#282329","Build notes 构建说明 *")
-    frame.fill_rect(48.0,110.0,500.0,92.0,draw.rgb(255,255,255)) or >>
-    frame.stroke_rect(48.0,110.0,500.0,92.0,draw.rgb(133,121,135),1.0) or >>
-    draw.text(60,124,15,"#282329","Build notes 构建说明 · 中文与 emoji 🙂")
-    draw.text(60,148,15,"#6d626e","支持多行折行输入，自适应行数展开。")
-    draw.text(348,146,16,"#be123c","|")
-    draw.text(48,214,12,"#6d626e","多行文本与换行 · 软计数不截断输入")
-    draw.text(490,214,12,"#6d626e","28 / 120")
-    message := "FieldArea: 28 characters"
+
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    if focused {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
+    } else {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+    }
+
+    bx := int(bounds.x)
+    by := int(bounds.y)
+    bw := int(bounds.width)
+    bh := int(bounds.height)
+
+    // Floating notch and label
+    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,160.0,14.0,draw.rgb(255,253,251)) or >>
+    if focused {
+        draw.text(bx + 16,by - 6,12,"#282329","Build notes 构建说明 *")
+    } else {
+        draw.text(bx + 16,by - 6,12,"#6d626e","Build notes 构建说明 *")
+    }
+
+    draw.text(bx + 12,by + 14,15,"#282329",text + "")
+    if focused {
+        $caret_x := bx + 12 + int(f64(text.len) * 8.6)
+        if caret_x > bx + bw - 20 { caret_x = bx + bw - 20 }
+        draw.text(caret_x,by + 12,16,"#be123c","|")
+    }
+    draw.text(bx + 12,by + 40,14,"#6d626e","支持多行折行输入，自适应行数展开。")
+
+    draw.text(bx,by + bh + 8,12,"#6d626e","多行文本与换行 · 软计数不截断输入")
+    draw.text(bx + bw - 60,by + bh + 8,12,"#6d626e",str(text.len) + " / 120")
+
+    $chars := 28
+    if text.len != 48 { chars = 28 + text.len - 48 }
+    message := "FieldArea: " + str(chars) + " characters"
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
     frame.present() or >>
@@ -139,15 +288,63 @@ fn main() int {
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
 fn demo() int {
-    identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,114.0,500.0,42.0)
+    bounds := box(48.0,114.0,500.0,44.0)
+    $text := "developer@xulang.org"
+    $focused := false
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == 72 {
+            px := event.x
+            py := event.y
+            if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
+                focused = true
+            } else {
+                focused = false
+            }
+        }
+        if event.kind == 78 {
+            if event.key == 257 { focused = !focused }
+            if focused {
+                if event.key == 259 {
+                    if text.len > 0 { text = text[0:text.len - 1] }
+                } else if event.key == 256 {
+                    focused = false
+                } else if text.len < 64 {
+                    shift := (event.modifiers & 1) != 0
+                    ch := char_from_key(event.key, shift)
+                    if ch.len > 0 { text = text + ch }
+                }
+            }
+        }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
@@ -156,13 +353,33 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  Input")
     draw.text(32,48,12,"#6d626e","原生单行编辑：选区、复制、粘贴与 IME。")
-    draw.text(48,90,14,"#282329","User email 用户邮箱 *")
-    frame.fill_rect(48.0,114.0,500.0,42.0,draw.rgb(255,255,255)) or >>
-    frame.stroke_rect(48.0,114.0,500.0,42.0,draw.rgb(133,121,135),1.0) or >>
-    draw.text(60,126,15,"#282329","developer@xulang.org")
-    draw.text(236,124,16,"#be123c","|")
-    draw.text(48,168,12,"#6d626e","中文 / English / 🙂 · 原生单行文本编辑与 IME 会话")
-    message := "Value: developer@xulang.org"
+
+    bx := int(bounds.x)
+    by := int(bounds.y)
+    draw.text(bx,by - 24,14,"#282329","User email 用户邮箱 *")
+
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    if focused {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
+    } else {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+    }
+
+    if text.len > 0 {
+        draw.text(bx + 14,by + 13,15,"#282329",text + "")
+        if focused {
+            caret_x := bx + 14 + int(f64(text.len) * 8.6)
+            draw.text(caret_x,by + 11,16,"#be123c","|")
+        }
+    } else {
+        draw.text(bx + 14,by + 13,15,"#857987","you@domain.com")
+        if focused {
+            draw.text(bx + 14,by + 11,16,"#be123c","|")
+        }
+    }
+
+    draw.text(bx,by + int(bounds.height) + 8,12,"#6d626e","中文 / English / 🙂 · 原生单行文本编辑与 IME 会话")
+    message := "Value: " + text
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
     frame.present() or >>
@@ -186,15 +403,63 @@ fn main() int {
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
 fn demo() int {
-    identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,96.0,500.0,110.0)
+    $line1 := "Native text editing in Xu UI."
+    $focused := false
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == 72 {
+            px := event.x
+            py := event.y
+            if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
+                focused = true
+            } else {
+                focused = false
+            }
+        }
+        if event.kind == 78 {
+            if event.key == 257 { focused = !focused }
+            if focused {
+                if event.key == 259 {
+                    if line1.len > 0 { line1 = line1[0:line1.len - 1] }
+                } else if event.key == 256 {
+                    focused = false
+                } else if line1.len < 100 {
+                    shift := (event.modifiers & 1) != 0
+                    ch := char_from_key(event.key, shift)
+                    if ch.len > 0 { line1 = line1 + ch }
+                }
+            }
+        }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
@@ -203,15 +468,33 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  TextArea")
     draw.text(32,48,12,"#6d626e","原生多行文本：软换行、滚动、选择、复制粘贴。")
-    frame.fill_rect(48.0,96.0,500.0,110.0,draw.rgb(255,255,255)) or >>
-    frame.stroke_rect(48.0,96.0,500.0,110.0,draw.rgb(133,121,135),1.0) or >>
-    draw.text(60,110,15,"#282329","Native text editing in Xu UI.")
-    draw.text(60,134,15,"#282329","选择文字、复制、粘贴，保留输入法会话。")
-    draw.text(60,158,15,"#6d626e","👨‍👩‍👧‍👦 family · emoji 与多语言原生排版")
-    draw.text(376,156,16,"#be123c","|")
-    draw.text(48,218,12,"#6d626e","软换行与双向滚动 · 保持光标可见")
-    draw.text(490,218,12,"#6d626e","68 / 500")
-    message := "Lines: 3 | Characters: 64"
+
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    if focused {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
+    } else {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+    }
+
+    bx := int(bounds.x)
+    by := int(bounds.y)
+    bw := int(bounds.width)
+    bh := int(bounds.height)
+
+    draw.text(bx + 12,by + 14,15,"#282329",line1 + "")
+    if focused {
+        $caret_x := bx + 12 + int(f64(line1.len) * 8.6)
+        if caret_x > bx + bw - 20 { caret_x = bx + bw - 20 }
+        draw.text(caret_x,by + 12,16,"#be123c","|")
+    }
+    draw.text(bx + 12,by + 38,15,"#282329","选择文字、复制、粘贴，保留输入法会话。")
+    draw.text(bx + 12,by + 62,15,"#6d626e","👨‍👩‍👧‍👦 family · emoji 与多语言")
+
+    total_chars := line1.len + 35
+    draw.text(bx,by + bh + 8,12,"#6d626e","软换行与双向滚动 · 保持光标可见")
+    draw.text(bx + bw - 60,by + bh + 8,12,"#6d626e",str(total_chars) + " / 500")
+
+    message := "Lines: 3 | Characters: " + str(total_chars)
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
     frame.present() or >>
@@ -235,18 +518,69 @@ fn main() int {
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
+    bounds := box(48.0,114.0,360.0,42.0)
     $check := widgets.checkbox(&identity,2,&box(428.0,114.0,140.0,42.0),false) or >>
     $check_lbl := widgets.styled_label(&context,&"显示密码")
     $focus := widgets.focus_group(&identity,[2]) or >>
     $show_pwd := false
+    $text := "Xu-Secret-2026!"
+    $focused := false
+
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == 72 {
+            px := event.x
+            py := event.y
+            if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
+                focused = true
+            } else {
+                focused = false
+            }
+        }
+        if event.kind == 78 {
+            if event.key == 257 { focused = !focused }
+            if focused {
+                if event.key == 259 {
+                    if text.len > 0 { text = text[0:text.len - 1] }
+                } else if event.key == 256 {
+                    focused = false
+                } else if text.len < 32 {
+                    shift := (event.modifiers & 1) != 0
+                    ch := char_from_key(event.key, shift)
+                    if ch.len > 0 { text = text + ch }
+                }
+            }
+        }
         nav := focus.input(&event)
         check.set_focus(focus.current() == 2)
         if nav.consumed { -> }
@@ -254,6 +588,7 @@ fn demo() int {
         if act.request_focus { focus.focus(2) or >> }
         if act.kind == widgets.ACTION_CHANGE { show_pwd = check.value() }
     }
+
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
@@ -261,19 +596,35 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  PasswordInput")
     draw.text(32,48,12,"#6d626e","按 Unicode 字素掩码；显隐切换、原生编辑、只读与禁用，禁止复制或剪切密码。")
-    draw.text(48,90,14,"#282329","Password 密码 *")
-    frame.fill_rect(48.0,114.0,360.0,42.0,draw.rgb(238,235,231)) or >>
-    frame.stroke_rect(48.0,114.0,360.0,42.0,draw.rgb(133,121,135),1.0) or >>
-    if show_pwd {
-        draw.text(60,126,15,"#282329","Xu-Secret-2026!")
+
+    bx := int(bounds.x)
+    by := int(bounds.y)
+    draw.text(bx,by - 24,14,"#282329","Password 密码 *")
+
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    if focused {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
     } else {
-        draw.text(60,126,15,"#282329","•••••••••••••••")
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
     }
-    check.paint_styled($&frame,$&check_lbl,&styles) or >>
-    draw.text(48,168,12,"#6d626e","显隐切换保留内容与光标 · 禁止复制剪切密码")
-    $message := "Password: masked (15 chars)"
+
     if show_pwd {
-        message = "Password: plain (15 chars)"
+        draw.text(bx + 12,by + 12,15,"#282329",text + "")
+    } else {
+        $bullets := ""
+        for i in 0:text.len { bullets = bullets + "•" }
+        draw.text(bx + 12,by + 12,15,"#282329",bullets + "")
+    }
+    if focused {
+        caret_x := bx + 12 + int(f64(text.len) * 8.6)
+        draw.text(caret_x,by + 10,16,"#be123c","|")
+    }
+
+    check.paint_styled($&frame,$&check_lbl,&styles) or >>
+    draw.text(bx,by + int(bounds.height) + 8,12,"#6d626e","显隐切换保留内容与光标 · 禁止复制剪切密码")
+    $message := "Password: masked (" + str(text.len) + " chars)"
+    if show_pwd {
+        message = "Password: plain (" + str(text.len) + " chars)"
     }
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
@@ -473,24 +824,80 @@ fn main() int {
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,110.0,320.0,42.0)
-    $btn := widgets.button(&identity,2,&box(378.0,110.0,50.0,42.0)) or >>
+    bounds := box(48.0,110.0,340.0,42.0)
+    $btn := widgets.button(&identity,2,&box(398.0,110.0,50.0,42.0)) or >>
     $btn_lbl := widgets.styled_label(&context,&"▼")
-    $focus := widgets.focus_group(&identity,[2]) or >>
+    $text := "Workspace 工作区"
+    $focused := false
+    $choice_idx := 0
+    choices := ["Workspace 工作区", "History 历史", "Output 输出"]
+
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
-        nav := focus.input(&event)
-        btn.set_focus(focus.current() == 2)
-        if nav.consumed { -> }
+        if event.kind == 72 {
+            px := event.x
+            py := event.y
+            if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
+                focused = true
+            } else if px >= 398.0 && px <= 448.0 && py >= 110.0 && py <= 152.0 {
+                choice_idx = (choice_idx + 1) % 3
+                text = choices[choice_idx]
+                focused = false
+            } else {
+                focused = false
+            }
+        }
+        if event.kind == 78 {
+            if event.key == 257 { focused = !focused }
+            if focused {
+                if event.key == 259 {
+                    if text.len > 0 { text = text[0:text.len - 1] }
+                } else if event.key == 256 {
+                    focused = false
+                } else if text.len < 32 {
+                    shift := (event.modifiers & 1) != 0
+                    ch := char_from_key(event.key, shift)
+                    if ch.len > 0 { text = text + ch }
+                }
+            }
+        }
         act := btn.input(&event)
-        if act.request_focus { focus.focus(2) or >> }
+        if act.kind == widgets.ACTION_ACTIVATE {
+            choice_idx = (choice_idx + 1) % 3
+            text = choices[choice_idx]
+        }
     }
+
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
@@ -498,14 +905,27 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  ComboBox")
     draw.text(32,48,12,"#6d626e","本地匹配高亮与无结果；可控制是否接受自由输入。")
-    draw.text(48,88,14,"#282329","Environment 环境选择")
-    frame.fill_rect(48.0,110.0,320.0,42.0,draw.rgb(255,255,255)) or >>
-    frame.stroke_rect(48.0,110.0,320.0,42.0,draw.rgb(133,121,135),1.0) or >>
-    draw.text(60,122,15,"#282329","Workspace 工作区")
-    draw.text(200,120,16,"#be123c","|")
+
+    bx := int(bounds.x)
+    by := int(bounds.y)
+    draw.text(bx,by - 22,14,"#282329","Environment 环境选择")
+
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    if focused {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
+    } else {
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+    }
+
+    draw.text(bx + 12,by + 12,15,"#282329",text + "")
+    if focused {
+        caret_x := bx + 12 + int(f64(text.len) * 8.6)
+        draw.text(caret_x,by + 10,16,"#be123c","|")
+    }
+
     btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
-    draw.text(48,166,12,"#6d626e","候选高亮、本地匹配与键盘上下键选择 · 支持自由输入")
-    message := "Selected: Workspace 工作区"
+    draw.text(bx,by + int(bounds.height) + 8,12,"#6d626e","候选高亮、本地匹配与键盘上下键选择 · 支持自由输入")
+    message := "Selected: " + text
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
     frame.present() or >>
