@@ -1,0 +1,49 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,114.0,120.0,42.0)
+    $btn := widgets.button(&identity,1,&bounds) or >>
+    $lbl := widgets.styled_label(&context,&"Stop 停止")
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        btn.set_focus(focus.current() == 1)
+        if nav.consumed { -> }
+        act := btn.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  Spinner")
+    draw.text(32,48,12,"#6d626e","大小 / 粗细 / 周期可配置；减少动效显示静态反馈。")
+    frame.stroke_rect(52.0,104.0,36.0,36.0,draw.rgb(190,18,60),3.0) or >>
+    draw.text(104,114,16,"#282329","Loading assets… 正在加载")
+    btn.paint_styled($&frame,$&lbl,&styles) or >>
+    draw.text(48,172,12,"#6d626e","周期 900ms · 半径 32px · 线宽 3px · 减少动效自动降级")
+    message := "Spinner: running (period: 900ms)"
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

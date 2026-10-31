@@ -1,0 +1,53 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,114.0,200.0,42.0)
+    $btn := widgets.button(&identity,1,&bounds) or >>
+    $lbl := widgets.styled_label(&context,&"Enqueue notification")
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        btn.set_focus(focus.current() == 1)
+        if nav.consumed { -> }
+        act := btn.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  ToastHost")
+    draw.text(32,48,12,"#6d626e","最多三条可见通知；队列、去重、优先级与撤销动作。")
+    btn.paint_styled($&frame,$&lbl,&styles) or >>
+    frame.fill_rect(280.0,96.0,300.0,44.0,draw.rgb(255,255,255)) or >>
+    frame.stroke_rect(280.0,96.0,300.0,44.0,draw.rgb(4,120,87),1.5) or >>
+    draw.text(296,110,13,"#047857","✓ Workspace saved 已成功保存")
+    frame.fill_rect(280.0,148.0,300.0,44.0,draw.rgb(255,255,255)) or >>
+    frame.stroke_rect(280.0,148.0,300.0,44.0,draw.rgb(0,95,158),1.5) or >>
+    draw.text(296,162,13,"#005f9e","ℹ Syncing remote changes 同步中…")
+    draw.text(48,174,12,"#6d626e","支持去重、优先级与撤销动作 · 最多 3 条同时可见")
+    message := "Active toasts: 2"
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

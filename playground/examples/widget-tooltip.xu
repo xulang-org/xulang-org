@@ -1,0 +1,49 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,132.0,240.0,42.0)
+    $btn := widgets.button(&identity,1,&bounds) or >>
+    $lbl := widgets.styled_label(&context,&"Hover or focus for help")
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        btn.set_focus(focus.current() == 1)
+        if nav.consumed { -> }
+        act := btn.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  Tooltip")
+    draw.text(32,48,12,"#6d626e","Hover 延迟、focus 立即显示；Escape 抑制重复提示。")
+    frame.fill_rect(48.0,88.0,420.0,32.0,draw.rgb(40,35,41)) or >>
+    draw.text(60,97,12,"#fffdfb","Hover waits 500 ms; keyboard focus shows help immediately.")
+    btn.paint_styled($&frame,$&lbl,&styles) or >>
+    draw.text(48,190,12,"#6d626e","鼠标离开或点击收起；Escape 抑制重复提示")
+    message := "Tooltip: visible"
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}

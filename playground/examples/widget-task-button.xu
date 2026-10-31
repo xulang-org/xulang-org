@@ -1,0 +1,60 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
+    bounds := box(48.0,114.0,220.0,44.0)
+    $control := widgets.button(&identity,1,&bounds) or >>
+    $running := false
+    $focus := widgets.focus_group(&identity,[1]) or >>
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        nav := focus.input(&event)
+        control.set_focus(focus.current() == 1)
+        if nav.consumed { -> }
+        act := control.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+        if act.kind == widgets.ACTION_ACTIVATE { running = !running }
+    }
+    $text_val := "Build project 构建"
+    if running {
+        text_val = "Building (45%)…"
+    }
+    $label := widgets.styled_label(&context,&text_val)
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    draw.text(32,22,20,"#282329","XUUI  /  TaskButton")
+    draw.text(32,48,12,"#6d626e","真实计算批次驱动进度；任务 ID 拒绝旧回调。")
+    control.paint_styled($&frame,$&label,&styles) or >>
+    $sub_val := "点击触发异步计算任务，自动切换状态"
+    if running {
+        sub_val = "任务正在后台执行中，进度实时递增"
+    }
+    draw.text(284,128,14,"#6d626e",sub_val)
+    $message := "Task: idle"
+    if running {
+        message = "Task: running"
+    }
+    draw.text(32,326,13,"#6d626e",message + "")
+    println(message)
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}
