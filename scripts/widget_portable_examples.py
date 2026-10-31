@@ -50,8 +50,8 @@ fn box(x f64,y f64,w f64,h f64) layout.Rect {
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.dark_theme()
-    styles := playground.dark_styles()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
     options := ["Design","Develop","Review"]
     headers := ["Workspace","Members"]
 '''
@@ -99,11 +99,11 @@ fn demo() int {
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(25,22,28)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(62,54,69),1.0) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
 '''
-    code += f'    draw.text(32,22,20,"#f5f0ed","XUUI  /  {name}")\n'
-    code += f'    draw.text(32,48,12,"#b3aab6","{description}")\n'
+    code += f'    draw.text(32,22,20,"#282329","XUUI  /  {name}")\n'
+    code += f'    draw.text(32,48,12,"#6d626e","{description}")\n'
     if paint == 'basic-label':
         code += '    value := str(int(control.value()))\n    label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n    control.paint($&frame,&label,&theme) or >>\n'
     elif paint == 'basic-options':
@@ -117,7 +117,7 @@ fn demo() int {
     frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(35,31,39)) or >>
     frame.fill_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(44,39,49)) or >>
 '''
-    code += f'    message := {summary}\n    draw.text(32,326,13,"#b3aab6",message + "")\n    println(message)\n'
+    code += f'    message := {summary}\n    draw.text(32,326,13,"#6d626e",message + "")\n    println(message)\n'
     code += '''    frame.present() or >>
     << 0
 }

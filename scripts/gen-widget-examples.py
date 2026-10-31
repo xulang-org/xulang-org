@@ -68,8 +68,8 @@ fn box(x f64,y f64,w f64,h f64) layout.Rect {
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.dark_theme()
-    styles := playground.dark_styles()
+    theme := playground.light_theme()
+    styles := playground.light_styles()
 '''
 SUFFIX = '''    frame.present() or >>
     << 0
@@ -146,10 +146,10 @@ def source(name, slug, description=''):
     else:
         message = '"Count: " + str(count)'
     code += '    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n'
-    code += '    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(25,22,28)) or >>\n'
-    code += '    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(62,54,69),1.0) or >>\n'
-    code += f'    draw.text(32,22,20,"#f5f0ed","XUUI  /  {name}")\n'
-    code += f'    draw.text(32,48,12,"#b3aab6","{description}")\n'
+    code += '    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n'
+    code += '    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n'
+    code += f'    draw.text(32,22,20,"#282329","XUUI  /  {name}")\n'
+    code += f'    draw.text(32,48,12,"#6d626e","{description}")\n'
     if kind == 'badge':
         code += '    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) or >>\n    control.paint($&frame,&badge_label,&theme) or >>\n'
     elif kind in ('button', 'label'):
@@ -169,10 +169,10 @@ def source(name, slug, description=''):
     else:
         code += '    control.paint($&frame,&theme) or >>\n'
     if kind == 'card':
-        code += '    draw.text(64,124,18,"#f5f0ed","Workspace configuration")\n    draw.text(64,158,13,"#b3aab6","Header, body and footer keep distinct spacing.")\n'
+        code += '    draw.text(64,124,18,"#282329","Workspace configuration")\n    draw.text(64,158,13,"#6d626e","Header, body and footer keep distinct spacing.")\n'
     if not interactive and not static:
         code += '    trigger.paint_styled($&frame,$&trigger_label,&styles) or >>\n'
-    code += '    draw.text(32,326,13,"#b3aab6",' + message + ')\n    println(' + message + ')\n'
+    code += '    draw.text(32,326,13,"#6d626e",' + message + ')\n    println(' + message + ')\n'
     return code + SUFFIX, initial + '\n'
 
 
