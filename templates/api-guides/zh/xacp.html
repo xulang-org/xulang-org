@@ -1,7 +1,7 @@
 <p class="lead"><code>#xacp</code> 是随 Xu {{xu_version}} SDK 发布的、与传输无关的安全核心：帧上限、XUN 校验、权限和会话生命周期。导入它不会打开控制通道。stdio 与本机回环 TCP 是运行时钩子，只有 <code>xu build --xacp</code> 或 <code>--xacp-port</code> 才会插入。</p>
-<p><a href="/docs/cli#xacp">命令行：<code>xu xacp</code></a> · <a href="/docs/faq">常见问题</a> · <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">对应发布源码</a></p>
+<p><a href="/docs/cli#xacp">命令行：<code>xu xacp</code></a> · <a href="/docs/faq">常见问题</a> · <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">对应发布源码</a> · <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/PROTOCOL.md">开发分支协议</a></p>
 
-<p class="note">以下契约已对照选定发布源码审阅。原生 stdio/TCP 会话、UI 附着、截图和各平台验收仍为<strong>待验</strong>。</p>
+<p class="note">API 声明已对照选定发布源码审阅。下文 <code>ui.record</code> 有界采样契约依据开发分支协议 §7。原生 stdio/TCP 会话、UI 附着、截图和各平台验收仍为<strong>待验</strong>。</p>
 
 <h2>会话</h2>
 <p><code>open_session()</code> 返回 <code>STATE_NEW</code>（<code>0</code>）会话，权限为 <code>PERM_NONE</code>，代数为 <code>1</code>，下一个请求 id 为 <code>1</code>。<code>close_session</code> 将其改为 <code>STATE_CLOSED</code>（<code>2</code>），增加代数，清掉活动请求并收回权限。<code>STATE_OPEN</code> 为 <code>1</code>。</p>
@@ -82,7 +82,22 @@ data:
 <tr><td><code>ui.record</code></td><td><code>PERM_UI_READ</code></td><td>同上。schema 模式为 <code>events</code> 与 <code>frames</code>。这不是启动器的 stdout <code>record</code> 模式。</td></tr>
 </tbody></table></div>
 <p>在启动通道上，<code>not_implemented</code> 发生在 <code>begin_request</code> 之后，因此该 id 已被消耗，下一帧必须使用随后的 id。<code>permission_denied</code> 在 id 前进之前返回。</p>
-<p>UI 控制需要显式的 <code>attach_stdio</code> 或 <code>attach_tcp</code> 句柄、通过 <code>register_screen</code> 注册的真实 <code>ui/widgets.Screen</code>，以及 Screen 所属协程在 UI 事件迭代之间调用 <code>poll</code>。这条路径中业务 main 继续运行，退出轮询循环前应注销 Screen。带类型的辅助函数（<code>ui_tree</code>、<code>ui_screenshot</code>、<code>ui_input</code>、<code>ui_act</code> 和录制辅助函数）仍要求相应权限，检查窗口/节点 id、缩放（<code>0.1</code> 至 <code>4.0</code>）、文本以及行数/事件预算。截图返回拥有所有权的 <code>draw.Surface</code>，调用方负责 dispose。<code>dispatch_screen</code> 对 <code>ui.record</code> 返回 <code>stream_required</code>。启动期 <code>--xacp-stdio</code> 与 <code>--xacp-tcp</code> 不会注册 Screen。端到端 UI 行为仍为<strong>待验</strong>。</p>
+<p>UI 控制需要显式的 <code>attach_stdio</code> 或 <code>attach_tcp</code> 句柄、通过 <code>register_screen</code> 注册的真实 <code>ui/widgets.Screen</code>，以及 Screen 所属协程在 UI 事件迭代之间调用 <code>poll</code>。这条路径中业务 main 继续运行，退出轮询循环前应注销 Screen。带类型的辅助函数（<code>ui_tree</code>、<code>ui_screenshot</code>、<code>ui_input</code>、<code>ui_act</code> 和录制辅助函数）仍要求相应权限，检查窗口/节点 id、缩放（<code>0.1</code> 至 <code>4.0</code>）、文本以及行数/事件预算。截图返回拥有所有权的 <code>draw.Surface</code>，调用方负责 dispose。启动期 <code>--xacp-stdio</code> 与 <code>--xacp-tcp</code> 不会注册 Screen。端到端 UI 行为仍为<strong>待验</strong>。</p>
+
+<h2 id="ui-record">有界 UI 录制</h2>
+<p>注册了匹配的 <code>Screen</code> 时，<code>ui.record</code> 在单次请求内进行有界、拉取式 XAR1 采样。它要求 <code>PERM_UI_READ</code>、正整数 <code>win: !i</code> 及 <code>mode: events|frames</code>。Screen 所属协程启动内存中的有界 <code>StreamWriter</code>，同步采样，并在响应前结束录制器。可选参数如下：</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>参数</th><th>默认值</th><th>范围与含义</th></tr></thead>
+<tbody>
+<tr><td><code>max_bytes: !i</code></td><td><code>65536</code>，为容纳响应可进一步缩小</td><td><code>1..limits.max_frame_bytes</code>；XAR1 累计字节数，包含头部与末尾 LF。</td></tr>
+<tr><td><code>max_records: !i</code></td><td><code>64</code></td><td>至少为 <code>1</code>；本段最多返回的完整记录数。</td></tr>
+<tr><td><code>duration_ms: !i</code></td><td><code>0</code></td><td><code>0..limits.request_timeout_ms - 1</code>；<code>0</code> 立即采样一次，正值限定采样窗口。</td></tr>
+</tbody></table></div>
+<p>未知字段、类型错误或越界值返回 <code>schema_error</code>。采样之间最多休眠 10 ms，到达时长或记录数/字节预算即停止；请求排队时间会缩短可用窗口。每次成功响应包含 <code>mode</code>、<code>records: !i</code>、<code>bytes: !i</code>、<code>truncated: !b</code> 和 <code>payload</code>，后者为只含完整记录的带引号 XAR1 字符串。<code>truncated=true</code> 表示字节或记录数预算耗尽；仅到达请求的采样时长属于正常完成。为预留响应封装与字符串转义空间，有效字节预算最多为 <code>(limits.max_frame_bytes - 256) / 2</code>，序列化后的响应还会再次检查帧大小上限。</p>
+<p>首条记录放不下，或接收器/快照失败时，中止录制器并返回 <code>adapter_error</code>。后续记录放不下则返回已经完成的记录前缀，并设置 <code>truncated=true</code>。响应沿用普通的 <code>XU_XACP_WRITE_TIMEOUT_MS</code> 帧写入期限。</p>
+<p><code>events</code> 输出标记为 <code>state=true</code> 的当前状态观测，包含 <code>window</code>、<code>canvas</code>、<code>generation</code> 与 <code>open</code>。Screen 没有公开的输入事件历史或订阅接口，因此这些记录不是真实输入事件日志。<code>frames</code> 依次调用 <code>screen_screenshot</code> 与 <code>surface_record</code>，仅导出尺寸并标记 <code>redacted=true</code>，不含像素；每个原生 Surface 都在继续采样前 dispose。采样不注入输入，也不要求 <code>PERM_UI_MUTATE</code>，不会驱动应用的 UI 事件循环或重建请求之间的事件。</p>
+<p>客户端通过重复请求 <code>ui.record</code> 拉取后续片段。每段序号都从 <code>1</code> 开始，没有持久录制器或续传游标，每个请求仍只有一个 XACP/1 响应。没有 Screen 时返回 <code>not_implemented</code>；不属于该 Screen 或已关闭的窗口返回 <code>stale_window</code>。<code>stream_required</code> 仅保留给没有接收器/采样能力的适配器，内置 Screen 采样路径不会返回它。平台支持取决于已注册的 Screen 及其快照后端，包括 Windows。</p>
+<p>库函数 <code>start_recorder</code> / <code>write_record</code> / <code>finish_recorder</code> 也接受其他 <code>StreamWriter</code> 接收器；失败时调用方必须调用 <code>abort_recorder</code>。具有输入源的库调用方可以写入 <code>input_record</code> 载荷。XAR1 片段与捕获 stdout 的 CLI <code>xu xacp record</code> 不同。完整录制契约见 <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/PROTOCOL.md">dev 分支的 PROTOCOL.md §7</a>。</p>
 
 <h2>传输钩子</h2>
 <p><code>src/xacp/stdio.xu</code> 位于同一个包。<code>--xacp</code> 构建会在 <code>main</code> 开头插入 <code>stdio_preflight(port)</code>。那才是控制入口。普通 <code>#xacp</code> 导入不会发出这段启动代码。</p>
@@ -102,4 +117,4 @@ data:
   <li>生成器只接受 hosted native 可执行程序。库、共享对象、测试脚手架、嵌入式目标以及 <code>--desktop</code> 都会被拒绝。</li>
   <li>启动器的 <code>record</code> 在 Windows 上仍不可用。该模式录制的是 stdout，不是 <code>ui.record</code>。</li>
 </ul>
-<p class="note">契约以<a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">对应发布源码</a>和冒烟脚本为准。较早的样例 README/设计说明可能记载过时的分帧、权限或超时行为。</p>
+<p class="note">正式 API 以<a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">对应发布源码</a>和冒烟脚本为准，有界 UI 采样以<a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/PROTOCOL.md">开发分支协议 §7</a>为准。较早的样例 README/设计说明可能记载过时的分帧、权限或超时行为。</p>
