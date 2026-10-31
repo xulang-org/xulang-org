@@ -204,9 +204,11 @@
     var projectHelp = document.getElementById('xu-play-help');
     if (projectHelp) projectHelp.hidden = browsing;
     detail.textContent = '';
-    detail.appendChild(node('p', c.project ? 'Xu / WASM' : t('交互预览 · 不执行 Xu', 'Interactive preview · does not execute Xu'), 'widget-preview-kind'));
+    detail.appendChild(node('p', t('交互预览 · 不执行 Xu', 'Interactive preview · does not execute Xu'), 'widget-preview-kind'));
     var heading = node('h3', c.name); heading.tabIndex = -1;
     detail.appendChild(heading); detail.appendChild(node('p', c.exercise[lang]));
+    // A runnable Xu project supplements the browser preview, rather than replacing it.
+    var stage = node('div', undefined, 'widget-demo-stage'); var status = node('p', t('等待操作', 'Ready to try'), 'widget-demo-status'); status.id = 'widget-demo-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite'); detail.appendChild(stage); detail.appendChild(status); draw(c, stage, status);
     if (c.project) {
       var run = node('a', t('打开 Xu 运行示例 ↗', 'Open the Xu example ↗'), 'btn pri'); var target = url('playground/'); target.searchParams.set('example', c.project); target.hash = 'xu-play-workspace'; run.href = target.href; detail.appendChild(run);
     }

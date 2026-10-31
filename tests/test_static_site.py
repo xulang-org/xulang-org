@@ -86,6 +86,15 @@ class StaticSiteTests(unittest.TestCase):
             self.assertNotIn('xu-play.js', page)
             self.assertNotIn('xu-play.wasm', page)
         self.assertIn('data-wasm-available="false"', (output / 'playground/index.html').read_text())
+        for page in ('playground', 'zh/playground'):
+            html = (output / page / 'index.html').read_text()
+            # The controller must mount on the published pages, not just a test fixture.
+            experience = re.search(r'<section\b[^>]*id="widget-experience".*?</section>', html, re.DOTALL)
+            self.assertIsNotNone(experience, page)
+            for control in ('data-widget-list', 'data-widget-detail', 'data-widget-count',
+                            'type="search"', '<select'):
+                self.assertIn(control, experience[0], page)
+            self.assertRegex(html, r'src="/widget-experience\.js\?v=[0-9a-f]{16}"')
         for page in ('docs/tutorial/01', 'zh/docs/tutorial/01', 'api/fmt', 'zh/api/fmt', 'playground'):
             html = (output / page / 'index.html').read_text()
             self.assertEqual(html.count('src="/xu-play.js?'), 1, page)
