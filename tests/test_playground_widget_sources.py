@@ -21,11 +21,14 @@ class WidgetSourceTests(unittest.TestCase):
         self.assertEqual(hashlib.sha256(adaptation_bytes).hexdigest(), manifest['adaptations']['sha256'])
         adaptations = json.loads(adaptation_bytes)
         self.assertEqual(adaptations['upstream_commit'], manifest['commit'])
-        self.assertRegex(adaptations['source_commit'], r'^[a-f0-9]{40}$')
+        self.assertEqual(adaptations['schema'], 2)
         expected = {(d['module'], d['signature']): d for d in manifest['declarations'] if 'upstream_sha256' in d}
         self.assertEqual(set(expected), {(d['module'], d['signature']) for d in adaptations['declarations']})
         for entry in adaptations['declarations']:
             with self.subTest(signature=entry['signature']):
+                self.assertTrue(entry['reason'])
+                if 'source_commit' in entry:
+                    self.assertRegex(entry['source_commit'], r'^[a-f0-9]{40}$')
                 record = expected[(entry['module'], entry['signature'])]
                 self.assertEqual(record['upstream_sha256'], entry['upstream_sha256'])
                 self.assertEqual(record['sha256'], entry['sha256'])

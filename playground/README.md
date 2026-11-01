@@ -15,6 +15,12 @@ Chart divisor guards from site commit `b847723de6e77ee19e665bde1fd9db493737147f`
 are recorded in `stdlib/desktop-adaptations.json`, with the original and adapted
 declaration hashes (UTF-8 with LF) and exact replacements. Regeneration applies them only to the
 matching upstream bodies; source checks reverse and replay every adaptation.
+Additional browser adaptations skip exponent scaling for canonical zero style
+scalars and pass typed styles directly to ColorPicker's private channel sliders.
+The parent validates the styles once; its private sliders reuse the same geometry
+calculation without repeating the full Styles validation for every RGBA row.
+The color values, slider input and painting still execute in Xu; the browser does
+not approximate the controls or redraw their values independently.
 
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
 for a three-page control gallery. `ui-widgets`, `ui-draw`, and `ui-counter`
@@ -94,7 +100,12 @@ the browser VM and with the native product compiler to check input semantics.
   original counter, and `next_input() ui.InputEvent` for widgets. A zero kind
   means replay exhaustion. This driver replaces the native event pump.
 - `runtime/ui.xu`: bounded command transport, scalar formatting, and input
-  intrinsics. Strings follow Xu's indirect descriptor ABI.
+  intrinsics. Strings follow Xu's indirect descriptor ABI. Pure codec operations,
+  finite metric checks and UTF-8 validation have equivalent AOT scalar paths;
+  invalid codec inputs fall back to MIR so Xu error propagation is preserved.
+  `createRuntime(..., {fastIntrinsics:false})` runs the original scalar MIR for
+  equivalence testing. Decoded 56-byte instructions cache their intrinsic ID at
+  offset 48, avoiding repeated function-name comparisons during interpretation.
 - `www/xu-play-canvas.js`: validates complete display lists before drawing the
   final committed frame. It supports fractional geometry, cubic paths, and
   recorded text. Commands never contain HTML, executable JS, or widget IDs.
@@ -117,7 +128,8 @@ The original text is never included in the masked layout's Canvas paint command.
 
 UI Preview uses the pinned XUUI theme, spacing, 40 px controls (44 px for touch
 and narrow viewports), and 14 px interface text. Fit shows the whole 640 × 360
-canvas; 100% preserves its logical size in a keyboard-scrollable viewport.
+canvas, centered in the available viewport; 100% preserves its logical size in a
+keyboard-scrollable viewport. Overflow remains reachable from the top and left.
 Expand temporarily gives the results the editor's space; Back to editor restores
 the editor without resetting project edits or widget values. The console
 remains available. These display controls do not recolor user drawing commands
@@ -242,6 +254,7 @@ After building with a matching SDK, run the production worker in Node:
 ```sh
 node scripts/bench-playground.mjs --rounds=3 > /tmp/playground-timing.json
 node scripts/bench-playground.mjs --example=ui-counter --rounds=3
+node scripts/bench-playground.mjs --example=widget-color-picker --rounds=3 --clicks=8
 node scripts/bench-playground.mjs --clicks=31 --rounds=3
 # Disable reuse to measure compiler cost on the same artifact:
 node scripts/bench-playground.mjs --cache=false --checkpoints=false --rounds=3
@@ -279,6 +292,7 @@ Controls are little-endian i64. Existing source/stdout/stderr buffers and the
 | 1104 | Immutable interpreter plan table pointer (with numeric call-target caches) |
 | 1112 | Deliver input exhaustion instead of pausing (1 = finish branch) |
 | 1120 | Interpreter paused before an exhausted input read |
+| 1128 | Equivalent scalar intrinsics enabled (0 = original MIR reference path) |
 | 140000 | Checked MIR descriptor, descending frame slots |
 | 145904–146007 | Eval checkpoint descriptor: three slices and four scalars |
 | 720000–982143 | UTF-8 newline-delimited drawing commands |

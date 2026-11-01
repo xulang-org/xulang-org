@@ -2,22 +2,140 @@
 
 #xu/types
 
+const VM_INSTRUCTION_BYTES = 56
+const VM_INTRINSIC_OFFSET = 48
+const VM_UI_CLOCK = 1
+const VM_UI_DRAW_CLEAN = 2
+const VM_UI_DRAW_COLOR_TEXT = 3
+const VM_UI_NEXT_INPUT = 4
+const VM_UI_NEXT_CLICK = 5
+const VM_UI_DRAW_RETAIN = 6
+const VM_UI_DRAW_LOOKUP = 7
+const VM_UI_DRAW_SCALAR = 8
+const VM_UI_DRAW_EMIT = 9
+const VM_UI_CODEC_READ_F64 = 10
+const VM_UI_CODEC_F64_BITS = 11
+const VM_UI_CODEC_READ_U32 = 12
+const VM_UI_FINITE_METRIC = 13
+const VM_UI_UTF8_VALID = 14
+
 // Browser ABI, separate from stdout/stderr. See playground/README.md.
-// These two site-owned shim functions are VM intrinsics, never JS evaluation.
+// Intrinsic IDs are resolved once when checked MIR is prepared. User code still
+// runs in the Xu VM; these pure scalar helpers never evaluate JavaScript.
+fn vm_valid_utf8(data &string) bool {
+    $i := 0
+    while i < data.len {
+        first := (*data)[i] & 255
+        if first < 128 { i += 1
+            -> }
+        $size := 0
+        $low := 128
+        $high := 191
+        if first >= 194 && first <= 223 { size = 2 }
+        else if first >= 224 && first <= 239 {
+            size = 3
+            if first == 224 { low = 160 }
+            if first == 237 { high = 159 }
+        } else if first >= 240 && first <= 244 {
+            size = 4
+            if first == 240 { low = 144 }
+            if first == 244 { high = 143 }
+        } else { << false }
+        if i + size > data.len { << false }
+        second := (*data)[i + 1] & 255
+        if second < low || second > high { << false }
+        for j in 2:size {
+            unit := (*data)[i + j] & 255
+            if unit < 128 || unit > 191 { << false }
+        }
+        i += size
+    }
+    << true
+}
+fn vm_ui_code(label &string) int {
+    if *label == "_xu_time_now_ns" { << VM_UI_CLOCK }
+    if *label == "_xu_ui_draw_clean" { << VM_UI_DRAW_CLEAN }
+    if *label == "_xu_ui_draw_color_text" { << VM_UI_DRAW_COLOR_TEXT }
+    if *label == "_xu_playground_next_input" { << VM_UI_NEXT_INPUT }
+    if *label == "_xu_playground_next_click" { << VM_UI_NEXT_CLICK }
+    if *label == "_xu_ui_draw_retain" { << VM_UI_DRAW_RETAIN }
+    if *label == "_xu_ui_draw_lookup" { << VM_UI_DRAW_LOOKUP }
+    if *label == "_xu_ui_draw_scalar" { << VM_UI_DRAW_SCALAR }
+    if *label == "_xu_ui_draw_emit" { << VM_UI_DRAW_EMIT }
+    if *label == "_xu_ui_internal_codec_read_float64" { << VM_UI_CODEC_READ_F64 }
+    if *label == "_xu_ui_internal_codec_finite_f64_bits" { << VM_UI_CODEC_F64_BITS }
+    if *label == "_xu_ui_internal_codec_read_word32" { << VM_UI_CODEC_READ_U32 }
+    if *label == "_xu_ui_widgets_finite_metric" { << VM_UI_FINITE_METRIC }
+    if *label == "_xu_unicode_utf8_valid" { << VM_UI_UTF8_VALID }
+    << 0
+}
 fn vm_ui_call(e $&Eval, m &types.Mir, fp int, ii int) bool {
+    instruction := wasm_mem_load(fp + 72) + ii * VM_INSTRUCTION_BYTES
+    code := wasm_mem_load(instruction + VM_INTRINSIC_OFFSET)
+    if code == 0 { << false }
     fi := wasm_mem_load(fp)
-    // Borrow the label: mir_isval() clones and would grow an idle checkpoint
-    // on every attempt to read its exhausted input.
-    label := m.fns[fi].instrs[ii].sval
-    dest := types.mir_ia(m, fi, ii)
-    if label == "_xu_time_now_ns" {
+    dest := wasm_mem_load(instruction + 8)
+    // Pure scalar operations run in the AOT host. Invalid codec inputs and
+    // values outside the upstream finite_f64_bits domain retain MIR execution
+    // so ordinary Xu error propagation and catch blocks remain authoritative.
+    if code >= VM_UI_CODEC_READ_F64 && code <= VM_UI_UTF8_VALID {
+        if wasm_mem_load(1128) == 0 { << false }
+        first := wasm_mem_load(instruction + 24)
+        arg := types.mir_marg_v(m, fi, first)
+        if code == VM_UI_FINITE_METRIC {
+            value := vm_value(m,fp,arg,0)
+            second := types.mir_marg_next(m,fi,first)
+            limit := vm_value(m,fp,types.mir_marg_v(m,fi,second),0)
+            $valid := 0
+            if ((value >> 52) & 2047) != 2047 && vm_fp_ge(value,0) != 0 && vm_fp_le(value,limit) != 0 { valid = 1 }
+            if dest >= 0 { vm_put(m,fp,dest,0,valid) }
+            << true
+        }
+        if code == VM_UI_CODEC_F64_BITS {
+            bits := vm_value(m, fp, arg, 0)
+            magnitude := bits & 9223372036854775807
+            if magnitude > 4741671816366391296 { << false }
+            $value := bits
+            if magnitude == 0 { value = 0 }
+            if dest >= 0 { vm_put(m, fp, dest, 0, value) }
+            << true
+        }
+        descriptor := vm_value(m, fp, arg, 0)
+        data := vm_text(&*e,wasm_mem_load(descriptor))
+        if code == VM_UI_UTF8_VALID {
+            $valid := 0
+            if vm_valid_utf8(&data) { valid = 1 }
+            if dest >= 0 { vm_put(m,fp,dest,0,valid) }
+            << true
+        }
+        second := types.mir_marg_next(m, fi, first)
+        offset := vm_value(m,fp,types.mir_marg_v(m,fi,second),0)
+        $size := 8
+        if code == VM_UI_CODEC_READ_U32 { size = 4 }
+        if offset < 0 || offset > data.len - size { << false }
+        $bits := 0
+        for i in 0:size { bits = bits | ((data[offset + i] & 255) << (i * 8)) }
+        if code == VM_UI_CODEC_READ_F64 {
+            if ((bits >> 52) & 2047) == 2047 { << false }
+            if (bits & 9223372036854775807) == 0 { bits = 0 }
+        }
+        if dest >= 0 {
+            if code == VM_UI_CODEC_READ_F64 {
+                // Fallible Xu results carry an Ok tag before their payload.
+                for slot in 0:types.mir_temp_nslots(m,fi,dest) { vm_put(m,fp,dest,slot,0) }
+                vm_put(m,fp,dest,1,bits)
+            } else { vm_put(m,fp,dest,0,bits) }
+        }
+        << true
+    }
+    if code == VM_UI_CLOCK {
         if dest >= 0 { vm_put(m,fp,dest,0,(wasm_mem_load(1072) + 1) * 16000000) }
         << true
     }
     // Host formatting shims, identical to draw.xu/frame.xu. Run their byte
     // loops in the AOT runtime rather than dispatching MIR per character.
-    if label == "_xu_ui_draw_clean" {
-        arg := types.mir_ic(m, fi, ii)
+    if code == VM_UI_DRAW_CLEAN {
+        arg := wasm_mem_load(instruction + 24)
         descriptor := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
         value := vm_text(&*e, wasm_mem_load(descriptor))
         $out := make_string(value.len)
@@ -29,8 +147,8 @@ fn vm_ui_call(e $&Eval, m &types.Mir, fp int, ii int) bool {
         vm_string(e, m, fp, dest, out)
         << true
     }
-    if label == "_xu_ui_draw_color_text" {
-        arg := types.mir_ic(m, fi, ii)
+    if code == VM_UI_DRAW_COLOR_TEXT {
+        arg := wasm_mem_load(instruction + 24)
         descriptor := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
         packed := wasm_mem_load(descriptor)
         digits := "0123456789abcdef"
@@ -40,36 +158,36 @@ fn vm_ui_call(e $&Eval, m &types.Mir, fp int, ii int) bool {
         vm_string(e, m, fp, dest, out)
         << true
     }
-    if (label == "_xu_playground_next_input" || label == "_xu_playground_next_click") && wasm_mem_load(1112) == 0 && wasm_mem_load(1072) >= wasm_mem_load(1064) && e.tasks.len == 1 && e.channels.len == 0 {
+    if (code == VM_UI_NEXT_INPUT || code == VM_UI_NEXT_CLICK) && wasm_mem_load(1112) == 0 && wasm_mem_load(1072) >= wasm_mem_load(1064) && e.tasks.len == 1 && e.channels.len == 0 {
         // Pause before modifying the exhausted read. The host snapshots just
         // the execution arena, then resumes with exhaustion to paint. Only
         // single-task programs qualify; channel scheduling keeps full replay.
         e.waiting = true
         << true
     }
-    if label == "_xu_ui_draw_retain" {
-        arg := types.mir_ic(m, fi, ii)
+    if code == VM_UI_DRAW_RETAIN {
+        arg := wasm_mem_load(instruction + 24)
         descriptor := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
         value := vm_text(&*e,wasm_mem_load(descriptor))
         e.strings.push(value)
         vm_put(m, fp, dest, 0, e.strings.len)
         << true
     }
-    if label == "_xu_ui_draw_lookup" {
-        arg := types.mir_ic(m, fi, ii)
+    if code == VM_UI_DRAW_LOOKUP {
+        arg := wasm_mem_load(instruction + 24)
         id := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
         value := vm_text(&*e,id - 1)
         vm_string(e, m, fp, dest, value)
         << true
     }
-    if label == "_xu_ui_draw_scalar" {
-        arg := types.mir_ic(m, fi, ii)
+    if code == VM_UI_DRAW_SCALAR {
+        arg := wasm_mem_load(instruction + 24)
         bits := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
         vm_string(e, m, fp, dest, vm_float_text(bits))
         << true
     }
-    if label == "_xu_ui_draw_emit" {
-        arg := types.mir_ic(m, fi, ii)
+    if code == VM_UI_DRAW_EMIT {
+        arg := wasm_mem_load(instruction + 24)
         // By-value strings use the Xu pointer ABI, pointing at the descriptor.
         descriptor := vm_value(m, fp, types.mir_marg_v(m, fi, arg), 0)
         line := vm_text(&*e, wasm_mem_load(descriptor))
@@ -84,7 +202,7 @@ fn vm_ui_call(e $&Eval, m &types.Mir, fp int, ii int) bool {
         if dest >= 0 { vm_put(m, fp, dest, 0, 0) }
         << true
     }
-    if label == "_xu_playground_next_input" {
+    if code == VM_UI_NEXT_INPUT {
         wasm_mem_store(1080, 1)
         wasm_mem_store(1088, 1)
         index := wasm_mem_load(1072)
@@ -111,7 +229,7 @@ fn vm_ui_call(e $&Eval, m &types.Mir, fp int, ii int) bool {
         }
         << true
     }
-    if label == "_xu_playground_next_click" {
+    if code == VM_UI_NEXT_CLICK {
         wasm_mem_store(1080, 1)
         index := wasm_mem_load(1072)
         $x := 0
