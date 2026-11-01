@@ -1,7 +1,7 @@
 <!--title: #github.com/xulang-org/packages/kafka-->
 <p class="crumb">API</p>
 <h1><code>#github.com/xulang-org/packages/kafka</code></h1>
-<!--xu-api-version: 0.10.12-->
+<!--xu-api-version: 0.11.2-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>kafka #github.com/xulang-org/packages/kafka</code></p>
 <p class="meta">counts: 31 函数, 24 方法, 4 类型, 0 常量, 0 方法集</p>
@@ -13,7 +13,7 @@
 <p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
 <details class="api-example" id="example-32a8890abb38" open>
 <summary><code>33_standalone_kafka/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/9bb00a880e262b37bd7624d8789264900e9cdf59/examples/33_standalone_kafka">完整工程</a> · <a href="/api-examples/sources/examples/33_standalone_kafka/main.xu" download>下载源码</a></p>
+<p class="meta">所需 SDK：Xu 0.8.3 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/33_standalone_kafka">完整工程</a> · <a href="/api-examples/sources/examples/33_standalone_kafka/main.xu" download>下载源码</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="33_standalone_kafka/main.xu"><code class="language-xu">@main
 
 kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/kafka
@@ -21,7 +21,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
 <span class="syn-kw">fn</span> verify_kafka_ping() {
     println(<span class="syn-str">"--- 1. Testing Kafka Heartbeat &amp; ApiVersions Ping ---"</span>)
-    $client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Connect error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -36,7 +36,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
 <span class="syn-kw">fn</span> verify_kafka_produce_fetch() {
     println(<span class="syn-str">"\n--- 2. Testing Kafka Produce &amp; Fetch Operations ---"</span>)
-    $client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Connect error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -64,8 +64,8 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   Fetched messages count: "</span> + str(messages.len))
-    $found <span class="syn-flow">:=</span> false
-    $i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">mut</span> found <span class="syn-flow">:=</span> false
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> i &lt; messages.len {
         println(<span class="syn-str">"   Message["</span> + str(i) + <span class="syn-str">"]: "</span> + messages[i])
         <span class="syn-kw">if</span> messages[i] == msg {
@@ -85,10 +85,10 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
 <span class="syn-kw">fn</span> verify_kafka_pool() {
     println(<span class="syn-str">"\n--- 3. Testing Kafka Connection Pool ---"</span>)
-    $p <span class="syn-flow">:=</span> kafka.open_pool(<span class="syn-str">"127.0.0.1:9092"</span>, <span class="syn-str">"xu-pool-tester"</span>, 5)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> kafka.open_pool(<span class="syn-str">"127.0.0.1:9092"</span>, <span class="syn-str">"xu-pool-tester"</span>, 5)
 
     <span class="syn-cmt">// 1. Connection Reuse Test</span>
-    $c1 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> c1 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Failed to get c1: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -96,7 +96,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
     p.put(c1)
 
-    $c2 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> c2 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Failed to get c2: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -109,7 +109,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
 
     <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
-    $c3 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> c3 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Failed to get c3: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -139,8 +139,8 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   Fetched messages via pool count: "</span> + str(msgs.len))
-    $found <span class="syn-flow">:=</span> false
-    $i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">mut</span> found <span class="syn-flow">:=</span> false
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> i &lt; msgs.len {
         <span class="syn-kw">if</span> msgs[i] == pool_msg {
             found = true

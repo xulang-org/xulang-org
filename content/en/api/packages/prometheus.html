@@ -1,7 +1,7 @@
 <!--title: #github.com/xulang-org/packages/prometheus-->
 <p class="crumb">API</p>
 <h1><code>#github.com/xulang-org/packages/prometheus</code></h1>
-<!--xu-api-version: 0.10.12-->
+<!--xu-api-version: 0.11.2-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>prometheus #github.com/xulang-org/packages/prometheus</code></p>
 <p class="meta">counts: 7 fns, 17 methods, 7 types, 0 consts, 0 ifaces</p>
@@ -13,7 +13,7 @@
 <p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
 <details class="api-example" id="example-9cef47133024" open>
 <summary><code>40_standalone_prometheus/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/9bb00a880e262b37bd7624d8789264900e9cdf59/examples/40_standalone_prometheus">Complete project</a> · <a href="/api-examples/sources/examples/40_standalone_prometheus/main.xu" download>Download source</a></p>
+<p class="meta">Required SDK: Xu 0.8.3 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/40_standalone_prometheus">Complete project</a> · <a href="/api-examples/sources/examples/40_standalone_prometheus/main.xu" download>Download source</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="40_standalone_prometheus/main.xu"><code class="language-xu">@main
 
 prometheus <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/prometheus
@@ -21,16 +21,16 @@ prometheus <span class="syn-import"><span class="hash">#</span>github</span>.com
 
 <span class="syn-kw">fn</span> verify_prometheus_metrics() {
     println(<span class="syn-str">"--- 1. Testing Prometheus Metrics &amp; Exposition Formatting ---"</span>)
-    $reg <span class="syn-flow">:=</span> prometheus.new_registry()
+    <span class="syn-kw">mut</span> reg <span class="syn-flow">:=</span> prometheus.new_registry()
 
     <span class="syn-cmt">// 1. Counter with Labels</span>
-    $http_requests <span class="syn-flow">:=</span> prometheus.new_counter(<span class="syn-str">"http_requests_total"</span>, <span class="syn-str">"Total incoming HTTP requests"</span>)
-    $lbl1 <span class="syn-flow">:=</span> []prometheus.Label{}
+    <span class="syn-kw">mut</span> http_requests <span class="syn-flow">:=</span> prometheus.new_counter(<span class="syn-str">"http_requests_total"</span>, <span class="syn-str">"Total incoming HTTP requests"</span>)
+    <span class="syn-kw">mut</span> lbl1 <span class="syn-flow">:=</span> []prometheus.Label{}
     lbl1.push(prometheus.Label{name: <span class="syn-str">"method"</span>, value: <span class="syn-str">"GET"</span>})
     lbl1.push(prometheus.Label{name: <span class="syn-str">"handler"</span>, value: <span class="syn-str">"/api/orders"</span>})
     http_requests.inc_labels(lbl1, 100)
 
-    $lbl2 <span class="syn-flow">:=</span> []prometheus.Label{}
+    <span class="syn-kw">mut</span> lbl2 <span class="syn-flow">:=</span> []prometheus.Label{}
     lbl2.push(prometheus.Label{name: <span class="syn-str">"method"</span>, value: <span class="syn-str">"POST"</span>})
     lbl2.push(prometheus.Label{name: <span class="syn-str">"handler"</span>, value: <span class="syn-str">"/api/orders"</span>})
     http_requests.inc_labels(lbl2, 25)
@@ -39,7 +39,7 @@ prometheus <span class="syn-import"><span class="hash">#</span>github</span>.com
     println(<span class="syn-str">"   [PASS] Counter registered with 2 labeled series."</span>)
 
     <span class="syn-cmt">// 2. Gauge</span>
-    $mem_usage <span class="syn-flow">:=</span> prometheus.new_gauge(<span class="syn-str">"process_memory_bytes"</span>, <span class="syn-str">"Resident memory bytes"</span>)
+    <span class="syn-kw">mut</span> mem_usage <span class="syn-flow">:=</span> prometheus.new_gauge(<span class="syn-str">"process_memory_bytes"</span>, <span class="syn-str">"Resident memory bytes"</span>)
     mem_usage.set(<span class="syn-str">"134217728"</span>)
     reg.register_gauge(mem_usage)
     println(<span class="syn-str">"   [PASS] Gauge registered."</span>)
@@ -59,7 +59,7 @@ prometheus <span class="syn-import"><span class="hash">#</span>github</span>.com
 
 <span class="syn-kw">fn</span> verify_prometheus_pool() {
     println(<span class="syn-str">"\n--- 2. Testing Prometheus Pusher Connection Pool ---"</span>)
-    $p <span class="syn-flow">:=</span> prometheus.open_pool(<span class="syn-str">"http://127.0.0.1:9091"</span>, 5)
+    <span class="syn-kw">mut</span> p <span class="syn-flow">:=</span> prometheus.open_pool(<span class="syn-str">"http://127.0.0.1:9091"</span>, 5)
 
     <span class="syn-cmt">// 1. Connection Reuse Test</span>
     fd1 <span class="syn-flow">:=</span> p.get_conn()
@@ -86,8 +86,8 @@ prometheus <span class="syn-import"><span class="hash">#</span>github</span>.com
     p.put_conn(fd3)
 
     <span class="syn-cmt">// 3. High-level push delegation to Pushgateway</span>
-    $test_reg <span class="syn-flow">:=</span> prometheus.new_registry()
-    $counter <span class="syn-flow">:=</span> prometheus.new_counter(<span class="syn-str">"xu_push_counter_total"</span>, <span class="syn-str">"Test counter pushed to Pushgateway"</span>)
+    <span class="syn-kw">mut</span> test_reg <span class="syn-flow">:=</span> prometheus.new_registry()
+    <span class="syn-kw">mut</span> counter <span class="syn-flow">:=</span> prometheus.new_counter(<span class="syn-str">"xu_push_counter_total"</span>, <span class="syn-str">"Test counter pushed to Pushgateway"</span>)
     counter.inc_by(42)
     test_reg.register_counter(counter)
 

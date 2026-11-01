@@ -11,7 +11,7 @@
 // 静态目录见 12file_server；Handler 上下文见 13http_context。
 
 fn path_only(p string) string {
-    $i := 0
+    mut i := 0
     while i < p.len {
         if (p[i] & 255) == 63 {
             << p[0:i]
@@ -22,7 +22,7 @@ fn path_only(p string) string {
 }
 
 fn write_http(fd int, status int, ctype string, body string) int {
-    $reason := "OK"
+    mut reason := "OK"
     if status == 404 {
         reason = "Not Found"
     }
@@ -32,7 +32,7 @@ fn write_http(fd int, status int, ctype string, body string) int {
     if status == 405 {
         reason = "Method Not Allowed"
     }
-    $out := "HTTP/1.1 " + str(status) + " " + reason + "\r\n"
+    mut out := "HTTP/1.1 " + str(status) + " " + reason + "\r\n"
     out = out + "Content-Type: " + ctype + "\r\n"
     out = out + "Content-Length: " + str(body.len) + "\r\n"
     out = out + "Connection: close\r\n"
@@ -58,7 +58,7 @@ fn index_page() string {
 }
 
 fn handle(fd int) {
-    $req := http.new_request()
+    mut req := http.new_request()
     req.read(fd) or (err) {
         msg := err.msg()
         write_http(fd, 400, "text/plain; charset=utf-8", msg) or (e2) { << }
@@ -104,13 +104,13 @@ fn handle(fd int) {
 }
 
 fn main() int {
-    $s := http.new_server()
+    mut s := http.new_server()
     s.listen("127.0.0.1:18080") or (err) {
         println(err.msg())
         << 1
     }
     println("http://127.0.0.1:18080")
-    $running := true
+    mut running := true
     while running {
         fd := s.accept() or (err) {
             ->

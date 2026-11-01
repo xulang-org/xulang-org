@@ -1,6 +1,7 @@
 @main
 
 #ui/widgets
+#ui/chart
 #ui/draw
 #ui/layout
 #time
@@ -72,9 +73,12 @@ fn (m $&Workshop) apply_appearance(s $&widgets.Screen) int {
     if m.selected == 1 {
         handles :=[page.ids[0], page.ids[1], page.ids[2], page.ids[3]]
         placements :=[widgets.ICON_LEADING, widgets.ICON_TRAILING, widgets.ICON_ABOVE, widgets.ICON_BELOW]
+        english := (s.selected(m.language) or >>) == 1
         for i in 0:4 {
             icon_size := s.number_value(page.ids[9 + i]) or >>
-            s.set_text(page.ids[13 + i], "Icon 图标 · " + str(int(icon_size)) + " px") or >>
+            $icon_prefix := "图标 · "
+            if english {icon_prefix = "Icon · "}
+            s.set_text(page.ids[13 + i], icon_prefix + str(int(icon_size)) + " px") or >>
             $c := styles.button_variant(widgets.BUTTON_OUTLINE) or >>
             if i == 0 {c = styles.button_variant(widgets.BUTTON_PRIMARY) or >> }
             c.icon_placement = placements[i]
@@ -118,9 +122,11 @@ fn (m $&Workshop) apply_appearance(s $&widgets.Screen) int {
     }
     if m.selected == 39 {
         s.clear_control_style(id) or >>
-        $appearance := widgets.chart_appearance()
+        $appearance := chart.chart_appearance()
         appearance.y_unit = " ms"
-        if m.chart_kind == widgets.CHART_DONUT{appearance.y_unit = ""}
+        if m.chart_kind == widgets.CHART_DONUT || m.chart_kind == widgets.CHART_PIE || m.chart_kind == widgets.CHART_ROSE ||
+           m.chart_kind == widgets.CHART_FUNNEL || m.chart_kind == widgets.CHART_TREEMAP || m.chart_kind == widgets.CHART_SANKEY{appearance.y_unit = ""}
+        else if m.chart_kind == widgets.CHART_GAUGE || m.chart_kind == widgets.CHART_POLAR_BAR{appearance.y_unit = "%"}
         if m.customized{appearance.grid = false
             appearance.area_opacity = 0.26
             appearance.inner_radius = 0.78
