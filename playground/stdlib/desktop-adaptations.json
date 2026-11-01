@@ -1,8 +1,6 @@
 {
-  "schema": 1,
+  "schema": 2,
   "upstream_commit": "ccb9b460d317cf9ec92f6a24d065112885506ddb",
-  "source_commit": "b847723de6e77ee19e665bde1fd9db493737147f",
-  "reason": "Make nonzero divisors explicit for the released SDK without changing chart behavior.",
   "declarations": [
     {
       "module": "widgets_extra_chart",
@@ -15,7 +13,9 @@
           "before": "    if c.appearance.palette.len > 0 { << c.appearance.palette[max_int(0,index) % c.appearance.palette.len] }\n    light := ((styles.background.value() >> 24) & 255) > 150\n    if light {\n        colors := [draw.rgb(177,54,42),draw.rgb(27,107,170),draw.rgb(29,123,94),draw.rgb(144,100,13),draw.rgb(129,74,152),draw.rgb(27,119,129),draw.rgb(173,75,105),draw.rgb(92,107,128)]\n        << colors[max_int(0,index) % colors.len]\n    }\n    colors := [draw.rgb(239,139,121),draw.rgb(112,184,242),draw.rgb(102,205,162),draw.rgb(236,191,89),draw.rgb(195,150,226),draw.rgb(111,205,212),draw.rgb(239,148,182),draw.rgb(172,187,210)]\n    << colors[max_int(0,index) % colors.len]\n",
           "after": "    palette_len := c.appearance.palette.len\n    if palette_len > 0 { << c.appearance.palette[max_int(0,index) % palette_len] }\n    light := ((styles.background.value() >> 24) & 255) > 150\n    if light {\n        colors := [draw.rgb(177,54,42),draw.rgb(27,107,170),draw.rgb(29,123,94),draw.rgb(144,100,13),draw.rgb(129,74,152),draw.rgb(27,119,129),draw.rgb(173,75,105),draw.rgb(92,107,128)]\n        << colors[max_int(0,index) % 8]\n    }\n    colors := [draw.rgb(239,139,121),draw.rgb(112,184,242),draw.rgb(102,205,162),draw.rgb(236,191,89),draw.rgb(195,150,226),draw.rgb(111,205,212),draw.rgb(239,148,182),draw.rgb(172,187,210)]\n    << colors[max_int(0,index) % 8]\n"
         }
-      ]
+      ],
+      "source_commit": "b847723de6e77ee19e665bde1fd9db493737147f",
+      "reason": "Make the nonzero divisor proof explicit for the released SDK."
     },
     {
       "module": "widgets_extra_chart",
@@ -28,7 +28,9 @@
           "before": "        row_h := (20.0 * scale + 12.0) * d\n        cell_w := math.max(1.0,(b.width - 32.0 * d) / f64(columns))\n        for i in 0:c.series.len { c.legend_boxes.push(layout.Rect{x: b.x + 16.0 * d + f64(i % columns) * cell_w,\n            y: b.y + 12.0 * d + f64(i / columns) * row_h,width: cell_w,height: row_h}) }\n        top = top + f64((c.series.len + columns - 1) / columns) * row_h\n",
           "after": "        if columns > 0 {\n            row_h := (20.0 * scale + 12.0) * d\n            cell_w := math.max(1.0,(b.width - 32.0 * d) / f64(columns))\n            for i in 0:c.series.len { c.legend_boxes.push(layout.Rect{x: b.x + 16.0 * d + f64(i % columns) * cell_w,\n                y: b.y + 12.0 * d + f64(i / columns) * row_h,width: cell_w,height: row_h}) }\n            top = top + f64((c.series.len + columns - 1) / columns) * row_h\n        }\n"
         }
-      ]
+      ],
+      "source_commit": "b847723de6e77ee19e665bde1fd9db493737147f",
+      "reason": "Make the nonzero divisor proof explicit for the released SDK."
     },
     {
       "module": "widgets_extra_chart",
@@ -40,6 +42,36 @@
         {
           "before": "            for attempt in 0:c.data.len { index = (index + direction + c.data.len) % max_int(1,c.data.len)\n                if c.datum_visible(index) && c.data[index].target_opacity > 0.0 { c.set_hot(index) or >>\n                    <- } }\n",
           "after": "            modulus := max_int(1,c.data.len)\n            if modulus > 0 {\n                for attempt in 0:c.data.len { index = (index + direction + c.data.len) % modulus\n                    if c.datum_visible(index) && c.data[index].target_opacity > 0.0 { c.set_hot(index) or >>\n                        <- } }\n            }\n"
+        }
+      ],
+      "source_commit": "b847723de6e77ee19e665bde1fd9db493737147f",
+      "reason": "Make the nonzero divisor proof explicit for the released SDK."
+    },
+    {
+      "module": "codec",
+      "path": "src/ui/internal/codec/mod.xu",
+      "signature": "pub fn read_float64(data &string, offset int) f64",
+      "upstream_sha256": "ccc5caa191ae5688caa0729ad34fbacae87172559d73feb883952f3fdd66381a",
+      "sha256": "9cfc11b5bb4c3874f8c8179458e14bedb5a141cca50b68d5e67b3be7cb182410",
+      "reason": "Canonical zero values skip 1074 ldexp iterations during styled control decoding.",
+      "replacements": [
+        {
+          "before": "    fraction := ((hi & 1048575) << 32) | lo\n",
+          "after": "    fraction := ((hi & 1048575) << 32) | lo\n    // Zero needs no exponent scaling; avoid 1074 interpreted ldexp iterations.\n    if exponent == 0 && fraction == 0 { << 0.0 }\n"
+        }
+      ]
+    },
+    {
+      "module": "widgets_extra_color_picker",
+      "path": "src/ui/widgets/color_picker.xu",
+      "signature": "pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) int",
+      "upstream_sha256": "acd977d5c94edfb56a7d7d428528b6c476f687655eb6ead8c77be604bebc359c",
+      "sha256": "8e3f09b038f727699bb7f43f29f547ed2ecbc6dea6521415129c8267ecfe3de2",
+      "reason": "Paint private color channels with typed styles instead of serializing and decoding the same control style on every redraw.",
+      "replacements": [
+        {
+          "before": "    for i in 0:4 {\n        $slider_style := styles.slider_style()\n        if i == 0 { slider_style.palette.accent = draw.rgb(224,73,86) }\n        else if i == 1 { slider_style.palette.accent = draw.rgb(42,151,93) }\n        else if i == 2 { slider_style.palette.accent = draw.rgb(60,117,224) }\n        slider_style.palette.invalid = c.palette.invalid\n        value := picker.locale.integer(picker.channel(i) or >>)\n        channel_b := picker.channel_bounds(i) or >>\n        $channel := picker.channels[i]\n        channel.set_style(&slider_style) or >>\n        channel.apply_styles(styles) or >>\n        channel.paint_styled(frame,styles) or >>\n",
+          "after": "    // Keep per-channel styles typed; byte serialization is unnecessary for this private paint path.\n    $channel_styles := styles.clone()\n    channel_styles.progress = styles.slider_style()\n    base_accent := channel_styles.progress.palette.accent\n    channel_styles.progress.palette.invalid = c.palette.invalid\n    for i in 0:4 {\n        channel_styles.progress.palette.accent = base_accent\n        if i == 0 { channel_styles.progress.palette.accent = draw.rgb(224,73,86) }\n        else if i == 1 { channel_styles.progress.palette.accent = draw.rgb(42,151,93) }\n        else if i == 2 { channel_styles.progress.palette.accent = draw.rgb(60,117,224) }\n        value := picker.locale.integer(picker.channel(i) or >>)\n        channel_b := picker.channel_bounds(i) or >>\n        $channel := picker.channels[i]\n        channel.custom.active = false\n        // The parent already validated these styles. Apply the unchanged\n        // Slider geometry directly instead of validating all six controls again.\n        slider_style := &channel_styles.progress\n        d := channel_styles.density\n        channel.inset_left = slider_style.padding.left * d\n        channel.inset_right = slider_style.padding.right * d\n        width := math.max(0.0,channel.bounds.width - channel.inset_left - channel.inset_right)\n        height := math.max(0.0,channel.bounds.height - channel.value_height(&channel_styles) - (slider_style.padding.top + slider_style.padding.bottom) * d)\n        channel.thumb_extent = math.max(4.0,math.min(slider_style.indicator_size * d,math.min(width,height)))\n        channel.paint_styled(frame,&channel_styles) or >>\n"
         }
       ]
     }

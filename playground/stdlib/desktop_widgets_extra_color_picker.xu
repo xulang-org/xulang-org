@@ -230,18 +230,30 @@ pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) in
     c.padding = layout.insets(0.0) or >>
     c.align_x = 0.0
     names := [picker.locale.text(TEXT_RED) or >>,picker.locale.text(TEXT_GREEN) or >>,picker.locale.text(TEXT_BLUE) or >>,picker.locale.text(TEXT_ALPHA) or >>]
+    // Keep per-channel styles typed; byte serialization is unnecessary for this private paint path.
+    $channel_styles := styles.clone()
+    channel_styles.progress = styles.slider_style()
+    base_accent := channel_styles.progress.palette.accent
+    channel_styles.progress.palette.invalid = c.palette.invalid
     for i in 0:4 {
-        $slider_style := styles.slider_style()
-        if i == 0 { slider_style.palette.accent = draw.rgb(224,73,86) }
-        else if i == 1 { slider_style.palette.accent = draw.rgb(42,151,93) }
-        else if i == 2 { slider_style.palette.accent = draw.rgb(60,117,224) }
-        slider_style.palette.invalid = c.palette.invalid
+        channel_styles.progress.palette.accent = base_accent
+        if i == 0 { channel_styles.progress.palette.accent = draw.rgb(224,73,86) }
+        else if i == 1 { channel_styles.progress.palette.accent = draw.rgb(42,151,93) }
+        else if i == 2 { channel_styles.progress.palette.accent = draw.rgb(60,117,224) }
         value := picker.locale.integer(picker.channel(i) or >>)
         channel_b := picker.channel_bounds(i) or >>
         $channel := picker.channels[i]
-        channel.set_style(&slider_style) or >>
-        channel.apply_styles(styles) or >>
-        channel.paint_styled(frame,styles) or >>
+        channel.custom.active = false
+        // The parent already validated these styles. Apply the unchanged
+        // Slider geometry directly instead of validating all six controls again.
+        slider_style := &channel_styles.progress
+        d := channel_styles.density
+        channel.inset_left = slider_style.padding.left * d
+        channel.inset_right = slider_style.padding.right * d
+        width := math.max(0.0,channel.bounds.width - channel.inset_left - channel.inset_right)
+        height := math.max(0.0,channel.bounds.height - channel.value_height(&channel_styles) - (slider_style.padding.top + slider_style.padding.bottom) * d)
+        channel.thumb_extent = math.max(4.0,math.min(slider_style.indicator_size * d,math.min(width,height)))
+        channel.paint_styled(frame,&channel_styles) or >>
         channel.painted()
         picker.channels[i] = channel
         label_b := layout.Rect{x: b.x + picker.pad,y: channel_b.y,width: picker.label_w,height: channel_b.height}
