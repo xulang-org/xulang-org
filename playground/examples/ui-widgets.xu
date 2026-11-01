@@ -1,0 +1,90 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    options := draw.text_options(14.0)
+    $styles := playground.dark_styles()
+    styles.font.size = options.size
+    button_text := "+1 / Button"
+    check_text := "Checkbox"
+    switch_text := "Switch"
+    button_label := context.layout_text(&button_text,&options) or >>
+    $styled_button := widgets.styled_label(&context,&button_text)
+    $styled_check := widgets.styled_label(&context,&check_text)
+    $styled_switch := widgets.styled_label(&context,&switch_text)
+    // Real widgets measurement determines the button's layout bounds.
+    measured := widgets.button_size(&button_label)
+    button_bounds := layout.Rect{x: 32.0,y: 100.0,width: measured.width + 24.0,height: measured.height + 12.0}
+    check_bounds := layout.Rect{x: 32.0,y: 170.0,width: 252.0,height: 44.0}
+    switch_bounds := layout.Rect{x: 32.0,y: 224.0,width: 252.0,height: 44.0}
+    slider_bounds := layout.Rect{x: 336.0,y: 174.0,width: 264.0,height: 36.0}
+    $button := widgets.button(&identity,1,&button_bounds) or >>
+    $check := widgets.checkbox(&identity,2,&check_bounds,false) or >>
+    $toggle := widgets.switch_control(&identity,3,&switch_bounds,false) or >>
+    $slider := widgets.slider(&identity,4,&slider_bounds,0.0,100.0,40.0) or >>
+    slider.set_step(5.0) or >>
+    $count := 0
+    $focus := 0
+    while true {
+        input := playground.next_input()
+        if input.kind == 0 { <- }
+        if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_TAB {
+            if (input.modifiers & ui.MOD_SHIFT) != 0 {
+                focus = (focus + 2) % 4 + 1
+            } else { focus = focus % 4 + 1 }
+            button.set_focus(focus == 1)
+            check.set_focus(focus == 2)
+            toggle.set_focus(focus == 3)
+            slider.set_focus(focus == 4)
+        }
+        action := button.input(&input)
+        check_action := check.input(&input)
+        switch_action := toggle.input(&input)
+        slider_action := slider.input(&input)
+        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }
+        if action.request_focus { focus = 1 }
+        if check_action.request_focus { focus = 2 }
+        if switch_action.request_focus { focus = 3 }
+        if slider_action.request_focus { focus = 4 }
+        if input.kind == ui.EV_POINTER_CANCEL { focus = 0 }
+        if input.kind == ui.EV_POINTER_DOWN || input.kind == ui.EV_POINTER_CANCEL {
+            button.set_focus(focus == 1)
+            check.set_focus(focus == 2)
+            toggle.set_focus(focus == 3)
+            slider.set_focus(focus == 4)
+        }
+    }
+    $frame := context.new_frame(4096)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    draw.text(32, 24, 26, "#f5f0ed", "Xu / Real widgets")
+    draw.text(32, 64, 14, "#b3aab6", "#ui/widgets  /  shared desktop logic  /  WASM")
+    draw.text(336, 105, 30, "#f5f0ed", "Count: " + str(count))
+    button.paint_styled($&frame,$&styled_button,&styles) or >>
+    check.paint_styled($&frame,$&styled_check,&styles) or >>
+    toggle.paint_styled($&frame,$&styled_switch,&styles) or >>
+    slider.paint_styled($&frame,&styles) or >>
+    draw.text(336, 222, 18, "#f5f0ed", "Slider: " + str(int(slider.value())))
+    draw.text(336, 256, 14, "#b3aab6", "Click track / Arrow keys / Home / End")
+    draw.text(32, 314, 14, "#b3aab6", "Tab: focus  /  Enter or Space: activate  /  Esc: leave")
+    frame.present() or >>
+    button.painted()
+    check.painted()
+    toggle.painted()
+    slider.painted()
+    println("Count: " + str(count) + " | Checkbox: " + str(check.value()) + " | Switch: " + str(toggle.value()) + " | Slider: " + str(int(slider.value())))
+    << 0
+}
+
+fn main() int {
+    << demo() or (err) {
+        eprintln(err.msg())
+        << 1
+    }
+}

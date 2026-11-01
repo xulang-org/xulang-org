@@ -4,7 +4,7 @@ Xu's scanner, parser, borrow checker, MIR interpreter, and cooperative scheduler
 execute inside a worker-owned WASM instance. User source is never translated into
 JavaScript. Canvas is the pixel host for both drawing and real widgets.
 
-The gallery and focused component examples use the pinned
+The gallery, `ui-widgets`, and focused component examples use the pinned
 [xu-ui-design token adapter](design/README.md). This maps reference colors and
 styled control dimensions into Xu; Button, Checkbox, Switch, Radio, and Slider
 also use desktop styled painting.
@@ -15,6 +15,9 @@ for a three-page control gallery. `ui-widgets`, `ui-draw`, and `ui-counter`
 remain available. Explicit example links load and run; ordinary selection waits
 for Run Code. The reviewable source is `examples/ui-gallery.xu`; its JSON entry
 is checked against that file.
+The basic controls example is kept in `examples/ui-widgets.xu` and synchronized
+into the catalog by `scripts/gen-widget-examples.py`. Its active and checked
+fills use XUUI brand/on-brand colors rather than the SDK's default blue theme.
 
 The pages use shared desktop implementations:
 
@@ -97,12 +100,23 @@ the browser VM and with the native product compiler to check input semantics.
 Button geometry is measured by the desktop `widgets.button_size()` using the
 host TextLayout metrics. The browser text adapter currently implements a
 single-line monospace grid (0.6 × font size per Unicode code point, height
-1.25 × size). Canvas fits painted text to that same width. This is deterministic
+1.25 × size). Canvas uses the XUUI sans-serif font stack at its natural glyph
+proportions, without horizontally squeezing text to the estimated advance.
+The layout origin and enclosing clips still come from Xu. This is deterministic
 basic text layout, not native shaping, wrapping, bidi, grapheme-cell measurement,
 or IME. TextOptions fields other than size are outside this subset.
 `layout_masked_text()` paints one mask character per code point on this grid
 while caret and selection queries retain the original UTF-8 byte positions.
 The original text is never included in the masked layout's Canvas paint command.
+
+UI Preview uses the pinned XUUI theme, spacing, 40 px controls (44 px for touch
+and narrow viewports), and 14 px interface text. Fit shows the whole 640 × 360
+canvas; 100% preserves its logical size in a keyboard-scrollable viewport.
+Expand temporarily gives the results the editor's space; Back to editor restores
+the editor without resetting project edits or widget values. The console
+remains available. These display controls do not recolor user drawing commands
+or change Xu's hit-test coordinates. Native font measurement and per-widget
+accessibility remain outside the Canvas host's current scope.
 
 ## Floating-point VM support
 

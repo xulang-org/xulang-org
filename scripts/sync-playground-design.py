@@ -50,7 +50,7 @@ def generate():
 
 def generate_css():
     tokens = json.loads((ROOT / 'playground/design/tokens.json').read_text(encoding='utf-8'))
-    scope = '.widget-experience, .widget-demo-dialog'
+    scope = '.widget-experience, .widget-demo-dialog, .play-preview-panel'
     aliases = {'bg-canvas': 'canvas', 'bg-surface': 'surface', 'bg-elevated': 'elevated',
                'text-primary': 'text', 'text-secondary': 'muted', 'text-muted': 'muted',
                'text-on-brand': 'on-brand', 'brand-text': 'brand', 'border-medium': 'border'}
