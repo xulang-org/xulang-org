@@ -4,6 +4,8 @@ Modeled directly after component_workshop (view.xu, layout.xu, style.xu)
 using canonical light tokens and interactive controls.
 """
 
+from widget_popover_example import EXPECTED as POPOVER_EXPECTED, SOURCE as POPOVER_SOURCE
+
 EXTENDED_CASES = {
     'field': (
         'Field: xulang-workspace',
@@ -1101,63 +1103,7 @@ fn main() int {
 }
 '''
     ),
-    'popover': (
-        'Popover: open',
-        '''@main
-#ui
-#ui/draw
-#ui/layout
-#ui/widgets
-#playground
-
-fn box(x f64,y f64,w f64,h f64) layout.Rect {
-    << layout.Rect{x: x,y: y,width: w,height: h}
-}
-fn demo() int {
-    identity := playground.canvas_identity()
-    context := draw.default_context()
-    theme := playground.light_theme()
-    styles := playground.light_styles()
-    bounds := box(48.0,114.0,160.0,42.0)
-    $btn := widgets.button(&identity,1,&bounds) or >>
-    $lbl := widgets.styled_label(&context,&"偏好设置 ▾")
-    $focus := widgets.focus_group(&identity,[1]) or >>
-    while true {
-        event := playground.next_input()
-        if event.kind == 0 { <- }
-        nav := focus.input(&event)
-        btn.set_focus(focus.current() == 1)
-        if nav.consumed { -> }
-        act := btn.input(&event)
-        if act.request_focus { focus.focus(1) or >> }
-    }
-    $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  Popover")
-    draw.text(32,48,12,"#6d626e","锚点定位、边缘翻转；外点 / Escape 关闭。")
-    btn.paint_styled($&frame,$&lbl,&styles) or >>
-    frame.fill_rect(228.0,92.0,320.0,116.0,draw.rgb(255,255,255)) or >>
-    frame.stroke_rect(228.0,92.0,320.0,116.0,draw.rgb(190,18,60),1.5) or >>
-    draw.text(244,106,14,"#282329","Workspace preferences")
-    draw.text(244,130,12,"#6d626e","☑ Keep history 保留历史记录")
-    draw.text(244,152,12,"#6d626e","☑ Auto save 自动保存")
-    draw.text(244,178,13,"#be123c","[ Apply 应用 ]     [ Cancel 取消 ]")
-    draw.text(48,180,12,"#6d626e","锚点对齐 · 视口边缘翻转 · Escape 或点击外部收起")
-    message := "Popover: open"
-    draw.text(32,326,13,"#6d626e",message + "")
-    println(message)
-    frame.present() or >>
-    << 0
-}
-fn main() int {
-    << demo() or (err) { eprintln(err.msg())
-        << 1 }
-}
-'''
-    ),
+    'popover': (POPOVER_EXPECTED, POPOVER_SOURCE),
     'tooltip': (
         'Tooltip: visible',
         '''@main

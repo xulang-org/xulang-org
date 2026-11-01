@@ -60,9 +60,18 @@ also mirrored. This is a larger gallery subset, not the complete desktop suite.
 input, text/color/path types, style resolution, and motion initialization.
 The focused component experiences additionally run Select, Stepper, RadioGroup,
 Pagination, Breadcrumbs, RangeSlider, SplitView, ButtonGroup, MultiSelect,
-ColorPicker, Table, Chart, and dropdown/context/split Menu modes. Their geometry,
+ColorPicker, Table, Chart, Popover, and dropdown/context/split Menu modes. Their geometry,
 state, input and paint methods are unchanged desktop Xu declarations. Canvas
 forwards left/right/middle pointer buttons and supplies drawing resources.
+
+The Popover experience uses the desktop anchored surface, real checkboxes and
+buttons. It paints the floating surface after background guidance and clips
+child content within its padding. Apply saves preferences; Cancel, Escape,
+outside presses and pointer cancellation discard edits and restore trigger
+focus. Reduced motion keeps the input-replay example deterministic. Placement
+and edge flipping remain desktop logic; Screen and native event pumps are not
+needed. The source is maintained in `scripts/widget_popover_example.py` and
+published by `scripts/gen-widget-examples.py`.
 
 Extension declarations are partitioned by their dependency owners in
 `desktop-sources.json`. The runtime scans user identifier tokens, loads only the
