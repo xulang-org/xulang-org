@@ -20,6 +20,7 @@ FAMILIES = {
     'menu': ('Menu menu menu_item MENU_CONTEXT MENU_SPLIT', ['menu.xu', 'menu_input.xu', 'menu_geometry.xu', 'menu_paint.xu'], ()),
     'multi_select': ('MultiSelect multi_select', ['multi_select.xu', 'choice_highlight.xu'], ()),
     'color_picker': ('ColorPicker color_picker', ['color_picker.xu', 'color_precision.xu'], ()),
+    'popover': ('Popover popover overlay_placement', ['overlays.xu', 'popover_content.xu'], ('Popover',)),
     'chart': ('Chart chart chart_point chart_series chart_domain CHART_BAR', ['chart.xu', 'chart_data.xu', 'chart_input.xu', 'chart_paint.xu'], ()),
 }
 
@@ -81,11 +82,13 @@ def extensions(xu, base, declarations):
         for key, (path, chunk, kind, receiver, name) in pool.items():
             if key[0] != 'ui/widgets' or path.split('/')[-1] not in filenames or key in base_keys:
                 continue
-            if receivers and not (receiver in receivers or name in ('Stepper', 'stepper', 'Select', 'select_box')):
+            if receivers and not (receiver in receivers or name in ('Stepper', 'stepper', 'Select', 'select_box') or
+                                  not receiver and name in FAMILIES[family][0].split()):
                 continue
             roots = set(FAMILIES[family][0].split()) | {'input','paint','paint_styled','apply_styles','set_focus','selected','value','values','active_key','layout','selection','set_cell','set_local_sort','set_sort_kind','set_series','open','close','is_open','hex'}
             if family in ('menu','chart'): roots.add('tick')
             if family == 'menu': roots.update(('paint_popup_styled','set_viewport'))
+            if family == 'popover': roots.update(('set_placement','set_geometry','set_style','bounds','set_dismissal'))
             if kind != 'fn' or name not in roots: continue
             chosen.add(key)
         while True:
@@ -149,6 +152,12 @@ def extensions(xu, base, declarations):
                     else:
                         for owner in (module, 'ui/widgets', 'time'):
                             chosen.update(k for k in methods.get((owner, name), []) if pool[k][3] in types[owner] and k not in base_keys)
+                # A fluent call has no identifier receiver for resolve(), e.g.
+                # p.style_or(styles).with_opacity(...). Retain matching methods
+                # on the types already present in this family's dependency graph.
+                for name in re.findall(r'\)\s*\.\s*(\w+)\s*\(', body):
+                    for owner in (module, 'ui/widgets', 'time'):
+                        chosen.update(k for k in methods.get((owner, name), []) if pool[k][3] in types[owner] and k not in base_keys)
             if len(chosen) == before: break
         result[family] = chosen
     return pool, result
