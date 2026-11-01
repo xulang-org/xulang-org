@@ -3,60 +3,104 @@
 #ui/draw
 demo #"github.com/xulang-org/examples/ui_demo"
 
+fn paint_vector_showcase(context &draw.Context, fragment $&draw.Frame) int {
+    demo.text(context, fragment, 32.0, 396.0, 14.0, demo.accent(), "03 / HIGH-LEVEL VECTOR PRIMITIVES & COLOR TOOLS") or >>
+    teal := draw.hex("#14B8A6") or >>
+    indigo := draw.hex("#6366F1") or >>
+    amber := draw.hsl(38.0, 0.92, 0.58)
+    coral := draw.lerp_color(amber, draw.hex("#F43F5E") or >>, 0.65)
+    card_grad := draw.two_stop_linear(32.0, 424.0, 224.0, 524.0, teal.darken(0.35), indigo.darken(0.35))
+    fragment.box_shadow(32.0, 424.0, 192.0, 100.0, 14.0, 0.0, 6.0, 12.0, 1.0, draw.rgba(0, 0, 0, 110)) or >>
+    fragment.fill_round_rect_gradient(32.0, 424.0, 192.0, 100.0, 14.0, &card_grad) or >>
+    fragment.stroke_round_rect(32.0, 424.0, 192.0, 100.0, 14.0, teal.lighten(0.35), 1.5) or >>
+    orb_grad := draw.two_stop_radial(82.0, 474.0, 30.0, teal.lighten(0.45), indigo)
+    fragment.fill_circle_gradient(82.0, 474.0, 28.0, &orb_grad) or >>
+    fragment.fill_capsule(126.0, 446.0, 82.0, 24.0, coral.with_opacity(0.88)) or >>
+    fragment.stroke_capsule(126.0, 480.0, 82.0, 24.0, amber, 1.8) or >>
+
+    fragment.fill_ring_sector(300.0, 474.0, 22.0, 46.0, -90.0, 210.0, teal) or >>
+    fragment.fill_ring_sector(300.0, 474.0, 22.0, 46.0, 120.0, 95.0, indigo) or >>
+    fragment.fill_sector(300.0, 474.0, 42.0, 225.0, 45.0, amber) or >>
+    fragment.arc(300.0, 474.0, 52.0, -45.0, 130.0, coral, 3.0) or >>
+
+    fragment.fill_regular_polygon(432.0, 474.0, 42.0, 6, -90.0, indigo.with_opacity(0.45)) or >>
+    fragment.stroke_regular_polygon(432.0, 474.0, 42.0, 6, -90.0, indigo.lighten(0.35), 2.0) or >>
+    fragment.fill_gear(432.0, 474.0, 26.0, 18.0, 9.0, 8, teal.with_opacity(0.85)) or >>
+    fragment.fill_star(536.0, 474.0, 44.0, 19.0, 5, -90.0, amber) or >>
+    fragment.stroke_star(536.0, 474.0, 44.0, 19.0, 5, -90.0, amber.lighten(0.45), 1.5) or >>
+    fragment.fill_shield(628.0, 474.0, 56.0, 68.0, coral.with_opacity(0.75)) or >>
+    fragment.stroke_shield(628.0, 474.0, 56.0, 68.0, coral.lighten(0.30), 1.8) or >>
+    fragment.checkmark(614.0, 460.0, 28.0, coral.contrasting_ink(demo.ink(), demo.background()), 2.4) or >>
+
+    fragment.grid(688.0, 424.0, 240.0, 100.0, 6, 4, demo.muted().with_opacity(0.25), 1.0) or >>
+    fragment.hatch_rect(688.0, 424.0, 240.0, 100.0, 16.0, false, indigo.with_opacity(0.18), 1.0) or >>
+    fragment.dashed_rect(688.0, 424.0, 240.0, 100.0, 6.0, 4.0, demo.muted().with_opacity(0.65), 1.2) or >>
+    vir_c := draw.sample_palette(draw.PALETTE_VIRIDIS, 0.72)
+    fragment.fill_ribbon(696.0, 488.0, 504.0, 812.0, 444.0, 460.0, vir_c.with_opacity(0.42)) or >>
+    spline_pts := [draw.path_point(700.0, 508.0), draw.path_point(744.0, 442.0), draw.path_point(792.0, 496.0),
+        draw.path_point(842.0, 436.0), draw.path_point(892.0, 482.0)]
+    fragment.smooth_curve(&spline_pts, 0.0, teal, 2.5) or >>
+    fragment.wave(700.0, 498.0, 196.0, 8.0, 48.0, 0.0, amber, 1.8) or >>
+    fragment.dashed_line(700.0, 464.0, 912.0, 464.0, 8.0, 5.0, coral, 1.8) or >>
+    fragment.double_arrow(868.0, 508.0, 916.0, 440.0, 10.0, demo.ink(), 2.0) or >>
+    << 0
+}
+
 // This entire scene is recorded once; subsequent frames replay its resources.
-fn record(context &draw.Context,image &draw.Image) draw.DisplayList {
-    $fragment := context.new_frame(4096)
+fn record(context &draw.Context, image &draw.Image) draw.DisplayList {
+    $fragment := context.new_frame(8192)
     fragment.begin() or >>
-    fragment.fill_rect(0.0,0.0,960.0,510.0,draw.rgb(26,37,50)) or >>
-    demo.text(context,$&fragment,24.0,22.0,18.0,demo.ink(),"Vectors / gradients / embedded PNG / shaped text") or >>
+    fragment.fill_rect(0.0, 0.0, 960.0, 548.0, draw.rgb(26, 37, 50)) or >>
+    demo.text(context, $&fragment, 24.0, 22.0, 18.0, demo.ink(), "Vectors / gradients / embedded PNG / shaped text / geometry builders") or >>
     $path := draw.new_path(256)
-    path.move_to(40.0,210.0) or >>
-    path.cubic_to(80.0,60.0,210.0,60.0,250.0,210.0) or >>
-    path.quad_to(145.0,300.0,40.0,210.0) or >>
+    path.move_to(40.0, 210.0) or >>
+    path.cubic_to(80.0, 60.0, 210.0, 60.0, 250.0, 210.0) or >>
+    path.quad_to(145.0, 300.0, 40.0, 210.0) or >>
     path.close() or >>
-    stops := [draw.GradientStop{offset: 0.0,color: demo.accent()},draw.GradientStop{offset: 1.0,color: draw.rgb(92,127,203)}]
-    gradient := draw.linear_gradient(20.0,80.0,260.0,270.0,stops)
-    bounds := draw.ImageRect{x: 20.0,y: 70.0,width: 260.0,height: 230.0}
-    fragment.fill_path_gradient(&path,&gradient,&bounds,2.0,draw.FILL_NONZERO) or >>
+    stops := [draw.GradientStop{offset: 0.0, color: demo.accent()}, draw.GradientStop{offset: 1.0, color: draw.rgb(92, 127, 203)}]
+    gradient := draw.linear_gradient(20.0, 80.0, 260.0, 270.0, stops)
+    bounds := draw.ImageRect{x: 20.0, y: 70.0, width: 260.0, height: 230.0}
+    fragment.fill_path_gradient(&path, &gradient, &bounds, 2.0, draw.FILL_NONZERO) or >>
     stroke := draw.stroke_options(2.0)
-    fragment.stroke_path(&path,demo.ink(),&stroke) or >>
-    fragment.image(image,320.0,88.0,150.0,150.0) or >>
-    source := draw.ImageRect{x: 0.0,y: 0.0,width: f64(image.width),height: f64(image.height)}
-    destination := draw.ImageRect{x: 510.0,y: 88.0,width: 190.0,height: 150.0}
-    fragment.image_region(image,&source,&destination,0.45,draw.SAMPLER_NEAREST) or >>
-    demo.text(context,$&fragment,320.0,260.0,14.0,demo.muted(),"Linear sampling      Nearest / opacity") or >>
-    $options := draw.text_options(24.0)
+    fragment.stroke_path(&path, demo.ink(), &stroke) or >>
+    fragment.image(image, 320.0, 88.0, 150.0, 150.0) or >>
+    source := draw.ImageRect{x: 0.0, y: 0.0, width: f64(image.width), height: f64(image.height)}
+    destination := draw.ImageRect{x: 510.0, y: 88.0, width: 190.0, height: 150.0}
+    fragment.image_region(image, &source, &destination, 0.45, draw.SAMPLER_NEAREST) or >>
+    demo.text(context, $&fragment, 320.0, 260.0, 14.0, demo.muted(), "Linear sampling      Nearest / opacity") or >>
+    $options := draw.text_options(22.0)
     options.width = 880.0
     value := "你好，Xu · العربية · café · 👩‍💻\nOne native layout: shaping, fallback, wrapping and metrics."
-    $text := context.layout_text(&value,&options) or >>
-    fragment.text_layout(&text,32.0,330.0,demo.ink()) or >>
+    $text := context.layout_text(&value, &options) or >>
+    fragment.text_layout(&text, 32.0, 318.0, demo.ink()) or >>
     println("Text metrics: " + str(text.metrics.lines) + " lines")
-    layer := draw.ImageRect{x: 740.0,y: 80.0,width: 180.0,height: 200.0}
-    fragment.begin_layer(&layer,2.0,0.75) or >>
-    fragment.set_fill(draw.rgb(240,180,91)) or >>
-    fragment.circle(64.0,80.0,52.0) or >>
-    fragment.set_fill(draw.rgb(92,127,203)) or >>
-    fragment.circle(112.0,112.0,52.0) or >>
+    layer := draw.ImageRect{x: 740.0, y: 80.0, width: 180.0, height: 200.0}
+    fragment.begin_layer(&layer, 2.0, 0.75) or >>
+    fragment.set_fill(draw.rgb(240, 180, 91)) or >>
+    fragment.circle(64.0, 80.0, 52.0) or >>
+    fragment.set_fill(draw.rgb(92, 127, 203)) or >>
+    fragment.circle(112.0, 112.0, 52.0) or >>
     fragment.end_layer() or >>
-    demo.text(context,$&fragment,740.0,292.0,14.0,demo.muted(),"Isolated group opacity") or >>
+    demo.text(context, $&fragment, 740.0, 292.0, 14.0, demo.muted(), "Isolated group opacity") or >>
+    paint_vector_showcase(context, $&fragment) or >>
     list := fragment.freeze() or >>
     text.dispose() or >>
     fragment.dispose()
     << list
 }
-fn paint(context &draw.Context,frame $&draw.Frame,list &draw.DisplayList,cache $&draw.SurfaceCache,density f64,cached bool) int {
+fn paint(context &draw.Context, frame $&draw.Frame, list &draw.DisplayList, cache $&draw.SurfaceCache, density f64, cached bool) int {
     frame.begin() or >>
     frame.set_bg(demo.background()) or >>
-    demo.text(context,frame,32.0,24.0,14.0,demo.accent(),"02 / RESOURCE GALLERY") or >>
-    demo.text(context,frame,32.0,54.0,28.0,demo.ink(),"Record once. Reuse across frames.") or >>
+    demo.text(context, frame, 32.0, 24.0, 14.0, demo.accent(), "02 / RESOURCE GALLERY") or >>
+    demo.text(context, frame, 32.0, 54.0, 28.0, demo.ink(), "Record once. Reuse across frames.") or >>
     frame.push() or >>
-    frame.translate(32.0,110.0) or >>
-    if cached { frame.cached_display_list(cache,list,0.0,0.0,960.0,510.0,density,1.0,draw.SAMPLER_LINEAR) or >> }
+    frame.translate(32.0, 104.0) or >>
+    if cached { frame.cached_display_list(cache, list, 0.0, 0.0, 960.0, 548.0, density, 1.0, draw.SAMPLER_LINEAR) or >> }
     else { frame.display_list(list) or >> }
     frame.pop() or >>
     $mode := "vector replay"
     if cached { mode = "raster cache" }
-    demo.text(context,frame,32.0,646.0,15.0,demo.ink(),"Space: vector/cache / R: invalidate / current: " + mode) or >>
+    demo.text(context, frame, 32.0, 668.0, 15.0, demo.ink(), "Space: vector/cache / R: invalidate / current: " + mode) or >>
     frame.present() or >>
     println("Presented " + mode + ": " + str(frame.command_count()) + " frame commands")
     << 0
@@ -68,12 +112,12 @@ fn scene(ech chan ui.Event) int {
     context := draw.context_of(&ready) or >>
     path := "sample.png"
     $image := context.load_embedded_image(&path) or >>
-    $list := record(&context,&image) or >>
+    $list := record(&context, &image) or >>
     $cache := draw.new_surface_cache()
     $frame := context.new_frame(1024)
     $density := 1.0
     $cached := false
-    paint(&context,$&frame,&list,$&cache,density,cached) or >>
+    paint(&context, $&frame, &list, $&cache, density, cached) or >>
     while true {
         event := demo.next(ech)
         if event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <- }
@@ -95,7 +139,7 @@ fn scene(ech chan ui.Event) int {
                 if input.key == ui.KEY_ESCAPE { demo.quit() or >> }
             }
         }
-        if dirty { paint(&context,$&frame,&list,$&cache,density,cached) or >> }
+        if dirty { paint(&context, $&frame, &list, $&cache, density, cached) or >> }
     }
     frame.dispose()
     cache.dispose()
@@ -109,7 +153,7 @@ fn scene(ech chan ui.Event) int {
 fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
     << } }
 fn launch() int {
-    $app := demo.app("Xu UI / Resource Gallery",1030,710) or >>
+    $app := demo.app("Xu UI / Resource Gallery", 1030, 720) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }

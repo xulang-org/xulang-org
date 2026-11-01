@@ -15,7 +15,7 @@ fn verify_sqlite_pool_deep() {
     println("--- SQLite Connection Pool Deep Verification ---")
     db_file := "/tmp/xu_sqlite_pool.db"
     remove_if_exists(db_file + "")
-    $db := sqlite.open_pool(db_file + "", 5, 2)
+    mut db := sqlite.open_pool(db_file + "", 5, 2)
 
     // 1. Ping
     db.ping() or (err) {
@@ -32,7 +32,7 @@ fn verify_sqlite_pool_deep() {
     println("   [PASS] Schema created.")
 
     // 3. Sequential & Concurrent Inserts through Pool
-    $i := 1
+    mut i := 1
     while i <= 5 {
         db.exec("INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);", i, "item_" + str(i), i * 10) or (err) {
             println("   [FAIL] Insert failed at item " + str(i) + ": " + err.msg())
@@ -43,11 +43,11 @@ fn verify_sqlite_pool_deep() {
     println("   [PASS] 5 items inserted through SQLite connection pool.")
 
     // 4. Query through Pool
-    $rows := db.query("SELECT id, title, value FROM pool_items ORDER BY id ASC;") or (err) {
+    mut rows := db.query("SELECT id, title, value FROM pool_items ORDER BY id ASC;") or (err) {
         println("   [FAIL] Query failed: " + err.msg())
         <<
     }
-    $count := 0
+    mut count := 0
     while rows.next() {
         vals := rows.take() or (err) {
             <<

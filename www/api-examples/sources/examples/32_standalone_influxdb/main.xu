@@ -5,7 +5,7 @@ influxdb #github.com/xulang-org/packages/influxdb
 
 fn verify_influxdb_health() {
     println("--- 1. Testing InfluxDB Health & Ping ---")
-    $client := influxdb.open(
+    mut client := influxdb.open(
         "http://127.0.0.1:8086",
         "my-super-secret-token",
         "xu-org",
@@ -31,7 +31,7 @@ fn verify_influxdb_health() {
 
 fn verify_influxdb_write_query() {
     println("\n--- 2. Testing InfluxDB Line Protocol & Flux Query ---")
-    $client := influxdb.open(
+    mut client := influxdb.open(
         "http://127.0.0.1:8086",
         "my-super-secret-token",
         "xu-org",
@@ -40,7 +40,7 @@ fn verify_influxdb_write_query() {
 
     // 1. Write single point using Point builder
     println("   Constructing point 'cpu_load' with tags & fields...")
-    $pt := influxdb.new_point("cpu_load")
+    mut pt := influxdb.new_point("cpu_load")
     pt.add_tag("host", "worker-01")
     pt.add_tag("env", "prod")
     pt.add_field_float("usage", "45.8")
@@ -55,7 +55,7 @@ fn verify_influxdb_write_query() {
 
     // 2. Write raw batch lines
     println("   Writing batch metrics via raw line protocol...")
-    $raw_lines := "mem_metrics,host=worker-01 total=32768i,used=16384i\n"
+    mut raw_lines := "mem_metrics,host=worker-01 total=32768i,used=16384i\n"
     raw_lines = raw_lines + "mem_metrics,host=worker-02 total=65536i,used=20480i\n"
     client.write_raw(raw_lines) or (err) {
         println("   [FAIL] write_raw failed: " + err.msg())
@@ -77,7 +77,7 @@ fn verify_influxdb_write_query() {
 
 fn verify_influxdb_pool() {
     println("\n--- 3. Testing InfluxDB Connection Pool ---")
-    $p := influxdb.open_pool(
+    mut p := influxdb.open_pool(
         "http://127.0.0.1:8086",
         "my-super-secret-token",
         "xu-org",
@@ -111,7 +111,7 @@ fn verify_influxdb_pool() {
 
     // 3. Delegated operations via pool
     println("   Testing delegated operations via pool...")
-    $pt := influxdb.new_point("pool_sensor")
+    mut pt := influxdb.new_point("pool_sensor")
     pt.add_tag("room", "lab-01")
     pt.add_field_float("humidity", "55.2")
     p.write_point(pt) or (err) {
