@@ -10,6 +10,12 @@ styled control dimensions into Xu; Button, Checkbox, Switch, Radio, and Slider
 also use desktop styled painting.
 The browser text host and basic widget geometry retain the limitations below.
 
+The desktop snapshot is pinned in `stdlib/desktop-sources.json`. The existing
+Chart divisor guards from site commit `b847723de6e77ee19e665bde1fd9db493737147f`
+are recorded in `stdlib/desktop-adaptations.json`, with the original and adapted
+declaration hashes (UTF-8 with LF) and exact replacements. Regeneration applies them only to the
+matching upstream bodies; source checks reverse and replay every adaptation.
+
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
 for a three-page control gallery. `ui-widgets`, `ui-draw`, and `ui-counter`
 remain available. Explicit example links load and run; ordinary selection waits

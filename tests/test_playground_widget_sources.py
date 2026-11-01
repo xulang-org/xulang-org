@@ -1,4 +1,4 @@
-"""The browser ships desktop declarations with verifiable, unchanged bodies."""
+"""Pinned desktop declarations and explicit browser adaptations are verifiable."""
 import hashlib
 import importlib.util
 import json
@@ -14,6 +14,32 @@ spec.loader.exec_module(sync)
 
 
 class WidgetSourceTests(unittest.TestCase):
+    def test_browser_adaptations_preserve_upstream_bodies_and_reproduce_the_snapshot(self):
+        directory = ROOT / 'playground/stdlib'
+        manifest = json.loads((directory / 'desktop-sources.json').read_text())
+        adaptation_bytes = (directory / manifest['adaptations']['path']).read_text(encoding='utf-8').encode()
+        self.assertEqual(hashlib.sha256(adaptation_bytes).hexdigest(), manifest['adaptations']['sha256'])
+        adaptations = json.loads(adaptation_bytes)
+        self.assertEqual(adaptations['upstream_commit'], manifest['commit'])
+        self.assertRegex(adaptations['source_commit'], r'^[a-f0-9]{40}$')
+        expected = {(d['module'], d['signature']): d for d in manifest['declarations'] if 'upstream_sha256' in d}
+        self.assertEqual(set(expected), {(d['module'], d['signature']) for d in adaptations['declarations']})
+        for entry in adaptations['declarations']:
+            with self.subTest(signature=entry['signature']):
+                record = expected[(entry['module'], entry['signature'])]
+                self.assertEqual(record['upstream_sha256'], entry['upstream_sha256'])
+                self.assertEqual(record['sha256'], entry['sha256'])
+                source = (directory / ('desktop_' + entry['module'] + '.xu')).read_text()
+                current = dict(sync.declarations(source))[entry['signature']].split('\n// Upstream:')[0].rstrip()
+                upstream = current
+                for replacement in reversed(entry['replacements']):
+                    self.assertEqual(upstream.count(replacement['after']), 1)
+                    upstream = upstream.replace(replacement['after'], replacement['before'], 1)
+                self.assertEqual(hashlib.sha256(upstream.encode()).hexdigest(), entry['upstream_sha256'])
+                self.assertEqual(sync.apply_adaptation(upstream, entry), current)
+                with self.assertRaisesRegex(ValueError, 'upstream drift'):
+                    sync.apply_adaptation(upstream + '\n// unexpected edit', entry)
+
     def test_vendored_declarations_match_manifest(self):
         directory = ROOT / 'playground/stdlib'
         manifest = json.loads((directory / 'desktop-sources.json').read_text())
