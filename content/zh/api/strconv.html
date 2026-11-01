@@ -1,7 +1,7 @@
 <!--title: #strconv-->
 <p class="crumb">API</p>
 <h1><code>#strconv</code></h1>
-<!--xu-api-version: 0.10.12-->
+<!--xu-api-version: 0.11.2-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#strconv</code></p>
 <p class="meta">counts: 27 函数, 0 方法, 0 类型, 0 常量, 0 方法集</p>
@@ -12,7 +12,7 @@
 <p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
 <details class="api-example" id="example-a2be48ce1c23" open>
 <summary><code>16_ui_webview/component_workshop/main.xu</code></summary>
-<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/f8527ee845cabd2fbe2006574f83ab2c7bbcd774/examples/16_ui_webview/component_workshop">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events.xu" download>events.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events_tools.xu" download>events_tools.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/layout.xu" download>layout.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/model.xu" download>model.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/style.xu" download>style.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/view.xu" download>view.xu</a></p>
+<p class="meta">所需 SDK：Xu 0.10.13-dev.3 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/16_ui_webview/component_workshop">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events.xu" download>events.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events_tools.xu" download>events_tools.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/layout.xu" download>layout.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/model.xu" download>model.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/style.xu" download>style.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/view.xu" download>view.xu</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>main.xu</span></div><pre tabindex="0" aria-label="16_ui_webview/component_workshop/main.xu"><code class="language-xu">@main
 
 <span class="syn-import"><span class="hash">#</span>ui</span>
@@ -442,7 +442,8 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     page <span class="syn-flow">:=</span> m.page_snapshot(39)
     id <span class="syn-flow">:=</span> page.ids[0]
     <span class="syn-kw">if</span> option == 0 {m.revision += 1
-        series <span class="syn-flow">:=</span> chart_data(m.chart_kind, m.revision)
+        english <span class="syn-flow">:=</span> (s.selected(m.language) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) == 1
+        series <span class="syn-flow">:=</span> chart_data_locale(m.chart_kind, m.revision, english)
         s.set_chart_series(id, &amp;series) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
         m.chart_paused = false}
     <span class="syn-kw">if</span> option == 1 {s.reset_chart_viewport(id) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
@@ -853,20 +854,129 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:4 {s.set_option_text(pagination.ids[2], i, locale.count_text(widgets.TEXT_ITEMS_PER_PAGE, sizes[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
     m.update_pagination(s, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-cmt">// Business copy is supplied by the app, never silently translated by the widget.</span>
+    english <span class="syn-flow">:=</span> index == 1
+    m.names = names_locale(english)
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:m.names.len {s.set_option_text(m.navigation, i, m.names[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    $themes <span class="syn-flow">:=</span>[<span class="syn-str">"亮色"</span>, <span class="syn-str">"暗色"</span>, <span class="syn-str">"高对比"</span>]
+    $densities <span class="syn-flow">:=</span>[<span class="syn-str">"常规"</span>, <span class="syn-str">"紧凑"</span>, <span class="syn-str">"触控"</span>]
+    $scales <span class="syn-flow">:=</span>[<span class="syn-str">"字号 100%"</span>, <span class="syn-str">"字号 140%"</span>, <span class="syn-str">"字号 200%"</span>]
+    $states <span class="syn-flow">:=</span>[<span class="syn-str">"普通"</span>, <span class="syn-str">"禁用"</span>, <span class="syn-str">"只读"</span>, <span class="syn-str">"错误"</span>]
+    $choices <span class="syn-flow">:=</span>[<span class="syn-str">"工作区"</span>, <span class="syn-str">"历史"</span>, <span class="syn-str">"输出"</span>]
+    $segments <span class="syn-flow">:=</span>[<span class="syn-str">"日"</span>, <span class="syn-str">"周"</span>, <span class="syn-str">"月"</span>]
+    $group_titles <span class="syn-flow">:=</span>[<span class="syn-str">"独立操作"</span>, <span class="syn-str">"单选"</span>, <span class="syn-str">"多选"</span>]
+    $btn_samples <span class="syn-flow">:=</span>[<span class="syn-str">"构建项目"</span>, <span class="syn-str">"打开工作区 · 右侧图标"</span>, <span class="syn-str">"保存修改 · 上方图标"</span>, <span class="syn-str">"下载 SDK · 下方图标"</span>, <span class="syn-str">"次要按钮"</span>, <span class="syn-str">"描边按钮"</span>, <span class="syn-str">"幽灵按钮"</span>, <span class="syn-str">"危险操作"</span>, <span class="syn-str">"轻量按钮"</span>]
+    $overlay_triggers <span class="syn-flow">:=</span>[<span class="syn-str">"打开浮层"</span>, <span class="syn-str">"聚焦或悬停查看帮助"</span>, <span class="syn-str">"发送通知"</span>, <span class="syn-str">"打开确认弹窗"</span>]
+    <span class="syn-kw">if</span> english{
+        themes =[<span class="syn-str">"Light"</span>, <span class="syn-str">"Dark"</span>, <span class="syn-str">"Contrast"</span>]
+        densities =[<span class="syn-str">"Normal"</span>, <span class="syn-str">"Compact"</span>, <span class="syn-str">"Touch"</span>]
+        scales =[<span class="syn-str">"Text 100%"</span>, <span class="syn-str">"Text 140%"</span>, <span class="syn-str">"Text 200%"</span>]
+        states =[<span class="syn-str">"Normal"</span>, <span class="syn-str">"Disabled"</span>, <span class="syn-str">"Read only"</span>, <span class="syn-str">"Invalid"</span>]
+        choices =[<span class="syn-str">"Workspace"</span>, <span class="syn-str">"History"</span>, <span class="syn-str">"Output"</span>]
+        segments =[<span class="syn-str">"Day"</span>, <span class="syn-str">"Week"</span>, <span class="syn-str">"Month"</span>]
+        group_titles =[<span class="syn-str">"Actions"</span>, <span class="syn-str">"Single"</span>, <span class="syn-str">"Multiple"</span>]
+        btn_samples =[<span class="syn-str">"Build project"</span>, <span class="syn-str">"Open workspace · trailing"</span>, <span class="syn-str">"Save changes · above"</span>, <span class="syn-str">"Download SDK · below"</span>, <span class="syn-str">"Secondary"</span>, <span class="syn-str">"Outline"</span>, <span class="syn-str">"Ghost"</span>, <span class="syn-str">"Danger"</span>, <span class="syn-str">"Subtle"</span>]
+        overlay_triggers =[<span class="syn-str">"Open popover"</span>, <span class="syn-str">"Focus or hover for help"</span>, <span class="syn-str">"Enqueue notification"</span>, <span class="syn-str">"Open confirmation"</span>]
+    }
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:9 {s.set_text(m.pages[1].ids[i], btn_samples[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:4 {s.set_text(m.pages[33 + i].ids[0], overlay_triggers[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:3 {
+        s.set_option_text(m.theme, i, themes[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_option_text(m.density, i, densities[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_option_text(m.scale, i, scales[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_option_text(m.pages[21].ids[0], i, choices[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_option_text(m.pages[22].ids[0], i, segments[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[38].ids[3 + i], group_titles[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:4 {s.set_option_text(m.state, i, states[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
     page <span class="syn-flow">:=</span> &amp;m.pages[8]
-    <span class="syn-kw">if</span> index == 1 {s.set_task_labels(page.ids[0], <span class="syn-str">"Building"</span>, <span class="syn-str">"Built · run again"</span>, <span class="syn-str">"Retry build"</span>, <span class="syn-str">"Build again"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-    <span class="syn-kw">else</span> {s.set_task_labels(page.ids[0], <span class="syn-str">"正在构建"</span>, <span class="syn-str">"已构建 · 再次运行"</span>, <span class="syn-str">"重试构建"</span>, <span class="syn-str">"再次构建"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    <span class="syn-kw">if</span> english {
+        s.set_text(page.ids[0], <span class="syn-str">"Build project"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_task_labels(page.ids[0], <span class="syn-str">"Building"</span>, <span class="syn-str">"Built · run again"</span>, <span class="syn-str">"Retry build"</span>, <span class="syn-str">"Build again"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.reduced, <span class="syn-str">"Reduce motion"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.focus, <span class="syn-str">"Focus sample"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[9].ids[0], <span class="syn-str">"Keep generated files"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[10].ids[0], <span class="syn-str">"Live preview"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[11].ids[0], <span class="syn-str">"Use workspace settings"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[25].ids[4], <span class="syn-str">"Go"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[28].ids[1], <span class="syn-str">"Loading assets…"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[29].ids[1], <span class="syn-str">"SECTION"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[30].ids[1], <span class="syn-str">"Inbox"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[30].ids[4], <span class="syn-str">"Synced"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[30].ids[9], <span class="syn-str">"Workspace"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[31].ids[4], <span class="syn-str">"Workspace configuration"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[31].ids[6], <span class="syn-str">"Open workspace"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[33].ids[2], <span class="syn-str">"Workspace preferences"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[33].ids[5], <span class="syn-str">"Keep history"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[33].ids[6], <span class="syn-str">"Cancel"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[33].ids[7], <span class="syn-str">"Apply"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[36].ids[2], <span class="syn-str">"Cancel"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[36].ids[3], <span class="syn-str">"Apply changes"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[41].ids[5], <span class="syn-str">"Open workspace"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[41].ids[6], <span class="syn-str">"Refresh preview"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[45].ids[1], <span class="syn-str">"Show password"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[45].ids[2], <span class="syn-str">"Password"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    } <span class="syn-kw">else</span> {
+        s.set_text(page.ids[0], <span class="syn-str">"构建项目"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_task_labels(page.ids[0], <span class="syn-str">"正在构建"</span>, <span class="syn-str">"已构建 · 再次运行"</span>, <span class="syn-str">"重试构建"</span>, <span class="syn-str">"再次构建"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.reduced, <span class="syn-str">"减少动效"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.focus, <span class="syn-str">"聚焦示例"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[9].ids[0], <span class="syn-str">"保留生成产物"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[10].ids[0], <span class="syn-str">"实时预览"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[11].ids[0], <span class="syn-str">"使用工作区设置"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[25].ids[4], <span class="syn-str">"跳转"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[28].ids[1], <span class="syn-str">"正在加载资源…"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[29].ids[1], <span class="syn-str">"章节分隔"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[30].ids[1], <span class="syn-str">"收件箱"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[30].ids[4], <span class="syn-str">"已同步"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[30].ids[9], <span class="syn-str">"工作区"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[31].ids[4], <span class="syn-str">"工作区配置"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[31].ids[6], <span class="syn-str">"打开工作区"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[33].ids[2], <span class="syn-str">"工作区偏好设置"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[33].ids[5], <span class="syn-str">"保留历史记录"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[33].ids[6], <span class="syn-str">"取消"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[33].ids[7], <span class="syn-str">"应用"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[36].ids[2], <span class="syn-str">"取消"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[36].ids[3], <span class="syn-str">"应用更改"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[41].ids[5], <span class="syn-str">"打开工作区"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[41].ids[6], <span class="syn-str">"刷新预览"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[45].ids[1], <span class="syn-str">"显示密码"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        s.set_text(m.pages[45].ids[2], <span class="syn-str">"密码"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    }
+    m.update_badges(s) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    m.range_summary(s, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    m.appearance_dirty = true
     $group_labels <span class="syn-flow">:=</span>[[<span class="syn-str">"Undo"</span>, <span class="syn-str">"Redo"</span>, <span class="syn-str">"Save"</span>],[<span class="syn-str">"Day"</span>, <span class="syn-str">"Week"</span>, <span class="syn-str">"Month"</span>],[<span class="syn-str">"Bold"</span>, <span class="syn-str">"Italic"</span>, <span class="syn-str">"Underline"</span>]]
-    $type_labels <span class="syn-flow">:=</span>[<span class="syn-str">"Line"</span>, <span class="syn-str">"Area"</span>, <span class="syn-str">"Bar"</span>, <span class="syn-str">"Scatter"</span>, <span class="syn-str">"Donut"</span>]
-    <span class="syn-kw">if</span> index != 1 {group_labels =[[<span class="syn-str">"撤销"</span>, <span class="syn-str">"重做"</span>, <span class="syn-str">"保存"</span>],[<span class="syn-str">"日"</span>, <span class="syn-str">"周"</span>, <span class="syn-str">"月"</span>],[<span class="syn-str">"加粗"</span>, <span class="syn-str">"斜体"</span>, <span class="syn-str">"下划线"</span>]]
-        type_labels =[<span class="syn-str">"折线"</span>, <span class="syn-str">"面积"</span>, <span class="syn-str">"柱状"</span>, <span class="syn-str">"散点"</span>, <span class="syn-str">"环形"</span>]}
+    $type_labels <span class="syn-flow">:=</span>[<span class="syn-str">"Line"</span>, <span class="syn-str">"Area"</span>, <span class="syn-str">"Bar"</span>, <span class="syn-str">"Scatter"</span>, <span class="syn-str">"Donut"</span>,
+        <span class="syn-str">"Step"</span>, <span class="syn-str">"StackArea"</span>, <span class="syn-str">"StackBar"</span>, <span class="syn-str">"H-Bar"</span>, <span class="syn-str">"Pie"</span>,
+        <span class="syn-str">"Rose"</span>, <span class="syn-str">"Radar"</span>, <span class="syn-str">"Gauge"</span>, <span class="syn-str">"Bubble"</span>, <span class="syn-str">"Histogram"</span>,
+        <span class="syn-str">"Boxplot"</span>, <span class="syn-str">"Heatmap"</span>, <span class="syn-str">"Candle"</span>, <span class="syn-str">"Waterfall"</span>, <span class="syn-str">"Funnel"</span>,
+        <span class="syn-str">"Spline"</span>, <span class="syn-str">"SplineArea"</span>, <span class="syn-str">"PolarBar"</span>, <span class="syn-str">"Treemap"</span>, <span class="syn-str">"Sankey"</span>,
+        <span class="syn-str">"Violin"</span>, <span class="syn-str">"Bullet"</span>, <span class="syn-str">"Lollipop"</span>, <span class="syn-str">"Dumbbell"</span>, <span class="syn-str">"Pareto"</span>]
+    <span class="syn-kw">if</span> !english {
+        group_labels =[[<span class="syn-str">"撤销"</span>, <span class="syn-str">"重做"</span>, <span class="syn-str">"保存"</span>],[<span class="syn-str">"日"</span>, <span class="syn-str">"周"</span>, <span class="syn-str">"月"</span>],[<span class="syn-str">"加粗"</span>, <span class="syn-str">"斜体"</span>, <span class="syn-str">"下划线"</span>]]
+        type_labels =[<span class="syn-str">"折线"</span>, <span class="syn-str">"面积"</span>, <span class="syn-str">"柱状"</span>, <span class="syn-str">"散点"</span>, <span class="syn-str">"环形"</span>,
+            <span class="syn-str">"阶梯"</span>, <span class="syn-str">"堆叠面积"</span>, <span class="syn-str">"堆叠柱状"</span>, <span class="syn-str">"水平条形"</span>, <span class="syn-str">"饼图"</span>,
+            <span class="syn-str">"玫瑰"</span>, <span class="syn-str">"雷达"</span>, <span class="syn-str">"仪表盘"</span>, <span class="syn-str">"气泡"</span>, <span class="syn-str">"直方图"</span>,
+            <span class="syn-str">"箱线"</span>, <span class="syn-str">"热力"</span>, <span class="syn-str">"K 线"</span>, <span class="syn-str">"瀑布"</span>, <span class="syn-str">"漏斗"</span>,
+            <span class="syn-str">"样条线"</span>, <span class="syn-str">"样条面积"</span>, <span class="syn-str">"极坐标环"</span>, <span class="syn-str">"树图"</span>, <span class="syn-str">"桑基"</span>,
+            <span class="syn-str">"小提琴"</span>, <span class="syn-str">"子弹图"</span>, <span class="syn-str">"棒棒糖"</span>, <span class="syn-str">"哑铃"</span>, <span class="syn-str">"帕累托"</span>]
+    }
     <span class="syn-kw">for</span> mode <span class="syn-kw">in</span> 0:3 {<span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:3 {s.set_button_group_label(m.pages[38].ids[mode],(i + 1) * 10, group_labels[mode][i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }}
-    <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:5 {s.set_button_group_label(m.pages[39].ids[1], i + 1, type_labels[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
-    translated <span class="syn-flow">:=</span> workshop_menu_items(index == 1)
+    <span class="syn-kw">for</span> r <span class="syn-kw">in</span> 0:6 {
+        gid <span class="syn-flow">:=</span> m.pages[39].ids[1 + r]
+        <span class="syn-kw">for</span> k <span class="syn-kw">in</span> 0:5 {
+            key <span class="syn-flow">:=</span> r * 5 + k + 1
+            s.set_button_group_label(gid, key, type_labels[key - 1]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        }
+    }
+    series <span class="syn-flow">:=</span> chart_data_locale(m.chart_kind, m.revision, english)
+    s.set_chart_series(m.pages[39].ids[0], &amp;series) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    translated <span class="syn-flow">:=</span> workshop_menu_items(english)
     <span class="syn-kw">for</span> page_index <span class="syn-kw">in</span> 42:45 {<span class="syn-kw">for</span> item <span class="syn-kw">in</span> translated{s.set_menu_item_label(m.pages[page_index].ids[0], item.key, item.label) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }}
     $menu_labels <span class="syn-flow">:=</span>[<span class="syn-str">"Actions"</span>, <span class="syn-str">"Right click here"</span>, <span class="syn-str">"Save"</span>]
-    <span class="syn-kw">if</span> index != 1 {menu_labels =[<span class="syn-str">"操作"</span>, <span class="syn-str">"右键打开菜单"</span>, <span class="syn-str">"保存"</span>]}
+    <span class="syn-kw">if</span> !english {menu_labels =[<span class="syn-str">"操作"</span>, <span class="syn-str">"右键打开菜单"</span>, <span class="syn-str">"保存"</span>]}
     <span class="syn-kw">for</span> page_index <span class="syn-kw">in</span> 42:45 {s.set_menu_label(m.pages[page_index].ids[0], menu_labels[page_index - 42]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+    m.controls_dirty = true
 
     <span class="syn-flow">&lt;&lt;</span> 0
 }
@@ -916,13 +1026,20 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 }
 
 <span class="syn-kw">fn</span> (m &amp;Workshop) update_badges(s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
+    english <span class="syn-flow">:=</span> (s.selected(m.language) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) == 1
     pages <span class="syn-flow">:=</span> &amp;m.pages
     page <span class="syn-flow">:=</span> &amp;pages[30]
     s.set_badge_count(page.ids[0], m.unread, 99, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    s.set_text(page.ids[6], str(m.unread) + <span class="syn-str">" unread · 点击收件箱清零，徽标随数字收紧。"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $summary <span class="syn-flow">:=</span> str(m.unread) + <span class="syn-str">" 条未读 · 点击收件箱清零，徽标随数字收紧。"</span>
+    <span class="syn-kw">if</span> english {summary = str(m.unread) + <span class="syn-str">" unread · Click Inbox to clear; badge tightens with digits."</span>}
+    s.set_text(page.ids[6], summary) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     s.set_visible(page.ids[3], m.online) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    $name <span class="syn-flow">:=</span> <span class="syn-str">"林文 · Away 离线"</span>
-    <span class="syn-kw">if</span> m.online{name = <span class="syn-str">"林文 · Available 在线"</span>}
+    $name <span class="syn-flow">:=</span> <span class="syn-str">"林文 · 离线"</span>
+    <span class="syn-kw">if</span> m.online{name = <span class="syn-str">"林文 · 在线"</span>}
+    <span class="syn-kw">if</span> english {
+        name = <span class="syn-str">"Lin Wen · Away"</span>
+        <span class="syn-kw">if</span> m.online{name = <span class="syn-str">"Lin Wen · Available"</span>}
+    }
     s.set_text(page.ids[7], name) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-flow">&lt;&lt;</span> 0
 }
@@ -944,11 +1061,16 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 }
 
 <span class="syn-kw">fn</span> (m &amp;Workshop) range_summary(s <span class="syn-borrow">$&amp;</span>widgets.Screen, committed <span class="syn-type">bool</span>) <span class="syn-type">int</span> {
+    english <span class="syn-flow">:=</span> (s.selected(m.language) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) == 1
     pages <span class="syn-flow">:=</span> &amp;m.pages
     page <span class="syn-flow">:=</span> &amp;pages[40]
     values <span class="syn-flow">:=</span> s.range_values(page.ids[0]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    $prefix <span class="syn-flow">:=</span> <span class="syn-str">"Preview / 预览"</span>
-    <span class="syn-kw">if</span> committed{prefix = <span class="syn-str">"Committed / 已提交"</span>}
+    $prefix <span class="syn-flow">:=</span> <span class="syn-str">"预览"</span>
+    <span class="syn-kw">if</span> committed{prefix = <span class="syn-str">"已提交"</span>}
+    <span class="syn-kw">if</span> english {
+        prefix = <span class="syn-str">"Preview"</span>
+        <span class="syn-kw">if</span> committed{prefix = <span class="syn-str">"Committed"</span>}
+    }
     text <span class="syn-flow">:=</span> strconv.format_float(values.lower, 102, 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     upper <span class="syn-flow">:=</span> strconv.format_float(values.upper, 102, 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     s.set_text(page.ids[1], prefix + <span class="syn-str">" · "</span> + text + <span class="syn-str">" – "</span> + upper) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -974,24 +1096,43 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
             s.set_read_only(page.ids[i], state == 2) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
         }}
     <span class="syn-kw">if</span> position == 39 {
-        s.set_button_group_checked(page.ids[1], m.chart_kind + 1, true) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        s.set_enabled(page.ids[1], state != 1) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-        s.set_read_only(page.ids[1], state == 2) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        <span class="syn-kw">for</span> r <span class="syn-kw">in</span> 0:6 {
+            gid <span class="syn-flow">:=</span> page.ids[1 + r]
+            <span class="syn-kw">for</span> k <span class="syn-kw">in</span> 0:5 {
+                key <span class="syn-flow">:=</span> r * 5 + k + 1
+                s.set_button_group_checked(gid, key, m.chart_kind + 1 == key) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            }
+            s.set_enabled(gid, state != 1) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+            s.set_read_only(gid, state == 2) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+        }
     }
+    english <span class="syn-flow">:=</span> (s.selected(m.language) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>) == 1
     s.set_enabled(m.motion, animated(m.selected) ||(m.selected &gt;= 33 &amp;&amp; m.selected &lt;= 36)) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     s.set_selected_button(m.custom, m.customized) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    $custom_text <span class="syn-flow">:=</span> <span class="syn-str">"Default 默认"</span>
-    <span class="syn-kw">if</span> m.customized{custom_text = <span class="syn-str">"Custom 自定义"</span>}
+    $custom_text <span class="syn-flow">:=</span> <span class="syn-str">"默认样式"</span>
+    <span class="syn-kw">if</span> m.customized{custom_text = <span class="syn-str">"自定义样式"</span>}
+    <span class="syn-kw">if</span> english {
+        custom_text = <span class="syn-str">"Default"</span>
+        <span class="syn-kw">if</span> m.customized{custom_text = <span class="syn-str">"Custom"</span>}
+    }
     s.set_text(m.custom, custom_text) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    $motion_text <span class="syn-flow">:=</span> <span class="syn-str">"Motion 160ms"</span>
-    <span class="syn-kw">if</span> m.slow{motion_text = <span class="syn-str">"Motion 420ms"</span>}
+    $motion_text <span class="syn-flow">:=</span> <span class="syn-str">"动效 160ms"</span>
+    <span class="syn-kw">if</span> m.slow{motion_text = <span class="syn-str">"动效 420ms"</span>}
+    <span class="syn-kw">if</span> english {
+        motion_text = <span class="syn-str">"Motion 160ms"</span>
+        <span class="syn-kw">if</span> m.slow{motion_text = <span class="syn-str">"Motion 420ms"</span>}
+    }
     s.set_text(m.motion, motion_text) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    caption <span class="syn-flow">:=</span> description(m.selected)
+    caption <span class="syn-flow">:=</span> description_locale(m.selected, english)
     s.set_text(m.caption, caption) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    $state_text <span class="syn-flow">:=</span> <span class="syn-str">"Hover · press · Tab · arrows · Escape / 使用真实鼠标与键盘状态"</span>
-    <span class="syn-kw">if</span>(state == 2 &amp;&amp; !read_only(m.selected)) ||(state == 3 &amp;&amp; !invalid(m.selected) &amp;&amp; m.selected != 31 &amp;&amp; m.selected != 32) {state_text = <span class="syn-str">"此组件没有该状态。预览保持其实际语义。"</span>}
+    $state_text <span class="syn-flow">:=</span> <span class="syn-str">"悬停 · 按下 · Tab · 方向键 · Escape（使用真实鼠标与键盘状态）"</span>
+    <span class="syn-kw">if</span> english {state_text = <span class="syn-str">"Hover · press · Tab · arrows · Escape"</span>}
+    <span class="syn-kw">if</span>(state == 2 &amp;&amp; !read_only(m.selected)) ||(state == 3 &amp;&amp; !invalid(m.selected) &amp;&amp; m.selected != 31 &amp;&amp; m.selected != 32) {
+        state_text = <span class="syn-str">"此组件没有该状态。预览保持其实际语义。"</span>
+        <span class="syn-kw">if</span> english {state_text = <span class="syn-str">"This component does not have that state; preview keeps its actual semantics."</span>}
+    }
     s.set_text(m.status, state_text) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    labels <span class="syn-flow">:=</span> tool_labels(m.selected)
+    labels <span class="syn-flow">:=</span> tool_labels_locale(m.selected, english)
     <span class="syn-kw">for</span> i <span class="syn-kw">in</span> 0:3 {s.set_text(m.tools[i], labels[i]) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
         s.set_selected_button(m.tools[i], false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
         s.set_enabled(m.tools[i], labels[i].len &gt; 0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>

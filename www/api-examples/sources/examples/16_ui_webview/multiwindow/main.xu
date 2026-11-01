@@ -5,15 +5,15 @@ demo #"github.com/xulang-org/examples/ui_demo"
 
 fn paint(window ui.Window,count int) int {
     context := draw.window_context(&window) or >>
-    $frame := context.new_frame(2048)
+    mut frame := context.new_frame(2048)
     frame.begin() or >>
     frame.set_bg(demo.background()) or >>
-    demo.text(&context,$&frame,26.0,28.0,14.0,demo.accent(),"06 / INDEPENDENT WINDOWS") or >>
-    demo.text(&context,$&frame,26.0,64.0,27.0,demo.ink(),"Window " + str(window.id)) or >>
-    demo.text(&context,$&frame,26.0,116.0,17.0,demo.ink(),"Clicks in this window: " + str(count)) or >>
-    demo.text(&context,$&frame,26.0,172.0,14.0,demo.muted(),"N: new window / W: close this window") or >>
-    demo.text(&context,$&frame,26.0,208.0,14.0,demo.muted(),"F: focus first window / R: resize / Escape: quit all") or >>
-    demo.text(&context,$&frame,26.0,258.0,13.0,demo.muted(),"One event channel. Each canvas owns its resources.") or >>
+    demo.text(&context,mut &frame,26.0,28.0,14.0,demo.accent(),"06 / INDEPENDENT WINDOWS") or >>
+    demo.text(&context,mut &frame,26.0,64.0,27.0,demo.ink(),"Window " + str(window.id)) or >>
+    demo.text(&context,mut &frame,26.0,116.0,17.0,demo.ink(),"Clicks in this window: " + str(count)) or >>
+    demo.text(&context,mut &frame,26.0,172.0,14.0,demo.muted(),"N: new window / W: close this window") or >>
+    demo.text(&context,mut &frame,26.0,208.0,14.0,demo.muted(),"F: focus first window / R: resize / Escape: quit all") or >>
+    demo.text(&context,mut &frame,26.0,258.0,13.0,demo.muted(),"One event channel. Each canvas owns its resources.") or >>
     frame.present() or >>
     frame.dispose()
     << 0
@@ -22,16 +22,16 @@ fn scene(ech chan ui.Event) int {
     ready := demo.ready(ech) or >>
     if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
-    $app := demo.windows(ech)
+    mut app := demo.windows(ech)
     first := ui.Window{id: identity.window_id,generation: identity.generation,title: "Xu UI / Window 1",width: 560,height: 340,content_kind: ui.CONTENT_DRAW,content_backend_id: identity.canvas_id,closed: 0}
-    $windows := []ui.Window{}
+    mut windows := []ui.Window{}
     windows.push(first)
-    $counts := [0]
+    mut counts := [0]
     paint(windows[0],0) or >>
     while true {
         event := demo.next(ech)
         if event.kind == ui.EV_EXIT { <- }
-        $index := -1
+        mut index := -1
         for i in 0:windows.len { if windows[i].id == event.window_id { index = i } }
         if index < 0 { -> }
         if event.kind == ui.EV_CANVAS_READY {
@@ -56,7 +56,7 @@ fn scene(ech chan ui.Event) int {
         if input.key == ui.KEY_ESCAPE { demo.quit() or >> }
         if input.key == 78 || input.key == 110 {
             // At most six demo windows; the host's own limit is independent.
-            $live := 0
+            mut live := 0
             for window in windows { if window.closed == 0 { live = live + 1 } }
             if live < 6 {
                 window := app.open_content_window(ui.WindowOpts{title: "Xu UI / Additional Window",width: 560,height: 340},ui.CONTENT_DRAW) or >>
@@ -65,12 +65,12 @@ fn scene(ech chan ui.Event) int {
             }
         }
         if input.key == 87 || input.key == 119 {
-            $window := windows[index]
+            mut window := windows[index]
             window.request_close() or >>
             windows[index] = window
         }
         if input.key == 82 || input.key == 114 {
-            $window := windows[index]
+            mut window := windows[index]
             window.resize(660,400) or >>
             windows[index] = window
         }
@@ -84,7 +84,7 @@ fn scene(ech chan ui.Event) int {
 fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
     << } }
 fn launch() int {
-    $app := demo.app("Xu UI / Window 1",560,340) or >>
+    mut app := demo.app("Xu UI / Window 1",560,340) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }

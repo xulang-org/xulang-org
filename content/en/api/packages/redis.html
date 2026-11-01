@@ -1,7 +1,7 @@
 <!--title: #github.com/xulang-org/packages/redis-->
 <p class="crumb">API</p>
 <h1><code>#github.com/xulang-org/packages/redis</code></h1>
-<!--xu-api-version: 0.10.12-->
+<!--xu-api-version: 0.11.2-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>redis #github.com/xulang-org/packages/redis</code></p>
 <p class="meta">counts: 20 fns, 98 methods, 6 types, 12 consts, 0 ifaces</p>
@@ -13,7 +13,7 @@
 <p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
 <details class="api-example" id="example-02de77e08633" open>
 <summary><code>21_standalone_redis/main.xu</code></summary>
-<p class="meta"><a href="https://github.com/xulang-org/examples/tree/9bb00a880e262b37bd7624d8789264900e9cdf59/examples/21_standalone_redis">Complete project</a> · <a href="/api-examples/sources/examples/21_standalone_redis/main.xu" download>Download source</a></p>
+<p class="meta">Required SDK: Xu 0.8.3 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/21_standalone_redis">Complete project</a> · <a href="/api-examples/sources/examples/21_standalone_redis/main.xu" download>Download source</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="21_standalone_redis/main.xu"><code class="language-xu">@main
 
 redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/redis
@@ -51,7 +51,7 @@ redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
 <span class="syn-kw">fn</span> redis_pool_worker(id <span class="syn-type">int</span>, addr <span class="syn-type">string</span>, idle <span class="syn-kw">chan</span> <span class="syn-type">int</span>, done <span class="syn-kw">chan</span> <span class="syn-type">int</span>) {
     p <span class="syn-flow">:=</span> redis.Pool{addr: addr, auth: <span class="syn-str">""</span>, db: 0, idle: idle, max_idle: 5}
-    $c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> c <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"worker "</span> + str(id) + <span class="syn-str">" get failed: "</span> + err.msg())
         done <span class="syn-flow">&lt;-</span> -id
         <span class="syn-flow">&lt;&lt;</span>
@@ -88,7 +88,7 @@ redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
     url <span class="syn-flow">:=</span> <span class="syn-str">"redis://127.0.0.1:6379/0"</span>
     println(<span class="syn-str">"Connecting to Redis via URL "</span> + url + <span class="syn-str">"..."</span>)
-    $client <span class="syn-flow">:=</span> redis.open_url(url + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> client <span class="syn-flow">:=</span> redis.open_url(url + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"Connection via URL failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -149,7 +149,7 @@ redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     println(<span class="syn-str">"5. LRANGE items count: "</span> + str(items.len))
-    $i <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> i &lt; items.len {
         println(<span class="syn-str">"   - item "</span> + str(i) + <span class="syn-str">": "</span> + items[i])
         i = i + 1
@@ -191,12 +191,12 @@ redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"7. ZSET: card="</span> + str(zcard) + <span class="syn-str">", Alice score="</span> + zscore + <span class="syn-str">", members="</span> + zleaders[0] + <span class="syn-str">","</span> + zleaders[1] + <span class="syn-str">","</span> + zleaders[2])
 
     <span class="syn-cmt">// Pipeline</span>
-    $pipe <span class="syn-flow">:=</span> client.pipeline()
+    <span class="syn-kw">mut</span> pipe <span class="syn-flow">:=</span> client.pipeline()
     pipe.set(<span class="syn-str">"xu_pipe_a"</span>, <span class="syn-str">"pipe_val_a"</span>)
     pipe.set(<span class="syn-str">"xu_pipe_b"</span>, <span class="syn-str">"pipe_val_b"</span>)
     pipe.get(<span class="syn-str">"xu_pipe_a"</span>)
     pipe.incr(<span class="syn-str">"xu_pipe_c"</span>)
-    pipe_results <span class="syn-flow">:=</span> client.exec_pipeline(<span class="syn-borrow">$&amp;</span>pipe) <span class="syn-kw">or</span> (err) {
+    pipe_results <span class="syn-flow">:=</span> client.exec_pipeline(<span class="syn-borrow">mut &amp;</span>pipe) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"Pipeline exec failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -216,7 +216,7 @@ redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
     <span class="syn-cmt">// Test Pool with URL, Reuse &amp; Concurrency</span>
     pool <span class="syn-flow">:=</span> redis.new_pool_url(<span class="syn-str">"redis://127.0.0.1:6379/0"</span>, 5)
-    $p_conn <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> p_conn <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"Pool get failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -230,7 +230,7 @@ redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"11. Pool connection returned successfully."</span>)
 
     <span class="syn-cmt">// Verify Pool Connection REUSE: second get should give the exact same fd</span>
-    $p_conn2 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> p_conn2 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"Pool second get failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -242,7 +242,7 @@ redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
 
     <span class="syn-cmt">// Concurrent borrow another connection</span>
-    $p_conn3 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
+    <span class="syn-kw">mut</span> p_conn3 <span class="syn-flow">:=</span> pool.get() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"Pool third get failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -270,7 +270,7 @@ redis <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     <span class="syn-kw">xu</span> redis_pool_worker(4, pool.addr + <span class="syn-str">""</span>, pool.idle, done_ch)
     <span class="syn-kw">xu</span> redis_pool_worker(5, pool.addr + <span class="syn-str">""</span>, pool.idle, done_ch)
 
-    $success_count <span class="syn-flow">:=</span> 0
+    <span class="syn-kw">mut</span> success_count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">for</span> w <span class="syn-kw">in</span> 0:5 {
         res_id <span class="syn-flow">:=</span> <span class="syn-flow">&lt;-</span>done_ch
         <span class="syn-kw">if</span> res_id &gt; 0 {

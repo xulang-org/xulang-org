@@ -7,7 +7,7 @@ postgres #github.com/xulang-org/packages/postgres
 fn verify_postgres_live() {
     println("--- Testing Native Postgres Driver Wire Protocol ---")
     dsn := "postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"
-    $conn := postgres.open(dsn)
+    mut conn := postgres.open(dsn)
 
     // 1. Ping
     err := conn.ping()
@@ -34,7 +34,7 @@ fn verify_postgres_live() {
     println("   [PASS] Table 'xu_heroes' created.")
 
     // 3. Exec DML Insert
-    $args1 := []driver.NamedValue{}
+    mut args1 := []driver.NamedValue{}
     args1.push(driver.NamedValue{ordinal: 1, name: "", value: 1})
     args1.push(driver.NamedValue{ordinal: 2, name: "", value: "Ironman"})
     args1.push(driver.NamedValue{ordinal: 3, name: "", value: 100})
@@ -47,7 +47,7 @@ fn verify_postgres_live() {
     println("   [PASS] Hero inserted (rows=" + str(r3.rows_affected) + ").")
 
     // 4. Query
-    $q_args := []driver.NamedValue{}
+    mut q_args := []driver.NamedValue{}
     q_args.push(driver.NamedValue{ordinal: 1, name: "", value: 1})
     rows := conn.query("SELECT id, name, power FROM xu_heroes WHERE id = $$1;", q_args)
     if rows.err.len > 0 {
@@ -56,13 +56,13 @@ fn verify_postgres_live() {
         <<
     }
     println("   [PASS] Query executed, columns count: " + str(rows.columns.len))
-    $i := 0
+    mut i := 0
     while i < rows.columns.len {
         println("      Col[" + str(i) + "]: " + rows.columns[i])
         i = i + 1
     }
     println("   Total cells retrieved: " + str(rows.cells.len))
-    $j := 0
+    mut j := 0
     while j < rows.cells.len {
         println("      Cell[" + str(j) + "]: " + rows.cells[j])
         j = j + 1
@@ -70,8 +70,8 @@ fn verify_postgres_live() {
 
     // 5. Transaction
     println("   Testing Transaction Commit...")
-    $tx := conn.begin()
-    $args2 := []driver.NamedValue{}
+    mut tx := conn.begin()
+    mut args2 := []driver.NamedValue{}
     args2.push(driver.NamedValue{ordinal: 1, name: "", value: 2})
     args2.push(driver.NamedValue{ordinal: 2, name: "", value: "Thor"})
     args2.push(driver.NamedValue{ordinal: 3, name: "", value: 200})
@@ -107,7 +107,7 @@ fn verify_postgres_live() {
 fn verify_postgres_pool() {
     println("\n--- Testing Native Postgres Connection Pool ---")
     dsn := "postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"
-    $pool := postgres.open_pool(dsn + "", 5, 2)
+    mut pool := postgres.open_pool(dsn + "", 5, 2)
 
     pool.ping() or (err) {
         println("   [FAIL] Pool ping error: " + err.msg())
@@ -127,7 +127,7 @@ fn verify_postgres_pool() {
     println("   [PASS] Pool created table xu_pool_users.")
 
     // 2. Concurrency / multiple inserts
-    $i := 1
+    mut i := 1
     while i <= 5 {
         pool.exec("INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);", i, "User_" + str(i), i * 100) or (err) {
             println("   [FAIL] Insert row error: " + err.msg())
@@ -138,11 +138,11 @@ fn verify_postgres_pool() {
     println("   [PASS] Concurrently inserted 5 rows across pooled connections.")
 
     // 3. Query
-    $rows := pool.query("SELECT id, name, balance FROM xu_pool_users ORDER BY id;") or (err) {
+    mut rows := pool.query("SELECT id, name, balance FROM xu_pool_users ORDER BY id;") or (err) {
         println("   [FAIL] Pool query error: " + err.msg())
         <<
     }
-    $count := 0
+    mut count := 0
     while rows.next() {
         vals := rows.take() or (err) {
             println("   [FAIL] rows.take error: " + err.msg())
@@ -162,7 +162,7 @@ fn verify_postgres_pool() {
     }
 
     // 4. Transaction via Pool
-    $tx := pool.begin() or (err) {
+    mut tx := pool.begin() or (err) {
         println("   [FAIL] Pool begin tx error: " + err.msg())
         <<
     }
