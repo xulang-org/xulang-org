@@ -92,16 +92,15 @@ test('Canvas rejects unsupported or malformed commands, sizes, and stack abuse',
   ]) assert.throws(() => host.frame(commands));
 });
 
-test('Canvas renders layout_text with system font and CJK scale protection', () => {
+test('Canvas preserves natural XUUI glyph proportions instead of squeezing estimated widths', () => {
   const operations = [];
   const fakeCtx = {
     setTransform: () => {},
     fillRect: () => {},
     save: () => {},
     restore: () => {},
-    translate: (...args) => operations.push({op: 'translate', args}),
-    scale: (...args) => operations.push({op: 'scale', args}),
-    measureText: (text) => ({width: text.length * 14}),
+    scale: () => assert.fail('layout_text must not deform glyphs to match grid metrics'),
+    measureText: () => assert.fail('estimated advances must not drive font compression'),
     fillText: (...args) => operations.push({op: 'fillText', args}),
     drawImage: () => {}
   };
@@ -113,18 +112,19 @@ test('Canvas renders layout_text with system font and CJK scale protection', () 
     },
     getContext: () => fakeCtx
   };
-  const commands = 'begin\nlayout_text\t10\t20\t14\t#ffffff\t16.8\t保存\npresent\n';
+  const commands = 'begin\nlayout_text\t10\t20\t14\t#ffffff\t16.8\t保存\nlayout_text\t20\t40\t14\t#ffffff\t1\tWide text\npresent\n';
   assert.equal(host.render(canvas, commands), true);
-  const scaleOp = operations.find(o => o.op === 'scale');
-  assert.ok(scaleOp, 'scale operation recorded');
-  assert.ok(scaleOp.args[0] >= 0.88, 'CJK scale floor is preserved at >= 0.88');
+  assert.deepEqual(operations, [
+    {op:'fillText', args:['保存',10,20]},
+    {op:'fillText', args:['Wide text',20,40]}
+  ]);
   assert.equal(fakeCtx.textBaseline, 'top');
-  assert.match(fakeCtx.font, /system-ui/);
+  assert.equal(fakeCtx.font, '14px ' + host.fontStack);
 });
 
 test('measureText helper reports font metrics with fontStack default', () => {
   assert.ok(host.fontStack);
-  assert.match(host.fontStack, /system-ui/);
+  assert.equal(host.fontStack, JSON.parse(readFileSync(new URL('../playground/design/tokens.json', import.meta.url))).base['font-sans']);
   const metrics = host.measureText('Xu', 14);
   assert.ok(metrics && typeof metrics.width === 'number');
   assert.ok(metrics.width > 0);

@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "upstream_commit": "ccb9b460d317cf9ec92f6a24d065112885506ddb",
+  "source_commit": "b847723de6e77ee19e665bde1fd9db493737147f",
+  "reason": "Make nonzero divisors explicit for the released SDK without changing chart behavior.",
+  "declarations": [
+    {
+      "module": "widgets_extra_chart",
+      "path": "src/ui/widgets/chart_paint.xu",
+      "signature": "fn (c &Chart) series_color(index int,styles &Styles) draw.Color",
+      "upstream_sha256": "69218bc74bf2931559f615117c8d9a8b7382ad27f52ccd83913124b3b75dee5f",
+      "sha256": "bb20de12185c1b5f3fcbf8bac933b23852393579ab87cf4764338ca1c77ab590",
+      "replacements": [
+        {
+          "before": "    if c.appearance.palette.len > 0 { << c.appearance.palette[max_int(0,index) % c.appearance.palette.len] }\n    light := ((styles.background.value() >> 24) & 255) > 150\n    if light {\n        colors := [draw.rgb(177,54,42),draw.rgb(27,107,170),draw.rgb(29,123,94),draw.rgb(144,100,13),draw.rgb(129,74,152),draw.rgb(27,119,129),draw.rgb(173,75,105),draw.rgb(92,107,128)]\n        << colors[max_int(0,index) % colors.len]\n    }\n    colors := [draw.rgb(239,139,121),draw.rgb(112,184,242),draw.rgb(102,205,162),draw.rgb(236,191,89),draw.rgb(195,150,226),draw.rgb(111,205,212),draw.rgb(239,148,182),draw.rgb(172,187,210)]\n    << colors[max_int(0,index) % colors.len]\n",
+          "after": "    palette_len := c.appearance.palette.len\n    if palette_len > 0 { << c.appearance.palette[max_int(0,index) % palette_len] }\n    light := ((styles.background.value() >> 24) & 255) > 150\n    if light {\n        colors := [draw.rgb(177,54,42),draw.rgb(27,107,170),draw.rgb(29,123,94),draw.rgb(144,100,13),draw.rgb(129,74,152),draw.rgb(27,119,129),draw.rgb(173,75,105),draw.rgb(92,107,128)]\n        << colors[max_int(0,index) % 8]\n    }\n    colors := [draw.rgb(239,139,121),draw.rgb(112,184,242),draw.rgb(102,205,162),draw.rgb(236,191,89),draw.rgb(195,150,226),draw.rgb(111,205,212),draw.rgb(239,148,182),draw.rgb(172,187,210)]\n    << colors[max_int(0,index) % 8]\n"
+        }
+      ]
+    },
+    {
+      "module": "widgets_extra_chart",
+      "path": "src/ui/widgets/chart_paint.xu",
+      "signature": "pub fn (c $&Chart) apply_styles(styles &Styles) int",
+      "upstream_sha256": "02ebe931daaf84b6c5ec24c9ce60f212708c633c1b72e98233a9e9884878460b",
+      "sha256": "12be6b95523bc4f7cd99803583e605c7eb3cb641ebf5d4d38f4871ad9a0a81a0",
+      "replacements": [
+        {
+          "before": "        row_h := (20.0 * scale + 12.0) * d\n        cell_w := math.max(1.0,(b.width - 32.0 * d) / f64(columns))\n        for i in 0:c.series.len { c.legend_boxes.push(layout.Rect{x: b.x + 16.0 * d + f64(i % columns) * cell_w,\n            y: b.y + 12.0 * d + f64(i / columns) * row_h,width: cell_w,height: row_h}) }\n        top = top + f64((c.series.len + columns - 1) / columns) * row_h\n",
+          "after": "        if columns > 0 {\n            row_h := (20.0 * scale + 12.0) * d\n            cell_w := math.max(1.0,(b.width - 32.0 * d) / f64(columns))\n            for i in 0:c.series.len { c.legend_boxes.push(layout.Rect{x: b.x + 16.0 * d + f64(i % columns) * cell_w,\n                y: b.y + 12.0 * d + f64(i / columns) * row_h,width: cell_w,height: row_h}) }\n            top = top + f64((c.series.len + columns - 1) / columns) * row_h\n        }\n"
+        }
+      ]
+    },
+    {
+      "module": "widgets_extra_chart",
+      "path": "src/ui/widgets/chart_input.xu",
+      "signature": "pub fn (c $&Chart) input(event &ui.InputEvent) Action",
+      "upstream_sha256": "7a81196b733979de1e4306eb7c510126d38afa331511a4028c65227b96b6ad80",
+      "sha256": "33d562b834a53408633b3ea1e8f776a825531b8d6c70a371a82add3c6f3f4aaf",
+      "replacements": [
+        {
+          "before": "            for attempt in 0:c.data.len { index = (index + direction + c.data.len) % max_int(1,c.data.len)\n                if c.datum_visible(index) && c.data[index].target_opacity > 0.0 { c.set_hot(index) or >>\n                    <- } }\n",
+          "after": "            modulus := max_int(1,c.data.len)\n            if modulus > 0 {\n                for attempt in 0:c.data.len { index = (index + direction + c.data.len) % modulus\n                    if c.datum_visible(index) && c.data[index].target_opacity > 0.0 { c.set_hot(index) or >>\n                        <- } }\n            }\n"
+        }
+      ]
+    }
+  ]
+}

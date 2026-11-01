@@ -27,3 +27,18 @@ test('Canvas keeps logical geometry when high-density drawing resets its transfo
   host.XuPlayCanvas.render(canvas, 'begin\npresent\n');
   assert.equal(canvas.width, 1920);
 });
+
+test('raw and layout text both use the scoped preview font token', () => {
+  const host = {};
+  vm.runInNewContext(readFileSync(new URL('../www/xu-play-canvas.js', import.meta.url), 'utf8'), host);
+  const fonts = [];
+  const context = new Proxy({}, {get: (target, method) => method in target ? target[method] : (...args) => {
+    if (method === 'fillText') fonts.push(context.font);
+  }});
+  const canvas = {ownerDocument:{
+    defaultView:{getComputedStyle:()=>({getPropertyValue:()=> '"Test Sans", sans-serif'})},
+    createElement:()=>({getContext:()=>context})
+  },getContext:()=>context};
+  host.XuPlayCanvas.render(canvas, 'begin\ntext\t0\t0\t14\t#ffffff\t中文\nlayout_text\t0\t20\t14\t#ffffff\t20\tXu\npresent\n');
+  assert.deepEqual(fonts, ['14px "Test Sans", sans-serif','14px "Test Sans", sans-serif']);
+});

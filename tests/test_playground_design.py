@@ -13,6 +13,20 @@ spec.loader.exec_module(site)
 
 
 class DesignCacheTests(unittest.TestCase):
+    def test_preview_controls_are_versioned_under_a_base_path(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            (root / 'www').mkdir()
+            controller = root / 'www/xu-play-preview.js'
+            controller.write_text('first')
+            old = site.playground_asset_key(root, root / 'unused.wasm')
+            controller.write_text('updated')
+            new = site.playground_asset_key(root, root / 'unused.wasm')
+            self.assertNotEqual(old, new)
+            parser = site.RewriteHTML('/repo', {'/playground'}, True, new)
+            parser.feed('<script src="/xu-play-preview.js" defer></script>')
+            self.assertIn(f'/repo/xu-play-preview.js?v={new}', ''.join(parser.parts))
+
     def test_design_update_changes_styles_controller_and_catalog_cache_key(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
