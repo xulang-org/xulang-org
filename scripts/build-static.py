@@ -134,7 +134,7 @@ class RewriteHTML(HTMLParser):
             end = '/>' if closed else '>'
             raw = raw[:-len(end)] + f' data-wasm-available="{str(self.playground).lower()}"' + end
         if self.asset_key and tag in ('script', 'link'):
-            for asset in ('xu-play-workspace.js', 'xu-play-library.js', 'playground.css',
+            for asset in ('xu-play-workspace.js', 'xu-play-library.js', 'xu-play-preview.js', 'playground.css',
                           'widget-experience.js', 'widgets.css', 'playground-design.css'):
                 raw = re.sub(r'(/' + re.escape(asset) + r')(["\'])',
                              lambda m: m[1] + '?v=' + self.asset_key + m[2], raw)
@@ -201,7 +201,7 @@ def check_links(output: Path, base: str) -> None:
 
 def playground_asset_key(root: Path, wasm: Path) -> str:
     digest = hashlib.sha256()
-    for name in ('xu-play.js', 'xu-play-canvas.js', 'xu-play-workspace.js', 'xu-play-library.js', 'playground.css', 'widget-experience.js', 'widgets.css', 'playground-design.css', 'widgets.json', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
+    for name in ('xu-play.js', 'xu-play-canvas.js', 'xu-play-workspace.js', 'xu-play-library.js', 'xu-play-preview.js', 'playground.css', 'widget-experience.js', 'widgets.css', 'playground-design.css', 'widgets.json', 'xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
         asset = wasm if name == 'xu-play.wasm' else root / 'www' / name
         if asset.exists():
             digest.update(name.encode())

@@ -612,6 +612,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
                      '<link rel="stylesheet" href="/playground-design.css">'
                      '<link rel="stylesheet" href="/widgets.css">'
                      '<script src="/xu-play-canvas.js" defer></script>'
+                     '<script src="/xu-play-preview.js" defer></script>'
                      '<script src="/xu-play-workspace.js" defer></script>'
                      '<script src="/xu-play-library.js" defer></script>'
                      '<script src="/widget-experience.js" defer></script>'

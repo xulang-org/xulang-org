@@ -2,7 +2,8 @@
 (function (root) {
   'use strict';
   var WIDTH = 640, HEIGHT = 360, MAX_EVENTS = 100000;
-  var fontStack = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
+  // XUUI 0.1.0 font-sans; the preview can also supply the pinned CSS token.
+  var fontStack = '"Avenir Next", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif';
   // Argument types: number, color, text. Validate before touching a canvas.
   var signatures = {
     begin: '', present: '', cancel: '', push: '', pop: '', origin: '',
@@ -78,7 +79,8 @@
     function origin() { ctx.setTransform(ratio, 0, 0, ratio, 0, 0); }
     origin();
     var pen = {fill: '#000000', stroke: '-', width: 1}, stack = [];
-    var fontStack = 'system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", "PingFang SC", "Microsoft YaHei", sans-serif';
+    var computed = canvas.ownerDocument.defaultView?.getComputedStyle?.(canvas);
+    var family = computed?.getPropertyValue('--xu-font-sans').trim() || fontStack;
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
     function paint(fill, stroke, width) {
       if (fill !== '-') { ctx.fillStyle = fill; ctx.fill(); }
@@ -115,24 +117,16 @@
       else if (op === 'layout_text') {
         if (a[3] !== '-' && a[4] > 0 && a[5]) {
           ctx.save();
-          ctx.font = a[2] + 'px ' + fontStack;
+          ctx.font = a[2] + 'px ' + family;
           ctx.textBaseline = 'top';
           ctx.fillStyle = a[3];
-          var measured = ctx.measureText(a[5]).width;
-          ctx.translate(a[0], a[1]);
-          if (measured > 0) {
-            var hasCJK = /[\u3000-\u9fff\uff00-\uffef]/.test(a[5]);
-            var scale = 1;
-            if (measured > a[4]) {
-              var ratio = a[4] / measured;
-              scale = hasCJK ? Math.max(0.88, ratio) : ratio;
-            }
-            if (scale !== 1) ctx.scale(scale, 1);
-          }
-          ctx.fillText(a[5], 0, 0); ctx.restore();
+          // Xu's bounded layout supplies the origin and estimated advance.
+          // Preserve the font's natural glyph proportions at that origin;
+          // enclosing draw clips still control overflow for text fields.
+          ctx.fillText(a[5], a[0], a[1]); ctx.restore();
         }
       } else if (op === 'text') {
-        if (a[3] !== '-') { ctx.font = a[2] + 'px ' + fontStack; ctx.textBaseline = 'top'; ctx.fillStyle = a[3]; ctx.fillText(a[4], a[0], a[1]); }
+        if (a[3] !== '-') { ctx.font = a[2] + 'px ' + family; ctx.textBaseline = 'top'; ctx.fillStyle = a[3]; ctx.fillText(a[4], a[0], a[1]); }
       } else if (op === 'line') {
         ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(a[2], a[3]); paint('-', a[4], a[5]);
       } else {

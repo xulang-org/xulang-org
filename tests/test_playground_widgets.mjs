@@ -26,19 +26,21 @@ test('gallery uses real measurements, press/release states, focus rings, and cub
   const initial = run();
   assert.equal(initial.ui.input, true);
   assert.equal(initial.ui.interactive, true);
-  assert.equal(labels(initial)[0].args[4], 112.2);
+  assert.equal(labels(initial)[0].args[4], 92.4);
   const measured = host.frame(initial.ui.commands).find(c => c.op === 'clip_rect');
-  assert.equal(measured.args[2], 160.2);
-  assert.equal(measured.args[3], 45.25);
+  // Styled painting clips the label to the measured bounds minus 16 px padding
+  // on each side, rather than clipping the entire button as basic paint did.
+  assert.equal(measured.args[2], 108.4);
+  assert.equal(measured.args[3], 28);
   assert.ok(host.frame(initial.ui.commands).some(c => c.op === 'path_cubic'));
   const pressed = run(click(80,120).slice(0,1));
   assert.match(pressed.stdout, /Count: 0/);
-  assert.match(pressed.ui.commands, /#232d3cff/);
-  assert.match(pressed.ui.commands, /stroke_rect\t34\t102\t156.2\t41.25\t#93c5fdff/);
+  assert.match(pressed.ui.commands, /#3e3645ff/);
+  assert.match(pressed.ui.commands, /path_stroke\t#a8d9ffff\t2/);
   assert.match(run(click(80,120)).stdout, /Count: 1/);
-  const edited = run([], source.replace('17.0', '22.0'));
+  const edited = run([], source.replace('14.0', '22.0'));
   assert.notEqual(labels(edited)[0].args[4], labels(initial)[0].args[4]);
-  assert.equal(host.frame(edited.ui.commands).find(c => c.op === 'clip_rect').args[2], 193.2);
+  assert.equal(host.frame(edited.ui.commands).find(c => c.op === 'clip_rect').args[2], 161.2);
 });
 
 test('mouse, key, slider dragging, Shift+Tab, and cancellation drive Xu control state', () => {
@@ -53,13 +55,25 @@ test('mouse, key, slider dragging, Shift+Tab, and cancellation drive Xu control 
   assert.match(run(Array.from({length:32}, () => click(80,120)).flat()).stdout, /Count: 32/);
 });
 
-test('editable Xu code changes widget state and native theme painting', () => {
-  const edited = source.replace('count += 1', 'count += 7').replace('theme := widgets.default_theme()',
-    '$theme := widgets.default_theme()\n    theme.hovered = draw.rgb(220,40,80)');
+test('editable Xu code changes widget state and styled theme painting', () => {
+  const edited = source.replace('count += 1', 'count += 7').replace('styles.font.size = options.size',
+    'styles.font.size = options.size\n    styles.button.palette.hovered = draw.rgb(220,40,80)');
   const result = run(click(80,120), edited);
   assert.match(result.stdout, /Count: 7/);
   assert.match(result.ui.commands, /#dc2850ff/);
   assert.match(run(click(80,120), source.replace('$count := 0', 'button.set_enabled(false)\n    $count := 0')).stdout, /Count: 0/);
+});
+
+test('checked checkbox and switch paint the pinned brand color instead of SDK blue', () => {
+  assert.equal(source, readFileSync(new URL('../playground/examples/ui-widgets.xu', import.meta.url), 'utf8'));
+  const initial = run();
+  const selected = run([...click(60,185), ...click(60,240)]);
+  assert.match(selected.stdout, /Checkbox: true \| Switch: true/);
+  const fills = result => host.frame(result.ui.commands).filter(c =>
+    c.op === 'path_fill' && c.args[0] === '#ff5274ff').length;
+  assert.equal(fills(selected), fills(initial) + 2, 'both checked fills use the XUUI dark brand token');
+  assert.doesNotMatch(selected.ui.commands, /#3b82f6(?:ff)?/i);
+  assert.match(selected.ui.commands, /#190c12ff/, 'marks and thumbs use on-brand ink');
 });
 
 test('typed input rejects invalid records and Canvas validates fractional paths and text', () => {

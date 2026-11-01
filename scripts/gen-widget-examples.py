@@ -197,6 +197,8 @@ def source(name, slug, description=''):
 def generate(root=ROOT, check=False):
     path = root / 'www/xu-play-examples.json'
     catalog = json.loads(path.read_text(encoding='utf-8'))
+    catalog['projects']['ui-widgets']['files']['main.xu'] = (
+        root / 'playground/examples/ui-widgets.xu').read_text(encoding='utf-8')
     widgets = json.loads((root / 'templates/widgets.json').read_text(encoding='utf-8'))
     outputs = {}
     has_widgets = any(g['id'] == 'widgets' for g in catalog['groups'])
