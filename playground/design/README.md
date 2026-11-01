@@ -16,6 +16,10 @@ the Canvas host receives geometric drawing commands, without widget IDs.
 
 The component experiences and gallery use the light reference. The adapter maps
 semantic colors, control height, padding, corner radii, and focus treatment.
+At the user's request, the site adapter uses the theme's cinnabar brand color
+for focus boundaries instead of the upstream blue focus token. Selected controls
+use on-brand ink for the inner focus line so keyboard focus remains visible.
+The pinned `tokens.json` is unchanged; the adaptation is generated in Xu and CSS.
 Button, Checkbox, Switch, Radio, and Slider use desktop styled paint methods
 for rounded borders, selection states, and focus. Their declarations and
 dependencies load as a portable family when styled painting is requested.

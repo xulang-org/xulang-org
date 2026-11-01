@@ -7,6 +7,7 @@ import {Worker, isMainThread, parentPort, workerData} from 'node:worker_threads'
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
 
 const now = () => performance.timeOrigin + performance.now();
 if (!isMainThread) {
@@ -34,8 +35,10 @@ if (!isMainThread) {
   const example = options.example || 'ui-gallery';
   const rounds = Number(options.rounds || 3), clicks = Number(options.clicks || 3);
   assert.ok(rounds > 0 && Number.isInteger(rounds) && clicks > 0 && clicks <= 31 && Number.isInteger(clicks));
-  const source = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url)))[example]?.source;
-  assert.ok(['ui-gallery', 'ui-counter'].includes(example) && source, 'Use ui-gallery or ui-counter');
+  const project = JSON.parse(readFileSync(new URL('../www/xu-play-examples.json', import.meta.url))).projects[example];
+  const source = project?.files[project.entry];
+  assert.ok(['ui-gallery', 'ui-counter', 'widget-color-picker'].includes(example) && source,
+    'Use ui-gallery, ui-counter or widget-color-picker');
   const context = {};
   vm.runInNewContext(readFileSync(new URL('../www/xu-play-canvas.js', import.meta.url), 'utf8'), context);
   const host = context.XuPlayCanvas;
@@ -69,6 +72,16 @@ if (!isMainThread) {
       if (round) await request(init);
       const events = [];
       const stages = [{stage: 'initial', events: []}];
+      if (example === 'widget-color-picker') {
+        events.push({kind:72,x:280,y:182,button:1,buttons:1});
+        stages.push({stage:'drag-down',events:events.slice()});
+        for (let move=1;move<=clicks;move++) {
+          events.push({kind:74,x:280+move*120/clicks,y:182,buttons:1});
+          stages.push({stage:'drag-'+move,events:events.slice()});
+        }
+        events.push({kind:73,x:400,y:182,button:1});
+        stages.push({stage:'drag-up',events:events.slice()});
+      } else {
       for (let click = 1; click <= clicks; click++) {
         if (example === 'ui-gallery') {
           events.push({kind: 72, x: 100, y: 125, button: 1, buttons: 1});
@@ -82,12 +95,14 @@ if (!isMainThread) {
       for (const n of [16, 63, 64]) stages.push({stage: 'history-' + n, events: Array.from({length: n}, (_, i) =>
         example === 'ui-gallery' ? (i % 2 ? {kind:73,x:100,y:125,button:1} :
           {kind:72,x:100,y:125,button:1,buttons:1}) : {x: 320, y: 200})});
+      }
       for (const {stage, events} of stages) {
         const {result, sentAt, inputSerializeMs} = await request({type: 'run', source, events, profile: true});
         const posted = receive(); // second worker message carries measured postMessage time
         assert.equal(result.exit, 0, result.stderr);
         const expected = example === 'ui-gallery' ? Math.floor(events.length / 2) : events.length;
-        assert.match(result.stdout, new RegExp('Count: ' + expected + '(?:\\n| \\|)'));
+        if (example === 'widget-color-picker') assert.match(result.stdout,/^Color: #[0-9A-F]{8}\n$/);
+        else assert.match(result.stdout, new RegExp('Count: ' + expected + '(?:\\n| \\|)'));
         assert.ok(result.ui?.commands);
         calls = {};
         let t = performance.now();
@@ -115,6 +130,9 @@ if (!isMainThread) {
     });
     console.log(JSON.stringify({node: process.version, platform: process.platform, arch: process.arch,
       wasm, example, rounds, clicks, cache: init.cache, checkpoints: init.checkpoints,
+      wasmSha256: createHash('sha256').update(readFileSync(wasm)).digest('hex'),
+      sourceSha256: createHash('sha256').update(source).digest('hex'),
+      xuVersion: readFileSync(new URL('../VERSION',import.meta.url),'utf8').trim(),
       loadMs, summary, samples}, null, 2));
   } finally { await worker.terminate(); }
 }

@@ -1,6 +1,6 @@
 // Host bridge only: Xu source is parsed, checked and interpreted inside WASM.
 export const MAX_UI_EVENTS = 100000;
-export async function createRuntime(bytesOrModule, {cache = true, checkpoints = true} = {}) {
+export async function createRuntime(bytesOrModule, {cache = true, checkpoints = true, fastIntrinsics = true} = {}) {
   const module = (bytesOrModule instanceof WebAssembly.Module)
     ? bytesOrModule
     : await WebAssembly.compile(bytesOrModule);
@@ -67,6 +67,7 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
       view.setBigInt64(1024, cached ? cached.stdoutLength : 0n, true);
       view.setBigInt64(1032, cached ? cached.stderrLength : 0n, true);
       for (const slot of [1048, 1056, 1072, 1080, 1088, 1112, 1120]) view.setBigInt64(slot, 0n, true);
+      view.setBigInt64(1128, fastIntrinsics ? 1n : 0n, true);
       const writeBatch = (batch) => {
         view.setBigInt64(1064, BigInt(batch.length), true);
         batch.forEach((event, index) => {

@@ -52,15 +52,16 @@ fn vm_prepare(m &types.Mir) {
         wasm_mem_store(plan + 16, locals)
         wasm_mem_store(plan + 24, temps)
         wasm_mem_store(plan + 32, wasm_rt_alloc(types.mir_nins(m, fi) * 8))
-        instructions := wasm_rt_alloc(types.mir_nins(m, fi) * 48)
+        instructions := wasm_rt_alloc(types.mir_nins(m, fi) * VM_INSTRUCTION_BYTES)
         for ii in 0:types.mir_nins(m, fi) {
-            at := instructions + ii * 48
+            at := instructions + ii * VM_INSTRUCTION_BYTES
             wasm_mem_store(at, types.mir_ikind(m, fi, ii))
             wasm_mem_store(at + 8, types.mir_ia(m, fi, ii))
             wasm_mem_store(at + 16, types.mir_ib(m, fi, ii))
             wasm_mem_store(at + 24, types.mir_ic(m, fi, ii))
             wasm_mem_store(at + 32, types.mir_id(m, fi, ii))
             wasm_mem_store(at + 40, types.mir_inext(m, fi, ii))
+            wasm_mem_store(at + VM_INTRINSIC_OFFSET, vm_ui_code(&m.fns[fi].instrs[ii].sval))
         }
         blocks := wasm_rt_alloc(types.mir_nblocks(m, fi) * 40)
         for bi in 0:types.mir_nblocks(m, fi) {
@@ -548,7 +549,7 @@ fn vm_step(e $&Eval, m &types.Mir, task int) bool {
         } else { vm_error(e, "invalid MIR terminator") }
         << true
     }
-    instruction := wasm_mem_load(fp + 72) + ii * 48
+    instruction := wasm_mem_load(fp + 72) + ii * VM_INSTRUCTION_BYTES
     k := wasm_mem_load(instruction)
     a := wasm_mem_load(instruction + 8)
     b := wasm_mem_load(instruction + 16)
