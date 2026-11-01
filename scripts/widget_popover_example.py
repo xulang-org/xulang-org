@@ -1,0 +1,158 @@
+"""Real anchored Popover experience, including editable content and dismissal."""
+
+EXPECTED = 'Popover: open\nHistory: true | Auto save: true\nSaved history: true | Saved auto save: true'
+
+SOURCE = '''@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+#time
+
+fn box(x f64,y f64,w f64,h f64) layout.Rect {
+    << layout.Rect{x: x,y: y,width: w,height: h}
+}
+fn caption(frame $&draw.Frame,context &draw.Context,text string,x f64,y f64,size f64,ink draw.Color) int {
+    label := context.layout_text(&text,&draw.text_options(size)) or >>
+    << frame.text_layout(&label,x,y,ink) or >>
+}
+fn focus_controls(focus &widgets.FocusGroup,trigger $&widgets.Button,history $&widgets.Checkbox,
+                  autosave $&widgets.Checkbox,cancel $&widgets.Button,apply $&widgets.Button) {
+    id := focus.current()
+    trigger.set_focus(id == 1)
+    history.set_focus(id == 2)
+    autosave.set_focus(id == 3)
+    cancel.set_focus(id == 4)
+    apply.set_focus(id == 5)
+}
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    styles := playground.light_styles()
+    $primary_styles := styles.clone()
+    primary_styles.button.palette.normal = styles.button.palette.accent
+    primary_styles.button.palette.hovered = styles.button.palette.accent
+    primary_styles.button.palette.pressed = styles.button.palette.accent
+    primary_styles.button.palette.border = styles.button.palette.accent
+    primary_styles.button.palette.foreground = styles.button.palette.on_accent
+    primary_styles.button.palette.focus = styles.button.palette.on_accent
+    primary_styles.button.states = []widgets.StatePaint{}
+    anchor := box(48.0,112.0,152.0,40.0)
+    viewport := box(40.0,82.0,560.0,216.0)
+    extent := layout.Size{width: 344.0,height: 216.0}
+    $panel := widgets.popover(&identity,10,&anchor,&extent,&viewport) or >>
+    $placement := widgets.overlay_placement()
+    placement.side = widgets.OVERLAY_RIGHT
+    panel.set_placement(&placement) or >>
+    $surface := styles.overlay_style()
+    surface.radius = 12.0
+    surface.padding = layout.Insets{left: 16.0,top: 16.0,right: 16.0,bottom: 16.0}
+    surface.border_width = 1.0
+    surface.shadow = draw.rgba(0,0,0,0)
+    surface.shadow_blur = 0.0
+    panel.set_style(&surface) or >>
+    panel.open(time.zero_instant(),true) or >>
+    popup := panel.bounds()
+    $trigger := widgets.button(&identity,1,&anchor) or >>
+    $history := widgets.checkbox(&identity,2,&box(popup.x+16.0,popup.y+48.0,popup.width-32.0,40.0),true) or >>
+    $autosave := widgets.checkbox(&identity,3,&box(popup.x+16.0,popup.y+88.0,popup.width-32.0,40.0),true) or >>
+    $cancel := widgets.button(&identity,4,&box(popup.x+popup.width-216.0,popup.y+160.0,96.0,40.0)) or >>
+    $apply := widgets.button(&identity,5,&box(popup.x+popup.width-112.0,popup.y+160.0,96.0,40.0)) or >>
+    $trigger_label := widgets.styled_label(&context,&"偏好设置 ▾")
+    $history_label := widgets.styled_label(&context,&"保留历史记录")
+    $autosave_label := widgets.styled_label(&context,&"自动保存")
+    $cancel_label := widgets.styled_label(&context,&"Cancel")
+    $apply_label := widgets.styled_label(&context,&"Apply")
+    $saved_history := true
+    $saved_autosave := true
+    $focus := widgets.focus_group(&identity,[1,2,3,4,5]) or >>
+    focus.focus(2) or >>
+    focus_controls(&focus,$&trigger,$&history,$&autosave,$&cancel,$&apply)
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+        now := time.instant_from_ns(event.time_ns) or >>
+        was_open := panel.is_open()
+        dismissal := panel.input(&event) or >>
+        $finish := was_open && !panel.is_open()
+        if !dismissal.consumed && !finish {
+            navigation := focus.input(&event)
+            focus_controls(&focus,$&trigger,$&history,$&autosave,$&cancel,$&apply)
+            if !navigation.consumed {
+                action := trigger.input(&event)
+                if action.request_focus { focus.focus(1) or >> }
+                if action.kind == widgets.ACTION_ACTIVATE {
+                    if panel.is_open() { finish = true }
+                    else {
+                        history.set_value(saved_history)
+                        autosave.set_value(saved_autosave)
+                        panel.open(now,true) or >>
+                        focus.set_items([1,2,3,4,5]) or >>
+                        focus.focus(2) or >>
+                    }
+                } else if panel.is_open() {
+                    history_action := history.input(&event)
+                    if history_action.request_focus { focus.focus(2) or >> }
+                    autosave_action := autosave.input(&event)
+                    if autosave_action.request_focus { focus.focus(3) or >> }
+                    cancel_action := cancel.input(&event)
+                    if cancel_action.request_focus { focus.focus(4) or >> }
+                    apply_action := apply.input(&event)
+                    if apply_action.request_focus { focus.focus(5) or >> }
+                    if apply_action.kind == widgets.ACTION_ACTIVATE {
+                        saved_history = history.value()
+                        saved_autosave = autosave.value()
+                        finish = true
+                    }
+                    if cancel_action.kind == widgets.ACTION_ACTIVATE { finish = true }
+                }
+            }
+        }
+        if finish {
+            panel.close(now,true) or >>
+            history.set_value(saved_history)
+            autosave.set_value(saved_autosave)
+            focus.set_items([1]) or >>
+            focus.focus(1) or >>
+        }
+        focus_controls(&focus,$&trigger,$&history,$&autosave,$&cancel,$&apply)
+    }
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,styles.input.palette.normal) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
+    caption($&frame,&context,"XUUI  /  Popover",32.0,22.0,20.0,styles.button.palette.foreground) or >>
+    caption($&frame,&context,"锚点定位、边缘翻转；外点 / Escape 关闭。",32.0,48.0,12.0,styles.button.palette.muted) or >>
+    trigger.paint_styled($&frame,$&trigger_label,&styles) or >>
+    caption($&frame,&context,"点击外部或 Esc 关闭",48.0,176.0,12.0,styles.button.palette.muted) or >>
+    caption($&frame,&context,"Tab / 空格操作选项",48.0,198.0,12.0,styles.button.palette.muted) or >>
+    // Paint the floating surface after background content, then clip its children.
+    panel.paint_styled($&frame,&styles) or >>
+    if panel.is_visible() {
+        frame.push() or >>
+        frame.clip_rect(popup.x+16.0,popup.y+16.0,popup.width-32.0,popup.height-32.0) or >>
+        caption($&frame,&context,"Workspace preferences",popup.x+16.0,popup.y+16.0,16.0,styles.button.palette.foreground) or >>
+        history.paint_styled($&frame,$&history_label,&styles) or >>
+        autosave.paint_styled($&frame,$&autosave_label,&styles) or >>
+        frame.line(popup.x+16.0,popup.y+144.0,popup.x+popup.width-16.0,popup.y+144.0,styles.button.palette.border,1.0) or >>
+        cancel.paint_styled($&frame,$&cancel_label,&styles) or >>
+        apply.paint_styled($&frame,$&apply_label,&primary_styles) or >>
+        frame.pop() or >>
+    }
+    $state := "closed"
+    if panel.is_open() { state = "open" }
+    message := "Popover: " + state
+    caption($&frame,&context,message + "",32.0,326.0,13.0,styles.button.palette.muted) or >>
+    println(message)
+    println("History: " + str(history.value()) + " | Auto save: " + str(autosave.value()))
+    println("Saved history: " + str(saved_history) + " | Saved auto save: " + str(saved_autosave))
+    frame.present() or >>
+    << 0
+}
+fn main() int {
+    << demo() or (err) { eprintln(err.msg())
+        << 1 }
+}
+'''
