@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+from benchmark_results import validate_failure, METRICS
 
 ROOT = Path(__file__).resolve().parents[1]
 BENCH_REPO = ROOT.parent / 'bench'
@@ -61,6 +62,12 @@ def validate_dataset(data: dict, names):
     for target in TARGETS:
         if tuple(row['name'] for row in data['platforms'][target]['benches']) != names:
             raise ValueError(f'{target}: benchmark workload list differs from the full registry')
+        for row in data['platforms'][target]['benches']:
+            for result in row.get('implementations', {}).values():
+                validate_failure(result)
+            if row.get('xu_status', 'ok') != 'ok':
+                validate_failure(dict(status=row['xu_status'], error=row.get('xu_error'),
+                                      **{key: row.get('xu_' + key) for key in METRICS}))
 
 
 def sync_sources(bench_root=None, sources_file=None, data_file=None, check=False):
