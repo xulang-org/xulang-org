@@ -375,7 +375,7 @@
             if (inputMode && queuedInputs.length && activeSource === currentSource()) {
               var maxEv = (window.XuPlayCanvas && window.XuPlayCanvas.maxEvents) || 100000;
               clicks = clicks.concat(queuedInputs.splice(0, Math.max(0, maxEv - clicks.length)));
-              if (interactive) execute();
+              if (interactive) execute(true);
               else queuedInputs = [];
             }
           }
@@ -521,12 +521,14 @@
       activeSource = program;
       execute();
     }
-    function execute() {
+    function execute(interaction) {
       running = true;
-      if (canvas) canvas.setAttribute('aria-disabled', 'true');
+      if (canvas && !interaction) canvas.setAttribute('aria-disabled', 'true');
       label(true);
-      show(text('正在运行…', 'Running…'), false);
-      status(text('运行中', 'Running'));
+      if (!interaction) {
+        show(text('正在运行…', 'Running…'), false);
+        status(text('运行中', 'Running'));
+      }
       var program = activeSource || source.value;
       var seconds = /(?:^|\n)\s*#ui\/widgets\b/.test(program) ? 30 : 10;
       timer = setTimeout(function () {
@@ -560,7 +562,6 @@
               event.preventDefault();
             }
             appendInput({kind: 78, key: key, modifiers: inputModifiers(event), repeat: event.repeat ? 1 : 0});
-            if (event.key === 'Escape' && canvas.blur) canvas.blur();
           }
         } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); clickAt(320, 180); }
       });
@@ -568,7 +569,7 @@
         if (!inputMode || !ready || activeSource !== currentSource() || (!running && !interactive) ||
             clicks.length + queuedInputs.length >= ((window.XuPlayCanvas && window.XuPlayCanvas.maxEvents) || 100000)) return;
         if (running) queuedInputs.push(input);
-        else { clicks.push(input); execute(); }
+        else { clicks.push(input); execute(true); }
       }
       function inputModifiers(event) {
         return (event.shiftKey ? 1 : 0) | (event.ctrlKey ? 2 : 0) | (event.altKey ? 4 : 0) | (event.metaKey ? 8 : 0);
@@ -596,7 +597,7 @@
           button: event.button === 0 ? 1 : event.button === 2 ? 2 : event.button === 1 ? 3 : 0, buttons: event.buttons || 0});
       }
       canvas.addEventListener('pointerdown', function (event) {
-        if (!inputMode || ![0,1,2].includes(event.button) || running || !interactive) return;
+        if (!inputMode || ![0,1,2].includes(event.button) || (!running && !interactive)) return;
         event.preventDefault();
         if (canvas.focus) canvas.focus({preventScroll: true});
         pointerActive = true;

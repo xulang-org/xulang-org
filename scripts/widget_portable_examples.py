@@ -2,7 +2,7 @@
 
 CASES = {
     'stepper': ('stepper(&identity,1,&bounds,0.0,100.0,5.0,40.0)', '"Value: " + str(int(control.value()))', 'Value: 40', 'basic-label'),
-    'select': ('select_box(&identity,1,&bounds,3,0)', '"Selected: " + str(control.selected())', 'Selected: 0', 'basic-options'),
+    'select': ('select_box(&identity,1,&bounds,3,0)', '"Selected: " + str(control.selected())', 'Selected: 0', 'styled-options'),
     'radio-group': ('radio_group(&context,&identity,1,&bounds,&options,0)', '"Selected: " + str(control.selected())', 'Selected: 0', 'styled'),
     'pagination': ('pagination(&context,&identity,1,&bounds,4,0)', '"Page: " + str(control.selected() + 1)', 'Page: 1', 'styled'),
     'breadcrumbs': ('breadcrumbs(&context,&identity,1,&bounds,&options)', '"Activated: " + str(last)', 'Activated: 0', 'styled'),
@@ -77,7 +77,7 @@ fn demo() int {
     control.set_series(&[series]) or >>
     _ := control.tick(&styles,time.instant_from_ns(1) or >>,true) or >>
 '''
-    styled = paint == 'styled'
+    styled = paint in ('styled', 'styled-options')
     # These two controls calculate geometry during construction/painting.
     apply = styled and slug not in ('radio-group',)
     if apply:
@@ -106,11 +106,12 @@ fn demo() int {
     code += f'    draw.text(32,48,12,"#6d626e","{description}")\n'
     if paint == 'basic-label':
         code += '    value := str(int(control.value()))\n    label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n    control.paint($&frame,&label,&theme) or >>\n'
-    elif paint == 'basic-options':
-        code += '    $labels := []draw.TextLayout{}\n    for value in options { label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(label) }\n    control.paint($&frame,&labels,&theme) or >>\n'
+    elif paint == 'styled-options':
+        code += '    $selected_label := widgets.styled_label(&context,&options[control.selected()])\n    control.paint_styled($&frame,$&selected_label,&styles) or >>\n'
+        code += '    control.paint_popup_box_styled($&frame,&styles) or >>\n    for i in 0:options.len {\n        $option := widgets.styled_label(&context,&options[i])\n        control.paint_option_styled($&frame,i,$&option,&styles) or >>\n    }\n'
     else:
         code += '    control.paint_styled($&frame,&styles) or >>\n'
-    if slug in ('menu', 'context-menu', 'split-button'):
+    if slug in ('menu', 'context-menu', 'split-button', 'multi-select'):
         code += '    control.paint_popup_styled($&frame,&styles) or >>\n'
     if slug == 'split-view':
         code += '''    panes := control.layout()

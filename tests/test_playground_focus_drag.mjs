@@ -39,6 +39,15 @@ for (const [theme,brand,ink] of [['light','#be123cff','#fff8faff'],['dark','#ff5
     assert.equal(strokes.length,3,'one track border and one border per thumb');
     assert.equal(strokes.filter(c=>c.args[1]===2 && c.args[0]===brand).length,1,'focused thumb has one visible 2 px boundary');
   });
+  test('Slider keyboard focus paints its thumb boundary once: '+theme,async()=>{
+    const runtime=await createRuntime(module);
+    const source=projects['widget-slider'].files['main.xu'].replace('playground.light_styles()','playground.'+theme+'_styles()');
+    const result=runtime.run(source,{events:key(257)});
+    assert.equal(result.exit,0,result.stderr);
+    const strokes=host.XuPlayCanvas.frame(result.ui.commands).filter(c=>c.op==='path_stroke');
+    assert.equal(strokes.length,2,'one track boundary and one thumb boundary');
+    assert.equal(strokes.filter(c=>c.args[0]===brand && c.args[1]===2).length,1);
+  });
 }
 
 for (const [theme,brand,ink,danger,border] of [

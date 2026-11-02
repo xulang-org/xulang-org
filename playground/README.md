@@ -22,7 +22,7 @@ calculation without repeating the full Styles validation for every RGBA row.
 The color values, slider input and painting still execute in Xu; the browser does
 not approximate the controls or redraw their values independently.
 The browser focus adaptation treats a zero focus inset as one emphasized
-boundary. Shared control boxes, joined ButtonGroup segments, and RangeSlider
+boundary. Shared control boxes, Slider thumbs, joined ButtonGroup segments, and RangeSlider
 thumbs replace their regular border instead of adding another outline. Styles
 with a positive focus inset keep the upstream inset-ring behavior. Selection
 and focus still belong to the Xu widgets.
@@ -65,7 +65,7 @@ also mirrored. This is a larger gallery subset, not the complete desktop suite.
 input, text/color/path types, style resolution, and motion initialization.
 The focused component experiences additionally run Select, Stepper, RadioGroup,
 Pagination, Breadcrumbs, RangeSlider, SplitView, ButtonGroup, MultiSelect,
-ColorPicker, Table, Chart, Popover, and dropdown/context/split Menu modes. Their
+ColorPicker, Table, Chart, Popover, Modal, and dropdown/context/split Menu modes. Their
 geometry, state, and input use desktop Xu declarations; painting includes the
 documented browser adaptations above. Canvas forwards left/right/middle pointer
 buttons and supplies drawing resources.
@@ -78,6 +78,12 @@ focus. Reduced motion keeps the input-replay example deterministic. Placement
 and edge flipping remain desktop logic; Screen and native event pumps are not
 needed. The source is maintained in `scripts/widget_popover_example.py` and
 published by `scripts/gen-widget-examples.py`.
+
+MultiSelect and Select explicitly paint their popup surfaces and options after
+the trigger. ComboBox combines bounded browser key editing with the desktop Menu
+for visible candidates, filtering, selection and dismissal. Modal uses the desktop
+dialog, real Cancel/Apply buttons, a trapped focus order and trigger restoration.
+Its background remains blocked until the dialog closes.
 
 Extension declarations are partitioned by their dependency owners in
 `desktop-sources.json`. The runtime scans user identifier tokens, loads only the
@@ -116,8 +122,10 @@ the browser VM and with the native product compiler to check input semantics.
   means replay exhaustion. This driver replaces the native event pump.
 - `runtime/ui.xu`: bounded command transport, scalar formatting, and input
   intrinsics. Strings follow Xu's indirect descriptor ABI. Pure codec operations,
-  finite metric checks and UTF-8 validation have equivalent AOT scalar paths;
-  invalid codec inputs fall back to MIR so Xu error propagation is preserved.
+  finite metric checks, UTF-8 validation, style cloning/resolution/validation,
+  rounded geometry and drawing commands have equivalent AOT paths. Style clones
+  retain independent strings and state arrays. Invalid validation inputs,
+  inactive frames and unsupported strokes fall back to MIR so Xu error propagation is preserved.
   `createRuntime(..., {fastIntrinsics:false})` runs the original scalar MIR for
   equivalence testing. Decoded 56-byte instructions cache their intrinsic ID at
   offset 48, avoiding repeated function-name comparisons during interpretation.
@@ -140,6 +148,10 @@ back to font bounds and then an em-box estimate. The horizontal layout origin
 and enclosing clips still come from Xu. This is deterministic
 basic text layout, not native shaping, wrapping, bidi, grapheme-cell measurement,
 or IME. TextOptions fields other than size are outside this subset.
+Focused component examples use measured text layouts rather than raw top-aligned
+text. Single-line fields, floating labels, ColorPicker channel labels and toast
+messages center their line boxes within their actual control bounds. Raw
+`draw.text` remains a top-origin drawing API for user programs.
 `layout_masked_text()` paints one mask character per code point on this grid
 while caret and selection queries retain the original UTF-8 byte positions.
 The original text is never included in the masked layout's Canvas paint command.
@@ -156,8 +168,8 @@ accessibility remain outside the Canvas host's current scope.
 
 ## Floating-point VM support
 
-Widget geometry uses real IEEE binary64 values. The development wasm32 backend
-supports typed f64 arithmetic; the selected 0.10.12 SDK predates that support.
+Widget geometry uses real IEEE binary64 values. The selected SDK supports typed
+f64 arithmetic, while the interpreter stores user values as integer bit patterns.
 The MIR interpreter represents VM values as
 integer bit patterns. Its `vm_fp_*` functions are still trap stubs: numeric
 `f64(int)` / `int(f64)` casts convert values and cannot reinterpret those bits.
@@ -198,8 +210,11 @@ count. Run Code, source edits, and example changes reset the session.
   legacy counter clicks use one record each. Drag motion also uses records.
 - Tab / Shift+Tab cycle controls in the gallery. Enter/Space activate the
   focused Button/Checkbox/Switch. Arrows, Home/End, and PageUp/PageDown adjust
-  Slider. Esc cancels and leaves the canvas. Click requests focus through the
-  widgets API. Key events and an active drag’s motion/release are queued during replay; new pointer presses while busy are ignored. Stopping/editing discards pending input.
+  Slider. Esc is handled by the focused Xu control, allowing dialogs to restore
+  trigger focus. Click requests focus through the widgets API. Complete pointer
+  gestures, keys and drag releases are queued during replay; consecutive pending
+  motion is coalesced. Interactive updates preserve the previous output while
+  the worker redraws. Stopping/editing discards pending input.
 - 10-second worker timeout for ordinary programs; 30 seconds for programs importing `#ui/widgets`. The VM step limit and fixed 256 MiB initial/maximum memory still bound execution.
 
 Worker initialization loads the WASM module before reporting ready. It does not

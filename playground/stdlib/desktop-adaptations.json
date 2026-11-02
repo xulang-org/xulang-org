@@ -66,12 +66,16 @@
       "path": "src/ui/widgets/color_picker.xu",
       "signature": "pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) int",
       "upstream_sha256": "acd977d5c94edfb56a7d7d428528b6c476f687655eb6ead8c77be604bebc359c",
-      "sha256": "8e3f09b038f727699bb7f43f29f547ed2ecbc6dea6521415129c8267ecfe3de2",
-      "reason": "Paint private color channels with typed styles instead of serializing and decoding the same control style on every redraw.",
+      "sha256": "2cbcd9c0b5bc8b5c1032122547524738756ad36cf9fb33a802006f0351a76b08",
+      "reason": "Paint private color channels with typed styles and center row labels in their channel bounds.",
       "replacements": [
         {
           "before": "    for i in 0:4 {\n        $slider_style := styles.slider_style()\n        if i == 0 { slider_style.palette.accent = draw.rgb(224,73,86) }\n        else if i == 1 { slider_style.palette.accent = draw.rgb(42,151,93) }\n        else if i == 2 { slider_style.palette.accent = draw.rgb(60,117,224) }\n        slider_style.palette.invalid = c.palette.invalid\n        value := picker.locale.integer(picker.channel(i) or >>)\n        channel_b := picker.channel_bounds(i) or >>\n        $channel := picker.channels[i]\n        channel.set_style(&slider_style) or >>\n        channel.apply_styles(styles) or >>\n        channel.paint_styled(frame,styles) or >>\n",
           "after": "    // Keep per-channel styles typed; byte serialization is unnecessary for this private paint path.\n    $channel_styles := styles.clone()\n    channel_styles.progress = styles.slider_style()\n    base_accent := channel_styles.progress.palette.accent\n    channel_styles.progress.palette.invalid = c.palette.invalid\n    for i in 0:4 {\n        channel_styles.progress.palette.accent = base_accent\n        if i == 0 { channel_styles.progress.palette.accent = draw.rgb(224,73,86) }\n        else if i == 1 { channel_styles.progress.palette.accent = draw.rgb(42,151,93) }\n        else if i == 2 { channel_styles.progress.palette.accent = draw.rgb(60,117,224) }\n        value := picker.locale.integer(picker.channel(i) or >>)\n        channel_b := picker.channel_bounds(i) or >>\n        $channel := picker.channels[i]\n        channel.custom.active = false\n        // The parent already validated these styles. Apply the unchanged\n        // Slider geometry directly instead of validating all six controls again.\n        slider_style := &channel_styles.progress\n        d := channel_styles.density\n        channel.inset_left = slider_style.padding.left * d\n        channel.inset_right = slider_style.padding.right * d\n        width := math.max(0.0,channel.bounds.width - channel.inset_left - channel.inset_right)\n        height := math.max(0.0,channel.bounds.height - channel.value_height(&channel_styles) - (slider_style.padding.top + slider_style.padding.bottom) * d)\n        channel.thumb_extent = math.max(4.0,math.min(slider_style.indicator_size * d,math.min(width,height)))\n        channel.paint_styled(frame,&channel_styles) or >>\n"
+        },
+        {
+          "before": "    c.align_x = 0.0\n    names :=",
+          "after": "    c.align_x = 0.0\n    c.align_y = 0.5\n    names :="
         }
       ]
     },
@@ -118,6 +122,24 @@
         {
           "before": "    if (state & STATE_FOCUSED) != 0 && r.is_enabled() {\n        gap := 3.0 * styles.density",
           "after": "    if (state & STATE_FOCUSED) != 0 && r.is_enabled() && !single_focus {\n        gap := 3.0 * styles.density"
+        }
+      ]
+    },
+    {
+      "module": "widgets_extra_shared_994fba7ebc",
+      "path": "src/ui/widgets/controls_basic.xu",
+      "signature": "pub fn (s &Slider) paint_styled(frame $&draw.Frame,styles &Styles) int",
+      "upstream_sha256": "97ecd2b7c5f7bdf8a9ae99d399a85d65ebd642a1fa6870228163a87b4d68d858",
+      "sha256": "f2cf68aa91fa258251f1382a3b8da6df1783fb1bc28c3131af438e6ca2ddf936",
+      "reason": "A focused Slider thumb uses the shared single-boundary geometry instead of adding a second circular stroke.",
+      "replacements": [
+        {
+          "before": "    knob_style.focus_width = 0.0\n",
+          "after": "    single_focus := (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 && c.focus_inset == 0.0 && c.focus_width > 0.0 && (resolved.focus.value() & 255) > 0\n    knob_style.focus_width = 0.0\n    if single_focus { knob_style.focus_width = c.focus_width }\n"
+        },
+        {
+          "before": "    if (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 {\n        gap := c.focus_inset * d",
+          "after": "    if (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 && !single_focus {\n        gap := c.focus_inset * d"
         }
       ]
     }

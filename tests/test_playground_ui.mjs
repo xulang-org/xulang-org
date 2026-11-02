@@ -623,3 +623,25 @@ test('wheel host scales line/page units and queues fractional deltas without wid
   elements['xu-play-src'].listeners.input();
   canvas.listeners.wheel({preventDefault(){throw Error('cleared UI must permit page scrolling');}});
 });
+
+
+test('rapid widget clicks retain both complete gestures while the worker is busy', async () => {
+  const {elements,workers}=await mount({ui:true});
+  const canvas=elements['xu-play-canvas'];
+  elements['xu-play-src'].value='widget source';
+  elements['xu-play-run'].click();
+  const result={type:'result',exit:0,stdout:'selection',stderr:'',ui:{commands:'frame',interactive:true,input:true}};
+  workers[0].respond(result);
+  const pointer={clientX:50,clientY:80,button:0,buttons:1,pointerId:7,preventDefault(){}};
+  canvas.listeners.pointerdown(pointer);
+  canvas.listeners.pointerup({...pointer,buttons:0});
+  canvas.listeners.pointerdown({...pointer,clientY:100});
+  canvas.listeners.pointerup({...pointer,clientY:100,buttons:0});
+  assert.equal(canvas.attributes['aria-disabled'],'false','interactive updates keep the preview enabled');
+  assert.equal(elements['xu-play-out'].textContent,'selection','dragging does not flash Running in the output');
+  workers[0].respond(result);
+  assert.deepEqual(Array.from(workers[0].messages.at(-1).events,e=>e.kind),[72,73,72,73]);
+  workers[0].respond(result);
+  canvas.listeners.keydown({key:'Escape',preventDefault(){}});
+  assert.equal(canvas.focused,true,'Escape is handled by the focused Xu control');
+});
