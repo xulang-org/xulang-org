@@ -6,7 +6,7 @@ const runtime = await createRuntime(readFileSync(new URL('../build/playground/xu
 test('native scalar map ABI preserves keys, updates, misses and deletes in WASM', () => {
   const result = runtime.run(`@main
 fn main() int {
- mut ints := map[int]int{}
+ $ints := map[int]int{}
  ints[7] = 3
  ints[7] = 9
  assert(ints[7] == 9)
@@ -16,7 +16,7 @@ fn main() int {
  assert(ints.len() == 1)
  ints.delete(7)
  assert(!ints.has(7))
- mut names := map[string]bool{}
+ $names := map[string]bool{}
  names["你好"] = true
  names["Xu"] = false
  assert(names["你好"])
@@ -30,7 +30,7 @@ fn main() int {
   assert.equal(result.stdout,'scalar maps passed\n');
 });
 test('unsupported owning map values fail clearly and a fresh evaluation recovers', () => {
-  const result = runtime.run('@main\nfn main() int { mut values := map[int]string{}\nvalues[1] = "owner"\nprintln(values[1])\n<< 0 }');
+  const result = runtime.run('@main\nfn main() int { $values := map[int]string{}\nvalues[1] = "owner"\nprintln(values[1])\n<< 0 }');
   assert.notEqual(result.exit,0);
   assert.match(result.stderr,/maps support int and bool values/);
   assert.equal(runtime.run('@main\nfn main() int { println(42)\n<< 0 }').stdout,'42\n');
