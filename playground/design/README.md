@@ -39,3 +39,7 @@ separate host work. The font tokens are retained in Styles for that integration;
 Canvas painting uses the pinned sans-serif font token without horizontal glyph
 compression. The current browser text layout still estimates advances and does
 not honor per-run font family or weight.
+The Canvas host measures visible glyph bounds to center control labels within
+the browser adapter's 1.25 em line box. This aligns English, Chinese, and mixed
+labels vertically without changing the estimated horizontal layout. Font bounds
+and then an em-box estimate provide fallbacks when glyph bounds are unavailable.

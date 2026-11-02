@@ -128,7 +128,10 @@ host TextLayout metrics. The browser text adapter currently implements a
 single-line monospace grid (0.6 × font size per Unicode code point, height
 1.25 × size). Canvas uses the XUUI sans-serif font stack at its natural glyph
 proportions, without horizontally squeezing text to the estimated advance.
-The layout origin and enclosing clips still come from Xu. This is deterministic
+Canvas centers the visible glyph bounds vertically within the 1.25 × size line
+box, using an alphabetic baseline. If glyph bounds are unavailable, it falls
+back to font bounds and then an em-box estimate. The horizontal layout origin
+and enclosing clips still come from Xu. This is deterministic
 basic text layout, not native shaping, wrapping, bidi, grapheme-cell measurement,
 or IME. TextOptions fields other than size are outside this subset.
 `layout_masked_text()` paints one mask character per code point on this grid

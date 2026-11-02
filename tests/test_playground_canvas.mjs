@@ -100,7 +100,7 @@ test('Canvas preserves natural XUUI glyph proportions instead of squeezing estim
     save: () => {},
     restore: () => {},
     scale: () => assert.fail('layout_text must not deform glyphs to match grid metrics'),
-    measureText: () => assert.fail('estimated advances must not drive font compression'),
+    measureText: () => ({width:800,actualBoundingBoxAscent:10,actualBoundingBoxDescent:2}),
     fillText: (...args) => operations.push({op: 'fillText', args}),
     drawImage: () => {}
   };
@@ -115,10 +115,10 @@ test('Canvas preserves natural XUUI glyph proportions instead of squeezing estim
   const commands = 'begin\nlayout_text\t10\t20\t14\t#ffffff\t16.8\t保存\nlayout_text\t20\t40\t14\t#ffffff\t1\tWide text\npresent\n';
   assert.equal(host.render(canvas, commands), true);
   assert.deepEqual(operations, [
-    {op:'fillText', args:['保存',10,20]},
-    {op:'fillText', args:['Wide text',20,40]}
+    {op:'fillText', args:['保存',10,32.75]},
+    {op:'fillText', args:['Wide text',20,52.75]}
   ]);
-  assert.equal(fakeCtx.textBaseline, 'top');
+  assert.equal(fakeCtx.textBaseline, 'alphabetic');
   assert.equal(fakeCtx.font, '14px ' + host.fontStack);
 });
 

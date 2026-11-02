@@ -2,6 +2,8 @@
 (function (root) {
   'use strict';
   var WIDTH = 640, HEIGHT = 360, MAX_EVENTS = 100000;
+  // The bounded browser TextLayout contract in stdlib/frame.xu is 1.25 em.
+  var LAYOUT_LINE_HEIGHT = 1.25;
   // XUUI 0.1.0 font-sans; the preview can also supply the pinned CSS token.
   var fontStack = '"Avenir Next", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif';
   // Argument types: number, color, text. Validate before touching a canvas.
@@ -115,15 +117,23 @@
         paint('-', a[0], a[1]); ctx.restore();
       }
       else if (op === 'layout_text') {
-        if (a[3] !== '-' && a[4] > 0 && a[5]) {
+        var text = a[5], lineHeight = a[2] * LAYOUT_LINE_HEIGHT;
+        if (a[3] !== '-' && a[4] > 0 && lineHeight > 0 && text) {
           ctx.save();
           ctx.font = a[2] + 'px ' + family;
-          ctx.textBaseline = 'top';
+          ctx.textBaseline = 'alphabetic';
           ctx.fillStyle = a[3];
-          // Xu's bounded layout supplies the origin and estimated advance.
-          // Preserve the font's natural glyph proportions at that origin;
-          // enclosing draw clips still control overflow for text fields.
-          ctx.fillText(a[5], a[0], a[1]); ctx.restore();
+          var metrics = typeof ctx.measureText === 'function' ? ctx.measureText(text) : null;
+          var ascent = metrics?.actualBoundingBoxAscent, descent = metrics?.actualBoundingBoxDescent;
+          if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent + descent <= 0) {
+            ascent = metrics?.fontBoundingBoxAscent; descent = metrics?.fontBoundingBoxDescent;
+          }
+          if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent + descent <= 0) {
+            ascent = a[2] * 0.8; descent = a[2] * 0.2;
+          }
+          // Center the actual glyph ink in Xu's line box. Keep the supplied
+          // horizontal origin and natural advance; enclosing clips own overflow.
+          ctx.fillText(text, a[0], a[1] + (lineHeight + ascent - descent) * 0.5); ctx.restore();
         }
       } else if (op === 'text') {
         if (a[3] !== '-') { ctx.font = a[2] + 'px ' + family; ctx.textBaseline = 'top'; ctx.fillStyle = a[3]; ctx.fillText(a[4], a[0], a[1]); }
