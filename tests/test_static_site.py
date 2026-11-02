@@ -66,6 +66,9 @@ class StaticSiteTests(unittest.TestCase):
         llms = (output / 'llms.txt').read_text()
         self.assertIn('# Xu Programming Language', llms)
         chinese = (output / 'zh/index.html').read_text()
+        benchmark_count = json.loads((self.source / 'www/benchmarks.json').read_text())['metadata']['total_benches']
+        self.assertIn(f'across {benchmark_count} workloads', home)
+        self.assertIn(f'{benchmark_count} 项负载', chinese)
         self.assertIn('<html lang="zh-CN"', chinese)
         self.assertIn('href="/zh/docs/start/"', chinese)
         self.assertIn('href="/" hreflang="en"', chinese)
@@ -366,6 +369,19 @@ class StaticSiteTests(unittest.TestCase):
         page.write_text(page.read_text().replace('Measured Xu v', 'Relabelled Xu v'))
         with self.assertRaisesRegex(ValueError, 'Benchmark measurement label'):
             site.build(source, self.workspace / 'relabelled-benchmark-output')
+
+    def test_truncated_benchmark_cohort_is_rejected(self):
+        source = self.workspace / 'truncated-benchmarks'
+        shutil.copytree(self.source, source)
+        path = source / 'www/benchmarks.json'
+        data = json.loads(path.read_text())
+        data['metadata']['total_benches'] -= 1
+        data['benches'].pop()
+        for platform in data['platforms'].values():
+            platform['benches'].pop()
+        path.write_text(json.dumps(data))
+        with self.assertRaisesRegex(ValueError, 'workload'):
+            site.build(source, self.workspace / 'truncated-benchmark-output')
 
     def test_mismatched_api_snapshot_cannot_be_relabelled_as_another_release(self):
         with self.assertRaisesRegex(ValueError, 'API version does not match'):
