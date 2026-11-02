@@ -77,9 +77,11 @@ pub fn (s &Slider) paint_styled(frame $&draw.Frame,styles &Styles) int {
     for i in 0:knob_style.states.len {
         knob_style.states[i].fields = knob_style.states[i].fields & (255 - PAINT_BACKGROUND)
     }
+    single_focus := (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 && c.focus_inset == 0.0 && c.focus_width > 0.0 && (resolved.focus.value() & 255) > 0
     knob_style.focus_width = 0.0
+    if single_focus { knob_style.focus_width = c.focus_width }
     style_box(frame,&knob,&knob_style,d,state) or >>
-    if (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 {
+    if (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 && !single_focus {
         gap := c.focus_inset * d
         focus := layout.Rect{x: knob.x - gap,y: knob.y - gap,width: thumb + gap * 2.0,height: thumb + gap * 2.0}
         rounded_stroke(frame,&focus,thumb * 0.5 + gap,resolved.focus,c.focus_width * d) or >>

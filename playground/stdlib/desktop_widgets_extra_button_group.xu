@@ -65,6 +65,11 @@ fn (g &ButtonGroup) paint_joined(frame $&draw.Frame,index int,b &layout.Rect,sty
     paint := style.resolve(state)
     path := group_corner_path(b,style.radius * density,index == 0,index == g.items.len - 1,g.appearance.vertical) or >>
     frame.fill_path(&path,paint.background,draw.FILL_NONZERO) or >>
+    if (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 && style.focus_inset == 0.0 && style.focus_width > 0.0 && (paint.focus.value() & 255) > 0 {
+        focus_stroke := draw.stroke_options(style.focus_width * density)
+        frame.stroke_path(&path,paint.focus,&focus_stroke) or >>
+        << 0
+    }
     stroke := draw.stroke_options(style.border_width * density)
     if style.border_width > 0.0 { frame.stroke_path(&path,paint.border,&stroke) or >> }
     if (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 {

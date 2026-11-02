@@ -5,6 +5,15 @@
 #ui/widgets
 #playground
 
+fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),f64(y),ink) or >>
+}
+fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,height f64,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),top+(height-label.metrics.height)*0.5,ink) or >>
+}
+
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
@@ -13,10 +22,11 @@ fn demo() int {
     context := draw.default_context()
     theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,114.0,120.0,42.0)
+    bounds := box(48.0,210.0,160.0,42.0)
     $btn := widgets.button(&identity,1,&bounds) or >>
     $lbl := widgets.styled_label(&context,&"Stop 停止")
     $focus := widgets.focus_group(&identity,[1]) or >>
+    $running := true
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -25,20 +35,26 @@ fn demo() int {
         if nav.consumed { -> }
         act := btn.input(&event)
         if act.request_focus { focus.focus(1) or >> }
+        if act.kind == widgets.ACTION_ACTIVATE { running = !running }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  Spinner")
-    draw.text(32,48,12,"#6d626e","大小 / 粗细 / 周期可配置；减少动效显示静态反馈。")
-    frame.stroke_rect(52.0,104.0,36.0,36.0,draw.rgb(190,18,60),3.0) or >>
-    draw.text(104,114,16,"#282329","Loading assets… 正在加载")
+    demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  Spinner") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器减少动效预览；点击按钮停止或恢复反馈。") or >>
+    if running {
+        frame.set_stroke(draw.rgb(190,18,60),3.0) or >>
+        frame.circle(70.0,122.0,18.0) or >>
+    }
+    if !running { lbl = widgets.styled_label(&context,&"Start 开始") }
+    demo_text($&frame,&context,104,114,16,draw.rgb(40,35,41),"Loading assets… 正在加载") or >>
     btn.paint_styled($&frame,$&lbl,&styles) or >>
-    draw.text(48,172,12,"#6d626e","周期 900ms · 半径 32px · 线宽 3px · 减少动效自动降级")
-    message := "Spinner: running (period: 900ms)"
-    draw.text(32,326,13,"#6d626e",message + "")
+    demo_text($&frame,&context,48,172,12,draw.rgb(109,98,110),"静态加载反馈 · 桌面 SDK 提供连续动画") or >>
+    $message := "Spinner: running (period: 900ms)"
+    if !running { message = "Spinner: stopped" }
+    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>
     println(message)
     frame.present() or >>
     << 0

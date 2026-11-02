@@ -17,8 +17,13 @@ the Canvas host receives geometric drawing commands, without widget IDs.
 The component experiences and gallery use the light reference. The adapter maps
 semantic colors, control height, padding, corner radii, and focus treatment.
 At the user's request, the site adapter uses the theme's cinnabar brand color
-for focus boundaries instead of the upstream blue focus token. Selected controls
-use on-brand ink for the inner focus line so keyboard focus remains visible.
+for focus boundaries instead of the upstream blue focus token. Focus replaces
+the control boundary with one 2 px stroke at zero inset. Selected controls use
+on-brand ink on that same boundary, and invalid controls retain their danger
+color. No second inner focus frame is added.
+Read-only selections keep the brand focus color against their neutral fill.
+Browser component controls and preview toolbar buttons likewise place their
+focus outline on the existing boundary instead of adding a separated frame.
 The pinned `tokens.json` is unchanged; the adaptation is generated in Xu and CSS.
 Button, Checkbox, Switch, Radio, and Slider use desktop styled paint methods
 for rounded borders, selection states, and focus. Their declarations and
@@ -39,3 +44,7 @@ separate host work. The font tokens are retained in Styles for that integration;
 Canvas painting uses the pinned sans-serif font token without horizontal glyph
 compression. The current browser text layout still estimates advances and does
 not honor per-run font family or weight.
+The Canvas host measures visible glyph bounds to center control labels within
+the browser adapter's 1.25 em line box. This aligns English, Chinese, and mixed
+labels vertically without changing the estimated horizontal layout. Font bounds
+and then an em-box estimate provide fallbacks when glyph bounds are unavailable.

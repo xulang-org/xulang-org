@@ -220,8 +220,22 @@ pub fn (sel $&Select) set_focus(focused bool) {
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (sel &Select) is_enabled() bool { << sel.enabled && !sel.closed && sel.count_val>0 && sel.bounds.width > 0.0 && sel.bounds.height > 0.0 }
 
+// Upstream: src/ui/widgets/select_options.xu
+pub fn (sel &Select) is_group(index int) bool { << index >= 0 && index < sel.count_val && (sel.group_options & (1 << index)) != 0 }
+
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (sel &Select) is_open() bool { << sel.open_state }
+
+// Upstream: src/ui/widgets/controls_nav.xu
+pub fn (sel &Select) option_bounds(index int,styles &Styles) layout.Rect {
+    if index < 0 || index >= sel.count_val { << layout.Rect{x: 0.0,y: 0.0,width: 0.0,height: 0.0} }
+    c := sel.style_or(styles)
+    d := styles.density
+    row_h := math.max(24.0 * d,sel.bounds.height)
+    pad_y := (c.padding.top + c.padding.bottom) * 0.5 * d
+    pop := sel.popup_bounds(styles)
+    << layout.Rect{x: pop.x + 2.0 * d,y: pop.y + pad_y + f64(index - sel.first_option) * row_h,width: math.max(0.0,pop.width - 4.0 * d),height: row_h}
+}
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (sel &Select) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &Theme) int {
@@ -242,6 +256,52 @@ pub fn (sel &Select) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &T
     frame.line(cx,cy + 2.0,cx + 4.0,cy - 2.0,theme.foreground,2.0) or >>
     if sel.focused { focus_ring(frame,&b,theme.focus) or >> }
     frame.pop() or >>
+    << 0
+}
+
+// Upstream: src/ui/widgets/controls_nav.xu
+pub fn (sel &Select) paint_option_styled(frame $&draw.Frame,index int,label $&StyledLabel,styles &Styles) int {
+    if !sel.open_state || index<sel.first_option || index>=min_int(sel.count_val,sel.first_option+sel.visible_options) { << 0 }
+    $c := sel.style_or(styles)
+    if sel.is_group(index) { c.inherit_font = false
+        c.font = copy_font(&styles.font)
+        c.font.weight = 600 }
+    _ := label.measure_styled(styles,&c) or >>
+    d := styles.density
+    left := c.padding.left * d
+    shaped := label.layouts[0]
+    row := sel.option_bounds(index,styles)
+    $row_state := 0
+    if !sel.option_available(index) { row_state=row_state|STATE_DISABLED }
+    if index == sel.selected_val { row_state = row_state | STATE_SELECTED }
+    if index == sel.hovered_opt { row_state = row_state | STATE_HOVERED }
+    resolved := c.resolve(row_state)
+    if row_state != 0 {
+        rounded_fill(frame,&row,math.max(2.0,(c.radius - 2.0) * d),resolved.background) or >>
+    }
+    frame.push() or >>
+    frame.clip_rect(row.x,row.y,math.max(0.0,row.width-24.0*d),row.height) or >>
+    if label.value.len > 0 {
+        ty := row.y + (row.height - shaped.metrics.height) * 0.5
+        frame.text_layout(&shaped,row.x + left,ty,resolved.foreground) or >>
+    }
+    frame.pop() or >>
+    if index==sel.selected_val { x := row.x+row.width-14.0*d
+        y := row.y+row.height*0.5
+        frame.line(x-4.0*d,y,x-1.0*d,y+3.0*d,resolved.foreground,1.5*d) or >>
+        frame.line(x-1.0*d,y+3.0*d,x+5.0*d,y-4.0*d,resolved.foreground,1.5*d) or >> }
+    << 0
+}
+
+// Upstream: src/ui/widgets/controls_nav.xu
+pub fn (sel &Select) paint_popup_box_styled(frame $&draw.Frame,styles &Styles) int {
+    if !sel.open_state { << 0 }
+    c := sel.style_or(styles)
+    d := styles.density
+    pop := sel.popup_bounds(styles)
+    $pop_style := c.clone()
+    pop_style.focus_width = 0.0
+    style_box(frame,&pop,&pop_style,d,0) or >>
     << 0
 }
 
@@ -281,6 +341,18 @@ pub fn (sel &Select) paint_styled(frame $&draw.Frame,label $&StyledLabel,styles 
         frame.line(cx,cy + half * 0.5,cx + half,cy - half * 0.5,resolved.foreground,stroke_w) or >>
     }
     << 0
+}
+
+// Upstream: src/ui/widgets/controls_nav.xu
+pub fn (sel &Select) popup_bounds(styles &Styles) layout.Rect {
+    c := sel.style_or(styles)
+    d := styles.density
+    row_h := math.max(24.0 * d,sel.bounds.height)
+    pad_y := (c.padding.top + c.padding.bottom) * 0.5 * d
+    height := f64(min_int(sel.visible_options,sel.count_val)) * row_h + pad_y * 2.0
+    $y := sel.bounds.y + sel.bounds.height + 2.0 * d
+    if sel.popup_above { y = sel.bounds.y - 2.0 * d - height }
+    << layout.Rect{x: sel.bounds.x,y: y,width: sel.bounds.width,height: height}
 }
 
 // Upstream: src/ui/widgets/controls_nav.xu

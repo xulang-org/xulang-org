@@ -36,12 +36,14 @@ def generate():
         out += '    $focus := widgets.state_paint(widgets.STATE_FOCUSED)\n'
         out += '    focus.unless = widgets.STATE_DISABLED | widgets.STATE_INVALID\n    focus.fields = widgets.PAINT_BORDER\n    focus.border = p.focus\n'
         out += '    $selected_focus := widgets.state_paint(widgets.STATE_FOCUSED | widgets.STATE_SELECTED)\n'
-        out += '    selected_focus.unless = widgets.STATE_DISABLED | widgets.STATE_INVALID\n    selected_focus.fields = widgets.PAINT_FOCUS\n    selected_focus.focus = p.on_accent\n'
+        out += '    selected_focus.unless = widgets.STATE_DISABLED | widgets.STATE_INVALID | widgets.STATE_READ_ONLY\n    selected_focus.fields = widgets.PAINT_FOCUS\n    selected_focus.focus = p.on_accent\n'
+        out += '    $invalid_focus := widgets.state_paint(widgets.STATE_FOCUSED | widgets.STATE_INVALID)\n'
+        out += '    invalid_focus.unless = widgets.STATE_DISABLED\n    invalid_focus.fields = widgets.PAINT_FOCUS\n    invalid_focus.focus = p.invalid\n'
         for control in ('button', 'checkbox', 'input', 'text_area', 'progress', 'scroll'):
-            out += f'    result.{control}.palette = p\n    result.{control}.states = [focus,selected_focus]\n'
+            out += f'    result.{control}.palette = p\n    result.{control}.states = [focus,selected_focus,invalid_focus]\n'
             out += f'    result.{control}.radius = {px("radius-md")}\n'
             out += f'    result.{control}.min_height = {px("control-md")}\n'
-            out += f'    result.{control}.focus_width = 2.0\n    result.{control}.focus_inset = 3.0\n'
+            out += f'    result.{control}.focus_width = 2.0\n    result.{control}.focus_inset = 0.0\n'
         for control in ('input', 'text_area'):
             out += f'    result.{control}.palette.normal = {c("surface")}\n'
         out += f'    result.button.padding.left = {px("space-4")}\n    result.button.padding.right = {px("space-4")}\n'
