@@ -15,6 +15,7 @@ from urllib.parse import unquote, urlsplit
 
 from site_layout import render, shared_content
 from gen_llms import render_corpora
+from sync_all_benches import validate_dataset
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASES_URL = 'https://github.com/xulang-org/xu/releases'
@@ -263,6 +264,8 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
             if not recorded or recorded[1].strip() != xu_version:
                 raise ValueError(f'API version does not match Xu {xu_version}; regenerate API from the matching SDK')
     benchmark = json.loads((root / 'www/benchmarks.json').read_text(encoding='utf-8'))
+    sources = json.loads((root / 'www/bench_sources.json').read_text(encoding='utf-8'))
+    validate_dataset(benchmark, tuple(sources))
     measured = benchmark['metadata']['xu_version']
     if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', measured):
         raise ValueError('Benchmark version must be an official release')
@@ -277,6 +280,8 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
             raise ValueError(f'Benchmark measurement label does not match {measured}: {lang}')
     asset_key = playground_asset_key(root, wasm)
     shared = shared_content(root)
+    for values in shared.values():
+        values['benchmark_count'] = str(benchmark['metadata']['total_benches'])
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)

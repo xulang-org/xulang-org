@@ -6,6 +6,7 @@ import json
 import math
 from pathlib import Path
 import re
+from sync_all_benches import registered_benches, require_bench_commit
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = ('macos-arm64', 'linux-arm64', 'windows-arm64',
@@ -16,12 +17,14 @@ def positive(value):
     return isinstance(value, (int, float)) and math.isfinite(value) and value > 0
 
 
-def load(artifacts, version, commit, run_id, measured_date):
+def load(artifacts, version, commit, run_id, measured_date, bench_root=None):
     if not re.fullmatch(r'\d+\.\d+\.\d+', version):
         raise ValueError('website benchmarks must use a final release')
     if not re.fullmatch(r'[0-9a-f]{40}', commit) or not run_id.isdigit():
         raise ValueError('a complete Xu commit and Actions run ID are required')
     date.fromisoformat(measured_date)
+    bench_root = Path(bench_root or ROOT.parent / 'bench')
+    registered = registered_benches(bench_root)
     platforms, identities = {}, {}
     names = closure = bench_commit = categories = None
     for target in TARGETS:
@@ -37,6 +40,8 @@ def load(artifacts, version, commit, run_id, measured_date):
                 raise ValueError(f'{target}: missing {field}')
         closure = closure or identity['source_closure_sha256']
         bench_commit = bench_commit or identity['bench_commit']
+        if names is None:
+            require_bench_commit(bench_root, bench_commit)
         if closure != identity['source_closure_sha256'] or bench_commit != identity['bench_commit']:
             raise ValueError(f'{target}: mixed source closures or benchmark commits')
         data = json.loads((folder / f'benchmarks-{target}.json').read_text())
@@ -58,6 +63,8 @@ def load(artifacts, version, commit, run_id, measured_date):
                        for item in data['benches']):
                     raise ValueError(f'{target}: measured {name} without a version')
         current = [item['name'] for item in data['benches']]
+        if tuple(current) != registered:
+            raise ValueError(f'{target}: workload matrix differs from the full registered suite')
         names = names or current
         if current != names or len(set(current)) != len(current) or len(current) != meta['total_benches']:
             raise ValueError(f'{target}: incomplete workload matrix')
@@ -118,9 +125,10 @@ def main():
     parser.add_argument('--commit', required=True)
     parser.add_argument('--run-id', required=True)
     parser.add_argument('--date', required=True, help='Actions run date (YYYY-MM-DD)')
+    parser.add_argument('--bench-root', type=Path, help='checkout pinned to the measured bench_commit')
     args = parser.parse_args()
     data = load(args.artifacts, (ROOT / 'VERSION').read_text().strip(),
-                args.commit, args.run_id, args.date)
+                args.commit, args.run_id, args.date, args.bench_root)
     (ROOT / 'www/benchmarks.json').write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
     print(f'Imported {data["metadata"]["total_benches"]} workloads × {len(TARGETS)} verified platforms')
 

@@ -191,11 +191,12 @@ The playground runs client-side in the browser. Generated WASM stays in `build/p
 To refresh benchmarks, download one complete six-platform Actions run, then run:
 
 ```sh
-python3 scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD
+python3 scripts/import-benchmarks.py --artifacts DIR --bench-root PINNED_BENCH_CHECKOUT --commit FULL_SHA --run-id ID --date YYYY-MM-DD
+python3 scripts/sync_all_benches.py --bench-root PINNED_BENCH_CHECKOUT
 python3 scripts/gen-benchmarks.py
 ```
 
-Import verifies compiler identities, source closure, fixed point, workload completeness, and stdout. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
+Pin the bench checkout to the artifact identity's `bench_commit`. Import verifies compiler identities, source closure, fixed point, the full registered workload inventory, and stdout. Source export preserves every canonical workload ID and the original source text; it never filters, aliases, or rewrites measured rows. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
 
 `.github/workflows/pages.yml` checks release alignment, verifies published SDK SHA-256 digests, compiles the playground, builds the site, and deploys to GitHub Pages on pushes to `main`.
 
