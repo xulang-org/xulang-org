@@ -128,6 +128,50 @@ class BenchmarkCoverageTests(unittest.TestCase):
             importer.load(self.measured_artifacts(self.names[1:]), '0.11.2', 'a' * 40,
                           '123', '2026-11-02', self.repo)
 
+    def failure_artifacts(self):
+        artifacts = self.measured_artifacts(self.names)
+        target = 'macos-arm64'
+        folder = artifacts / ('benchmark-reports-' + target)
+        path = folder / f'benchmarks-{target}.json'
+        data = json.loads(path.read_text())
+        row = data['benches'][1]
+        failure = dict(status='compile_failed', error='index out of bounds')
+        row.update(xu_status='compile_failed', xu_error=failure['error'], xu_wall_ms=None)
+        row['implementations']['Xu'] = failure
+        path.write_text(json.dumps(data))
+        raw = ''.join(f'Xu {name} 1.0 1.0 1.0 1.0 100 OK\n' for name in self.names if name != row['name'])
+        raw += '\n'.join('# result: ' + json.dumps(dict(bench=b['name'], impl='Xu', **b['implementations']['Xu']))
+                         for b in data['benches'])
+        (folder / 'crosslang.txt').write_text(raw)
+        return artifacts, path
+
+    def test_import_retains_raw_evidenced_failures_without_metrics(self):
+        artifacts, _ = self.failure_artifacts()
+        with patch.object(importer, 'require_bench_commit'):
+            data = importer.load(artifacts, '0.11.2', 'a' * 40, '123', '2026-11-02', self.repo)
+        row = data['benches'][1]
+        self.assertEqual([b['name'] for b in data['benches']], self.names)
+        self.assertEqual(row['xu_status'], 'compile_failed')
+        self.assertIsNone(row['xu_wall_ms'])
+        self.assertIsNone(row['ratio_vs_c'])
+        self.assertEqual(data['metadata']['xu_failed_cases'], 1)
+
+    def test_import_rejects_failure_without_matching_raw_evidence(self):
+        artifacts, path = self.failure_artifacts()
+        data = json.loads(path.read_text())
+        data['benches'][1]['implementations']['Xu']['error'] = 'different error'
+        path.write_text(json.dumps(data))
+        with patch.object(importer, 'require_bench_commit'), self.assertRaisesRegex(ValueError, 'runtime evidence'):
+            importer.load(artifacts, '0.11.2', 'a' * 40, '123', '2026-11-02', self.repo)
+
+    def test_import_rejects_metrics_attached_to_failure(self):
+        artifacts, path = self.failure_artifacts()
+        data = json.loads(path.read_text())
+        data['benches'][1]['xu_wall_ms'] = 0.1
+        path.write_text(json.dumps(data))
+        with patch.object(importer, 'require_bench_commit'), self.assertRaisesRegex(ValueError, 'measured Xu failure'):
+            importer.load(artifacts, '0.11.2', 'a' * 40, '123', '2026-11-02', self.repo)
+
 
 if __name__ == '__main__':
     unittest.main()

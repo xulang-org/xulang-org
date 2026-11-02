@@ -9,6 +9,7 @@ import statistics
 from pathlib import Path
 import re
 from benchmark_groups import platform_groups
+from benchmark_results import FAILURES
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_FILE = ROOT / "www/benchmarks.json"
@@ -299,7 +300,7 @@ def get_bench_impl_metric(b: dict | None, lang_key: str, metric_key: str) -> flo
     elif lang_key == "go":
         target = impls.get("go build")
 
-    if not target:
+    if not target or target.get('status', 'ok') != 'ok':
         return None
     val = target.get(metric_key)
     if (not isinstance(val, (int, float)) or isinstance(val, bool)
@@ -419,6 +420,13 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
         for c in active_configs:
             pid = c["id"]
             val = table_data[lk].get(pid)
+            bench = next((b for b in platforms[pid].get('benches', []) if b['name'] == b_name), {})
+            failed = bench.get('xu_status') if is_xu else None
+            if failed in FAILURES:
+                label = FAILURES[failed][0 if en else 1]
+                error = html.escape(bench.get('xu_error', ''), quote=True)
+                cells.append(f'<td class="bench-result-failed" title="{error}">{label}</td>')
+                continue
             if val is not None and val > 0:
                 p_best = p_best_map.get(pid)
                 is_best = (p_best is not None and abs(val - p_best) < 1e-4)
@@ -617,6 +625,16 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
         )
 
     table_heading = "6-Platform Audited Data Matrix & Median" if en else "6 大目标平台审计实测数据表与中位数"
+    failure_rows = []
+    for c in active_configs:
+        item = p_map.get(c['id'])
+        if item and item.get('xu_status') in FAILURES:
+            status = FAILURES[item['xu_status']][0 if en else 1]
+            error = html.escape(item.get('xu_error', ''))
+            failure_rows.append(f"<li><strong>{c['name_en']} {c['arch_tag']}: {status}</strong><pre>{error}</pre></li>")
+    failures = ('<details class="bench-failure-detail"><summary>Xu: '
+                + (f'{len(failure_rows)} platform failures' if en else f'{len(failure_rows)} 个平台失败')
+                + '</summary><ul>' + ''.join(failure_rows) + '</ul></details>') if failure_rows else ''
 
     return f"""
 <div class="bench-workload-block" id="workload-{b_name}" data-name="{b_name.lower()}" data-desc="{desc.lower()}">
@@ -634,6 +652,7 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
       </button>
     </div>
   </div>
+  {failures}
   {bars_matrix_html}
   <div class="bench-workload-table-toolbar">
     <div class="bench-workload-table-heading">
@@ -1200,11 +1219,11 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
     desc = (
         f"Seven whole-program executions per implementation; reported wall time is the median including process launch. "
         f"C and Rust select the lowest measured median among O1/O2/O3. {rss_note} "
-        f"All Xu outputs and exit codes passed harness verification. Compiler identities, source closures and Gen2=Gen3 bootstrap verified."
+        f"Only successful, output-verified runs carry metrics. Failures retain their status and diagnostics, without ratios or rankings. Compiler identities, source closures and Gen2=Gen3 bootstrap verified."
         if en else
         f"每项实现独立运行七次整进程，展示包含进程冷启动的 Wall 耗时中位数。"
         f"C 与 Rust 自动选取该负载同平台 O1/O2/O3 中位数的最小值；Go、Swift 展示官方实测。{rss_note}"
-        f"全部 Xu 负载的输出与退出状态 100% 通过测试机校验；六份编译器身份的提交 SHA、版本、源闭包和 Gen2=Gen3 自举自验完全核验通过。"
+        f"仅成功且通过输出校验的运行记录实测指标；失败项保留状态和诊断，不计算倍率、不参与排名。六份编译器身份的提交 SHA、版本、源闭包和 Gen2=Gen3 自举自验已核验。"
     )
 
     t1_title = "Audited Platform & Telemetry Matrix" if en else "6 大目标测试机环境与遥测机制"
@@ -1240,13 +1259,13 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
     th_rt = "Runtime & Memory Model" if en else "运行时与内存机制"
 
     compilers_rows = [
-        ("Xu", "xu build -O", "零 GC · 编译期借用生命周期与 RAII 确定性析构"),
+        ("Xu", "xu build（版本默认优化参数）", "零 GC · 编译期借用生命周期与 RAII 确定性析构"),
         ("C (Clang)", "clang -O1 / -O2 / -O3 (取最优)", "手动 free · 零运行时开销 (性能标尺)"),
         ("Rust (rustc)", "rustc -C opt-level=1 / 2 / 3 (取最优)", "零 GC · 所有权生命周期与 Scope Drop"),
         ("Swift", "swiftc -O", "ARC 自动引用计数运行时 (含 Swift 标准库)"),
         ("Go", "go build (native)", "并发三色标记清除 GC 运行时 (含并发调度器)"),
     ] if not en else [
-        ("Xu", "xu build -O", "Zero GC / RAII Scope Drop / Native machine-code backend"),
+        ("Xu", "xu build (versioned defaults)", "Zero GC / RAII Scope Drop / Native machine-code backend"),
         ("C (Clang)", "clang -O1 / -O2 / -O3 (lowest median)", "Manual memory management / Zero runtime"),
         ("Rust (rustc)", "rustc -C opt-level=1 / 2 / 3 (lowest median)", "Zero GC / Ownership Drop / LLVM Backend"),
         ("Swift", "swiftc -O", "ARC (Automatic Reference Counting) runtime"),
@@ -1259,7 +1278,11 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
             f'<tr><td><strong>{clang}</strong></td><td><code>{cflag}</code></td><td><small>{crt}</small></td></tr>'
         )
 
-    repro_cmd = "git clone https://github.com/xulang-org/bench.git && cd bench && ./run.sh --all --reps 7"
+    bench_commit = meta.get('bench_commit', '')
+    checkout = f'git checkout {bench_commit} && ' if re.fullmatch(r'[0-9a-f]{40}', bench_commit) else ''
+    repro_cmd = html.escape('git clone https://github.com/xulang-org/bench.git && cd bench && '
+                           + checkout + f'XU_ROOT=/path/to/xu-{meta["xu_version"]} '
+                           + 'python3 scripts/bench_crosslang.py --iters 7 --out reports/crosslang.txt', quote=True)
     copy_btn_txt = "Copy Command" if en else "复制复现指令"
 
     return f"""
@@ -1360,6 +1383,27 @@ def render_pending_workloads(sources: dict, platforms: dict, en: bool) -> str:
   <p>{description}</p>
   <button type="button" class="bench-src-modal-btn" onclick="openBenchCodeModal('http_concurrent', 'HTTP concurrency')">{button}</button>
 </section>'''
+
+
+def render_outcome_summary(platforms: dict, en: bool) -> str:
+    rows = []
+    total = failed = 0
+    for cfg in PLATFORMS_CONFIG:
+        benches = platforms.get(cfg['id'], {}).get('benches', [])
+        failures = sum(b.get('xu_status', 'ok') != 'ok' for b in benches)
+        total += len(benches)
+        failed += failures
+        rows.append(f"<li>{cfg['name_en']} {cfg['arch_tag']}: "
+                    + (f'{len(benches) - failures} passed / {failures} failed' if en
+                       else f'{len(benches) - failures} 项通过 / {failures} 项失败') + '</li>')
+    if not failed:
+        return ''
+    title = (f'Xu: {total - failed}/{total} platform-workload checks passed; {failed} failed'
+             if en else f'Xu：{total - failed}/{total} 次平台负载检查通过，{failed} 项失败')
+    explanation = ('Failed workloads remain in the suite with diagnostics. They have no performance metrics or ranking.'
+                   if en else '失败负载继续保留并显示诊断，不填写性能指标、不参与排名。')
+    return (f'<aside class="bench-outcome-summary" data-failed-count="{failed}"><strong>{title}</strong>'
+            f'<p>{explanation}</p><ul>{"".join(rows)}</ul></aside>')
 
 
 def render_page(data: dict, lang: str) -> str:
@@ -1723,6 +1767,8 @@ function jumpToBenchSection(secKey) {
     <p class="banner"><i class="xi xi-benchmark xi-brand"></i> {meta_text}</p>
     <h1>{h1_text}</h1>
     <p class="lead">{lead_text}</p>
+    <p class="meta">{'Expand related workloads to compare their separate algorithms and input sizes. Results are never pooled.' if en else '展开同类项目可查看不同算法和输入规模的独立结果；各变体不合并计算。'}</p>
+    {render_outcome_summary(platforms, en)}
     {render_toolchain_versions(platforms, version, en)}
   </div>
 </div>
