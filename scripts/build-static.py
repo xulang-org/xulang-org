@@ -16,6 +16,7 @@ from urllib.parse import unquote, urlsplit
 from site_layout import render, shared_content
 from gen_llms import render_corpora
 from sync_all_benches import validate_dataset
+from benchmark_groups import platform_groups
 
 ROOT = Path(__file__).resolve().parents[1]
 RELEASES_URL = 'https://github.com/xulang-org/xu/releases'
@@ -282,6 +283,7 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     shared = shared_content(root)
     for values in shared.values():
         values['benchmark_count'] = str(benchmark['metadata']['total_benches'])
+        values['benchmark_group_count'] = str(len(platform_groups(benchmark['platforms'])))
     if output.exists():
         shutil.rmtree(output)
     output.mkdir(parents=True)

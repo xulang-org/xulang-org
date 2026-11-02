@@ -8,6 +8,7 @@ import math
 import statistics
 from pathlib import Path
 import re
+from benchmark_groups import platform_groups
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_FILE = ROOT / "www/benchmarks.json"
@@ -513,9 +514,9 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
 """
 
 
-def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg: dict, en: bool) -> str:
+def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg: dict, en: bool, label: str | None = None) -> str:
     """Render a self-contained workload block (e.g. startup) with platforms as columns (horizontal) and languages as rows (vertical). Highlights per-platform best cells."""
-    desc = ref_bench["desc_en"] if en else ref_bench["desc_zh"]
+    desc = label or (ref_bench["desc_en"] if en else ref_bench["desc_zh"])
     cat_pill = cat_cfg["pill_en"] if en else cat_cfg["pill_zh"]
     active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
 
@@ -655,21 +656,29 @@ def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool)
     cat_title = cat_cfg["name_en"] if en else cat_cfg["name_zh"]
     cat_desc = cat_cfg["desc_en"] if en else cat_cfg["desc_zh"]
 
-    ref_benches = []
-    for pid in [c["id"] for c in PLATFORMS_CONFIG]:
-        if pid in platforms:
-            ref_benches = [b for b in platforms[pid].get("benches", []) if b.get("category") == ck]
-            if ref_benches:
-                break
-
-    if not ref_benches:
+    groups = [g for g in platform_groups(platforms) if g['category'] == ck]
+    if not groups:
         return ""
 
     blocks = []
-    for b in ref_benches:
-        blocks.append(render_workload_block(b["name"], b, platforms, cat_cfg, en))
+    for group in groups:
+        variants = group['variants']
+        body = ''.join(render_workload_block(v['bench']['name'], v['bench'], platforms, cat_cfg, en,
+                                            v['label_en' if en else 'label_zh']) for v in variants)
+        if len(variants) > 1:
+            title = html.escape(group['title_en' if en else 'title_zh'])
+            labels = html.escape(' · '.join(v['label_en' if en else 'label_zh'] for v in variants))
+            count = f"{len(variants)} variants" if en else f"{len(variants)} 个变体"
+            body = f'''<details class="bench-workload-group" id="group-{group['id']}" data-group-title="{title.lower()}">
+  <summary><span class="bench-group-title">{title}</span><span class="bench-cat-count">{count}</span>
+    <span class="bench-group-variants">{labels}</span></summary>
+  <div class="bench-group-content">{body}</div>
+</details>'''
+        blocks.append(body)
 
-    cat_count_text = f"{len(ref_benches)} {'workloads' if en else '项算法评测'}"
+    variant_count = sum(len(g['variants']) for g in groups)
+    cat_count_text = (f"{len(groups)} groups · {variant_count} variants" if en
+                      else f"{len(groups)} 个项目组 · {variant_count} 个变体")
 
     return f"""
 <div class="bench-cat-section bench-sec-{ck}">
@@ -1362,6 +1371,7 @@ def render_page(data: dict, lang: str) -> str:
     platforms = data.get("platforms", {})
     categories = data["categories"]
     workload_count = meta["total_benches"]
+    group_count = len(platform_groups(platforms))
 
     title = (
         "Benchmarks — Cross-Language & Multi-Architecture Performance"
@@ -1377,10 +1387,10 @@ def render_page(data: dict, lang: str) -> str:
 
     lead_text = (
         f"Rigorous, reproducible cross-language benchmarks comparing Xu v{meta['xu_version']} "
-        f"against C (best Clang O1–O3), Rust (best rustc O1–O3), Swift (swiftc -O), and Go (go build) across {workload_count} measured workloads. "
+        f"against C (best Clang O1–O3), Rust (best rustc O1–O3), Swift (swiftc -O), and Go (go build) across {group_count} groups and {workload_count} measured workload variants. "
         f"Concurrently verified across dual architectures (ARM64 & x86_64) on macOS, Linux, and Windows."
         if en
-        else f"严谨、可复现的跨语言横向评测：在 {workload_count} 个实测负载下，将 Xu v{meta['xu_version']} "
+        else f"严谨、可复现的跨语言横向评测：在 {group_count} 个项目组、{workload_count} 个实测负载变体下，将 Xu v{meta['xu_version']} "
         f"与 C（Clang O1–O3 最佳）、Rust（rustc O1–O3 最佳）、Swift（swiftc -O） 及 Go (go build) 进行同算法全维度对照。"
         f"覆盖 ARM64 与 x86_64 双架构，以及 macOS、Linux、Windows 三大操作系统自动化 CI 实测。"
     )
@@ -1416,11 +1426,13 @@ def render_page(data: dict, lang: str) -> str:
         '不同机器的绝对耗时不能作为加速证据。SHA-256 在支持的 ARM64 上使用硬件指令，'
         'x64 当前使用软件路径；各语言密码库采用的路径可能不同。'
     )
+    banner_text += (' Related workloads share a display group. Each algorithm, input size, source and result remains separate; variants are never pooled.'
+                    if en else ' 同类负载合并展示；不同算法、输入规模、源码和测量结果分别保留，不合并计算。')
 
     # 1. 功能大类平铺区块列表
     category_sections = []
     anchor_buttons = []
-    any_p = next(iter(platforms.values()), {})
+    groups = platform_groups(platforms)
 
     for cat_cfg in CATEGORIES_CONFIG:
         ck = cat_cfg["key"]
@@ -1429,7 +1441,7 @@ def render_page(data: dict, lang: str) -> str:
             category_sections.append(sec_html)
             pill_name = cat_cfg["pill_en"] if en else cat_cfg["pill_zh"]
             icon = cat_cfg["icon"]
-            count = len([b for b in any_p.get("benches", []) if b.get("category") == ck])
+            count = len([g for g in groups if g['category'] == ck])
             count_tag = f'<span class="badge">{count}</span>' if count else ""
             anchor_buttons.append(
                 f'<button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection(\'{ck}\')">'
@@ -1680,36 +1692,8 @@ function jumpToBenchSection(secKey) {
   }
 }
 
-function searchBenchAll(query) {
-  var q = (query || '').toLowerCase().trim();
-  var blocks = document.querySelectorAll('.bench-workload-block');
-  var secCounts = {};
-
-  blocks.forEach(function(block) {
-    var name = block.getAttribute('data-name') || '';
-    var desc = block.getAttribute('data-desc') || '';
-    var sec = block.closest('.bench-cat-section');
-    var secClass = sec ? sec.className : '';
-
-    if (!q || name.indexOf(q) !== -1 || desc.indexOf(q) !== -1) {
-      block.style.display = '';
-      if (secClass) secCounts[secClass] = (secCounts[secClass] || 0) + 1;
-    } else {
-      block.style.display = 'none';
-    }
-  });
-
-  document.querySelectorAll('.bench-cat-section').forEach(function(sec) {
-    if (sec.classList.contains('bench-sec-footprint') || sec.classList.contains('bench-sec-radar')) return;
-    var count = secCounts[sec.className] || 0;
-    if (q && count === 0) {
-      sec.style.display = 'none';
-    } else {
-      sec.style.display = '';
-    }
-  });
-}
 </script>
+<script src="/bench-groups.js" defer></script>
 """
     bench_script = bench_script_template.replace("__SOURCES_JSON__", sources_json_str).replace("__COPY_SUCCESS__", copy_success_text)
 
@@ -1750,7 +1734,7 @@ function searchBenchAll(query) {
   <div class="bench-sticky-topline">
     <div class="bench-sticky-title-group">
       <h2 style="margin: 0; font-size: 16.5px; font-weight: 700;">{'Cross-Architecture Benchmark Suite' if en else '全量架构性能评测工作集'}</h2>
-      <span class="meta" style="margin: 0; font-size: 12px;">{f'{workload_count} Measured Workloads · 6 Platforms' if en else f'{workload_count} 项实测负载 · 6 个平台'}</span>
+      <span class="meta" style="margin: 0; font-size: 12px;">{f'{group_count} Groups · {workload_count} Measured Variants · 6 Platforms' if en else f'{group_count} 个项目组 · {workload_count} 个实测变体 · 6 个平台'}</span>
     </div>
   </div>
   <div class="bench-anchor-bar">
@@ -1772,6 +1756,10 @@ function searchBenchAll(query) {
     </div>
   </div>
 </div>
+
+<label class="bench-search-label" for="bench-search">{SVG_SEARCH}<span>{'Search workloads' if en else '搜索负载'}</span>
+  <input id="bench-search" type="search" oninput="searchBenchAll(this.value)" placeholder="{'Name, algorithm or input size' if en else '名称、算法或输入规模'}">
+</label>
 
 <!-- 1. 全语言四维综合战力罗盘 (置顶大盘) -->
 {radar_section}

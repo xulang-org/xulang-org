@@ -7,6 +7,7 @@ import json
 from html import unescape
 from pathlib import Path
 import re
+from benchmark_groups import platform_groups
 
 
 def project_source(project: dict) -> str:
@@ -21,7 +22,8 @@ def project_source(project: dict) -> str:
 
 
 def render_corpora(root: Path, xu_version: str) -> dict[str, str]:
-    metadata = json.loads((root / 'www/benchmarks.json').read_text(encoding='utf-8'))['metadata']
+    benchmark = json.loads((root / 'www/benchmarks.json').read_text(encoding='utf-8'))
+    metadata = benchmark['metadata']
     playground = json.loads((root / 'www/xu-play-examples.json').read_text(encoding='utf-8'))
     examples = {name: project_source(item) for name, item in playground['projects'].items()}
     examples['errors'] = (root / 'www/api-examples/sources/examples/05_errors/main.xu').read_text(encoding='utf-8')
@@ -32,6 +34,7 @@ def render_corpora(root: Path, xu_version: str) -> dict[str, str]:
         'benchmark_version': metadata['xu_version'],
         'benchmark_date': metadata['date'],
         'benchmark_count': str(metadata['total_benches']),
+        'benchmark_group_count': str(len(platform_groups(benchmark['platforms']))),
         'benchmark_platforms': str(len(metadata['platforms'])),
         'benchmark_run': metadata['run_url'],
     }

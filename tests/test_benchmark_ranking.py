@@ -5,9 +5,11 @@ from html.parser import HTMLParser
 import importlib.util
 from pathlib import Path
 import re
+import sys
 import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
 spec = importlib.util.spec_from_file_location('benchmarks', ROOT / 'scripts/gen-benchmarks.py')
 benchmarks = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(benchmarks)

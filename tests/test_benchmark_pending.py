@@ -1,8 +1,10 @@
 import importlib.util
 import unittest
+import sys
 from pathlib import Path
 
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
 spec = importlib.util.spec_from_file_location(
     "benchmarks_pending", Path(__file__).resolve().parents[1] / "scripts/gen-benchmarks.py"
 )
