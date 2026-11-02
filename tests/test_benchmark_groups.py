@@ -74,3 +74,10 @@ class BenchmarkGroupTests(unittest.TestCase):
             self.assertNotIn('<script>bad</script>', section)
             notice = benchmarks.render_outcome_summary(data['platforms'], en)
             self.assertIn(f'data-failed-count="{prior_failures + 1}"', notice)
+        # The entire page, including coverage/footprint/metadata, accepts a
+        # genuine null-metric failure rather than dropping it or crashing.
+        row['implementations']['Xu'].pop('wall_ms')
+        for lang in ('en', 'zh'):
+            page = benchmarks.render_page(data, lang)
+            self.assertIn('id="workload-fib"', page)
+            self.assertNotIn('bench-radar-svg', page)
