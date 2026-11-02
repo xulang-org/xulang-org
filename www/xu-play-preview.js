@@ -99,6 +99,10 @@
     else dialog.removeAttribute('data-mobile-template');
     back.hidden = !media.matches || !detail;
   }
+  function focusDetail() {
+    var heading = el('library-detail').querySelector('h3');
+    if (heading) { heading.tabIndex = -1; heading.focus(); }
+  }
   function apply() {
     navigation.hidden = !media.matches;
     if (media.matches) root.setAttribute('data-mobile-view', current);
@@ -158,10 +162,7 @@
     templateList:function () { template(false); },
     templateDetail:function () {
       template(true);
-      if (media.matches) {
-        var heading = el('library-detail').querySelector('h3');
-        if (heading) { heading.tabIndex = -1; heading.focus(); }
-      }
+      if (media.matches) focusDetail();
     }
   };
   function resize() {
@@ -176,6 +177,12 @@
       var target = current === 'editor' ? el('src') : current === 'files' ? el('add') :
         current === 'preview' ? el('preview-fit') : el('clear');
       target.focus();
+    }
+    if (dialog && dialog.contains(active)) {
+      if (!media.matches && active === back) el('library-search').focus();
+      else if (media.matches && detailOpen && (active === el('library-search') ||
+        el('library-list').contains(active) || el('library-groups').contains(active))) focusDetail();
+      else if (media.matches && !detailOpen && el('library-detail').contains(active)) el('library-search').focus();
     }
   }
   if (media.addEventListener) media.addEventListener('change', resize);

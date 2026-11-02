@@ -26,6 +26,8 @@ function mount(narrow=true){
  get('source-wrapper').children=[get('explorer'),get('editor')];get('result-wrapper').children=[get('preview-panel'),get('console-panel')];
  get('editor').children=[get('src')];get('preview-panel').children=[get('preview-fit'),get('preview-actual'),get('preview-pan'),get('canvas')];
  get('library-list').queries={'button[aria-current="true"]':get('selected-template')};get('library-detail').queries={h3:get('template-heading')};
+ get('library').children=[get('library-back'),get('library-search'),get('library-list'),get('library-groups'),get('library-detail')];
+ get('library-list').children=[get('selected-template')];get('library-detail').children=[get('template-heading')];
  get('src').value='unchanged source';get('src').scrollTop=80;
  Object.defineProperty(get('canvas'),'width',{value:640,writable:false});Object.defineProperty(get('canvas'),'height',{value:360,writable:false});
  document.getElementById=id=>nodes[id.replace('xu-play-','')];
@@ -73,6 +75,12 @@ test('template detail and back navigation preserve selection and focus',()=>{
  assert.equal(p.document.activeElement,p.get('template-heading'));p.get('library-back').click();
  assert.equal(p.get('library').getAttribute('data-mobile-template'),'list');assert.equal(p.document.activeElement,p.get('selected-template'));
  p.resize(false);assert.equal(p.get('library-back').hidden,true);assert.equal(p.get('library').getAttribute('data-mobile-template'),null);
+});
+test('template dialog keeps focus visible when changing between phone and desktop',()=>{
+ const p=mount(false);p.window.XuPlayMobile.templateDetail();p.get('selected-template').focus();p.resize(true);
+ assert.equal(p.document.activeElement,p.get('template-heading'));
+ p.get('library-back').focus();p.resize(false);assert.equal(p.document.activeElement,p.get('library-search'));
+ p.resize(true);assert.equal(p.document.activeElement,p.get('template-heading'));
 });
 test('100% phone pan scrolls presentation without sending gestures to controls',()=>{
  const p=mount();assert.equal(p.get('preview-pan').hidden,true);p.get('preview-actual').click();assert.equal(p.get('preview-pan').hidden,false);
