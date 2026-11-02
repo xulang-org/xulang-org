@@ -21,6 +21,11 @@ The parent validates the styles once; its private sliders reuse the same geometr
 calculation without repeating the full Styles validation for every RGBA row.
 The color values, slider input and painting still execute in Xu; the browser does
 not approximate the controls or redraw their values independently.
+The browser focus adaptation treats a zero focus inset as one emphasized
+boundary. Shared control boxes, joined ButtonGroup segments, and RangeSlider
+thumbs replace their regular border instead of adding another outline. Styles
+with a positive focus inset keep the upstream inset-ring behavior. Selection
+and focus still belong to the Xu widgets.
 
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
 for a three-page control gallery. `ui-widgets`, `ui-draw`, and `ui-counter`
@@ -60,9 +65,10 @@ also mirrored. This is a larger gallery subset, not the complete desktop suite.
 input, text/color/path types, style resolution, and motion initialization.
 The focused component experiences additionally run Select, Stepper, RadioGroup,
 Pagination, Breadcrumbs, RangeSlider, SplitView, ButtonGroup, MultiSelect,
-ColorPicker, Table, Chart, Popover, and dropdown/context/split Menu modes. Their geometry,
-state, input and paint methods are unchanged desktop Xu declarations. Canvas
-forwards left/right/middle pointer buttons and supplies drawing resources.
+ColorPicker, Table, Chart, Popover, and dropdown/context/split Menu modes. Their
+geometry, state, and input use desktop Xu declarations; painting includes the
+documented browser adaptations above. Canvas forwards left/right/middle pointer
+buttons and supplies drawing resources.
 
 The Popover experience uses the desktop anchored surface, real checkboxes and
 buttons. It paints the floating surface after background guidance and clips

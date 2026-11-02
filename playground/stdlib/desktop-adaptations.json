@@ -74,6 +74,52 @@
           "after": "    // Keep per-channel styles typed; byte serialization is unnecessary for this private paint path.\n    $channel_styles := styles.clone()\n    channel_styles.progress = styles.slider_style()\n    base_accent := channel_styles.progress.palette.accent\n    channel_styles.progress.palette.invalid = c.palette.invalid\n    for i in 0:4 {\n        channel_styles.progress.palette.accent = base_accent\n        if i == 0 { channel_styles.progress.palette.accent = draw.rgb(224,73,86) }\n        else if i == 1 { channel_styles.progress.palette.accent = draw.rgb(42,151,93) }\n        else if i == 2 { channel_styles.progress.palette.accent = draw.rgb(60,117,224) }\n        value := picker.locale.integer(picker.channel(i) or >>)\n        channel_b := picker.channel_bounds(i) or >>\n        $channel := picker.channels[i]\n        channel.custom.active = false\n        // The parent already validated these styles. Apply the unchanged\n        // Slider geometry directly instead of validating all six controls again.\n        slider_style := &channel_styles.progress\n        d := channel_styles.density\n        channel.inset_left = slider_style.padding.left * d\n        channel.inset_right = slider_style.padding.right * d\n        width := math.max(0.0,channel.bounds.width - channel.inset_left - channel.inset_right)\n        height := math.max(0.0,channel.bounds.height - channel.value_height(&channel_styles) - (slider_style.padding.top + slider_style.padding.bottom) * d)\n        channel.thumb_extent = math.max(4.0,math.min(slider_style.indicator_size * d,math.min(width,height)))\n        channel.paint_styled(frame,&channel_styles) or >>\n"
         }
       ]
+    },
+    {
+      "module": "widgets",
+      "path": "src/ui/widgets/style.xu",
+      "signature": "fn style_box(frame $&draw.Frame,bounds &layout.Rect,style &ControlStyle,density f64,state int) int",
+      "upstream_sha256": "a01d6c1bffcfb656e21a713e08d73cce1e8784dac49fc20552453692533190ff",
+      "sha256": "12e2c50163e9074ddcef4fed759cc2a7c1613ee7c0186661286d8a6e997c923a",
+      "reason": "Honor zero-inset focus styles as one boundary while retaining legacy inset focus geometry.",
+      "replacements": [
+        {
+          "before": "    rounded_stroke(frame,bounds,radius,border,style.border_width * density) or >>",
+          "after": "    single_focus := (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 && style.focus_inset == 0.0 && style.focus_width > 0.0 && (resolved.focus.value() & 255) > 0\n    if !single_focus { rounded_stroke(frame,bounds,radius,border,style.border_width * density) or >> }"
+        }
+      ]
+    },
+    {
+      "module": "widgets_extra_button_group",
+      "path": "src/ui/widgets/button_group_paint.xu",
+      "signature": "fn (g &ButtonGroup) paint_joined(frame $&draw.Frame,index int,b &layout.Rect,style &ControlStyle,density f64,state int) int",
+      "upstream_sha256": "cd37436a7937091e4e658ece424161d547f6a01c267611b3f9d6dde0ee6d6978",
+      "sha256": "6698443b4f480baae0feca635ffa81ad80dccef8e9be39c0b7098a81020fe38f",
+      "reason": "Honor zero-inset focus styles as one boundary while retaining legacy inset focus geometry.",
+      "replacements": [
+        {
+          "before": "    stroke := draw.stroke_options(style.border_width * density)",
+          "after": "    if (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 && style.focus_inset == 0.0 && style.focus_width > 0.0 && (paint.focus.value() & 255) > 0 {\n        focus_stroke := draw.stroke_options(style.focus_width * density)\n        frame.stroke_path(&path,paint.focus,&focus_stroke) or >>\n        << 0\n    }\n    stroke := draw.stroke_options(style.border_width * density)"
+        }
+      ]
+    },
+    {
+      "module": "widgets_extra_range_slider",
+      "path": "src/ui/widgets/range_slider_paint.xu",
+      "signature": "fn (r &RangeSlider) paint_thumb(frame $&draw.Frame,styles &Styles,c &ControlStyle,index int,box &layout.Rect,halo f64) int",
+      "upstream_sha256": "3ecdfcb18baa9f2abafeb5ca7c05334fbcf6b629f409576b86a49f28eeb26b32",
+      "sha256": "50f953800a477ea7f97941de5c86938f9421fd68c02ad6eb1aea3b56d13dc3dd",
+      "reason": "Honor zero-inset focus styles as one boundary while retaining legacy inset focus geometry.",
+      "replacements": [
+        {
+          "before": "    rounded_stroke(frame,box,radius,ink,math.max(1.0,c.border_width) * styles.density) or >>",
+          "after": "    single_focus := (state & STATE_FOCUSED) != 0 && r.is_enabled() && c.focus_inset == 0.0 && c.focus_width > 0.0 && (paint.focus.value() & 255) > 0\n    $border_ink := ink\n    $border_width := math.max(1.0,c.border_width) * styles.density\n    if single_focus { border_ink = paint.focus\n        border_width = c.focus_width * styles.density }\n    rounded_stroke(frame,box,radius,border_ink,border_width) or >>"
+        },
+        {
+          "before": "    if (state & STATE_FOCUSED) != 0 && r.is_enabled() {\n        gap := 3.0 * styles.density",
+          "after": "    if (state & STATE_FOCUSED) != 0 && r.is_enabled() && !single_focus {\n        gap := 3.0 * styles.density"
+        }
+      ]
     }
   ]
 }
