@@ -199,6 +199,7 @@
     tree.appendChild(folder(currentKey, '', hierarchy));
   }
   function open(path) {
+    if (window.XuPlayMobile) window.XuPlayMobile.show('editor');
     save();
     active = path;
     editor.value = files[path];
@@ -239,6 +240,7 @@
     save();
   }
   function showConsole() {
+    if (window.XuPlayMobile) window.XuPlayMobile.show('console');
     var tab = el('console-tab');
     if (tab && typeof tab.click === 'function') tab.click();
   }

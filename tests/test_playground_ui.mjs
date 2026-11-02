@@ -645,3 +645,18 @@ test('rapid widget clicks retain both complete gestures while the worker is busy
   canvas.listeners.keydown({key:'Escape',preventDefault(){}});
   assert.equal(canvas.focused,true,'Escape is handled by the focused Xu control');
 });
+
+
+test('mobile presentation receives fresh-run results and cancels follow on source edits',async()=>{
+ const {context,elements,workers}=await mount({ui:true});
+ const calls=[];context.window.XuPlayMobile={cancelRun(){calls.push('cancel');},beginRun(){calls.push('begin');},completeRun(ui){calls.push(ui);}};
+ elements['xu-play-src'].value='mobile source';elements['xu-play-run'].click();
+ assert.deepEqual(calls,['cancel','begin']);
+ const result={type:'result',exit:0,stdout:'value',stderr:'',ui:{commands:'frame',interactive:true,input:true}};
+ workers[0].respond(result);assert.equal(calls.at(-1),true);
+ elements['xu-play-canvas'].listeners.pointerdown({clientX:50,clientY:80,button:0,buttons:1,pointerId:1,preventDefault(){}});
+ assert.equal(calls.filter(x=>x==='begin').length,1,'widget updates are not fresh runs');
+ elements['xu-play-src'].value='edited source';elements['xu-play-src'].listeners.input();assert.equal(calls.at(-1),'cancel');
+ workers[0].respond(result);assert.equal(calls.at(-1),false,'edited programs cannot reopen stale previews');
+ elements['xu-play-run'].click();workers[0].respond({...result,ui:null});assert.equal(calls.at(-1),false);
+});

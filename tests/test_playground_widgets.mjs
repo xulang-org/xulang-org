@@ -35,7 +35,7 @@ test('gallery uses real measurements, press/release states, focus rings, and cub
   assert.ok(host.frame(initial.ui.commands).some(c => c.op === 'path_cubic'));
   const pressed = run(click(80,120).slice(0,1));
   assert.match(pressed.stdout, /Count: 0/);
-  assert.match(pressed.ui.commands, /#3e3645ff/);
+  assert.match(pressed.ui.commands, /path_fill\t#141116ff/, 'pressed controls use the pinned dark control-pressed token');
   assert.match(pressed.ui.commands, /path_stroke\t#ff5274ff\t2/);
   assert.match(run(click(80,120)).stdout, /Count: 1/);
   const edited = run([], source.replace('14.0', '22.0'));
