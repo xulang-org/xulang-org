@@ -107,7 +107,7 @@ fn demo() int {
     if paint == 'basic-label':
         code += '    value := str(int(control.value()))\n    label := context.layout_text(&value,&draw.text_options(16.0)) or >>\n    control.paint($&frame,&label,&theme) or >>\n'
     elif paint == 'styled-options':
-        code += '    $selected_label := widgets.styled_label(&context,&options[control.selected()])\n    control.paint_styled($&frame,$&selected_label,&styles) or >>\n'
+        code += '    selected_index := control.selected()\n    $selected_label := widgets.styled_label(&context,&options[selected_index])\n    control.paint_styled($&frame,$&selected_label,&styles) or >>\n'
         code += '    control.paint_popup_box_styled($&frame,&styles) or >>\n    for i in 0:options.len {\n        $option := widgets.styled_label(&context,&options[i])\n        control.paint_option_styled($&frame,i,$&option,&styles) or >>\n    }\n'
     else:
         code += '    control.paint_styled($&frame,&styles) or >>\n'
