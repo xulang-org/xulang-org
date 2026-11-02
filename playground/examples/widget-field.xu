@@ -5,6 +5,15 @@
 #ui/widgets
 #playground
 
+fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),f64(y),ink) or >>
+}
+fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,height f64,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),top+(height-label.metrics.height)*0.5,ink) or >>
+}
+
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
@@ -75,8 +84,8 @@ fn demo() int {
     frame.clear(styles.background) or >>
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  Field")
-    draw.text(32,48,12,"#6d626e","浮动标签 / 固定标签 / 三种边框；软计数不截断输入。")
+    demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  Field") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浮动标签 / 固定标签 / 三种边框；软计数不截断输入。") or >>
 
     frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
     is_invalid := text.len == 0
@@ -96,44 +105,44 @@ fn demo() int {
     // Floating notch and label matching component_workshop
     frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,150.0,14.0,draw.rgb(255,253,251)) or >>
     if is_invalid {
-        draw.text(bx + 16,by - 6,12,"#b82138","Project name 项目名称 *")
+        demo_center_text($&frame,&context,bx + 16,bounds.y-7.0,14.0,12,draw.rgb(184,33,56),"Project name 项目名称 *") or >>
     } else if focused {
-        draw.text(bx + 16,by - 6,12,"#282329","Project name 项目名称 *")
+        demo_center_text($&frame,&context,bx + 16,bounds.y-7.0,14.0,12,draw.rgb(40,35,41),"Project name 项目名称 *") or >>
     } else {
-        draw.text(bx + 16,by - 6,12,"#6d626e","Project name 项目名称 *")
+        demo_center_text($&frame,&context,bx + 16,bounds.y-7.0,14.0,12,draw.rgb(109,98,110),"Project name 项目名称 *") or >>
     }
 
     // Inside box: prefix, value, caret, clear icon
-    draw.text(bx + 16,by + 16,15,"#6d626e","xu / ")
+    demo_center_text($&frame,&context,bx + 16,bounds.y,bounds.height,15,draw.rgb(109,98,110),"xu / ") or >>
     if text.len > 0 {
-        draw.text(bx + 52,by + 16,15,"#282329",text + "")
+        demo_center_text($&frame,&context,bx + 52,bounds.y,bounds.height,15,draw.rgb(40,35,41),text + "") or >>
         if focused {
             caret_x := bx + 52 + int(f64(text.len) * 8.6)
-            draw.text(caret_x,by + 14,16,"#be123c","|")
+            frame.line(f64(caret_x),bounds.y+(bounds.height-16.0)*0.5,f64(caret_x),bounds.y+(bounds.height+16.0)*0.5,draw.rgb(190,18,60),1.5) or >>
         }
         cx := clear_box.x + 16.0
         cy := clear_box.y + 16.0
         frame.line(cx - 5.0,cy - 5.0,cx + 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) or >>
         frame.line(cx + 5.0,cy - 5.0,cx - 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) or >>
     } else {
-        draw.text(bx + 52,by + 16,15,"#857987","输入项目名称...")
+        demo_center_text($&frame,&context,bx + 52,bounds.y,bounds.height,15,draw.rgb(133,121,135),"输入项目名称...") or >>
         if focused {
-            draw.text(bx + 50,by + 14,16,"#be123c","|")
+            frame.line(f64(bx + 50),bounds.y+(bounds.height-16.0)*0.5,f64(bx + 50),bounds.y+(bounds.height+16.0)*0.5,draw.rgb(190,18,60),1.5) or >>
         }
     }
 
     // Helper text & counter below
     if is_invalid {
-        draw.text(bx,by + bh + 8,12,"#b82138","名称不能为空。Please enter a project name.")
-        draw.text(bx + bw - 50,by + bh + 8,12,"#b82138","0 / 32")
+        demo_text($&frame,&context,bx,by + bh + 8,12,draw.rgb(184,33,56),"名称不能为空。Please enter a project name.") or >>
+        demo_text($&frame,&context,bx + bw - 50,by + bh + 8,12,draw.rgb(184,33,56),"0 / 32") or >>
     } else {
-        draw.text(bx,by + bh + 8,12,"#6d626e","Enter a name · Native IME / selection / clipboard")
-        draw.text(bx + bw - 50,by + bh + 8,12,"#6d626e",str(text.len) + " / 32")
+        demo_text($&frame,&context,bx,by + bh + 8,12,draw.rgb(109,98,110),"Browser key input · Native IME requires the desktop SDK") or >>
+        demo_text($&frame,&context,bx + bw - 50,by + bh + 8,12,draw.rgb(109,98,110),str(text.len) + " / 32") or >>
     }
 
     $message := "Field: " + text
     if is_invalid { message = "Field: empty (invalid)" }
-    draw.text(32,326,13,"#6d626e",message + "")
+    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>
     println(message)
     frame.present() or >>
     << 0

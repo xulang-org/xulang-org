@@ -5,6 +5,15 @@
 #ui/widgets
 #playground
 
+fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),f64(y),ink) or >>
+}
+fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,height f64,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),top+(height-label.metrics.height)*0.5,ink) or >>
+}
+
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
@@ -71,8 +80,8 @@ fn demo() int {
     frame.clear(styles.background) or >>
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  FieldArea")
-    draw.text(32,48,12,"#6d626e","多行 Field：最小 3 行、最大 6 行；计数与稳定辅助区。")
+    demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  FieldArea") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"多行 Field：最小 3 行、最大 6 行；计数与稳定辅助区。") or >>
 
     frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
     if focused {
@@ -89,26 +98,26 @@ fn demo() int {
     // Floating notch and label
     frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,160.0,14.0,draw.rgb(255,253,251)) or >>
     if focused {
-        draw.text(bx + 16,by - 6,12,"#282329","Build notes 构建说明 *")
+        demo_center_text($&frame,&context,bx + 16,bounds.y-7.0,14.0,12,draw.rgb(40,35,41),"Build notes 构建说明 *") or >>
     } else {
-        draw.text(bx + 16,by - 6,12,"#6d626e","Build notes 构建说明 *")
+        demo_center_text($&frame,&context,bx + 16,bounds.y-7.0,14.0,12,draw.rgb(109,98,110),"Build notes 构建说明 *") or >>
     }
 
-    draw.text(bx + 12,by + 14,15,"#282329",text + "")
+    demo_text($&frame,&context,bx + 12,by + 14,15,draw.rgb(40,35,41),text + "") or >>
     if focused {
         $caret_x := bx + 12 + int(f64(text.len) * 8.6)
         if caret_x > bx + bw - 20 { caret_x = bx + bw - 20 }
-        draw.text(caret_x,by + 12,16,"#be123c","|")
+        demo_text($&frame,&context,caret_x,by + 12,16,draw.rgb(190,18,60),"|") or >>
     }
-    draw.text(bx + 12,by + 40,14,"#6d626e","支持多行折行输入，自适应行数展开。")
+    demo_text($&frame,&context,bx + 12,by + 40,14,draw.rgb(109,98,110),"支持多行折行输入，自适应行数展开。") or >>
 
-    draw.text(bx,by + bh + 8,12,"#6d626e","多行文本与换行 · 软计数不截断输入")
-    draw.text(bx + bw - 60,by + bh + 8,12,"#6d626e",str(text.len) + " / 120")
+    demo_text($&frame,&context,bx,by + bh + 8,12,draw.rgb(109,98,110),"多行文本与换行 · 软计数不截断输入") or >>
+    demo_text($&frame,&context,bx + bw - 60,by + bh + 8,12,draw.rgb(109,98,110),str(text.len) + " / 120") or >>
 
     $chars := 28
     if text.len != 48 { chars = 28 + text.len - 48 }
     message := "FieldArea: " + str(chars) + " characters"
-    draw.text(32,326,13,"#6d626e",message + "")
+    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>
     println(message)
     frame.present() or >>
     << 0

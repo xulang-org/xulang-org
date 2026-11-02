@@ -4,118 +4,153 @@
 #ui/layout
 #ui/widgets
 #playground
+#time
+
+fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),f64(y),ink) or >>
+}
+fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,height f64,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),top+(height-label.metrics.height)*0.5,ink) or >>
+}
 
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
-    << layout.Rect{x: x,y: y,width: w,height: h}
+    << layout.Rect{x:x,y:y,width:w,height:h}
 }
-fn char_from_key(key int, shift bool) string {
-    if key == 32 { << " " }
-    if key >= 65 && key <= 90 {
-        lower := "abcdefghijklmnopqrstuvwxyz"
-        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        idx := key - 65
-        if !shift { << lower[idx:idx + 1] }
-        << upper[idx:idx + 1]
+fn letter(key int,shift bool) string {
+    if key < 32 || key > 126 { << "" }
+    if key >= 65 && key <= 90 && !shift { << string_from_byte(key+32) }
+    << string_from_byte(key)
+}
+fn lower(value int) int {
+    if value >= 65 && value <= 90 { << value+32 }
+    << value
+}
+fn matches(value &string,query &string) bool {
+    if query.len == 0 { << true }
+    if query.len > value.len { << false }
+    for start in 0:value.len-query.len+1 {
+        $same := true
+        for i in 0:query.len {
+            if lower(value[start+i]) != lower(query[i]) { same = false }
+        }
+        if same { << true }
     }
-    if key >= 48 && key <= 57 {
-        digits := "0123456789"
-        symbols := ")!@#\$%^&*("
-        idx := key - 48
-        if shift { << symbols[idx:idx + 1] }
-        << digits[idx:idx + 1]
+    << false
+}
+fn choices(options &[]string,query &string,selected int) []widgets.MenuItem {
+    $items := []widgets.MenuItem{}
+    for i in 0:options.len {
+        if matches(&options[i],query) {
+            $item := widgets.menu_item(i+1,options[i])
+            item.kind = widgets.MENU_RADIO
+            item.radio_group = 1
+            item.checked = i == selected
+            items.push(item)
+        }
     }
-    if key == 45 { if shift { << "_" } << "-" }
-    if key == 61 { if shift { << "+" } << "=" }
-    if key == 46 { if shift { << ">" } << "." }
-    if key == 44 { if shift { << "<" } << "," }
-    if key == 47 { if shift { << "?" } << "/" }
-    if key == 58 || key == 59 { if shift { << ":" } << ";" }
-    if key == 64 { << "@" }
-    << ""
+    if items.len == 0 {
+        $empty := widgets.menu_item(99,"No matches 无匹配项")
+        empty.enabled = false
+        items.push(empty)
+    }
+    << items
+}
+fn remove_last(value &string) string {
+    if value.len == 0 { << "" }
+    $end := value.len-1
+    while end > 0 && (value[end] & 192) == 128 { end = end-1 }
+    << value[0:end]
 }
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
     styles := playground.light_styles()
-    bounds := box(48.0,110.0,340.0,42.0)
-    $btn := widgets.button(&identity,2,&box(398.0,110.0,50.0,42.0)) or >>
-    $btn_lbl := widgets.styled_label(&context,&"▼")
+    bounds := box(48.0,110.0,400.0,42.0)
+    options := ["Workspace 工作区","History 历史","Output 输出"]
+    initial := choices(&options,&"",0)
+    $menu := widgets.menu(&context,&identity,1,&bounds,"",&initial,widgets.MENU_DROPDOWN,0) or >>
+    menu.set_style(&styles.input) or >>
+    menu.set_viewport(&box(28.0,70.0,584.0,240.0)) or >>
+    $focus := widgets.focus_group(&identity,[1]) or >>
     $text := "Workspace 工作区"
-    $focused := false
-    $choice_idx := 0
-    choices := ["Workspace 工作区", "History 历史", "Output 输出"]
-
+    $selected := 0
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
-        if event.kind == 72 {
-            px := event.x
-            py := event.y
-            if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
-                focused = true
-            } else if px >= 398.0 && px <= 448.0 && py >= 110.0 && py <= 152.0 {
-                choice_idx = (choice_idx + 1) % 3
-                text = choices[choice_idx]
-                focused = false
-            } else {
-                focused = false
+        if event.kind == ui.EV_POINTER_CANCEL { focus.clear() }
+        navigation := focus.input(&event)
+        menu.set_focus(focus.current() == 1)
+        if navigation.consumed { -> }
+        $changed := false
+        $editing := false
+        if event.kind == ui.EV_KEY_DOWN && focus.current() == 1 {
+            if event.key == ui.KEY_BACKSPACE { text = remove_last(&text)
+                changed = true
+                editing = true
+            } else if (event.modifiers & (ui.MOD_CONTROL | ui.MOD_META)) == 0 {
+                ch := letter(event.key,(event.modifiers & ui.MOD_SHIFT) != 0)
+                if ch.len > 0 && text.len < 64 { text = text+ch
+                    changed = true
+                    editing = true }
             }
         }
-        if event.kind == 78 {
-            if event.key == 257 { focused = !focused }
-            if focused {
-                if event.key == 259 {
-                    if text.len > 0 { text = text[0:text.len - 1] }
-                } else if event.key == 256 {
-                    focused = false
-                } else if text.len < 32 {
-                    shift := (event.modifiers & 1) != 0
-                    ch := char_from_key(event.key, shift)
-                    if ch.len > 0 { text = text + ch }
-                }
+        if changed {
+            selected = -1
+            filtered := choices(&options,&text,selected)
+            menu.set_items(&filtered) or >>
+            menu.open_at(bounds.x,bounds.y,false) or >>
+        } else if !editing {
+            was_open := menu.is_open()
+            action := menu.input(&event) or >>
+            if action.request_focus { focus.focus(1) or >> }
+            if (action.kind == widgets.ACTION_ACTIVATE || action.kind == widgets.ACTION_CHANGE) && action.value >= 1.0 && action.value <= 3.0 {
+                selected = int(action.value)-1
+                text = options[selected]
+                all := choices(&options,&"",selected)
+                menu.set_items(&all) or >>
+            } else if !was_open && menu.is_open() {
+                all := choices(&options,&"",selected)
+                menu.set_items(&all) or >>
+                menu.open_at(bounds.x,bounds.y,false) or >>
             }
         }
-        act := btn.input(&event)
-        if act.kind == widgets.ACTION_ACTIVATE {
-            choice_idx = (choice_idx + 1) % 3
-            text = choices[choice_idx]
-        }
+        if event.kind == ui.EV_POINTER_DOWN && !bounds.contains(event.x,event.y) && !menu.is_open() { focus.clear() }
+        menu.set_focus(focus.current() == 1)
+        _ := menu.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>
     }
-
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  ComboBox")
-    draw.text(32,48,12,"#6d626e","本地匹配高亮与无结果；可控制是否接受自由输入。")
-
-    bx := int(bounds.x)
-    by := int(bounds.y)
-    draw.text(bx,by - 22,14,"#282329","Environment 环境选择")
-
-    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
-    if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
-    } else {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,styles.input.palette.normal) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
+    demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  ComboBox") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"展开候选项；方向键、Enter 选择，Escape 关闭。") or >>
+    demo_text($&frame,&context,48,86,14,draw.rgb(40,35,41),"Environment 环境选择") or >>
+    menu.paint_styled($&frame,&styles) or >>
+    $label := widgets.styled_label(&context,&text)
+    $field := styles.input.clone()
+    field.padding = layout.Insets{left:0.0,top:0.0,right:0.0,bottom:0.0}
+    field.align_x = 0.0
+    field.align_y = 0.5
+    content := box(bounds.x+12.0,bounds.y,bounds.width-56.0,bounds.height)
+    $state := 0
+    if focus.current() == 1 { state = widgets.STATE_FOCUSED }
+    label.paint_text_styled($&frame,&content,&styles,&field,state) or >>
+    if focus.current() == 1 {
+        size := label.measure_styled(&styles,&field) or >>
+        $x := content.x+size.width
+        if x > content.x+content.width { x = content.x+content.width }
+        frame.line(x,bounds.y+14.0,x,bounds.y+bounds.height-14.0,styles.button.palette.accent,1.5) or >>
     }
-
-    draw.text(bx + 12,by + 12,15,"#282329",text + "")
-    if focused {
-        caret_x := bx + 12 + int(f64(text.len) * 8.6)
-        draw.text(caret_x,by + 10,16,"#be123c","|")
-    }
-
-    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
-    draw.text(bx,by + int(bounds.height) + 8,12,"#6d626e","候选高亮、本地匹配与键盘上下键选择 · 支持自由输入")
-    message := "Selected: " + text
-    draw.text(32,326,13,"#6d626e",message + "")
+    demo_text($&frame,&context,48,174,12,draw.rgb(109,98,110),"输入基本字符筛选；中文选项可直接选择。") or >>
+    menu.paint_popup_styled($&frame,&styles) or >>
+    message := "Selected: "+text
+    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message+"") or >>
     println(message)
     frame.present() or >>
     << 0
 }
-fn main() int {
-    << demo() or (err) { eprintln(err.msg())
-        << 1 }
-}
+fn main() int { << demo() or (err) { eprintln(err.msg())
+    << 1 } }

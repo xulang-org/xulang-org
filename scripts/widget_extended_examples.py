@@ -4,6 +4,8 @@ Modeled directly after component_workshop (view.xu, layout.xu, style.xu)
 using canonical light tokens and interactive controls.
 """
 
+from widget_modal_example import EXPECTED as MODAL_EXPECTED, SOURCE as MODAL_SOURCE
+from widget_combo_example import EXPECTED as COMBO_EXPECTED, SOURCE as COMBO_SOURCE
 from widget_popover_example import EXPECTED as POPOVER_EXPECTED, SOURCE as POPOVER_SOURCE
 
 EXTENDED_CASES = {
@@ -138,7 +140,7 @@ fn demo() int {
         draw.text(bx,by + bh + 8,12,"#b82138","名称不能为空。Please enter a project name.")
         draw.text(bx + bw - 50,by + bh + 8,12,"#b82138","0 / 32")
     } else {
-        draw.text(bx,by + bh + 8,12,"#6d626e","Enter a name · Native IME / selection / clipboard")
+        draw.text(bx,by + bh + 8,12,"#6d626e","Browser key input · Native IME requires the desktop SDK")
         draw.text(bx + bw - 50,by + bh + 8,12,"#6d626e",str(text.len) + " / 32")
     }
 
@@ -814,131 +816,7 @@ fn main() int {
 }
 '''
     ),
-    'combo-box': (
-        'Selected: Workspace 工作区',
-        '''@main
-#ui
-#ui/draw
-#ui/layout
-#ui/widgets
-#playground
-
-fn box(x f64,y f64,w f64,h f64) layout.Rect {
-    << layout.Rect{x: x,y: y,width: w,height: h}
-}
-fn char_from_key(key int, shift bool) string {
-    if key == 32 { << " " }
-    if key >= 65 && key <= 90 {
-        lower := "abcdefghijklmnopqrstuvwxyz"
-        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-        idx := key - 65
-        if !shift { << lower[idx:idx + 1] }
-        << upper[idx:idx + 1]
-    }
-    if key >= 48 && key <= 57 {
-        digits := "0123456789"
-        symbols := ")!@#\$%^&*("
-        idx := key - 48
-        if shift { << symbols[idx:idx + 1] }
-        << digits[idx:idx + 1]
-    }
-    if key == 45 { if shift { << "_" } << "-" }
-    if key == 61 { if shift { << "+" } << "=" }
-    if key == 46 { if shift { << ">" } << "." }
-    if key == 44 { if shift { << "<" } << "," }
-    if key == 47 { if shift { << "?" } << "/" }
-    if key == 58 || key == 59 { if shift { << ":" } << ";" }
-    if key == 64 { << "@" }
-    << ""
-}
-fn demo() int {
-    identity := playground.canvas_identity()
-    context := draw.default_context()
-    styles := playground.light_styles()
-    bounds := box(48.0,110.0,340.0,42.0)
-    $btn := widgets.button(&identity,2,&box(398.0,110.0,50.0,42.0)) or >>
-    $btn_lbl := widgets.styled_label(&context,&"▼")
-    $text := "Workspace 工作区"
-    $focused := false
-    $choice_idx := 0
-    choices := ["Workspace 工作区", "History 历史", "Output 输出"]
-
-    while true {
-        event := playground.next_input()
-        if event.kind == 0 { <- }
-        if event.kind == 72 {
-            px := event.x
-            py := event.y
-            if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
-                focused = true
-            } else if px >= 398.0 && px <= 448.0 && py >= 110.0 && py <= 152.0 {
-                choice_idx = (choice_idx + 1) % 3
-                text = choices[choice_idx]
-                focused = false
-            } else {
-                focused = false
-            }
-        }
-        if event.kind == 78 {
-            if event.key == 257 { focused = !focused }
-            if focused {
-                if event.key == 259 {
-                    if text.len > 0 { text = text[0:text.len - 1] }
-                } else if event.key == 256 {
-                    focused = false
-                } else if text.len < 32 {
-                    shift := (event.modifiers & 1) != 0
-                    ch := char_from_key(event.key, shift)
-                    if ch.len > 0 { text = text + ch }
-                }
-            }
-        }
-        act := btn.input(&event)
-        if act.kind == widgets.ACTION_ACTIVATE {
-            choice_idx = (choice_idx + 1) % 3
-            text = choices[choice_idx]
-        }
-    }
-
-    $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  ComboBox")
-    draw.text(32,48,12,"#6d626e","本地匹配高亮与无结果；可控制是否接受自由输入。")
-
-    bx := int(bounds.x)
-    by := int(bounds.y)
-    draw.text(bx,by - 22,14,"#282329","Environment 环境选择")
-
-    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
-    if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
-    } else {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
-    }
-
-    draw.text(bx + 12,by + 12,15,"#282329",text + "")
-    if focused {
-        caret_x := bx + 12 + int(f64(text.len) * 8.6)
-        draw.text(caret_x,by + 10,16,"#be123c","|")
-    }
-
-    btn.paint_styled($&frame,$&btn_lbl,&styles) or >>
-    draw.text(bx,by + int(bounds.height) + 8,12,"#6d626e","候选高亮、本地匹配与键盘上下键选择 · 支持自由输入")
-    message := "Selected: " + text
-    draw.text(32,326,13,"#6d626e",message + "")
-    println(message)
-    frame.present() or >>
-    << 0
-}
-fn main() int {
-    << demo() or (err) { eprintln(err.msg())
-        << 1 }
-}
-'''
-    ),
+    'combo-box': (COMBO_EXPECTED, COMBO_SOURCE),
     'date-picker': (
         'Date: 2026-10-31',
         '''@main
@@ -1067,10 +945,11 @@ fn demo() int {
     context := draw.default_context()
     theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,114.0,120.0,42.0)
+    bounds := box(48.0,210.0,160.0,42.0)
     $btn := widgets.button(&identity,1,&bounds) or >>
     $lbl := widgets.styled_label(&context,&"Stop 停止")
     $focus := widgets.focus_group(&identity,[1]) or >>
+    $running := true
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -1079,6 +958,7 @@ fn demo() int {
         if nav.consumed { -> }
         act := btn.input(&event)
         if act.request_focus { focus.focus(1) or >> }
+        if act.kind == widgets.ACTION_ACTIVATE { running = !running }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
@@ -1086,12 +966,17 @@ fn demo() int {
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  Spinner")
-    draw.text(32,48,12,"#6d626e","大小 / 粗细 / 周期可配置；减少动效显示静态反馈。")
-    frame.stroke_rect(52.0,104.0,36.0,36.0,draw.rgb(190,18,60),3.0) or >>
+    draw.text(32,48,12,"#6d626e","浏览器减少动效预览；点击按钮停止或恢复反馈。")
+    if running {
+        frame.set_stroke(draw.rgb(190,18,60),3.0) or >>
+        frame.circle(70.0,122.0,18.0) or >>
+    }
+    if !running { lbl = widgets.styled_label(&context,&"Start 开始") }
     draw.text(104,114,16,"#282329","Loading assets… 正在加载")
     btn.paint_styled($&frame,$&lbl,&styles) or >>
-    draw.text(48,172,12,"#6d626e","周期 900ms · 半径 32px · 线宽 3px · 减少动效自动降级")
-    message := "Spinner: running (period: 900ms)"
+    draw.text(48,172,12,"#6d626e","静态加载反馈 · 桌面 SDK 提供连续动画")
+    $message := "Spinner: running (period: 900ms)"
+    if !running { message = "Spinner: stopped" }
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
     frame.present() or >>
@@ -1214,62 +1099,7 @@ fn main() int {
 }
 '''
     ),
-    'modal': (
-        'Modal: pending',
-        '''@main
-#ui
-#ui/draw
-#ui/layout
-#ui/widgets
-#playground
-
-fn box(x f64,y f64,w f64,h f64) layout.Rect {
-    << layout.Rect{x: x,y: y,width: w,height: h}
-}
-fn demo() int {
-    identity := playground.canvas_identity()
-    context := draw.default_context()
-    theme := playground.light_theme()
-    styles := playground.light_styles()
-    bounds := box(48.0,114.0,200.0,42.0)
-    $btn := widgets.button(&identity,1,&bounds) or >>
-    $lbl := widgets.styled_label(&context,&"Open confirmation")
-    $focus := widgets.focus_group(&identity,[1]) or >>
-    while true {
-        event := playground.next_input()
-        if event.kind == 0 { <- }
-        nav := focus.input(&event)
-        btn.set_focus(focus.current() == 1)
-        if nav.consumed { -> }
-        act := btn.input(&event)
-        if act.request_focus { focus.focus(1) or >> }
-    }
-    $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  Modal")
-    draw.text(32,48,12,"#6d626e","模态焦点循环与恢复；安全动作先获得焦点。")
-    frame.fill_rect(260.0,88.0,320.0,126.0,draw.rgb(255,255,255)) or >>
-    frame.stroke_rect(260.0,88.0,320.0,126.0,draw.rgb(190,18,60),2.0) or >>
-    draw.text(276,104,15,"#282329","Apply configuration?")
-    draw.text(276,128,12,"#6d626e","Focus stays inside confirmation.")
-    draw.text(276,146,12,"#6d626e","Escape returns to trigger.")
-    draw.text(276,180,13,"#be123c","[ Cancel 取消 ]   [ Apply 确认应用 ]")
-    btn.paint_styled($&frame,$&lbl,&styles) or >>
-    message := "Modal: pending"
-    draw.text(32,326,13,"#6d626e",message + "")
-    println(message)
-    frame.present() or >>
-    << 0
-}
-fn main() int {
-    << demo() or (err) { eprintln(err.msg())
-        << 1 }
-}
-'''
-    ),
+    'modal': (MODAL_EXPECTED, MODAL_SOURCE),
     'web-view': (
         'WebView: ready (URI: https://xulang.org/docs/)',
         '''@main

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from widget_portable_examples import CASES, source as portable_source
 from widget_extended_examples import EXTENDED_CASES
+from widget_browser_text import measured_text
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -204,10 +205,10 @@ def generate(root=ROOT, check=False):
     has_widgets = any(g['id'] == 'widgets' for g in catalog['groups'])
     widgets_group = {
         'id': 'widgets',
-        'title': {'zh': 'XUUI 组件库 · 46 个完整控件', 'en': 'XUUI Component Catalog (46 widgets)'},
+        'title': {'zh': 'XUUI 组件库 · 46 个组件示例', 'en': 'XUUI Component Catalog (46 examples)'},
         'description': {
-            'zh': '涵盖全部 46 种 XUUI 标准控件：表单输入、按钮、选择、数据表格、图表、层级树、浮层对话框与分栏视图。参考 component_workshop 规范打造。',
-            'en': 'All 46 XUUI standard interactive controls: forms, buttons, selectors, tables, charts, tree views, overlays, dialogs, and split views, modeled after component_workshop.'
+            'zh': '46 个组件示例，遵循 xu-ui-design 的视觉规范。浏览器示例采用有限输入适配；原生 IME、WebView 等能力请在桌面 SDK 中体验。',
+            'en': '46 component examples following xu-ui-design. Browser samples use bounded input adapters; native IME and WebView require the desktop SDK.'
         }
     }
     if not has_widgets:
@@ -228,6 +229,7 @@ def generate(root=ROOT, check=False):
             code, expected_val = portable_source(c['name'], slug, desc)
         else:
             continue
+        code = measured_text(code, slug)
         key = 'widget-' + slug
         zh_title = f"{WIDGET_ZH_NAMES.get(slug, c['name'])} · {c['name']}"
         catalog['projects'][key] = dict(group='widgets', component=slug, title={'zh': zh_title, 'en': c['name']},
