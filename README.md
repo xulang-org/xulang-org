@@ -186,7 +186,9 @@ make check-chan        # Check native channel examples with XU
 make build             # Bundle the runtime into dist/
 ```
 
-The playground runs client-side in the browser. Generated WASM stays in `build/playground/`; `www/` remains source-only.
+The playground runs client-side in the browser. Documentation and the homepage do not preload WASM. The first run downloads and asynchronously compiles the module in the page, then shares it with a worker for instantiation and Xu execution. Compiled code is reused within that page; failed initialization can be retried, and stopping or switching programs cancels the old worker's initialization.
+
+Linear memory starts at 32 MiB and can grow to a 256 MiB maximum; this is separate from the download size. `build/playground/build.json` records the actual WASM and gzip sizes, digest, optimizer settings and memory limits. Generated WASM stays in `build/playground/`; `www/` remains source-only.
 
 ### Benchmarks and deployment
 
@@ -206,7 +208,7 @@ Pin the bench checkout to the artifact identity's `bench_commit`. Import verifie
 
 ### UI API and examples
 
-The [UI guide](content/en/docs/ui.html) and [Chinese guide](content/zh/docs/ui.html) document the official Xu SDK selected in `VERSION`. All five packages — `ui`, `ui/draw`, `ui/layout`, `ui/widgets` and `ui/webview` — appear in the released API navigation. Former UI preview URLs redirect to the corresponding released pages while preserving declaration anchors.
+The [UI guide](content/en/docs/ui.html) and [Chinese guide](content/zh/docs/ui.html) document the official Xu SDK selected in `VERSION`. All six packages — `ui`, `ui/draw`, `ui/layout`, `ui/chart`, `ui/widgets` and `ui/webview` — appear in the released API navigation. Former UI preview URLs redirect to the corresponding released pages while preserving declaration anchors.
 
 Handwritten release guides live in `templates/api-guides/{en,zh}/ui*`; semantic contracts and field descriptions live in `templates/api-contracts.json`. Run `make api` with the selected release SDK to regenerate declarations. The curated source catalog includes drawing, layout, editors, desktop services, windows, WebView requests, styles and the extended controls gallery. Each example links to its immutable complete project and a checksum-verified source download.
 
@@ -223,7 +225,7 @@ Preview guides and contracts use `templates/api-guides/{en,zh}/preview/ui*` and 
 The browser playground includes a [three-page control gallery](https://xulang.org/playground?example=ui-gallery):
 shared desktop Xu logic covers basic controls, Radio, ListBox, Scroll, Tabs,
 StyledLabel, Card, Badge, Progress and a display-only Editor in WASM. Canvas
-renders their paint commands. Editable text and IME remain unavailable. The shapes and click-counter demos
+renders their paint commands. The gallery's Editor is display-only; native text editing and IME remain unavailable. The shapes and click-counter demos
 remain available. See [the browser UI build guide](playground/README.md) for
 source synchronization, supported APIs, keyboard controls, and replay limits.
 
@@ -234,9 +236,18 @@ catalog with released declarations and adds focused native setup fragments.
 It runs automatically after release API generation. Use `--check` to verify
 that checked-in pages are current.
 
-Twenty-nine component experiences execute real Xu/WASM. Their editable sources
+All 46 component experiences execute editable Xu/WASM examples. Their sources
 live in `playground/examples/widget-*.xu` and are published by
-`python3 scripts/gen-widget-examples.py`. Other components have browser
-interaction previews explicitly labeled as not executing Xu, with links to
-their native API and complete Workshop example. These are user experiences;
-the preview does not claim to reproduce platform rendering or native services.
+`python3 scripts/gen-widget-examples.py`. Some demonstrate composed or bounded
+behavior: DatePicker is a date strip, WebView is a placeholder, TaskButton does
+not start a background task, and text fields support basic key editing rather
+than native selection, clipboard or IME. Each experience describes its scope;
+running Xu does not establish full desktop component support.
+
+The [browser UI guide](https://xulang.org/docs/ui/#browser-playground) covers
+ComboBox candidates, MultiSelect checkboxes, Popover preferences and Modal focus
+handling. The workspace and preview use the pinned XUUI design reference, with
+cinnabar focus boundaries and vertically aligned control labels. On phones,
+Files, Editor, Preview and Output are separate views. Fit scales the canvas;
+100% with Pan lets users inspect a large canvas, and Pan must be disabled to
+interact with its controls.
