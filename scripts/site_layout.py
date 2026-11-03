@@ -596,7 +596,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         other = '/zh'
     meta = get_seo_meta(route, title, en, xu_version, body)
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
-    playground_assets = '' if route in ('/', '/zh') else (
+    playground_assets = ('<script src="/xu-play.js" defer></script>\n'
+                         '  <script src="/home-demo.js" defer></script>') if route in ('/', '/zh') else (
         '<link rel="preload" href="/xu-play.wasm" as="fetch" type="application/wasm" crossorigin>\n'
         '  <script src="/xu-play.js" defer></script>'
     )

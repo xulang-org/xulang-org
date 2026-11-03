@@ -84,9 +84,12 @@ class StaticSiteTests(unittest.TestCase):
             self.assertEqual([item['name'] for item in faq['mainEntity']], questions)
             self.assertTrue(all(item['acceptedAnswer']['text'] for item in faq['mainEntity']))
         for page, destination in ((home, '/playground/'), (chinese, '/zh/playground/')):
-            self.assertIn(f'class="btn pri" href="{destination}?example=chan-workers"', page)
+            self.assertIn('class="btn pri" href="#quick-example"', page)
+            self.assertIn(f'href="{destination}?example=hello"', page)
             self.assertNotIn('id="xu-play-src"', page)
-            self.assertNotIn('xu-play.js', page)
+            self.assertIn('src="/xu-play.js?', page)
+            self.assertIn('src="/home-demo.js?', page)
+            self.assertIn('data-wasm-available="false"', page)
             self.assertNotIn('xu-play.wasm', page)
         self.assertIn('data-wasm-available="false"', (output / 'playground/index.html').read_text())
         for page in ('docs/tutorial/01', 'zh/docs/tutorial/01', 'api/fmt', 'zh/api/fmt', 'playground'):
@@ -106,7 +109,7 @@ class StaticSiteTests(unittest.TestCase):
         self.assertTrue((output / '.nojekyll').exists())
         version = re.search(r'(?m)^xu: !ver (\S+)', (self.source / 'xu.xun').read_text())[1]
         for page in (home, chinese):
-            hero = page.split('<div class="hero home-hero">', 1)[1].split('<section', 1)[0]
+            hero = page.split('<div class="hero home-hero">', 1)[1].split('<div class="home-section-heading">', 1)[0]
             self.assertIn('class="hero-install"', hero)
             for platform in ('unix', 'win'):
                 self.assertIn(f'data-tab="{platform}"', hero)
@@ -128,8 +131,9 @@ class StaticSiteTests(unittest.TestCase):
             self.assertNotIn('{{api_', status)
             self.assertIn(counts['api_standard_count'], status)
             self.assertIn(counts['api_external_count'], status)
-            banner = re.search(r'<p class="banner">(.*?)</p>', (output / (prefix + 'index.html')).read_text())[1]
-            self.assertNotRegex(banner, r'\d+\.\d+\.\d+')
+            brand = re.search(r'<div class="home-brand">(.*?)</div>', (output / (prefix + 'index.html')).read_text())[1]
+            self.assertIn('SYSTEMS LANGUAGE / MIT', brand)
+            self.assertNotRegex(brand, r'\d+\.\d+\.\d+')
             self.assertIn('id="language-switch"', (output / (prefix + 'index.html')).read_text())
             releases = (output / (prefix + 'releases/index.html')).read_text()
             for entry in json.loads((self.source / 'templates/releases.json').read_text()):
@@ -198,8 +202,9 @@ class StaticSiteTests(unittest.TestCase):
         self.assertRegex((output / 'playground/index.html').read_text(), r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}"')
         self.assertRegex((output / 'zh/api/fmt/index.html').read_text(), r'src="/xulang-org/xu-play\.js\?v=[0-9a-f]{16}" defer data-wasm-available="false"')
         self.assertIn('href="/xulang-org/site.css"', home)
-        self.assertIn('class="btn pri" href="/xulang-org/playground/?example=chan-workers"', home)
-        self.assertIn('class="btn pri" href="/xulang-org/zh/playground/?example=chan-workers"', (output / 'zh/index.html').read_text())
+        self.assertIn('class="btn pri" href="#quick-example"', home)
+        self.assertIn('href="/xulang-org/playground/?example=hello"', home)
+        self.assertIn('href="/xulang-org/zh/playground/?example=hello"', (output / 'zh/index.html').read_text())
         self.assertIn('href="/xulang-org/"', home)
         chinese = (output / 'zh/docs/start/index.html').read_text()
         self.assertIn('href="/xulang-org/docs/start/" hreflang="en"', chinese)
@@ -299,7 +304,8 @@ class StaticSiteTests(unittest.TestCase):
         site.build(source, output, '/repo', require_playground=True)
         for page in ('index.html', 'zh/index.html'):
             home = (output / page).read_text()
-            self.assertNotIn('xu-play.js', home)
+            self.assertIn('src="/repo/xu-play.js?', home)
+            self.assertIn('data-wasm-available="true"', home)
             self.assertNotIn('xu-play.wasm', home)
         self.assertIn('data-wasm-available="true"', (output / 'playground/index.html').read_text())
         self.assertRegex((output / 'playground/index.html').read_text(),
