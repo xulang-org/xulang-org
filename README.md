@@ -175,9 +175,11 @@ Scoped refreshes preserve other projects' source bytes, checksums and immutable 
 
 ### WebAssembly playground
 
-Use the matching SDK to compile the XU runtime to WebAssembly. Execution checks additionally require Node.js.
+Use the matching SDK and Node.js 22+ to compile and optimize the XU runtime to WebAssembly.
+The lockfile pins the build-time Binaryen optimizer; static-only builds still need only Python.
 
 ```sh
+npm ci --ignore-scripts # Install the pinned WASM optimizer
 make wasm              # Compile build/playground/xu-play.wasm
 make check-playground  # Check real WASM execution and examples in Node.js
 make check-chan        # Check native channel examples with XU

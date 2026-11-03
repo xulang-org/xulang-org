@@ -182,6 +182,7 @@ def source(name, slug, description=''):
     for i in 0:9 { text := labels[i % 3]
         frame.text_layout(&text,12.0,12.0 + f64(i) * 42.0,theme.foreground) or >> }
     control.end($&frame) or >>
+    if focus.current() == 1 { frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,theme.focus,2.0) or >> }
 '''
     elif kind == 'styled-label':
         code += '    control.paint_text_styled($&frame,&bounds,&styles,&styles.button,0) or >>\n'

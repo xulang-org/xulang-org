@@ -4,6 +4,47 @@ import assert from 'node:assert/strict';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 const module=await WebAssembly.compile(readFileSync(new URL('../build/playground/xu-play.wasm',import.meta.url)));
 
+test('text option scaling, copying and cache invalidation match checked MIR',async()=>{
+ const source=`@main
+#playground
+#ui/widgets
+#ui/draw
+fn probe() int {
+    $styles := playground.light_styles()
+    context := draw.default_context()
+    $label := widgets.styled_label(&context,&"Aa 中文 g│")
+    for scale in [0.5,1.0,2.0] {
+        styles.text_scale = scale
+        for inherited in [false,true] {
+            $control := styles.button.clone()
+            control.inherit_font = inherited
+            control.font.family = "Custom 字体"
+            control.font.size = 18.0
+            control.font.weight = 700
+            control.font.italic = true
+            control.font.line_height = 24.0
+            options := styles.text_options(&control)
+            println(options.family)
+            println(options.size)
+            println(options.width)
+            println(options.weight)
+            println(options.italic)
+            println(options.align)
+            println(options.line_height)
+            for i in 0:2 { size := label.measure_styled(&styles,&control) or >>
+                println(size.width)
+                println(size.height) }
+        }
+    }
+    << 0
+}
+fn main() int { << probe() or (err) { eprintln(err.msg())
+    << 1 } }
+`;
+ const fast=await createRuntime(module),reference=await createRuntime(module,{fastIntrinsics:false});
+ const result=fast.run(source); assert.equal(result.exit,0,result.stderr); assert.deepEqual(result,reference.run(source));
+});
+
 test('AOT style clones own their strings and state arrays and resolve every state like MIR',async()=>{
  const source=`@main
 #playground

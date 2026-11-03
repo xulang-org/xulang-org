@@ -42,6 +42,10 @@ class BuildGateTests(unittest.TestCase):
         for source in (ROOT / 'playground/stdlib').glob('*.xu'):
             (stdlib / source.name).write_text('')
         (stdlib / 'desktop-sources.json').write_text('{}')
+        # These gate tests simulate tool execution and remain Python-only.
+        optimizer = self.root / 'node_modules/binaryen'
+        optimizer.mkdir(parents=True)
+        (optimizer / 'package.json').write_text(json.dumps({'version': play.OPTIMIZER_VERSION}))
         for relative in ('src/runtime/str_algo.xu', 'src/runtime/map_algo.xu', 'src/errors/mod.xu'):
             source = self.xu / relative
             source.parent.mkdir(parents=True, exist_ok=True)
@@ -71,10 +75,12 @@ class BuildGateTests(unittest.TestCase):
         with patch.object(play.subprocess, 'check_output', side_effect=[
                 'Xu Compiler Toolchain v0.10.10-dev.1 (self-hosted)\n', 'wasm32']), \
                 patch.object(play.subprocess, 'run', side_effect=self.mock_run) as run, \
+                patch.object(play.shutil, 'which', return_value='mock-node'), \
                 contextlib.redirect_stderr(stderr), contextlib.redirect_stdout(io.StringIO()):
             self.build()
-        self.assertEqual(run.call_count, 2)
+        self.assertEqual(run.call_count, 3)
         self.assertEqual(run.call_args_list[1].args[0][0], sys.executable)
+        self.assertEqual(run.call_args_list[2].args[0][0], 'mock-node')
         embedded = (self.root / 'build/playground/source/stdlib.xu').read_text(encoding='utf-8')
         self.assertIn('你好 🌱', embedded)
         self.assertIn(r'\$literal', embedded)

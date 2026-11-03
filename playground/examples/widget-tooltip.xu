@@ -15,44 +15,51 @@ fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,heigh
 }
 
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
-    << layout.Rect{x: x,y: y,width: w,height: h}
+    << layout.Rect{x:x,y:y,width:w,height:h}
 }
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,132.0,240.0,42.0)
-    $btn := widgets.button(&identity,1,&bounds) or >>
-    $lbl := widgets.styled_label(&context,&"Hover or focus for help")
+    $btn := widgets.button(&identity,1,&box(48.0,132.0,260.0,44.0)) or >>
+    $shown := false
     $focus := widgets.focus_group(&identity,[1]) or >>
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == ui.EV_POINTER_CANCEL { focus.clear() }
         nav := focus.input(&event)
         btn.set_focus(focus.current() == 1)
+        if nav.consumed { shown = focus.current() == 1 }
         if nav.consumed { -> }
         act := btn.input(&event)
         if act.request_focus { focus.focus(1) or >> }
+        if act.request_focus || act.kind == widgets.ACTION_ACTIVATE { shown = true }
+        if event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_ESCAPE { shown = false }
+        if event.kind == ui.EV_POINTER_DOWN && !box(48.0,132.0,260.0,44.0).contains(event.x,event.y) { shown = false }
+        if event.kind == ui.EV_POINTER_CANCEL { shown = false }
     }
-    $frame := context.new_frame(8192)
+    $frame := context.new_frame(16384)
     frame.begin() or >>
     frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,styles.input.palette.normal) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  Tooltip") or >>
-    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"Hover 延迟、focus 立即显示；Escape 抑制重复提示。") or >>
-    frame.fill_rect(48.0,88.0,420.0,32.0,draw.rgb(40,35,41)) or >>
-    demo_center_text($&frame,&context,60,88.0,32.0,12,draw.rgb(255,253,251),"Hover waits 500 ms; keyboard focus shows help immediately.") or >>
-    btn.paint_styled($&frame,$&lbl,&styles) or >>
-    demo_text($&frame,&context,48,190,12,draw.rgb(109,98,110),"鼠标离开或点击收起；Escape 抑制重复提示") or >>
-    message := "Tooltip: visible"
-    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"点击或键盘聚焦显示提示；Escape 关闭。") or >>
+    if shown {
+        frame.fill_rect(48.0,88.0,440.0,32.0,styles.button.palette.foreground) or >>
+        demo_center_text($&frame,&context,60,88.0,32.0,12,draw.rgb(255,253,251),"Focus help · Escape closes this tooltip.") or >>
+    }
+    $label := widgets.styled_label(&context,&"Show help 查看提示")
+    btn.paint_styled($&frame,$&label,&styles) or >>
+    demo_text($&frame,&context,48,196,12,draw.rgb(109,98,110),"浏览器预览点击与焦点提示；悬停延迟请在桌面 SDK 体验。") or >>
+    $state := "hidden"
+    if shown { state = "visible" }
+    message := "Tooltip: "+state
+    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message+"") or >>
     println(message)
     frame.present() or >>
     << 0
 }
-fn main() int {
-    << demo() or (err) { eprintln(err.msg())
-        << 1 }
-}
+fn main() int { << demo() or (err) { eprintln(err.msg())
+    << 1 } }

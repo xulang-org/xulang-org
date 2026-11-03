@@ -5,6 +5,17 @@
 #ui/widgets
 #playground
 
+fn remove_last(value &string) string {
+    if value.len == 0 { << "" }
+    $end := value.len-1
+    while end > 0 && (value[end] & 192) == 128 { end -= 1 }
+    << value[0:end]
+}
+fn codepoints(value &string) int {
+    $count := 0
+    for i in 0:value.len { if (value[i] & 192) != 128 { count += 1 } }
+    << count
+}
 fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
     << frame.text_layout(&label,f64(x),f64(y),ink) or >>
@@ -51,6 +62,7 @@ fn demo() int {
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == 77 { focused = false }
         if event.kind == 72 {
             px := event.x
             py := event.y
@@ -64,7 +76,7 @@ fn demo() int {
             if event.key == 257 { focused = !focused }
             if focused {
                 if event.key == 259 {
-                    if line1.len > 0 { line1 = line1[0:line1.len - 1] }
+                    if line1.len > 0 { line1 = remove_last(&line1) }
                 } else if event.key == 256 {
                     focused = false
                 } else if line1.len < 100 {
@@ -75,17 +87,19 @@ fn demo() int {
             }
         }
     }
+    $caret := ""
+    if focused { caret = "│" }
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  TextArea") or >>
-    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"原生多行文本：软换行、滚动、选择、复制粘贴。") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器多行预览：编辑首行末尾；完整编辑请用桌面 SDK。") or >>
 
     frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
     if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) or >>
     } else {
         frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
     }
@@ -95,17 +109,12 @@ fn demo() int {
     bw := int(bounds.width)
     bh := int(bounds.height)
 
-    demo_text($&frame,&context,bx + 12,by + 14,15,draw.rgb(40,35,41),line1 + "") or >>
-    if focused {
-        $caret_x := bx + 12 + int(f64(line1.len) * 8.6)
-        if caret_x > bx + bw - 20 { caret_x = bx + bw - 20 }
-        demo_text($&frame,&context,caret_x,by + 12,16,draw.rgb(190,18,60),"|") or >>
-    }
-    demo_text($&frame,&context,bx + 12,by + 38,15,draw.rgb(40,35,41),"选择文字、复制、粘贴，保留输入法会话。") or >>
+    demo_text($&frame,&context,bx + 12,by + 14,15,draw.rgb(40,35,41),line1 + caret) or >>
+    demo_text($&frame,&context,bx + 12,by + 38,15,draw.rgb(40,35,41),"桌面 SDK 提供选区、剪贴板与输入法。") or >>
     demo_text($&frame,&context,bx + 12,by + 62,15,draw.rgb(109,98,110),"👨‍👩‍👧‍👦 family · emoji 与多语言") or >>
 
-    total_chars := line1.len + 35
-    demo_text($&frame,&context,bx,by + bh + 8,12,draw.rgb(109,98,110),"软换行与双向滚动 · 保持光标可见") or >>
+    total_chars := codepoints(&line1) + codepoints(&"桌面 SDK 提供选区、剪贴板与输入法。") + codepoints(&"👨‍👩‍👧‍👦 family · emoji 与多语言")
+    demo_text($&frame,&context,bx,by + bh + 8,12,draw.rgb(109,98,110),"首行末尾输入 / 退格删除 · Escape 离开") or >>
     demo_text($&frame,&context,bx + bw - 60,by + bh + 8,12,draw.rgb(109,98,110),str(total_chars) + " / 500") or >>
 
     message := "Lines: 3 | Characters: " + str(total_chars)

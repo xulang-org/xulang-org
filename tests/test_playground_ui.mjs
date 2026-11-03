@@ -11,6 +11,7 @@ class Element {
     this.children = [];
     this.listeners = {};
     this.attributes = {};
+    this.dataset = {};
     this.className = '';
     this.classList = {
       contains: name => this.className.split(' ').includes(name),
@@ -38,6 +39,12 @@ class Element {
   }
   closest(selector) { return this.matches(selector) ? this : this.parentNode?.closest(selector); }
   setAttribute(name, value) { this.attributes[name] = value; }
+  removeAttribute(name) {
+    delete this.attributes[name];
+    if (name.startsWith('data-')) {
+      delete this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())];
+    }
+  }
   focus() { this.focused = true; }
   addEventListener(name, handler) { this.listeners[name] = handler; }
   click() { if (!this.disabled) this.listeners.click(); }
@@ -549,6 +556,7 @@ test('widgets preserve real down/up, drag, key release, blur, and pending input 
   elements['xu-play-run'].click();
   const result = {type:'result', exit:0, stdout:'widgets', stderr:'', ui:{commands:'frame', interactive:true, input:true}};
   workers[0].respond(result);
+  assert.equal(canvas.dataset.widgetInput, 'true', 'widget input owns its focused boundary');
   const pointer = {clientX:50,clientY:80,button:0,buttons:1,pointerId:7,preventDefault(){}};
   canvas.listeners.pointerdown(pointer);
   let events = workers[0].messages.at(-1).events;
@@ -593,6 +601,7 @@ test('widgets preserve real down/up, drag, key release, blur, and pending input 
   assert.equal(workers[0].messages.at(-1).events.at(-1).kind,77);
   elements['xu-play-src'].value = 'changed';
   elements['xu-play-src'].listeners.input();
+  assert.equal(canvas.dataset.widgetInput, undefined, 'editing clears the widget focus marker');
   workers[0].respond(result);
   assert.equal(elements['xu-play-ui'].hidden,true);
   elements['xu-play-run'].click();

@@ -66,8 +66,8 @@
       "path": "src/ui/widgets/color_picker.xu",
       "signature": "pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) int",
       "upstream_sha256": "acd977d5c94edfb56a7d7d428528b6c476f687655eb6ead8c77be604bebc359c",
-      "sha256": "2cbcd9c0b5bc8b5c1032122547524738756ad36cf9fb33a802006f0351a76b08",
-      "reason": "Paint private color channels with typed styles and center row labels in their channel bounds.",
+      "sha256": "71c3a11bf9c6a7a160c85c4f330eb94d3a0ac7931e29f7066024393e2ec24c38",
+      "reason": "Paint private color channels with typed styles and center row labels in their channel bounds. Skip the fully occluded transparency grid for opaque swatches.",
       "replacements": [
         {
           "before": "    for i in 0:4 {\n        $slider_style := styles.slider_style()\n        if i == 0 { slider_style.palette.accent = draw.rgb(224,73,86) }\n        else if i == 1 { slider_style.palette.accent = draw.rgb(42,151,93) }\n        else if i == 2 { slider_style.palette.accent = draw.rgb(60,117,224) }\n        slider_style.palette.invalid = c.palette.invalid\n        value := picker.locale.integer(picker.channel(i) or >>)\n        channel_b := picker.channel_bounds(i) or >>\n        $channel := picker.channels[i]\n        channel.set_style(&slider_style) or >>\n        channel.apply_styles(styles) or >>\n        channel.paint_styled(frame,styles) or >>\n",
@@ -76,6 +76,10 @@
         {
           "before": "    c.align_x = 0.0\n    names :=",
           "after": "    c.align_x = 0.0\n    c.align_y = 0.5\n    names :="
+        },
+        {
+          "before": "    for row in 0:4 { for col in 0:16 {\n        $ink := draw.rgb(232,235,240)\n        if (row + col) % 2 == 1 { ink = draw.rgb(179,187,199) }\n        frame.fill_rect(p.x + f64(col) * p.width / 16.0,p.y + f64(row) * p.height / 4.0,p.width / 16.0,p.height / 4.0,ink) or >>\n    } }\n",
+          "after": "    // An opaque swatch fully covers the transparency grid.\n    if (picker.value().value() & 255) < 255 {\n        for row in 0:4 { for col in 0:16 {\n            $ink := draw.rgb(232,235,240)\n            if (row + col) % 2 == 1 { ink = draw.rgb(179,187,199) }\n            frame.fill_rect(p.x + f64(col) * p.width / 16.0,p.y + f64(row) * p.height / 4.0,p.width / 16.0,p.height / 4.0,ink) or >>\n        } }\n    }\n"
         }
       ]
     },
@@ -142,6 +146,122 @@
           "after": "    if (state & STATE_FOCUSED) != 0 && (state & STATE_DISABLED) == 0 && !single_focus {\n        gap := c.focus_inset * d"
         }
       ]
+    },
+    {
+      "module": "widgets_extra_button_group",
+      "path": "src/ui/widgets/button_group.xu",
+      "signature": "fn (g &ButtonGroup) next_enabled(start int,direction int) int",
+      "upstream_sha256": "b80ce0aadda9f0f821badee77b7b314e559f88c9f73b873330220ded54737a67",
+      "replacements": [
+        {
+          "before": "    for n in 1:g.items.len + 1 { i := (start + direction * n + g.items.len * 2) % max_int(1,g.items.len)",
+          "after": "    count := g.items.len\n    if count <= 0 { << -1 }\n    for n in 1:count + 1 { i := (start + direction * n + count * 2) % count"
+        }
+      ],
+      "sha256": "2aa38803ea31582b851adf8374b7935c6249f86943dd2c9f6053e3b3870ffdbd",
+      "reason": "Prove a positive local divisor to the released SDK before keyboard navigation."
+    },
+    {
+      "module": "widgets_extra_menu",
+      "path": "src/ui/widgets/menu_input.xu",
+      "signature": "fn (m &Menu) next(parent int,start int,direction int) int",
+      "upstream_sha256": "ca0638b4719f0a9147da3b251091a3c65c85bd9c1b134651a4cd7e605e324d47",
+      "replacements": [
+        {
+          "before": "    if m.items.len == 0 { << -1 }\n    for offset in 1:m.items.len + 1 {\n        index := (start + direction * offset + m.items.len * 2) % m.items.len",
+          "after": "    count := m.items.len\n    if count <= 0 { << -1 }\n    for offset in 1:count + 1 {\n        index := (start + direction * offset + count * 2) % count"
+        }
+      ],
+      "sha256": "253055ef17c3f5c23d5cf30b3e9394ad613d28826d12d6d500a9c2287e2c3b01",
+      "reason": "Prove a positive local divisor to the released SDK before menu navigation."
+    },
+    {
+      "module": "widgets",
+      "path": "src/ui/widgets/controls_data.xu",
+      "signature": "pub fn (lb &ListBox) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &Theme) int",
+      "upstream_sha256": "281ef92f86d5c14bdcf8e0163985e965f518ec4c9b6e809510768772498569b8",
+      "replacements": [
+        {
+          "before": "                frame.text_layout(&lbl,b.x + 10.0,ry + (rh - lbl.metrics.height) * 0.5,theme.foreground)",
+          "after": "                $ink := theme.foreground\n                if i == lb.selected_val { ink = draw.rgb(255,248,250)\n                    if ((theme.foreground.value() >> 24) & 255) > 150 { ink = draw.rgb(25,12,18) } }\n                frame.text_layout(&lbl,b.x + 10.0,ry + (rh - lbl.metrics.height) * 0.5,ink)"
+        }
+      ],
+      "sha256": "a8165bc2dfbd69b5982ade0c7b525acf802b853713017d54c56a038df8f6d290",
+      "reason": "Use the pinned on-brand color over the selected brand surface."
+    },
+    {
+      "module": "widgets",
+      "path": "src/ui/widgets/controls_nav.xu",
+      "signature": "pub fn (t &Tabs) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &Theme) int",
+      "upstream_sha256": "37660a96df768e2b871e367a899795a3ae30b12167c9916b23d63f73a190a46e",
+      "replacements": [
+        {
+          "before": "            frame.text_layout(&lbl,tx,ty,theme.foreground)",
+          "after": "            $ink := theme.foreground\n            if i == t.selected_val { ink = draw.rgb(255,248,250)\n                    if ((theme.foreground.value() >> 24) & 255) > 150 { ink = draw.rgb(25,12,18) } }\n            frame.text_layout(&lbl,tx,ty,ink)"
+        }
+      ],
+      "sha256": "f35e0971918befbed3e11a79097022ad779598984779d3585a923a242a6b0aa5",
+      "reason": "Use the pinned on-brand color over selected tabs and segments."
+    },
+    {
+      "module": "widgets",
+      "path": "src/ui/widgets/controls_data.xu",
+      "signature": "pub fn list_box(identity &ui.CanvasEvent,id int,bounds &layout.Rect,count int,selected int) ListBox",
+      "upstream_sha256": "65b26f4584b47ee7645271f7460ee16e75057b499eb39f28a645ee1abf739d8d",
+      "replacements": [
+        {
+          "before": "row_h: 28.0,",
+          "after": "row_h: 44.0,"
+        }
+      ],
+      "sha256": "58b3c74b5e1376af990f9b16a689dd5b676b109e65ec7649a10047da668859b8",
+      "reason": "Keep browser list hit areas at the 44 px touch baseline."
+    },
+    {
+      "module": "widgets_extra_shared_31cb4a15bb",
+      "path": "src/ui/widgets/multi_select.xu",
+      "signature": "fn (list $&ChoiceList) metrics(styles &Styles,c &ControlStyle) int",
+      "upstream_sha256": "c9fa80dcb1d9a1718cd585b87e9dbf725fdfdafa4e303f9ff024e00b3d5fd339",
+      "sha256": "db6d400ec98cae8be096dd7e4151daaf9bd6ed5abb6750fd7a3eda1c8228bfc4",
+      "replacements": [
+        {
+          "before": "math.max(28.0 * styles.density,text.size * 1.5 + 8.0 * styles.density)",
+          "after": "math.max(44.0 * styles.density,text.size * 1.5 + 8.0 * styles.density)"
+        }
+      ],
+      "reason": "Keep browser choice and navigation hit areas at least 44 logical px at normal density."
+    },
+    {
+      "module": "widgets_extra_pagination",
+      "path": "src/ui/widgets/pagination.xu",
+      "signature": "pub fn (p $&Pagination) apply_styles(styles &Styles) int",
+      "upstream_sha256": "9b24065a15fe6e49807049bac30970278bcb75df3c1f3b5b6014564dbb1f04e3",
+      "sha256": "a69980ec1b4b2e58c9f39313655531da870a3e521c281cd25c7b9a867bde66e9",
+      "replacements": [
+        {
+          "before": "height := math.max(c.min_height * d,size.height + (c.padding.top + c.padding.bottom) * d)",
+          "after": "height := math.max(44.0 * d,math.max(c.min_height * d,size.height + (c.padding.top + c.padding.bottom) * d))"
+        },
+        {
+          "before": "width := math.max(p.appearance.min_item_width * d,size.width + (c.padding.left + c.padding.right) * d)",
+          "after": "width := math.max(44.0 * d,math.max(p.appearance.min_item_width * d,size.width + (c.padding.left + c.padding.right) * d))"
+        }
+      ],
+      "reason": "Keep browser choice and navigation hit areas at least 44 logical px at normal density."
+    },
+    {
+      "module": "widgets_extra_menu",
+      "path": "src/ui/widgets/menu_geometry.xu",
+      "signature": "pub fn (m $&Menu) apply_styles(styles &Styles) int",
+      "upstream_sha256": "ad1656d24f5d7198e155ad29c3aef6e1f04d01e8a7258632c08c103f86714a73",
+      "sha256": "89d5549bc4cd850130c72318b860c5b0b1abc77eb3ae53ace45af043920240ef",
+      "replacements": [
+        {
+          "before": "m.row_height = math.max(m.appearance.row_height * styles.density,styles.text_options(&c).size * 1.25 + 12.0 * styles.density)",
+          "after": "m.row_height = math.max(44.0 * styles.density,math.max(m.appearance.row_height * styles.density,styles.text_options(&c).size * 1.25 + 12.0 * styles.density))"
+        }
+      ],
+      "reason": "Keep browser choice and navigation hit areas at least 44 logical px at normal density."
     }
   ]
 }

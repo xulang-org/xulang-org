@@ -15,48 +15,68 @@ fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,heigh
 }
 
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
-    << layout.Rect{x: x,y: y,width: w,height: h}
+    << layout.Rect{x:x,y:y,width:w,height:h}
 }
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
-    bounds := box(48.0,110.0,260.0,44.0)
-    $btn := widgets.button(&identity,1,&bounds) or >>
-    $lbl := widgets.styled_label(&context,&"14 : 30 : 00")
-    $mode_btn := widgets.button(&identity,2,&box(320.0,110.0,90.0,44.0)) or >>
-    $mode_lbl := widgets.styled_label(&context,&"24-Hour")
+    $btn := widgets.button(&identity,1,&box(48.0,110.0,260.0,44.0)) or >>
+    $mode := widgets.button(&identity,2,&box(320.0,110.0,120.0,44.0)) or >>
+    $minutes := 870
+    $twelve := false
     $focus := widgets.focus_group(&identity,[1,2]) or >>
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == ui.EV_POINTER_CANCEL { focus.clear() }
         nav := focus.input(&event)
         btn.set_focus(focus.current() == 1)
-        mode_btn.set_focus(focus.current() == 2)
+        mode.set_focus(focus.current() == 2)
         if nav.consumed { -> }
-        a1 := btn.input(&event)
-        a2 := mode_btn.input(&event)
-        if a1.request_focus { focus.focus(1) or >> }
-        if a2.request_focus { focus.focus(2) or >> }
+        act := btn.input(&event)
+        if act.request_focus { focus.focus(1) or >> }
+        mode_action := mode.input(&event)
+        if mode_action.request_focus { focus.focus(2) or >> }
+        if mode_action.kind == widgets.ACTION_ACTIVATE { twelve = !twelve }
+        if act.kind == widgets.ACTION_ACTIVATE { minutes = (minutes+1)%1440 }
+        if event.kind == ui.EV_KEY_DOWN && focus.current() == 1 {
+            if event.key == ui.KEY_UP { minutes = (minutes+1)%1440 }
+            if event.key == ui.KEY_DOWN { minutes = (minutes+1439)%1440 }
+        }
     }
-    $frame := context.new_frame(8192)
+    $frame := context.new_frame(16384)
     frame.begin() or >>
     frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.fill_rect(28.0,70.0,584.0,240.0,styles.input.palette.normal) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  TimePicker") or >>
-    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"12/24 小时可选；存储保持明确的时间值。") or >>
-    btn.paint_styled($&frame,$&lbl,&styles) or >>
-    mode_btn.paint_styled($&frame,$&mode_lbl,&styles) or >>
-    demo_text($&frame,&context,48,172,12,draw.rgb(109,98,110),"支持 12/24 小时制切换 · 时分秒步进与滚轮微调") or >>
-    message := "Time: 14:30:00"
-    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器时间预览：点击增加一分钟；切换 12/24 小时制。") or >>
+    hour := minutes/60
+    minute := minutes%60
+    $mm := str(minute)
+    if minute < 10 { mm = "0"+mm }
+    $hh := str(hour)
+    if hour < 10 { hh = "0"+hh }
+    stored := hh+":"+mm+":00"
+    $display := stored+""
+    $mode_text := "24-Hour"
+    if twelve { $h := hour%12
+        if h == 0 { h = 12 }
+        $suffix := " AM"
+        if hour >= 12 { suffix = " PM" }
+        display = str(h)+":"+mm+":00"+suffix
+        mode_text = "12-Hour" }
+    $label := widgets.styled_label(&context,&display)
+    $mode_label := widgets.styled_label(&context,&mode_text)
+    btn.paint_styled($&frame,$&label,&styles) or >>
+    mode.paint_styled($&frame,$&mode_label,&styles) or >>
+    demo_text($&frame,&context,48,180,12,draw.rgb(109,98,110),"点击 / Enter 增加一分钟 · ↑ / ↓ 调整 · 存储为 24 小时") or >>
+    message := "Time: "+stored
+    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message+"") or >>
     println(message)
     frame.present() or >>
     << 0
 }
-fn main() int {
-    << demo() or (err) { eprintln(err.msg())
-        << 1 }
-}
+fn main() int { << demo() or (err) { eprintln(err.msg())
+    << 1 } }

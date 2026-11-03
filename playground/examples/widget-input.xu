@@ -5,6 +5,12 @@
 #ui/widgets
 #playground
 
+fn remove_last(value &string) string {
+    if value.len == 0 { << "" }
+    $end := value.len-1
+    while end > 0 && (value[end] & 192) == 128 { end -= 1 }
+    << value[0:end]
+}
 fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
     << frame.text_layout(&label,f64(x),f64(y),ink) or >>
@@ -51,6 +57,7 @@ fn demo() int {
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == 77 { focused = false }
         if event.kind == 72 {
             px := event.x
             py := event.y
@@ -64,7 +71,7 @@ fn demo() int {
             if event.key == 257 { focused = !focused }
             if focused {
                 if event.key == 259 {
-                    if text.len > 0 { text = text[0:text.len - 1] }
+                    if text.len > 0 { text = remove_last(&text) }
                 } else if event.key == 256 {
                     focused = false
                 } else if text.len < 64 {
@@ -75,13 +82,15 @@ fn demo() int {
             }
         }
     }
+    $caret := ""
+    if focused { caret = "│" }
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  Input") or >>
-    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"原生单行编辑：选区、复制、粘贴与 IME。") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器输入预览：末尾输入、退格删除；Escape 离开。") or >>
 
     bx := int(bounds.x)
     by := int(bounds.y)
@@ -89,25 +98,19 @@ fn demo() int {
 
     frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
     if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(40,35,41),2.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) or >>
     } else {
         frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
     }
 
     if text.len > 0 {
-        demo_center_text($&frame,&context,bx + 14,bounds.y,bounds.height,15,draw.rgb(40,35,41),text + "") or >>
-        if focused {
-            caret_x := bx + 14 + int(f64(text.len) * 8.6)
-            frame.line(f64(caret_x),bounds.y+(bounds.height-16.0)*0.5,f64(caret_x),bounds.y+(bounds.height+16.0)*0.5,draw.rgb(190,18,60),1.5) or >>
-        }
+        demo_center_text($&frame,&context,bx + 14,bounds.y,bounds.height,15,draw.rgb(40,35,41),text + caret) or >>
     } else {
-        demo_center_text($&frame,&context,bx + 14,bounds.y,bounds.height,15,draw.rgb(133,121,135),"you@domain.com") or >>
-        if focused {
-            frame.line(f64(bx + 14),bounds.y+(bounds.height-16.0)*0.5,f64(bx + 14),bounds.y+(bounds.height+16.0)*0.5,draw.rgb(190,18,60),1.5) or >>
-        }
+        if focused { demo_center_text($&frame,&context,bx + 14,bounds.y,bounds.height,15,draw.rgb(190,18,60),caret) or >> }
+        else { demo_center_text($&frame,&context,bx + 14,bounds.y,bounds.height,15,draw.rgb(133,121,135),"you@domain.com") or >> }
     }
 
-    demo_text($&frame,&context,bx,by + int(bounds.height) + 8,12,draw.rgb(109,98,110),"中文 / English / 🙂 · 原生单行文本编辑与 IME 会话") or >>
+    demo_text($&frame,&context,bx,by + int(bounds.height) + 8,12,draw.rgb(109,98,110),"Basic key input · Native IME requires the desktop SDK") or >>
     message := "Value: " + text
     demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>
     println(message)

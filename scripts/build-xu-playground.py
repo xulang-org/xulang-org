@@ -9,6 +9,34 @@ import subprocess
 import sys
 import tempfile
 import re
+import gzip
+
+
+OPTIMIZER_VERSION = '132.0.0'
+OPTIMIZER_FLAGS = ['-O1', '--shrink-level=1', '--strip-debug', '--enable-bulk-memory',
+                   '--enable-bulk-memory-opt', '--enable-nontrapping-float-to-int']
+
+
+def optimize(root: Path, wasm: Path):
+    package = root / 'node_modules/binaryen'
+    metadata = package / 'package.json'
+    node = shutil.which('node')
+    if not node or not metadata.is_file():
+        raise RuntimeError('WASM optimization requires Node.js 22+ and npm ci')
+    if json.loads(metadata.read_text(encoding='utf-8'))['version'] != OPTIMIZER_VERSION:
+        raise RuntimeError('WASM optimizer version does not match package-lock.json; run npm ci')
+    command = [node, str(package / 'bin/wasm-opt')]
+    before = wasm.stat().st_size
+    output = wasm.with_suffix('.optimized.wasm')
+    # Avoid oversubscribing low-memory developer machines with optimizer
+    # workers. This changes build resource usage, not the optimization passes.
+    optimizer_env = os.environ.copy()
+    optimizer_env['BINARYEN_CORES'] = '1'
+    subprocess.run([*command, str(wasm),
+                    *OPTIMIZER_FLAGS, '-o', str(output)], env=optimizer_env, check=True)
+    output.replace(wasm)
+    print(f'WASM optimized: {before} -> {wasm.stat().st_size} bytes (Binaryen {OPTIMIZER_VERSION} -O1 -s1)')
+    return before
 
 
 def xu_literal(value):
@@ -94,12 +122,19 @@ def build(root: Path, xu: Path, compiler: Path):
         env.update(XU_ROOT=str(xu), XU_STDLIB_ROOT=str(xu / 'src'), XUPATH='', XU_CACHE=temporary)
         for name in ('XUOS', 'XUARCH', 'XU_BOOT_EXTRA', 'XU_SEED', 'XU_ALLOW_ORACLE_SEED'):
             env.pop(name, None)
-        subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-O0', '-o', str(wasm)], cwd=xu, env=env, check=True)
+        subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-O1', '-o', str(wasm)], cwd=xu, env=env, check=True)
     subprocess.run([sys.executable, str(root / 'scripts/link-playground-float.py'), str(wasm)], check=True)
+    unoptimized_bytes = optimize(root, wasm)
     if (xu / 'VERSION').read_text(encoding='utf-8').strip() != version:
         raise RuntimeError('Xu SDK version changed during the build; rebuild from a fixed SDK')
     (wasm.parent / 'build.json').write_text(json.dumps({
+        'initial_memory_bytes': 32 * 1024 * 1024,
         'memory_limit_bytes': 256 * 1024 * 1024,
+        'compiler_optimization': '-O1',
+        'optimizer': {'name': 'binaryen', 'version': OPTIMIZER_VERSION, 'flags': OPTIMIZER_FLAGS},
+        'unoptimized_bytes': unoptimized_bytes,
+        'wasm_bytes': wasm.stat().st_size,
+        'gzip_bytes': len(gzip.compress(wasm.read_bytes(), compresslevel=9, mtime=0)),
         'widget_sources_sha256': hashlib.sha256((root / 'playground/stdlib/desktop-sources.json').read_bytes()).hexdigest(),
         'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest(),
         **({'dev_build': True} if allow_dev else {}),
