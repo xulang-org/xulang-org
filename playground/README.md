@@ -36,6 +36,9 @@ pinned on-brand ink for selected labels; browser ListBox, choice menus and
 pagination have 44 logical px hit areas at normal density. Fit scales the whole
 fixed canvas for an overview; use 100% and the phone pan control for original-size
 text and targets.
+At intermediate widths the source pane has a bounded height and its editor
+scrolls internally, so long programs do not push the preview thousands of pixels
+down the page. Phone tabs retain their flexible panel height.
 Menu and ButtonGroup navigation guard a local positive item count before modulo.
 
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
