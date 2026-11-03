@@ -11,6 +11,7 @@ class Element {
     this.children = [];
     this.listeners = {};
     this.attributes = {};
+    this.dataset = {};
     this.className = '';
     this.classList = {
       contains: name => this.className.split(' ').includes(name),
@@ -38,6 +39,12 @@ class Element {
   }
   closest(selector) { return this.matches(selector) ? this : this.parentNode?.closest(selector); }
   setAttribute(name, value) { this.attributes[name] = value; }
+  removeAttribute(name) {
+    delete this.attributes[name];
+    if (name.startsWith('data-')) {
+      delete this.dataset[name.slice(5).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())];
+    }
+  }
   focus() { this.focused = true; }
   addEventListener(name, handler) { this.listeners[name] = handler; }
   click() { if (!this.disabled) this.listeners.click(); }
@@ -549,6 +556,7 @@ test('widgets preserve real down/up, drag, key release, blur, and pending input 
   elements['xu-play-run'].click();
   const result = {type:'result', exit:0, stdout:'widgets', stderr:'', ui:{commands:'frame', interactive:true, input:true}};
   workers[0].respond(result);
+  assert.equal(canvas.dataset.widgetInput, 'true', 'widget input owns its focused boundary');
   const pointer = {clientX:50,clientY:80,button:0,buttons:1,pointerId:7,preventDefault(){}};
   canvas.listeners.pointerdown(pointer);
   let events = workers[0].messages.at(-1).events;
@@ -593,6 +601,7 @@ test('widgets preserve real down/up, drag, key release, blur, and pending input 
   assert.equal(workers[0].messages.at(-1).events.at(-1).kind,77);
   elements['xu-play-src'].value = 'changed';
   elements['xu-play-src'].listeners.input();
+  assert.equal(canvas.dataset.widgetInput, undefined, 'editing clears the widget focus marker');
   workers[0].respond(result);
   assert.equal(elements['xu-play-ui'].hidden,true);
   elements['xu-play-run'].click();
@@ -622,4 +631,41 @@ test('wheel host scales line/page units and queues fractional deltas without wid
   workers[0].respond(result);
   elements['xu-play-src'].listeners.input();
   canvas.listeners.wheel({preventDefault(){throw Error('cleared UI must permit page scrolling');}});
+});
+
+
+test('rapid widget clicks retain both complete gestures while the worker is busy', async () => {
+  const {elements,workers}=await mount({ui:true});
+  const canvas=elements['xu-play-canvas'];
+  elements['xu-play-src'].value='widget source';
+  elements['xu-play-run'].click();
+  const result={type:'result',exit:0,stdout:'selection',stderr:'',ui:{commands:'frame',interactive:true,input:true}};
+  workers[0].respond(result);
+  const pointer={clientX:50,clientY:80,button:0,buttons:1,pointerId:7,preventDefault(){}};
+  canvas.listeners.pointerdown(pointer);
+  canvas.listeners.pointerup({...pointer,buttons:0});
+  canvas.listeners.pointerdown({...pointer,clientY:100});
+  canvas.listeners.pointerup({...pointer,clientY:100,buttons:0});
+  assert.equal(canvas.attributes['aria-disabled'],'false','interactive updates keep the preview enabled');
+  assert.equal(elements['xu-play-out'].textContent,'selection','dragging does not flash Running in the output');
+  workers[0].respond(result);
+  assert.deepEqual(Array.from(workers[0].messages.at(-1).events,e=>e.kind),[72,73,72,73]);
+  workers[0].respond(result);
+  canvas.listeners.keydown({key:'Escape',preventDefault(){}});
+  assert.equal(canvas.focused,true,'Escape is handled by the focused Xu control');
+});
+
+
+test('mobile presentation receives fresh-run results and cancels follow on source edits',async()=>{
+ const {context,elements,workers}=await mount({ui:true});
+ const calls=[];context.window.XuPlayMobile={cancelRun(){calls.push('cancel');},beginRun(){calls.push('begin');},completeRun(ui){calls.push(ui);}};
+ elements['xu-play-src'].value='mobile source';elements['xu-play-run'].click();
+ assert.deepEqual(calls,['cancel','begin']);
+ const result={type:'result',exit:0,stdout:'value',stderr:'',ui:{commands:'frame',interactive:true,input:true}};
+ workers[0].respond(result);assert.equal(calls.at(-1),true);
+ elements['xu-play-canvas'].listeners.pointerdown({clientX:50,clientY:80,button:0,buttons:1,pointerId:1,preventDefault(){}});
+ assert.equal(calls.filter(x=>x==='begin').length,1,'widget updates are not fresh runs');
+ elements['xu-play-src'].value='edited source';elements['xu-play-src'].listeners.input();assert.equal(calls.at(-1),'cancel');
+ workers[0].respond(result);assert.equal(calls.at(-1),false,'edited programs cannot reopen stale previews');
+ elements['xu-play-run'].click();workers[0].respond({...result,ui:null});assert.equal(calls.at(-1),false);
 });

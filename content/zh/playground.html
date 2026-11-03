@@ -1,6 +1,6 @@
 <!--title: 在线演练场 — XU 编程语言-->
 <header class="play-heading">
-  <div><p class="play-eyebrow">XU / PLAYGROUND</p><h1>想法，运行一下。</h1></div>
+  <div><h1>演练场</h1></div>
   <p>写一点 Xu，在浏览器里看见结果。<br><span>无需安装，代码在本机运行。</span></p>
   <a href="/docs/start">语言指南 <i class="xi xi-arrow-up-right" aria-hidden="true"></i></a>
 </header>
@@ -12,9 +12,16 @@
     <span class="play-browser-label"><span class="play-status-dot"></span> 浏览器沙盒</span>
     <button type="button" class="play-run" id="xu-play-run"><i class="xi xi-play" aria-hidden="true"></i> 运行代码</button>
   </div>
+  <div class="play-mobile-tabs" id="xu-play-mobile-tabs" role="tablist" aria-label="工作区视图" hidden>
+    <button type="button" id="xu-play-mobile-tab-files" role="tab" aria-controls="xu-play-explorer" aria-selected="false" tabindex="-1">文件</button>
+    <button type="button" id="xu-play-mobile-tab-editor" role="tab" aria-controls="xu-play-editor" aria-selected="true" tabindex="0">编辑</button>
+    <button type="button" id="xu-play-mobile-tab-preview" role="tab" aria-controls="xu-play-preview-panel" aria-selected="false" tabindex="-1">预览</button>
+    <button type="button" id="xu-play-mobile-tab-console" role="tab" aria-controls="xu-play-console-panel" aria-selected="false" tabindex="-1">输出</button>
+  </div>
+
   <div class="play-panes" id="xu-play-panes">
     <div class="play-source-pane">
-      <aside class="play-explorer" aria-label="项目文件">
+      <aside class="play-explorer" id="xu-play-explorer" aria-label="项目文件">
         <div class="play-panel-heading"><span>项目文件</span><button type="button" class="play-icon-button" id="xu-play-add" aria-label="新建文件" title="新建文件"><i class="xi xi-file-plus" aria-hidden="true"></i></button></div>
         <form class="play-new-file" id="xu-play-new-file" hidden>
           <label for="xu-play-file-path">文件路径</label>
@@ -25,7 +32,7 @@
         <nav class="play-file-tree" id="xu-play-tree" aria-label="项目目录"></nav>
         <div class="play-explorer-note"><i class="xi xi-folder-tree" aria-hidden="true"></i><span>源码、UI 与资源，<br>放在同一个项目里。</span></div>
       </aside>
-      <section class="play-editor" aria-label="文件编辑器">
+      <section class="play-editor" id="xu-play-editor" aria-label="文件编辑器">
         <div class="play-file-tabs" id="xu-play-file-tabs" role="tablist" aria-label="打开的文件"></div>
         <div class="play-editor-location"><span id="xu-play-file-name">playground / main.xu</span><span class="play-file-actions"><span id="xu-play-file-kind">Xu</span><button type="button" class="play-icon-button" id="xu-play-reset" aria-label="恢复当前项目默认代码" title="恢复当前项目默认代码"><i class="xi xi-refresh" aria-hidden="true"></i></button><button type="button" class="play-icon-button" id="xu-play-remove" aria-label="移除当前文件" title="移除当前文件" disabled><i class="xi xi-trash" aria-hidden="true"></i></button></span></div>
         <div class="play-code-area" role="tabpanel" id="xu-play-editor-panel">
@@ -49,6 +56,7 @@ fn main() int {
           <div class="play-preview-actions" role="group" aria-label="预览显示方式">
             <button type="button" id="xu-play-preview-fit" aria-pressed="true" aria-controls="xu-play-preview-viewport">适应窗口</button>
             <button type="button" id="xu-play-preview-actual" aria-pressed="false" aria-controls="xu-play-preview-viewport" aria-label="按原尺寸显示预览">100%</button>
+            <button type="button" id="xu-play-preview-pan" aria-pressed="false" aria-controls="xu-play-preview-viewport" hidden>平移</button>
             <button type="button" id="xu-play-preview-expand" aria-expanded="false" aria-controls="xu-play-panes">扩大预览</button>
           </div>
         </div>
@@ -57,6 +65,7 @@ fn main() int {
             <div class="play-preview-viewport" id="xu-play-preview-viewport" role="region" aria-label="画布查看区域" tabindex="-1">
               <canvas id="xu-play-canvas" width="640" height="360" tabindex="0" role="group" aria-label="UI 画布预览" aria-describedby="xu-play-ui-status">浏览器不支持 Canvas，请使用现代浏览器查看 UI 演示。</canvas>
             </div>
+            <p class="play-preview-pan-hint" id="xu-play-preview-pan-hint" hidden>平移模式：拖动画布查看；关闭后操作控件。</p>
             <p class="play-preview-dimensions">640 × 360</p>
             <p id="xu-play-ui-status" class="play-note" aria-live="polite">运行 UI 示例后在此显示画面。</p>
           </section>
@@ -81,8 +90,9 @@ fn main() int {
 </section>
 
 <dialog class="play-library" id="xu-play-library" aria-labelledby="xu-play-library-title">
-  <div class="play-library-heading"><div><h2 id="xu-play-library-title">从一个项目开始。</h2><p>选一个目标，看看文件，再改成你的想法。</p></div><button type="button" class="play-icon-button" id="xu-play-library-close" aria-label="关闭项目模板库"><i class="xi xi-close" aria-hidden="true"></i></button></div>
+  <div class="play-library-heading"><div><h2 id="xu-play-library-title">项目模板库</h2><p>选一个目标，看看文件，再改成你的想法。</p></div><button type="button" class="play-icon-button" id="xu-play-library-close" aria-label="关闭项目模板库"><i class="xi xi-close" aria-hidden="true"></i></button></div>
   <div class="play-library-search"><i class="xi xi-search" aria-hidden="true"></i><label class="play-visually-hidden" for="xu-play-library-search">搜索项目模板</label><input type="search" id="xu-play-library-search" placeholder="搜索项目、知识点或文件名" autocomplete="off"><span id="xu-play-library-count" role="status"></span></div>
+  <button type="button" class="play-library-back" id="xu-play-library-back" hidden><i class="xi xi-arrow-left" aria-hidden="true"></i> 返回模板列表</button>
   <div class="play-library-body">
     <div class="play-library-browser"><nav class="play-library-groups" id="xu-play-library-groups" aria-label="模板分类"></nav><p class="play-library-group-help" id="xu-play-library-group-help"></p><div class="play-template-list" id="xu-play-library-list" aria-label="项目模板"></div></div>
     <section class="play-template-detail" id="xu-play-library-detail" aria-label="项目模板详情"></section>
@@ -94,7 +104,7 @@ fn main() int {
 
 <p class="play-example-description" id="xu-play-help" aria-live="polite">从入口函数和标准输出开始，修改文本后再次运行。</p>
 <div class="playground-guide">
-  <details><summary>这里可以运行什么？ <i class="xi xi-chevron-down" aria-hidden="true"></i></summary><p>支持基本类型、字符串、控制流、递归、结构体、枚举、借用诊断与协作式 chan 通信。同一目录的 Xu 源码一起运行；子目录可组织文件，跨目录包导入与原生 UI 需使用本地 SDK。 <a href="/docs/tutorial/10">了解协程与 chan</a>.</p><p>在线示例涵盖基本数据类型、字符串操作、控制流与循环、函数递归、结构体与枚举模式匹配、编译期借用安全诊断，以及通过协程协作调度实现的 <code>chan</code> 信道通信。UI 示例含真实 <code>#ui/widgets</code> 的 Button、Checkbox、Switch、Slider 以及 25 号 Chart 图表：控件测量、状态、命中、焦点环与激活均由 Xu 执行。可点击控件或用 Tab、Enter/空格和方向键操作，Esc 离开画布。浏览器沙盒通过 <code>playground.next_input()</code> 与 <code>playground.next_click()</code> 提供安全无状态的交互重放以保障页面安全；本地原生开发则使用系统的无限连续事件循环（<code>chan ui.Event</code>），无任何重放与次数限制。三页画廊还展示 Radio、ListBox、Scroll、Tabs、StyledLabel、Card、Badge、Progress 和只读 Editor，数据页支持滚轮。文字按 XUUI 无衬线字体自然绘制，布局仍使用单行估算度量；完整原生塑形、编辑/IME 和逐控件的可访问性语义尚未接入。控件示例使用固定的 XUUI 主题，预览面板跟随网站主题。可选择适应窗口、100% 原尺寸或扩大预览。固定内存预算为 256 MiB。它不提供桌面窗口、WebView、系统服务或完整 widgets。普通程序最长运行 10 秒，Widgets 示例最长运行 30 秒，运行过程中可随时点击中止。</p>
+  <details><summary>这里可以运行什么？ <i class="xi xi-chevron-down" aria-hidden="true"></i></summary><p>手机上可切换「文件」「编辑」「预览」「输出」，切换视图会保留代码和控件状态。运行 UI 示例后自动显示预览，普通程序显示输出。模板库先选项目，再查看详情；返回列表会保留筛选。查看大画布时可切到 100% 并开启「平移」，拖动查看后关闭平移即可操作控件。</p><p>支持基本类型、字符串、控制流、递归、结构体、枚举、借用诊断与协作式 chan 通信。同一目录的 Xu 源码一起运行；子目录可组织文件，跨目录包导入与原生 UI 需使用本地 SDK。 <a href="/docs/tutorial/10">了解协程与 chan</a>.</p><p>在线示例涵盖基本数据类型、字符串操作、控制流与循环、函数递归、结构体与枚举模式匹配、编译期借用安全诊断，以及通过协程协作调度实现的 <code>chan</code> 信道通信。UI 示例含真实 <code>#ui/widgets</code> 的 Button、Checkbox、Switch、Slider 以及 25 号 Chart 图表：控件测量、状态、命中、焦点环与激活均由 Xu 执行。可点击控件或用 Tab、Enter/空格和方向键操作，Esc 离开画布。浏览器沙盒通过 <code>playground.next_input()</code> 与 <code>playground.next_click()</code> 提供安全无状态的交互重放以保障页面安全；本地原生开发则使用系统的无限连续事件循环（<code>chan ui.Event</code>），无任何重放与次数限制。三页画廊还展示 Radio、ListBox、Scroll、Tabs、StyledLabel、Card、Badge、Progress 和只读 Editor，数据页支持滚轮。文字按 XUUI 无衬线字体自然绘制，布局仍使用单行估算度量；完整原生塑形、编辑/IME 和逐控件的可访问性语义尚未接入。控件示例使用固定的 XUUI 主题，预览面板跟随网站主题。可选择适应窗口、100% 原尺寸或扩大预览。固定内存预算为 256 MiB。它不提供桌面窗口、WebView、系统服务或完整 widgets。普通程序最长运行 10 秒，Widgets 示例最长运行 30 秒，运行过程中可随时点击中止。</p>
 </details>
   <a href="/download">需要网络、FFI 或原生 UI？下载 SDK <i class="xi xi-arrow-up-right" aria-hidden="true"></i></a>
 </div>

@@ -29,7 +29,7 @@ for (const [slug, events, output] of [
   ['breadcrumbs', click(150,108), 'Activated: 1\n'],
   ['range-slider', [...key(257),...key(262)], 'Range: 21 - 80\n'],
   ['split-view', [...key(257),...key(262)], 'Ratio: 41\n'],
-  ['button-group', [...key(257),...key(262)], 'Selected: 2\n'],
+  ['button-group', [...key(257),...key(262),...key(258)], 'Selected: 2\n'],
   ['multi-select', [...click(100,108),...click(100,150)], 'Selected count: 1\n'],
   ['color-picker', [...key(257),...key(262)], 'Color: #B54532FF\n'],
   ['table', [...key(257),...key(264)], 'Selected: 1\n'],
@@ -38,6 +38,13 @@ for (const [slug, events, output] of [
   ['split-button', click(100,108), 'Command: 1\n'],
   ['chart', click(300,220), 'Selected point: 2\n'],
   ['field', click(460,130), 'Field: empty (invalid)\n'],
+  ['tree-view', click(100,110), 'Selected node: src/widgets | Expanded: false\n'],
+  ['date-picker', [...click(100,110),...click(70,200)], 'Date: 2026-10-25\n'],
+  ['time-picker', click(100,132), 'Time: 14:31:00\n'],
+  ['tooltip', [...key(257),...key(256)], 'Tooltip: hidden\n'],
+  ['toast-host', click(100,118), 'Active toasts: 3\n'],
+  ['web-view', click(500,110), 'WebView preview refreshes: 1\n'],
+  ['field-area', [...click(100,132),...key(259)], 'FieldArea: 29 characters\n'],
 ]) {
   test('component experience responds through Xu widget logic: ' + slug, async () => {
     const runtime = await createRuntime(module);
@@ -48,6 +55,54 @@ for (const [slug, events, output] of [
     assert.ok(canvas.XuPlayCanvas.frame(result.ui.commands));
   });
 }
+
+const components = Object.entries(projects).filter(([id]) => id.startsWith('widget-'));
+assert.equal(components.length, 46);
+for (const [id, project] of components) {
+  test('component starts with its declared output and a valid complete frame: '+id, async () => {
+    const runtime = await createRuntime(module);
+    const result = runtime.run(project.files['main.xu']);
+    assert.equal(result.exit, 0, id + ': ' + result.stderr);
+    assert.equal(result.stderr, '', id);
+    assert.equal(result.stdout, project.expected.value, id);
+    assert.ok(canvas.XuPlayCanvas.frame(result.ui.commands), id);
+  });
+}
+
+test('selected tab, segment, and list labels use the on-brand ink', async () => {
+  const runtime = await createRuntime(module);
+  for (const [theme, ink] of [['light','#fff8faff'],['dark','#190c12ff']]) {
+   for (const slug of ['tabs','segmented','list-box']) {
+    const source = projects['widget-'+slug].files['main.xu']
+      .replace('playground.light_styles()', 'playground.'+theme+'_styles()')
+      .replace('playground.light_theme()', 'playground.'+theme+'_theme()');
+    const result = runtime.run(source);
+    assert.equal(result.exit,0,result.stderr);
+    const commands = Array.from(canvas.XuPlayCanvas.frame(result.ui.commands));
+    const selected = commands.find(c => c.op === 'layout_text' && c.args.at(-1) === 'Overview');
+    assert.equal(selected.args[3], ink, slug+' '+theme);
+   }
+  }
+});
+
+test('button group reports checked selection separately from keyboard focus', async () => {
+  const runtime = await createRuntime(module);
+  const source = projects['widget-button-group'].files['main.xu'];
+  assert.equal(runtime.run(source,{events:[...key(257),...key(262)]}).stdout,'Selected: 1\n');
+  assert.equal(runtime.run(source,{events:[...key(257),...key(262),...key(258)]}).stdout,'Selected: 2\n');
+});
+
+test('date clear/reset and time format switch change visible state', async () => {
+  const runtime = await createRuntime(module);
+  const date = projects['widget-date-picker'].files['main.xu'];
+  assert.equal(runtime.run(date,{events:click(220,262)}).stdout,'Date: Choose date 选择日期\n');
+  assert.equal(runtime.run(date,{events:[...click(220,262),...click(100,262)]}).stdout,'Date: 2026-10-31\n');
+  const time = runtime.run(projects['widget-time-picker'].files['main.xu'],{events:click(370,132)});
+  assert.equal(time.stdout,'Time: 14:30:00\n');
+  const labels = Array.from(canvas.XuPlayCanvas.frame(time.ui.commands)).filter(c => c.op === 'layout_text').map(c => c.args.at(-1));
+  assert.ok(labels.includes('2:30:00 PM'));
+  assert.ok(labels.includes('12-Hour'));
+});
 
 test('opening a real Xu menu paints its popup items into the frame', async () => {
   const runtime = await createRuntime(module);

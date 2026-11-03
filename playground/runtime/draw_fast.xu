@@ -1,0 +1,456 @@
+@main
+
+#xu/types
+
+// AOT implementations of pure scalar helpers and browser drawing adapters.
+// Widget state, input, and lifecycle still execute checked MIR. Pure style and
+// geometry helpers mirror the pinned library; the reference remains checked MIR.
+// fastIntrinsics:false retains the corresponding Xu bodies as a reference.
+fn vm_draw_color(packed int) string {
+    digits := "0123456789abcdef"
+    $out := make_string(9)
+    out[0] = 35
+    for i in 0:8 { out[i + 1] = digits[(packed >> ((7 - i) * 4)) & 15] }
+    << out
+}
+fn vm_draw_emit(e $&Eval,line string) {
+    if e.failed { << }
+    n := wasm_mem_load(1056)
+    if n + line.len + 1 > 262144 {
+        vm_error(e,"UI command buffer limit exceeded")
+        <<
+    }
+    for i in 0:line.len { wasm_mem_store8(720000 + n + i,line[i]) }
+    wasm_mem_store8(720000 + n + line.len,10)
+    wasm_mem_store(1056,n + line.len + 1)
+}
+fn vm_draw_numbers(op string,args &[]int,start int,count int) string {
+    $out := op
+    for i in start:start + count { out = out + "\t" + vm_float_text(args[i]) }
+    << out
+}
+fn vm_draw_byte(value int) int {
+    if value < 0 { << 0 }
+    if value > 255 { << 255 }
+    << value
+}
+fn vm_draw_ok(m &types.Mir,fp int,dest int) {
+    if dest >= 0 {
+        for slot in 0:types.mir_temp_nslots(m,wasm_mem_load(fp),dest) { vm_put(m,fp,dest,slot,0) }
+    }
+}
+fn vm_draw_clone_font(e $&Eval,source int,target int) {
+    for slot in 0:7 { wasm_mem_store(target - slot * 8,wasm_mem_load(source - slot * 8)) }
+    family := vm_text(&*e,wasm_mem_load(source))
+    id := e.strings.len
+    n := family.len
+    e.strings.push(family)
+    wasm_mem_store(target,id)
+    wasm_mem_store(target - 8,n)
+    wasm_mem_store(target - 16,0)
+}
+fn vm_draw_clone_control(e $&Eval,source int,target int) {
+    // Pinned ControlStyle: 53 slots; FontStyle starts at 16, states at 50.
+    // StatePaint has 11 scalar slots. Preserve ownership of both the font
+    // string and state array rather than aliasing an editable clone.
+    for slot in 0:53 { wasm_mem_store(target - slot * 8,wasm_mem_load(source - slot * 8)) }
+    vm_draw_clone_font(e,source - 128,target - 128)
+    states := wasm_mem_load(source - 400)
+    length := wasm_mem_load(source - 408)
+    $capacity := 0
+    while capacity < length {
+        capacity = capacity * 2
+        if capacity < 8 { capacity = 8 }
+    }
+    copy := wasm_rt_alloc(capacity * 88)
+    for slot in 0:length * 11 { wasm_mem_store(copy + slot * 8,wasm_mem_load(states + slot * 8)) }
+    wasm_mem_store(target - 400,copy)
+    wasm_mem_store(target - 408,length)
+    wasm_mem_store(target - 416,capacity)
+}
+fn vm_draw_min(a int,b int) int {
+    if vm_fp_lt(a,b) != 0 { << a }
+    << b
+}
+fn vm_draw_xy(op string,x int,y int) string {
+    << op+"\t"+vm_float_text(x)+"\t"+vm_float_text(y)+"\n"
+}
+fn vm_draw_curve(x1 int,y1 int,x2 int,y2 int,x int,y int) string {
+    << "path_cubic\t"+vm_float_text(x1)+"\t"+vm_float_text(y1)+"\t"+vm_float_text(x2)+"\t"+vm_float_text(y2)+"\t"+vm_float_text(x)+"\t"+vm_float_text(y)+"\n"
+}
+fn vm_draw_rounded_path(bounds int,radius int) string {
+    x := wasm_mem_load(bounds)
+    y := wasm_mem_load(bounds-8)
+    w := wasm_mem_load(bounds-16)
+    h := wasm_mem_load(bounds-24)
+    r := vm_draw_min(radius,vm_fp_mul(vm_draw_min(w,h),4602678819172646912))
+    k := vm_fp_mul(r,4603149758332357155)
+    right := vm_fp_add(x,w)
+    bottom := vm_fp_add(y,h)
+    left_r := vm_fp_add(x,r)
+    right_r := vm_fp_sub(right,r)
+    top_r := vm_fp_add(y,r)
+    bottom_r := vm_fp_sub(bottom,r)
+    $out := vm_draw_xy("path_move",left_r,y)
+    out = out+vm_draw_xy("path_line",right_r,y)
+    out = out+vm_draw_curve(vm_fp_add(right_r,k),y,right,vm_fp_sub(top_r,k),right,top_r)
+    out = out+vm_draw_xy("path_line",right,bottom_r)
+    out = out+vm_draw_curve(right,vm_fp_add(bottom_r,k),vm_fp_add(right_r,k),bottom,right_r,bottom)
+    out = out+vm_draw_xy("path_line",left_r,bottom)
+    out = out+vm_draw_curve(vm_fp_sub(left_r,k),bottom,x,vm_fp_add(bottom_r,k),x,bottom_r)
+    out = out+vm_draw_xy("path_line",x,top_r)
+    out = out+vm_draw_curve(x,vm_fp_sub(top_r,k),vm_fp_sub(left_r,k),y,left_r,y)
+    << out+"path_close\n"
+}
+fn vm_draw_resolve(m &types.Mir,fp int,dest int,source int,state int) bool {
+    if dest < 0 || types.mir_temp_nslots(m,wasm_mem_load(fp),dest) != 8 { << false }
+    $background := wasm_mem_load(source)
+    if (state & 1) != 0 { background = wasm_mem_load(source-24) }
+    else if (state & 32) != 0 { background = wasm_mem_load(source-88) }
+    else if (state & 64) != 0 { background = wasm_mem_load(source-96) }
+    else if (state & 16) != 0 { background = wasm_mem_load(source-48) }
+    else if (state & 4) != 0 { background = wasm_mem_load(source-16) }
+    else if (state & 2) != 0 { background = wasm_mem_load(source-8) }
+    $foreground := wasm_mem_load(source-32)
+    if (state & 1) != 0 { foreground = wasm_mem_load(source-40) }
+    else if (state & 32) != 0 { foreground = wasm_mem_load(source-80) }
+    else if (state & 64) != 0 { foreground = wasm_mem_load(source-32) }
+    else if (state & 16) != 0 { foreground = wasm_mem_load(source-56) }
+    $border := wasm_mem_load(source-72)
+    if (state & 32) != 0 { border = wasm_mem_load(source-80) }
+    $opacity := wasm_mem_load(source-376)
+    if (state & 1) != 0 { opacity = vm_fp_mul(opacity,wasm_mem_load(source-384)) }
+    vm_put(m,fp,dest,0,background)
+    vm_put(m,fp,dest,1,foreground)
+    vm_put(m,fp,dest,2,border)
+    vm_put(m,fp,dest,3,wasm_mem_load(source-64))
+    vm_put(m,fp,dest,4,wasm_mem_load(source-104))
+    vm_put(m,fp,dest,5,wasm_mem_load(source-112))
+    vm_put(m,fp,dest,6,wasm_mem_load(source-120))
+    vm_put(m,fp,dest,7,opacity)
+    rules := wasm_mem_load(source-400)
+    count := wasm_mem_load(source-408)
+    for index in 0:count {
+        rule := rules+index*88
+        when := wasm_mem_load(rule)
+        unless := wasm_mem_load(rule+8)
+        if (state & when) == when && (state & unless) == 0 {
+            fields := wasm_mem_load(rule+16)
+            for field in 0:8 {
+                if (fields & (1 << field)) != 0 { vm_put(m,fp,dest,field,wasm_mem_load(rule+24+field*8)) }
+            }
+        }
+    }
+    << true
+}
+fn vm_draw_metric(value int,limit int) bool {
+    << ((value >> 52) & 2047) != 2047 && vm_fp_ge(value,0) != 0 && vm_fp_le(value,limit) != 0
+}
+fn vm_draw_valid_font(e &Eval,font int) bool {
+    family := vm_text(e,wasm_mem_load(font))
+    size := wasm_mem_load(font-24)
+    weight := wasm_mem_load(font-32)
+    line := wasm_mem_load(font-48)
+    if family.len > 256 || !vm_valid_utf8(&family) || !vm_draw_metric(size,4647714815446351872) || vm_fp_lt(size,4607182418800017408) != 0 ||
+       weight < 100 || weight > 900 || !vm_draw_metric(line,4652218415073722368) || (vm_fp_gt(line,0) != 0 && vm_fp_lt(line,size) != 0) { << false }
+    for i in 0:family.len { if (family[i] & 255) == 0 { << false } }
+    << true
+}
+fn vm_draw_valid_states(source int) bool {
+    count := wasm_mem_load(source-408)
+    rules := wasm_mem_load(source-400)
+    if count < 0 || count > 32 { << false }
+    for i in 0:count {
+        rule := rules+i*88
+        when := wasm_mem_load(rule)
+        unless := wasm_mem_load(rule+8)
+        fields := wasm_mem_load(rule+16)
+        if when < 0 || when > 127 || unless < 0 || unless > 127 || (when & unless) != 0 || fields < 0 || fields > 255 ||
+           !vm_draw_metric(wasm_mem_load(rule+80),4607182418800017408) { << false }
+    }
+    << true
+}
+fn vm_draw_valid_control(e &Eval,source int) bool {
+    if !vm_draw_valid_font(e,source-128) || !vm_draw_valid_states(source) { << false }
+    // Pinned ControlStyle scalar slots: padding 24..27; extents 28..42;
+    // alignments 43..44; icon extent/placement/opacities 45..48.
+    for slot in 24:43 {
+        $value := wasm_mem_load(source-slot*8)
+        if slot == 39 || slot == 40 { value = value & 9223372036854775807 }
+        if !vm_draw_metric(value,4661225614328463360) { << false }
+    }
+    for slot in 43:45 { if !vm_draw_metric(wasm_mem_load(source-slot*8),4607182418800017408) { << false } }
+    if !vm_draw_metric(wasm_mem_load(source-360),4661225614328463360) { << false }
+    placement := wasm_mem_load(source-368)
+    if placement < 0 || placement > 3 { << false }
+    for slot in 47:49 { if !vm_draw_metric(wasm_mem_load(source-slot*8),4607182418800017408) { << false } }
+    << true
+}
+fn vm_draw_valid_styles(e &Eval,source int) bool {
+    if !vm_draw_valid_font(e,source) { << false }
+    scale := wasm_mem_load(source-56)
+    density := wasm_mem_load(source-64)
+    if !vm_draw_metric(scale,4616189618054758400) || vm_fp_lt(scale,4602678819172646912) != 0 ||
+       !vm_draw_metric(density,4616189618054758400) || vm_fp_lt(density,4602678819172646912) != 0 { << false }
+    for i in 0:6 {
+        control := source-(10+i*53)*8
+        if !vm_draw_valid_control(e,control) { << false }
+        $font := control-128
+        if wasm_mem_load(control-184) != 0 { font = source }
+        size := vm_fp_mul(wasm_mem_load(font-24),scale)
+        line := vm_fp_mul(wasm_mem_load(font-48),scale)
+        if vm_fp_lt(size,4607182418800017408) != 0 || vm_fp_gt(size,4647714815446351872) != 0 || vm_fp_gt(line,4652218415073722368) != 0 { << false }
+    }
+    << true
+}
+fn vm_draw_round(e $&Eval,bounds int,radius int,color int,width int,stroke bool) {
+    x := wasm_mem_load(bounds)
+    y := wasm_mem_load(bounds-8)
+    w := wasm_mem_load(bounds-16)
+    h := wasm_mem_load(bounds-24)
+    if (color & 255) == 0 { << }
+    if !stroke {
+        if vm_fp_le(w,0) != 0 || vm_fp_le(h,0) != 0 { << }
+        if vm_fp_le(radius,0) != 0 {
+            vm_draw_emit(e,"fill_rect\t"+vm_float_text(x)+"\t"+vm_float_text(y)+"\t"+vm_float_text(w)+"\t"+vm_float_text(h)+"\t"+vm_draw_color(color))
+            <<
+        }
+        vm_draw_emit(e,"path_begin")
+        path := vm_draw_rounded_path(bounds,radius)
+        vm_draw_emit(e,path[0:path.len-1])
+        vm_draw_emit(e,"path_fill\t"+vm_draw_color(color))
+        <<
+    }
+    if vm_fp_lt(width,4517329193108106637) != 0 || vm_fp_le(w,width) != 0 || vm_fp_le(h,width) != 0 { << }
+    inset := vm_fp_mul(width,4602678819172646912)
+    inner := wasm_rt_alloc(32)+24
+    wasm_mem_store(inner,vm_fp_add(x,inset))
+    wasm_mem_store(inner-8,vm_fp_add(y,inset))
+    wasm_mem_store(inner-16,vm_fp_sub(w,width))
+    wasm_mem_store(inner-24,vm_fp_sub(h,width))
+    $r := vm_fp_sub(radius,inset)
+    // math.max(0,r) returns r for NaN; preserve that ordering.
+    if vm_fp_gt(0,r) != 0 { r = 0 }
+    vm_draw_emit(e,"path_begin")
+    path := vm_draw_rounded_path(inner,r)
+    vm_draw_emit(e,path[0:path.len-1])
+    vm_draw_emit(e,"path_stroke\t"+vm_draw_color(color)+"\t"+vm_float_text(width))
+}
+fn vm_draw_fast_call(e $&Eval,m &types.Mir,fp int,ii int,code int) bool {
+    instruction := wasm_mem_load(fp + 72) + ii * VM_INSTRUCTION_BYTES
+    fi := wasm_mem_load(fp)
+    dest := wasm_mem_load(instruction + 8)
+    $args := []int{}
+    $at := wasm_mem_load(instruction + 24)
+    while at >= 0 {
+        args.push(vm_value(m,fp,types.mir_marg_v(m,fi,at),0))
+        at = types.mir_marg_next(m,fi,at)
+    }
+    if code == VM_UI_OPTIONS_EQUAL {
+        a := args[0]
+        b := args[1]
+        $same := vm_text(&*e,wasm_mem_load(a)) == vm_text(&*e,wasm_mem_load(b))
+        for slot in 3:9 {
+            av := wasm_mem_load(a-slot*8)
+            bv := wasm_mem_load(b-slot*8)
+            if slot == 3 || slot == 4 || slot == 8 {
+                if vm_fp_eq(av,bv) == 0 { same = false }
+            } else if av != bv { same = false }
+        }
+        $value := 0
+        if same { value = 1 }
+        if dest >= 0 { vm_put(m,fp,dest,0,value) }
+        << true
+    }
+    if code == VM_UI_TEXT_OPTIONS || code == VM_UI_COPY_TEXT_OPTIONS {
+        // Pinned TextOptions: family (3 slots), size, width, weight, italic,
+        // align, line_height. ControlStyle.font starts at 16, inherit at 23.
+        if dest < 0 || types.mir_temp_nslots(m,fi,dest) != 9 { << false }
+        target := vm_temp(m,fp,dest)
+        $font := args[0]
+        if code == VM_UI_TEXT_OPTIONS {
+            control := args[1]
+            font = control-128
+            if wasm_mem_load(control-184) != 0 { font = args[0] }
+            scale := wasm_mem_load(args[0]-56)
+            wasm_mem_store(target-24,vm_fp_mul(wasm_mem_load(font-24),scale))
+            wasm_mem_store(target-32,0)
+            wasm_mem_store(target-40,wasm_mem_load(font-32))
+            wasm_mem_store(target-48,wasm_mem_load(font-40))
+            wasm_mem_store(target-56,0)
+            wasm_mem_store(target-64,vm_fp_mul(wasm_mem_load(font-48),scale))
+        } else {
+            for slot in 3:9 { wasm_mem_store(target-slot*8,wasm_mem_load(font-slot*8)) }
+        }
+        family := vm_text(&*e,wasm_mem_load(font))
+        id := e.strings.len
+        n := family.len
+        e.strings.push(family)
+        wasm_mem_store(target,id)
+        wasm_mem_store(target-8,n)
+        wasm_mem_store(target-16,0)
+        << true
+    }
+    if code == VM_UI_ROUNDED_FILL || code == VM_UI_ROUNDED_STROKE {
+        if wasm_mem_load(args[0]) == 0 { << false }
+        $width := 0
+        if code == VM_UI_ROUNDED_STROKE { width = args[4] }
+        vm_draw_round(e,args[1],args[2],wasm_mem_load(args[3]),width,code == VM_UI_ROUNDED_STROKE)
+        vm_draw_ok(m,fp,dest)
+        << true
+    }
+    if code >= VM_UI_VALIDATE_STYLES && code <= VM_UI_VALIDATE_STATES {
+        $valid := false
+        if code == VM_UI_VALIDATE_STYLES { valid = vm_draw_valid_styles(&*e,args[0]) }
+        if code == VM_UI_VALIDATE_CONTROL { valid = vm_draw_valid_control(&*e,args[0]) }
+        if code == VM_UI_VALIDATE_FONT { valid = vm_draw_valid_font(&*e,args[0]) }
+        if code == VM_UI_VALIDATE_STATES { valid = vm_draw_valid_states(args[0]) }
+        // Invalid input executes MIR to preserve the precise Xu error and catch.
+        if !valid { << false }
+        vm_draw_ok(m,fp,dest)
+        << true
+    }
+    if code == VM_UI_FRAME_WRITABLE {
+        if wasm_mem_load(args[0]) == 0 { << false }
+        vm_draw_ok(m,fp,dest)
+        << true
+    }
+    if code == VM_UI_RESOLVE_CONTROL { << vm_draw_resolve(m,fp,dest,args[0],args[1]) }
+    if code == VM_UI_ROUNDED_PATH {
+        if dest < 0 { << false }
+        slots := types.mir_temp_nslots(m,fi,dest)
+        if slots != 3 && slots != 4 { << false }
+        path := vm_draw_rounded_path(args[0],args[1])
+        id := e.strings.len
+        n := path.len
+        e.strings.push(path)
+        vm_draw_ok(m,fp,dest)
+        vm_put(m,fp,dest,slots-3,id)
+        vm_put(m,fp,dest,slots-2,n)
+        << true
+    }
+    if code == VM_UI_FRAME_TEXT {
+        if wasm_mem_load(args[0]) == 0 { << false }
+        layout := args[1]
+        $id := wasm_mem_load(layout-64)
+        masked := id < 0
+        if masked { id = 0-id }
+        value := vm_text(&*e,id-1)
+        $text := ""
+        if masked {
+            for i in 0:value.len { c := value[i] & 255
+                if c < 128 || c >= 192 { text = text+"*" } }
+        } else {
+            text = make_string(value.len)
+            for i in 0:value.len { c := value[i] & 255
+                if c == 9 || c == 10 || c == 13 { text[i] = 32 }
+                else { text[i] = c } }
+        }
+        vm_draw_emit(e,"layout_text\t"+vm_float_text(args[2])+"\t"+vm_float_text(args[3])+"\t"+vm_float_text(wasm_mem_load(layout-16))+"\t"+vm_draw_color(wasm_mem_load(args[4]))+"\t"+vm_float_text(wasm_mem_load(layout))+"\t"+text)
+        vm_draw_ok(m,fp,dest)
+        << true
+    }
+    if code >= VM_UI_COPY_FONT && code <= VM_UI_CLONE_STYLES {
+        if dest < 0 { << false }
+        slots := types.mir_temp_nslots(m,fi,dest)
+        target := vm_temp(m,fp,dest)
+        if code == VM_UI_COPY_FONT {
+            if slots != 7 { << false }
+            vm_draw_clone_font(e,args[0],target)
+        } else if code == VM_UI_CLONE_CONTROL {
+            if slots != 53 { << false }
+            vm_draw_clone_control(e,args[0],target)
+        } else {
+            if slots != 328 { << false }
+            source := args[0]
+            for slot in 0:328 { wasm_mem_store(target - slot * 8,wasm_mem_load(source - slot * 8)) }
+            vm_draw_clone_font(e,source,target)
+            for control in 0:6 {
+                offset := (10 + control * 53) * 8
+                vm_draw_clone_control(e,source - offset,target - offset)
+            }
+        }
+        << true
+    }
+    if code >= VM_UI_MATH_NAN && code <= VM_UI_MATH_MAX {
+        value := args[0]
+        $result := value
+        if code == VM_UI_MATH_NAN {
+            result = 0
+            if ((value >> 52) & 2047) == 2047 && (value & 4503599627370495) != 0 { result = 1 }
+        } else if code == VM_UI_MATH_INF {
+            result = 0
+            if (value & 9223372036854775807) == 9218868437227405312 { result = 1 }
+        } else if code == VM_UI_MATH_ABS {
+            if vm_fp_lt(value,0) != 0 { result = vm_fp_sub(0,value) }
+        } else if code == VM_UI_MATH_MIN {
+            result = args[1]
+            if vm_fp_lt(value,args[1]) != 0 { result = value }
+        } else {
+            result = args[1]
+            if vm_fp_gt(value,args[1]) != 0 { result = value }
+        }
+        if dest >= 0 { vm_put(m,fp,dest,0,result) }
+        << true
+    }
+    if code == VM_UI_RGB || code == VM_UI_RGBA {
+        $alpha := 255
+        if code == VM_UI_RGBA { alpha = vm_draw_byte(args[3]) }
+        packed := (vm_draw_byte(args[0]) << 24) | (vm_draw_byte(args[1]) << 16) | (vm_draw_byte(args[2]) << 8) | alpha
+        if dest >= 0 { vm_put(m,fp,dest,0,packed) }
+        << true
+    }
+    if code >= VM_UI_PATH_MOVE && code <= VM_UI_PATH_CLOSE {
+        path := args[0]
+        previous := vm_text(&*e,wasm_mem_load(path))
+        $line := "path_close"
+        if code == VM_UI_PATH_MOVE { line = vm_draw_numbers("path_move",&args,1,2) }
+        if code == VM_UI_PATH_LINE { line = vm_draw_numbers("path_line",&args,1,2) }
+        if code == VM_UI_PATH_CUBIC { line = vm_draw_numbers("path_cubic",&args,1,6) }
+        next := previous + line + "\n"
+        id := e.strings.len
+        n := next.len
+        e.strings.push(next)
+        wasm_mem_store(path,id)
+        wasm_mem_store(path - 8,n)
+        wasm_mem_store(path - 16,0)
+        vm_draw_ok(m,fp,dest)
+        << true
+    }
+    if code >= VM_UI_FRAME_CLIP && code <= VM_UI_FRAME_STROKE_PATH {
+        // Preserve ordinary Xu error propagation for inactive frames and
+        // unsupported stroke styles by taking the original MIR path.
+        if wasm_mem_load(args[0]) == 0 { << false }
+        if code == VM_UI_FRAME_FILL_PATH || code == VM_UI_FRAME_STROKE_PATH {
+            $stroke := ""
+            if code == VM_UI_FRAME_STROKE_PATH {
+                options := args[3]
+                cap := wasm_mem_load(options - 8)
+                join := wasm_mem_load(options - 16)
+                miter := wasm_mem_load(options - 24)
+                if cap < 0 || cap > 2 || join < 0 || join > 2 || wasm_mem_load(options - 40) > 0 { << false }
+                stroke = "path_stroke\t" + vm_draw_color(wasm_mem_load(args[2])) + "\t" + vm_float_text(wasm_mem_load(options))
+                if cap != 0 || join != 0 || miter != 4621819117588971520 {
+                    stroke = stroke + "\t" + str(cap) + "\t" + str(join) + "\t" + vm_float_text(miter)
+                }
+            }
+            path := vm_text(&*e,wasm_mem_load(args[1]))
+            vm_draw_emit(e,"path_begin")
+            if path.len > 0 { vm_draw_emit(e,path[0:path.len - 1]) }
+            if code == VM_UI_FRAME_FILL_PATH { vm_draw_emit(e,"path_fill\t" + vm_draw_color(wasm_mem_load(args[2]))) }
+            else { vm_draw_emit(e,stroke) }
+        } else {
+            $op := "clip_rect"
+            if code == VM_UI_FRAME_FILL_RECT { op = "fill_rect" }
+            if code == VM_UI_FRAME_STROKE_RECT { op = "stroke_rect" }
+            if code == VM_UI_FRAME_LINE { op = "line" }
+            $line := vm_draw_numbers(op,&args,1,4)
+            if code != VM_UI_FRAME_CLIP { line = line + "\t" + vm_draw_color(wasm_mem_load(args[5])) }
+            if code == VM_UI_FRAME_STROKE_RECT || code == VM_UI_FRAME_LINE { line = line + "\t" + vm_float_text(args[6]) }
+            vm_draw_emit(e,line)
+        }
+        vm_draw_ok(m,fp,dest)
+        << true
+    }
+    << false
+}

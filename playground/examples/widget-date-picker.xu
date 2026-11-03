@@ -5,46 +5,97 @@
 #ui/widgets
 #playground
 
+fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),f64(y),ink) or >>
+}
+fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,height f64,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),top+(height-label.metrics.height)*0.5,ink) or >>
+}
+
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
-    << layout.Rect{x: x,y: y,width: w,height: h}
+    << layout.Rect{x:x,y:y,width:w,height:h}
 }
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
-    $btn := widgets.button(&identity,1,&box(48.0,96.0,180.0,36.0)) or >>
-    $lbl := widgets.styled_label(&context,&"2026-10-31 ▾")
-    $focus := widgets.focus_group(&identity,[1]) or >>
+    $btn := widgets.button(&identity,1,&box(48.0,88.0,220.0,44.0)) or >>
+    $reset := widgets.button(&identity,9,&box(48.0,240.0,120.0,44.0)) or >>
+    $clear := widgets.button(&identity,10,&box(180.0,240.0,120.0,44.0)) or >>
+    $days := []widgets.Button{}
+    for i in 0:7 { days.push(widgets.button(&identity,i+2,&box(48.0+f64(i)*56.0,180.0,48.0,44.0)) or >>) }
+    $opened := false
+    $day := 31
+    $focus := widgets.focus_group(&identity,[1,9,10]) or >>
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
+        if event.kind == ui.EV_POINTER_CANCEL { focus.clear() }
         nav := focus.input(&event)
         btn.set_focus(focus.current() == 1)
+        reset.set_focus(focus.current() == 9)
+        clear.set_focus(focus.current() == 10)
+        for i in 0:7 { item := $&days[i]
+            item.set_focus(opened && focus.current() == i+2) }
         if nav.consumed { -> }
         act := btn.input(&event)
         if act.request_focus { focus.focus(1) or >> }
+        if act.kind == widgets.ACTION_ACTIVATE {
+            opened = !opened
+            if opened { focus = widgets.focus_group(&identity,[1,2,3,4,5,6,7,8,9,10]) or >> }
+            else { focus = widgets.focus_group(&identity,[1,9,10]) or >> }
+            focus.focus(1) or >>
+        }
+        reset_action := reset.input(&event)
+        clear_action := clear.input(&event)
+        if reset_action.request_focus { focus.focus(9) or >> }
+        if clear_action.request_focus { focus.focus(10) or >> }
+        if reset_action.kind == widgets.ACTION_ACTIVATE { day = 31 }
+        if clear_action.kind == widgets.ACTION_ACTIVATE { day = 0 }
+        if opened {
+            for i in 0:7 {
+                item := $&days[i]
+                item.set_focus(focus.current() == i+2)
+                choice := item.input(&event)
+                if choice.request_focus { focus.focus(i+2) or >> }
+                if choice.kind == widgets.ACTION_ACTIVATE { day = 25+i }
+            }
+            if event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_ESCAPE { opened = false
+                focus = widgets.focus_group(&identity,[1,9,10]) or >>
+                focus.focus(1) or >> }
+        }
     }
-    $frame := context.new_frame(8192)
+    $frame := context.new_frame(16384)
     frame.begin() or >>
     frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  DatePicker")
-    draw.text(32,48,12,"#6d626e","今天 / 清空；Page Up/Down 快速翻月，Shift 切年。")
-    btn.paint_styled($&frame,$&lbl,&styles) or >>
-    draw.text(48,148,12,"#6d626e","日  一  二  三  四  五  六")
-    draw.text(48,172,13,"#282329","25  26  27  28  29  30")
-    frame.fill_rect(244.0,166.0,28.0,22.0,draw.rgb(190,18,60)) or >>
-    draw.text(248,172,13,"#ffffff","31")
-    draw.text(48,206,12,"#6d626e","PageUp/Down 快速翻月 · Shift 切年 · 今天/清空快捷动作")
-    message := "Date: 2026-10-31"
-    draw.text(32,326,13,"#6d626e",message + "")
+    frame.fill_rect(28.0,70.0,584.0,240.0,styles.input.palette.normal) or >>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
+    demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  DatePicker") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器日期预览：展开选择示例周日期；完整日历请用桌面 SDK。") or >>
+    $value := "Choose date 选择日期"
+    if day > 0 { value = "2026-10-"+str(day) }
+    $label := widgets.styled_label(&context,&value)
+    btn.paint_styled($&frame,$&label,&styles) or >>
+    if opened {
+        demo_text($&frame,&context,48,148,14,draw.rgb(109,98,110),"October 2026 · 25–31") or >>
+        for i in 0:7 {
+            item := $&days[i]
+            $label_day := widgets.styled_label(&context,&str(25+i))
+            item.paint_styled($&frame,$&label_day,&styles) or >>
+            if day == 25+i { frame.fill_rect(60.0+f64(i)*56.0,216.0,24.0,3.0,styles.button.palette.accent) or >> }
+        }
+    }
+    $reset_label := widgets.styled_label(&context,&"Reset 重置")
+    $clear_label := widgets.styled_label(&context,&"Clear 清空")
+    reset.paint_styled($&frame,$&reset_label,&styles) or >>
+    clear.paint_styled($&frame,$&clear_label,&styles) or >>
+    message := "Date: "+value
+    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message+"") or >>
     println(message)
     frame.present() or >>
     << 0
 }
-fn main() int {
-    << demo() or (err) { eprintln(err.msg())
-        << 1 }
-}
+fn main() int { << demo() or (err) { eprintln(err.msg())
+    << 1 } }

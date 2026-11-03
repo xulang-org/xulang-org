@@ -1,14 +1,25 @@
 #!/usr/bin/env python3
 """Generate the browser's Xu theme from the pinned XUUI token contract."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def load_tokens():
+    directory = ROOT / 'playground/design'
+    data = (directory / 'tokens.json').read_text(encoding='utf-8').encode('utf-8')
+    source = json.loads((directory / 'source.json').read_text(encoding='utf-8'))
+    tokens = json.loads(data)
+    if hashlib.sha256(data).hexdigest() != source['sha256'] or tokens['version'] != source['version']:
+        raise ValueError('Design token snapshot does not match playground/design/source.json')
+    return tokens
+
+
 def generate():
-    tokens = json.loads((ROOT / 'playground/design/tokens.json').read_text(encoding='utf-8'))
+    tokens = load_tokens()
     base = tokens['base']
     def px(name):
         return float(base[name].removesuffix('px'))
@@ -20,14 +31,14 @@ def generate():
         c = lambda key: color(theme, key)
         out += f'\npub fn {name}_theme() widgets.Theme {{\n    << widgets.Theme{{'
         out += ','.join(f'{field}: {c(key)}' for field, key in {
-            'normal': 'elevated', 'hovered': 'subtle', 'pressed': 'border',
+            'normal': 'elevated', 'hovered': 'subtle', 'pressed': 'control-pressed',
             'disabled': 'subtle', 'foreground': 'text', 'muted': 'muted',
             'accent': 'brand', 'focus': 'brand'}.items()) + '}\n}\n'
         out += f'\npub fn {name}_styles() widgets.Styles {{\n    $result := widgets.dark_styles()\n'
         out += f'    result.background = {c("canvas")}\n'
         out += f'    result.font.family = {json.dumps(base["font-sans"])}\n    result.font.size = 14.0\n'
         out += '    $p := result.button.palette\n'
-        for field, key in {'normal': 'elevated', 'hovered': 'subtle', 'pressed': 'border',
+        for field, key in {'normal': 'elevated', 'hovered': 'subtle', 'pressed': 'control-pressed',
             'disabled': 'subtle', 'foreground': 'text', 'muted': 'muted', 'accent': 'brand',
             'on_accent': 'on-brand', 'focus': 'brand', 'border': 'control-border',
             'invalid': 'danger', 'invalid_fill': 'danger-soft', 'read_only': 'elevated',
@@ -36,12 +47,14 @@ def generate():
         out += '    $focus := widgets.state_paint(widgets.STATE_FOCUSED)\n'
         out += '    focus.unless = widgets.STATE_DISABLED | widgets.STATE_INVALID\n    focus.fields = widgets.PAINT_BORDER\n    focus.border = p.focus\n'
         out += '    $selected_focus := widgets.state_paint(widgets.STATE_FOCUSED | widgets.STATE_SELECTED)\n'
-        out += '    selected_focus.unless = widgets.STATE_DISABLED | widgets.STATE_INVALID\n    selected_focus.fields = widgets.PAINT_FOCUS\n    selected_focus.focus = p.on_accent\n'
+        out += '    selected_focus.unless = widgets.STATE_DISABLED | widgets.STATE_INVALID | widgets.STATE_READ_ONLY\n    selected_focus.fields = widgets.PAINT_FOCUS\n    selected_focus.focus = p.on_accent\n'
+        out += '    $invalid_focus := widgets.state_paint(widgets.STATE_FOCUSED | widgets.STATE_INVALID)\n'
+        out += '    invalid_focus.unless = widgets.STATE_DISABLED\n    invalid_focus.fields = widgets.PAINT_FOCUS\n    invalid_focus.focus = p.invalid\n'
         for control in ('button', 'checkbox', 'input', 'text_area', 'progress', 'scroll'):
-            out += f'    result.{control}.palette = p\n    result.{control}.states = [focus,selected_focus]\n'
+            out += f'    result.{control}.palette = p\n    result.{control}.states = [focus,selected_focus,invalid_focus]\n'
             out += f'    result.{control}.radius = {px("radius-md")}\n'
             out += f'    result.{control}.min_height = {px("control-md")}\n'
-            out += f'    result.{control}.focus_width = 2.0\n    result.{control}.focus_inset = 3.0\n'
+            out += f'    result.{control}.focus_width = 2.0\n    result.{control}.focus_inset = 0.0\n'
         for control in ('input', 'text_area'):
             out += f'    result.{control}.palette.normal = {c("surface")}\n'
         out += f'    result.button.padding.left = {px("space-4")}\n    result.button.padding.right = {px("space-4")}\n'
@@ -51,11 +64,13 @@ def generate():
 
 
 def generate_css():
-    tokens = json.loads((ROOT / 'playground/design/tokens.json').read_text(encoding='utf-8'))
-    scope = '.widget-experience, .widget-demo-dialog, .play-preview-panel'
+    tokens = load_tokens()
+    scope = 'body:has(.playground-page), .playground-page, .play-library, .widget-experience, .widget-demo-dialog, .play-preview-panel'
     aliases = {'bg-canvas': 'canvas', 'bg-surface': 'surface', 'bg-elevated': 'elevated',
                'text-primary': 'text', 'text-secondary': 'muted', 'text-muted': 'muted',
-               'text-on-brand': 'on-brand', 'brand-text': 'brand', 'border-medium': 'border'}
+               'text-on-brand': 'on-brand', 'brand-text': 'brand', 'border-medium': 'border',
+               'border-subtle': 'border', 'brand-600': 'brand', 'brand-700': 'brand-hover',
+               'code-bg': 'canvas', 'code-text': 'text'}
     out = '/* Generated by scripts/sync-playground-design.py; do not edit. */\n'
     out += scope + ' {\n'
     for key, value in tokens['base'].items():

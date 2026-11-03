@@ -1,13 +1,16 @@
 # WASM UI design reference
 
-The reference is `https://github.com/xulang-org/xu-ui-design`, version 0.1.0,
-commit `81ca08379e213caea7debff9dc3bd2ae9c7d7e6a`.
+The reference is `https://github.com/xulang-org/xu-ui-design`, version `0.1.1-dev.4`,
+commit `3203d371d0add6320ebc2c1e0e2c6b9b65388908`.
 `tokens.json` is an unchanged copy of its `tokens/tokens.json`; see LICENSE.
 
-Run `python scripts/sync-playground-design.py` after updating the pinned tokens.
+Update `source.json` (commit, version and SHA-256) together with the pinned tokens,
+then run `python scripts/sync-playground-design.py`. The generator rejects a
+snapshot whose version or bytes do not match this provenance record.
 `--check` verifies the generated adapter and `www/playground-design.css`.
 The stylesheet scopes the same tokens to the browser component experiences,
-their top-layer dialogs, and the UI Preview panel, including both themes.
+their top-layer dialogs, the complete playground workspace and its template
+library, including both themes.
 The build embeds `stdlib/design.xu`.
 Xu programs can select `playground.dark_theme()` / `light_theme()` for basic
 controls, and `playground.dark_styles()` / `light_styles()` for styled controls.
@@ -17,8 +20,13 @@ the Canvas host receives geometric drawing commands, without widget IDs.
 The component experiences and gallery use the light reference. The adapter maps
 semantic colors, control height, padding, corner radii, and focus treatment.
 At the user's request, the site adapter uses the theme's cinnabar brand color
-for focus boundaries instead of the upstream blue focus token. Selected controls
-use on-brand ink for the inner focus line so keyboard focus remains visible.
+for focus boundaries instead of the upstream blue focus token. Focus replaces
+the control boundary with one 2 px stroke at zero inset. Selected controls use
+on-brand ink on that same boundary, and invalid controls retain their danger
+color. No second inner focus frame is added.
+Read-only selections keep the brand focus color against their neutral fill.
+Browser component controls and preview toolbar buttons likewise place their
+focus outline on the existing boundary instead of adding a separated frame.
 The pinned `tokens.json` is unchanged; the adaptation is generated in Xu and CSS.
 Button, Checkbox, Switch, Radio, and Slider use desktop styled paint methods
 for rounded borders, selection states, and focus. Their declarations and
@@ -39,3 +47,15 @@ separate host work. The font tokens are retained in Styles for that integration;
 Canvas painting uses the pinned sans-serif font token without horizontal glyph
 compression. The current browser text layout still estimates advances and does
 not honor per-run font family or weight.
+The Canvas host measures visible glyph bounds to center control labels within
+the browser adapter's 1.25 em line box. This aligns English, Chinese, and mixed
+labels vertically without changing the estimated horizontal layout. Font bounds
+and then an em-box estimate provide fallbacks when glyph bounds are unavailable.
+
+The pinned main-branch source currently labels its token contract `0.1.1-dev.4`;
+this is a fixed source snapshot, not a claim of a new stable design release.
+Workspace controls follow the composition matrix in the reference layout standard:
+14 px control labels, 40 px default controls, 44 px standalone icon/touch targets,
+4 px spacing steps, 8 px control corners and 12 px panel corners. The preview has
+one scroll viewport; the file rail becomes a full-width region above the editor
+on narrow screens. Pressed surfaces use the reference control/brand pressed tokens.

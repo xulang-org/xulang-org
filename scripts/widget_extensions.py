@@ -21,6 +21,7 @@ FAMILIES = {
     'multi_select': ('MultiSelect multi_select', ['multi_select.xu', 'choice_highlight.xu'], ()),
     'color_picker': ('ColorPicker color_picker', ['color_picker.xu', 'color_precision.xu'], ()),
     'popover': ('Popover popover overlay_placement', ['overlays.xu', 'popover_content.xu'], ('Popover',)),
+    'modal': ('Modal modal', ['overlays.xu'], ('Modal',)),
     'chart': ('Chart chart chart_point chart_series chart_domain CHART_BAR', ['chart.xu', 'chart_data.xu', 'chart_input.xu', 'chart_paint.xu'], ()),
 }
 
@@ -87,8 +88,11 @@ def extensions(xu, base, declarations):
                 continue
             roots = set(FAMILIES[family][0].split()) | {'input','paint','paint_styled','apply_styles','set_focus','selected','value','values','active_key','layout','selection','set_cell','set_local_sort','set_sort_kind','set_series','open','close','is_open','hex'}
             if family in ('menu','chart'): roots.add('tick')
-            if family == 'menu': roots.update(('paint_popup_styled','set_viewport'))
+            if family == 'menu': roots.update(('paint_popup_styled','set_viewport','set_style','set_items','open_at'))
+            if family == 'select': roots.update(('paint_popup_box_styled','paint_option_styled'))
             if family == 'popover': roots.update(('set_placement','set_geometry','set_style','bounds','set_dismissal'))
+            if family == 'modal': roots.update(('set_focus_order','set_content_focus','focused_id','take_restore_focus','allows_content','blocks_input','bounds','set_dismiss_on_outside'))
+            if family == 'multi_select': roots.add('paint_popup_styled')
             if kind != 'fn' or name not in roots: continue
             chosen.add(key)
         while True:

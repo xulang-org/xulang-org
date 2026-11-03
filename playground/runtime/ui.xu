@@ -18,6 +18,39 @@ const VM_UI_CODEC_F64_BITS = 11
 const VM_UI_CODEC_READ_U32 = 12
 const VM_UI_FINITE_METRIC = 13
 const VM_UI_UTF8_VALID = 14
+const VM_UI_MATH_NAN = 15
+const VM_UI_MATH_INF = 16
+const VM_UI_MATH_ABS = 17
+const VM_UI_MATH_MIN = 18
+const VM_UI_MATH_MAX = 19
+const VM_UI_RGB = 20
+const VM_UI_RGBA = 21
+const VM_UI_PATH_MOVE = 22
+const VM_UI_PATH_LINE = 23
+const VM_UI_PATH_CUBIC = 24
+const VM_UI_PATH_CLOSE = 25
+const VM_UI_FRAME_CLIP = 26
+const VM_UI_FRAME_FILL_RECT = 27
+const VM_UI_FRAME_STROKE_RECT = 28
+const VM_UI_FRAME_LINE = 29
+const VM_UI_FRAME_FILL_PATH = 30
+const VM_UI_FRAME_STROKE_PATH = 31
+const VM_UI_COPY_FONT = 32
+const VM_UI_CLONE_CONTROL = 33
+const VM_UI_CLONE_STYLES = 34
+const VM_UI_ROUNDED_PATH = 35
+const VM_UI_RESOLVE_CONTROL = 36
+const VM_UI_FRAME_WRITABLE = 37
+const VM_UI_FRAME_TEXT = 38
+const VM_UI_VALIDATE_STYLES = 39
+const VM_UI_VALIDATE_CONTROL = 40
+const VM_UI_VALIDATE_FONT = 41
+const VM_UI_VALIDATE_STATES = 42
+const VM_UI_ROUNDED_FILL = 43
+const VM_UI_ROUNDED_STROKE = 44
+const VM_UI_TEXT_OPTIONS = 45
+const VM_UI_COPY_TEXT_OPTIONS = 46
+const VM_UI_OPTIONS_EQUAL = 47
 
 // Browser ABI, separate from stdout/stderr. See playground/README.md.
 // Intrinsic IDs are resolved once when checked MIR is prepared. User code still
@@ -67,12 +100,49 @@ fn vm_ui_code(label &string) int {
     if *label == "_xu_ui_internal_codec_read_word32" { << VM_UI_CODEC_READ_U32 }
     if *label == "_xu_ui_widgets_finite_metric" { << VM_UI_FINITE_METRIC }
     if *label == "_xu_unicode_utf8_valid" { << VM_UI_UTF8_VALID }
+    if *label == "_xu_math_is_nan" { << VM_UI_MATH_NAN }
+    if *label == "_xu_math_is_inf" { << VM_UI_MATH_INF }
+    if *label == "_xu_math_abs" { << VM_UI_MATH_ABS }
+    if *label == "_xu_math_min" { << VM_UI_MATH_MIN }
+    if *label == "_xu_math_max" { << VM_UI_MATH_MAX }
+    if *label == "_xu_ui_draw_rgb" { << VM_UI_RGB }
+    if *label == "_xu_ui_draw_rgba" { << VM_UI_RGBA }
+    if *label == "_xu_ui_draw_Path_move_to" { << VM_UI_PATH_MOVE }
+    if *label == "_xu_ui_draw_Path_line_to" { << VM_UI_PATH_LINE }
+    if *label == "_xu_ui_draw_Path_cubic_to" { << VM_UI_PATH_CUBIC }
+    if *label == "_xu_ui_draw_Path_close" { << VM_UI_PATH_CLOSE }
+    if *label == "_xu_ui_draw_Frame_clip_rect" { << VM_UI_FRAME_CLIP }
+    if *label == "_xu_ui_draw_Frame_fill_rect" { << VM_UI_FRAME_FILL_RECT }
+    if *label == "_xu_ui_draw_Frame_stroke_rect" { << VM_UI_FRAME_STROKE_RECT }
+    if *label == "_xu_ui_draw_Frame_line" { << VM_UI_FRAME_LINE }
+    if *label == "_xu_ui_draw_Frame_fill_path" { << VM_UI_FRAME_FILL_PATH }
+    if *label == "_xu_ui_draw_Frame_stroke_path" { << VM_UI_FRAME_STROKE_PATH }
+    if *label == "_xu_ui_widgets_copy_font" { << VM_UI_COPY_FONT }
+    if *label == "_xu_ui_widgets_ControlStyle_clone" { << VM_UI_CLONE_CONTROL }
+    if *label == "_xu_ui_widgets_Styles_clone" { << VM_UI_CLONE_STYLES }
+    if *label == "_xu_ui_widgets_rounded_path" { << VM_UI_ROUNDED_PATH }
+    if *label == "_xu_ui_widgets_ControlStyle_resolve" { << VM_UI_RESOLVE_CONTROL }
+    if *label == "_xu_ui_draw_Frame_writable" { << VM_UI_FRAME_WRITABLE }
+    if *label == "_xu_ui_draw_Frame_text_layout" { << VM_UI_FRAME_TEXT }
+    if *label == "_xu_ui_widgets_Styles_validate" { << VM_UI_VALIDATE_STYLES }
+    if *label == "_xu_ui_widgets_validate_control" { << VM_UI_VALIDATE_CONTROL }
+    if *label == "_xu_ui_widgets_validate_font" { << VM_UI_VALIDATE_FONT }
+    if *label == "_xu_ui_widgets_validate_states" { << VM_UI_VALIDATE_STATES }
+    if *label == "_xu_ui_widgets_rounded_fill" { << VM_UI_ROUNDED_FILL }
+    if *label == "_xu_ui_widgets_rounded_stroke" { << VM_UI_ROUNDED_STROKE }
+    if *label == "_xu_ui_widgets_Styles_text_options" { << VM_UI_TEXT_OPTIONS }
+    if *label == "_xu_ui_widgets_copy_text_options" { << VM_UI_COPY_TEXT_OPTIONS }
+    if *label == "_xu_ui_widgets_options_equal" { << VM_UI_OPTIONS_EQUAL }
     << 0
 }
 fn vm_ui_call(e $&Eval, m &types.Mir, fp int, ii int) bool {
     instruction := wasm_mem_load(fp + 72) + ii * VM_INSTRUCTION_BYTES
     code := wasm_mem_load(instruction + VM_INTRINSIC_OFFSET)
     if code == 0 { << false }
+    if code >= VM_UI_MATH_NAN {
+        if wasm_mem_load(1128) == 0 { << false }
+        << vm_draw_fast_call(e,m,fp,ii,code)
+    }
     fi := wasm_mem_load(fp)
     dest := wasm_mem_load(instruction + 8)
     // Pure scalar operations run in the AOT host. Invalid codec inputs and

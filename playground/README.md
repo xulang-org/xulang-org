@@ -6,7 +6,7 @@ JavaScript. Canvas is the pixel host for both drawing and real widgets.
 
 The gallery, `ui-widgets`, and focused component examples use the pinned
 [xu-ui-design token adapter](design/README.md). This maps reference colors and
-styled control dimensions into Xu; Button, Checkbox, Switch, Radio, and Slider
+styled control dimensions into Xu; Button, Checkbox, Switch, Radio, Slider, and Stepper
 also use desktop styled painting.
 The browser text host and basic widget geometry retain the limitations below.
 
@@ -21,6 +21,25 @@ The parent validates the styles once; its private sliders reuse the same geometr
 calculation without repeating the full Styles validation for every RGBA row.
 The color values, slider input and painting still execute in Xu; the browser does
 not approximate the controls or redraw their values independently.
+Opaque ColorPicker swatches skip the fully covered transparency grid. Pure text
+option scaling, copying and comparison also have AOT equivalents, checked against
+the original MIR paths; widget state and pointer input remain in Xu.
+The browser focus adaptation treats a zero focus inset as one emphasized
+boundary. Shared control boxes, Slider thumbs, joined ButtonGroup segments, and RangeSlider
+thumbs replace their regular border instead of adding another outline. Styles
+with a positive focus inset keep the upstream inset-ring behavior. Selection
+and focus still belong to the Xu widgets.
+When a program supplies widget input, Canvas leaves focus painting to those
+controls; it does not add a second outline around the entire preview. Basic
+Scroll paints its own viewport boundary. Tabs, Segmented and ListBox use the
+pinned on-brand ink for selected labels; browser ListBox, choice menus and
+pagination have 44 logical px hit areas at normal density. Fit scales the whole
+fixed canvas for an overview; use 100% and the phone pan control for original-size
+text and targets.
+At intermediate widths the source pane has a bounded height and its editor
+scrolls internally, so long programs do not push the preview thousands of pixels
+down the page. Phone tabs retain their flexible panel height.
+Menu and ButtonGroup navigation guard a local positive item count before modulo.
 
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
 for a three-page control gallery. `ui-widgets`, `ui-draw`, and `ui-counter`
@@ -50,19 +69,21 @@ ListBox keeps the desktop basic paint API, rather than its richer styled rows.
 
 ## Real desktop control logic
 
-`stdlib/desktop_widgets.xu` contains complete, unchanged declarations selected
+`stdlib/desktop_widgets.xu` contains complete declarations selected
 from `xu/src/ui/widgets`, including constructors, state/input methods, basic
 paint, focus rings, rounded paths, theme primitives, StyledLabel text paint,
 and the read-only Editor paint path. Divider and Segmented Tabs basic APIs are
-also mirrored. This is a larger gallery subset, not the complete desktop suite.
+also mirrored, with the hashed browser adaptations described above. This is a
+larger gallery subset, not the complete desktop suite.
 
 `stdlib/desktop_*.xu` supplies necessary desktop layout, math, UTF-8 validation,
 input, text/color/path types, style resolution, and motion initialization.
 The focused component experiences additionally run Select, Stepper, RadioGroup,
 Pagination, Breadcrumbs, RangeSlider, SplitView, ButtonGroup, MultiSelect,
-ColorPicker, Table, Chart, Popover, and dropdown/context/split Menu modes. Their geometry,
-state, input and paint methods are unchanged desktop Xu declarations. Canvas
-forwards left/right/middle pointer buttons and supplies drawing resources.
+ColorPicker, Table, Chart, Popover, Modal, and dropdown/context/split Menu modes. Their
+geometry, state, and input use desktop Xu declarations; painting includes the
+documented browser adaptations above. Canvas forwards left/right/middle pointer
+buttons and supplies drawing resources.
 
 The Popover experience uses the desktop anchored surface, real checkboxes and
 buttons. It paints the floating surface after background guidance and clips
@@ -73,13 +94,32 @@ and edge flipping remain desktop logic; Screen and native event pumps are not
 needed. The source is maintained in `scripts/widget_popover_example.py` and
 published by `scripts/gen-widget-examples.py`.
 
+MultiSelect and Select explicitly paint their popup surfaces and options after
+the trigger. ComboBox combines bounded browser key editing with the desktop Menu
+for visible candidates, filtering, selection and dismissal. Modal uses the desktop
+dialog, real Cancel/Apply buttons, a trapped focus order and trigger restoration.
+Its background remains blocked until the dialog closes.
+
+The composed browser examples in `scripts/widget_state_examples.py` demonstrate
+TreeView expansion and node selection, a selectable October 25–31 date strip with
+Reset/Clear, minute adjustment and 12/24-hour formatting, focus/click tooltip
+dismissal, three visible notifications with Clear, and a refreshable WebView
+placeholder. They execute Xu and use native Button input; they do not implement
+the desktop tree, full calendar, hover timing, notification scheduler or webpage
+engine. Their captions describe that boundary. TaskButton also previews states
+without starting a background task. Bounded Input/Field examples edit the end of
+one line using basic keys; full selection, clipboard and IME require the SDK.
+Their end caret shares the text layout so browser glyph advances determine its
+position. Multiline counters consistently count Unicode code points.
+
 Extension declarations are partitioned by their dependency owners in
 `desktop-sources.json`. The runtime scans user identifier tokens, loads only the
 requested families and shared declarations, and parses each package once.
 Existing basic programs keep their original subset. Native event pumps, Screen,
-WebView, editable input and the remaining component families are not exposed by
-the WASM subset. Their separate playground interaction previews are clearly
-marked as not executing Xu; they are not substitutes inside the WASM runtime.
+WebView, editable input and the remaining complete component implementations are
+not exposed by the WASM subset. Composed Xu examples describe their limited
+behavior, while the separate JavaScript interaction previews are marked as not
+executing Xu; neither replaces the desktop implementation.
 
 The checked-in `stdlib/desktop-sources.json` records the upstream commit and a
 SHA-256 for every declaration. To resync against a clean or dirty Xu checkout
@@ -110,8 +150,10 @@ the browser VM and with the native product compiler to check input semantics.
   means replay exhaustion. This driver replaces the native event pump.
 - `runtime/ui.xu`: bounded command transport, scalar formatting, and input
   intrinsics. Strings follow Xu's indirect descriptor ABI. Pure codec operations,
-  finite metric checks and UTF-8 validation have equivalent AOT scalar paths;
-  invalid codec inputs fall back to MIR so Xu error propagation is preserved.
+  finite metric checks, UTF-8 validation, style cloning/resolution/validation,
+  rounded geometry and drawing commands have equivalent AOT paths. Style clones
+  retain independent strings and state arrays. Invalid validation inputs,
+  inactive frames and unsupported strokes fall back to MIR so Xu error propagation is preserved.
   `createRuntime(..., {fastIntrinsics:false})` runs the original scalar MIR for
   equivalence testing. Decoded 56-byte instructions cache their intrinsic ID at
   offset 48, avoiding repeated function-name comparisons during interpretation.
@@ -128,9 +170,16 @@ host TextLayout metrics. The browser text adapter currently implements a
 single-line monospace grid (0.6 × font size per Unicode code point, height
 1.25 × size). Canvas uses the XUUI sans-serif font stack at its natural glyph
 proportions, without horizontally squeezing text to the estimated advance.
-The layout origin and enclosing clips still come from Xu. This is deterministic
+Canvas centers the visible glyph bounds vertically within the 1.25 × size line
+box, using an alphabetic baseline. If glyph bounds are unavailable, it falls
+back to font bounds and then an em-box estimate. The horizontal layout origin
+and enclosing clips still come from Xu. This is deterministic
 basic text layout, not native shaping, wrapping, bidi, grapheme-cell measurement,
 or IME. TextOptions fields other than size are outside this subset.
+Focused component examples use measured text layouts rather than raw top-aligned
+text. Single-line fields, floating labels, ColorPicker channel labels and toast
+messages center their line boxes within their actual control bounds. Raw
+`draw.text` remains a top-origin drawing API for user programs.
 `layout_masked_text()` paints one mask character per code point on this grid
 while caret and selection queries retain the original UTF-8 byte positions.
 The original text is never included in the masked layout's Canvas paint command.
@@ -147,8 +196,8 @@ accessibility remain outside the Canvas host's current scope.
 
 ## Floating-point VM support
 
-Widget geometry uses real IEEE binary64 values. The development wasm32 backend
-supports typed f64 arithmetic; the selected 0.10.12 SDK predates that support.
+Widget geometry uses real IEEE binary64 values. The selected SDK supports typed
+f64 arithmetic, while the interpreter stores user values as integer bit patterns.
 The MIR interpreter represents VM values as
 integer bit patterns. Its `vm_fp_*` functions are still trap stubs: numeric
 `f64(int)` / `int(f64)` casts convert values and cannot reinterpret those bits.
@@ -159,6 +208,12 @@ arithmetic, comparison, sign, or conversion instruction. No imports or JS
 callbacks are added. Unlinked Xu helper stubs trap rather than silently compute
 a wrong result. A `xu.playground.float` custom section identifies the link step.
 This bridge needs no additional compiler changes.
+
+The same link step supplies one bounded `wasm_rt_reserve` helper using
+`memory.size` and `memory.grow`. Allocation remains in Xu. The helper doubles
+linear memory only when necessary, from 32 MiB initially to at most 256 MiB,
+and reports engine allocation failure to the Xu allocator. Host views are
+refreshed after every WASM entry point because growth detaches old buffers.
 
 The Xu interpreter handles typed float operations, including comparisons with
 boolean destinations, casts, and field/index updates. Float-to-int conversion
@@ -189,13 +244,21 @@ count. Run Code, source edits, and example changes reset the session.
   legacy counter clicks use one record each. Drag motion also uses records.
 - Tab / Shift+Tab cycle controls in the gallery. Enter/Space activate the
   focused Button/Checkbox/Switch. Arrows, Home/End, and PageUp/PageDown adjust
-  Slider. Esc cancels and leaves the canvas. Click requests focus through the
-  widgets API. Key events and an active drag’s motion/release are queued during replay; new pointer presses while busy are ignored. Stopping/editing discards pending input.
-- 10-second worker timeout for ordinary programs; 30 seconds for programs importing `#ui/widgets`. The VM step limit and fixed 256 MiB initial/maximum memory still bound execution.
+  Slider. Esc is handled by the focused Xu control, allowing dialogs to restore
+  trigger focus. Click requests focus through the widgets API. Complete pointer
+  gestures, keys and drag releases are queued during replay; consecutive pending
+  motion is coalesced. Interactive updates preserve the previous output while
+  the worker redraws. Stopping/editing discards pending input.
+- 10-second worker timeout for ordinary programs; 30 seconds for programs importing `#ui/widgets`. The VM step limit and 256 MiB maximum linear memory still bound execution; initial memory is 32 MiB.
 
-Worker initialization loads the WASM module before reporting ready. It does not
-compile an extra program during initialization. The checked-MIR cache compiles
-the requested source once and reuses it for subsequent interactions.
+Reading a documentation page does not preload WASM. Running an example starts
+the shared worker on demand; explicit playground example links still run when
+opened. Initialization loads the module and performs a bounded empty-program
+warmup before reporting ready. The checked-MIR cache compiles requested source
+once and reuses it for subsequent interactions.
+Programs without explicit module imports skip the UI declarations during
+preparation. Native map literals still load their runtime algorithms. Imported
+module examples retain the existing browser library subset.
 - Commands: 256 KiB / 4096 lines; transform stack: 32; text size: 1–256.
 - No continuous animation, hover tracking while idle, native services/windows,
   WebView, full styled widgets, editable text input, or persistent external effects.
@@ -223,8 +286,16 @@ python3 scripts/build-static.py --require-playground
 python3 -m http.server 18110 --bind 127.0.0.1 --directory dist
 ```
 
-The build invokes the scalar link step automatically, including adjustment of
-the SDK memory section to a fixed 256 MiB limit. The disposable arena starts at
+The WASM build requires Node.js 22+ and `npm ci --ignore-scripts`. It compiles with
+the selected SDK's `-O1`, links the scalar helpers, then runs the lockfile-pinned
+Binaryen 132.0.0 `wasm-opt -O1 --shrink-level=1`. This balances code size with
+predictable build cost. Debug names are removed; the Xu build provenance
+and scalar-link custom sections remain. The optimizer runs only during builds
+and adds no browser dependency. Its feature flags match the existing bulk-memory
+and saturating float conversion instructions; no fast-math mode is enabled.
+
+The link step adjusts the SDK memory section to 32 MiB initially and a 256 MiB
+maximum. The disposable arena starts at
 16 MiB and retains parser/checker/MIR/UI allocations until evaluation ends.
 Styled tables and charts exceed the original 128 MiB budget even after loading
 only their dependencies. The allocator, linker, build metadata and memory test
@@ -235,8 +306,8 @@ visible, and a later WASM trap is appended rather than hidden by those warnings.
 The VM supports the scalar maps needed by these controls (int/string keys,
 int/bool values, at most 4096 entries); other map value/operation forms report an
 explicit unsupported error. Input timestamps use a deterministic replay clock.
-The build records the compiler
-version, WASM digest, and widget-source manifest digest in
+The build records the compiler version, optimizer version/flags, initial and
+maximum memory, pre/post-optimization size, gzip size, WASM digest and widget-source manifest digest in
 `build/playground/build.json`. Generated WASM and site output remain ignored.
 For deployment below a prefix, pass `--base-path /xulang-org` and an optional
 `--output` directory to the static builder. Canvas, Worker, examples, and WASM

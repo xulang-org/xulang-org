@@ -77,6 +77,7 @@
     el('library-open').appendChild(icon('arrow-right'));
   }
   function render() {
+    if (window.XuPlayMobile) window.XuPlayMobile.templateList();
     var query = el('library-search').value.trim().toLowerCase();
     var keys = Object.keys(catalog.projects).filter(function (key) {
       var project = projectFor(key);
@@ -132,6 +133,7 @@
         selected = key;
         Array.from(list.children).forEach(function (item) { item.setAttribute('aria-current', String(item === button)); });
         renderDetail(key);
+        if (window.XuPlayMobile) window.XuPlayMobile.templateDetail();
       });
       list.appendChild(button);
     });

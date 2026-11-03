@@ -59,10 +59,15 @@ fn (r &RangeSlider) paint_thumb(frame $&draw.Frame,styles &Styles,c &ControlStyl
     if halo > 0.0 { frame.set_fill(fade_color(ink,0.12 * halo)) or >>
         frame.circle(cx,cy,radius + 6.0 * styles.density * halo) or >> }
     rounded_fill(frame,box,radius,c.palette.on_accent) or >>
-    rounded_stroke(frame,box,radius,ink,math.max(1.0,c.border_width) * styles.density) or >>
+    single_focus := (state & STATE_FOCUSED) != 0 && r.is_enabled() && c.focus_inset == 0.0 && c.focus_width > 0.0 && (paint.focus.value() & 255) > 0
+    $border_ink := ink
+    $border_width := math.max(1.0,c.border_width) * styles.density
+    if single_focus { border_ink = paint.focus
+        border_width = c.focus_width * styles.density }
+    rounded_stroke(frame,box,radius,border_ink,border_width) or >>
     if r.dragging == index || r.dragging == 2 { frame.set_fill(ink) or >>
         frame.circle(cx,cy,radius * 0.32) or >> }
-    if (state & STATE_FOCUSED) != 0 && r.is_enabled() {
+    if (state & STATE_FOCUSED) != 0 && r.is_enabled() && !single_focus {
         gap := 3.0 * styles.density
         ring := layout.Rect{x: box.x - gap,y: box.y - gap,width: box.width + gap * 2.0,height: box.height + gap * 2.0}
         rounded_stroke(frame,&ring,radius + gap,paint.focus,c.focus_width * styles.density) or >> }

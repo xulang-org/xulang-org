@@ -6,6 +6,15 @@
 #playground
 #time
 
+fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),f64(y),ink) or >>
+}
+fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,height f64,size int,ink draw.Color,text string) int {
+    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
+    << frame.text_layout(&label,f64(x),top+(height-label.metrics.height)*0.5,ink) or >>
+}
+
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
@@ -20,6 +29,7 @@ fn demo() int {
     items := [widgets.button_group_item(1,"Design"),widgets.button_group_item(2,"Develop"),widgets.button_group_item(3,"Review")]
     $control := widgets.button_group(&context,&identity,1,&bounds,&items,widgets.BUTTON_GROUP_SINGLE) or >>
     $last := 0
+    last = 1
     control.apply_styles(&styles) or >>
     $focus := widgets.focus_group(&identity,[1]) or >>
     while true {
@@ -31,17 +41,18 @@ fn demo() int {
         action := control.input(&event) or >>
         if action.request_focus { focus.focus(1) or >> }
         if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }
+        if action.kind == widgets.ACTION_CHANGE { last = int(action.value) }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
-    draw.text(32,22,20,"#282329","XUUI  /  ButtonGroup")
-    draw.text(32,48,12,"#6d626e","将相关操作或选择组合成一组")
+    demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  ButtonGroup") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"将相关操作或选择组合成一组") or >>
     control.paint_styled($&frame,&styles) or >>
-    message := "Selected: " + str(control.active_key())
-    draw.text(32,326,13,"#6d626e",message + "")
+    message := "Selected: " + str(last)
+    demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>
     println(message)
     frame.present() or >>
     << 0
