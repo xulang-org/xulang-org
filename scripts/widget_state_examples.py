@@ -128,7 +128,7 @@ DATE_PAINT = '''    $value := "Choose date 选择日期"
     reset.paint_styled($&frame,$&reset_label,&styles) or >>
     clear.paint_styled($&frame,$&clear_label,&styles) or >>
 '''
-DATE = experience('DatePicker', '浏览器日期预览：展开选择当周日期；完整日历请用桌面 SDK。', DATE_SETUP, DATE_EVENTS, DATE_PAINT,
+DATE = experience('DatePicker', '浏览器日期预览：展开选择示例周日期；完整日历请用桌面 SDK。', DATE_SETUP, DATE_EVENTS, DATE_PAINT,
                   '"Date: "+value', '[1,9,10]', '''        reset.set_focus(focus.current() == 9)
         clear.set_focus(focus.current() == 10)
         for i in 0:7 { item := $&days[i]

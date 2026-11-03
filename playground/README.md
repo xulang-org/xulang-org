@@ -6,7 +6,7 @@ JavaScript. Canvas is the pixel host for both drawing and real widgets.
 
 The gallery, `ui-widgets`, and focused component examples use the pinned
 [xu-ui-design token adapter](design/README.md). This maps reference colors and
-styled control dimensions into Xu; Button, Checkbox, Switch, Radio, and Slider
+styled control dimensions into Xu; Button, Checkbox, Switch, Radio, Slider, and Stepper
 also use desktop styled painting.
 The browser text host and basic widget geometry retain the limitations below.
 
