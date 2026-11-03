@@ -1,6 +1,21 @@
 """Use measured line boxes in component examples, keeping raw draw API intact."""
 import re
 
+REMOVE = '''fn remove_last(value &string) string {
+    if value.len == 0 { << "" }
+    $end := value.len-1
+    while end > 0 && (value[end] & 192) == 128 { end -= 1 }
+    << value[0:end]
+}
+'''
+
+COUNT = '''fn codepoints(value &string) int {
+    $count := 0
+    for i in 0:value.len { if (value[i] & 192) != 128 { count += 1 } }
+    << count
+}
+'''
+
 HELPERS = '''fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
     << frame.text_layout(&label,f64(x),f64(y),ink) or >>
@@ -71,5 +86,5 @@ def measured_text(code, slug):
         code = code[:start] + value + code[end:]
     if replacements:
         position = code.index('fn ')
-        code = code[:position] + HELPERS + '\n' + code[position:]
+        code = code[:position] + (REMOVE if 'remove_last(' in code and 'fn remove_last(' not in code else '') + (COUNT if 'codepoints(' in code else '') + HELPERS + '\n' + code[position:]
     return code

@@ -246,6 +246,51 @@ fn vm_draw_fast_call(e $&Eval,m &types.Mir,fp int,ii int,code int) bool {
         args.push(vm_value(m,fp,types.mir_marg_v(m,fi,at),0))
         at = types.mir_marg_next(m,fi,at)
     }
+    if code == VM_UI_OPTIONS_EQUAL {
+        a := args[0]
+        b := args[1]
+        $same := vm_text(&*e,wasm_mem_load(a)) == vm_text(&*e,wasm_mem_load(b))
+        for slot in 3:9 {
+            av := wasm_mem_load(a-slot*8)
+            bv := wasm_mem_load(b-slot*8)
+            if slot == 3 || slot == 4 || slot == 8 {
+                if vm_fp_eq(av,bv) == 0 { same = false }
+            } else if av != bv { same = false }
+        }
+        $value := 0
+        if same { value = 1 }
+        if dest >= 0 { vm_put(m,fp,dest,0,value) }
+        << true
+    }
+    if code == VM_UI_TEXT_OPTIONS || code == VM_UI_COPY_TEXT_OPTIONS {
+        // Pinned TextOptions: family (3 slots), size, width, weight, italic,
+        // align, line_height. ControlStyle.font starts at 16, inherit at 23.
+        if dest < 0 || types.mir_temp_nslots(m,fi,dest) != 9 { << false }
+        target := vm_temp(m,fp,dest)
+        $font := args[0]
+        if code == VM_UI_TEXT_OPTIONS {
+            control := args[1]
+            font = control-128
+            if wasm_mem_load(control-184) != 0 { font = args[0] }
+            scale := wasm_mem_load(args[0]-56)
+            wasm_mem_store(target-24,vm_fp_mul(wasm_mem_load(font-24),scale))
+            wasm_mem_store(target-32,0)
+            wasm_mem_store(target-40,wasm_mem_load(font-32))
+            wasm_mem_store(target-48,wasm_mem_load(font-40))
+            wasm_mem_store(target-56,0)
+            wasm_mem_store(target-64,vm_fp_mul(wasm_mem_load(font-48),scale))
+        } else {
+            for slot in 3:9 { wasm_mem_store(target-slot*8,wasm_mem_load(font-slot*8)) }
+        }
+        family := vm_text(&*e,wasm_mem_load(font))
+        id := e.strings.len
+        n := family.len
+        e.strings.push(family)
+        wasm_mem_store(target,id)
+        wasm_mem_store(target-8,n)
+        wasm_mem_store(target-16,0)
+        << true
+    }
     if code == VM_UI_ROUNDED_FILL || code == VM_UI_ROUNDED_STROKE {
         if wasm_mem_load(args[0]) == 0 { << false }
         $width := 0

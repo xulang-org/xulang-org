@@ -21,11 +21,22 @@ The parent validates the styles once; its private sliders reuse the same geometr
 calculation without repeating the full Styles validation for every RGBA row.
 The color values, slider input and painting still execute in Xu; the browser does
 not approximate the controls or redraw their values independently.
+Opaque ColorPicker swatches skip the fully covered transparency grid. Pure text
+option scaling, copying and comparison also have AOT equivalents, checked against
+the original MIR paths; widget state and pointer input remain in Xu.
 The browser focus adaptation treats a zero focus inset as one emphasized
 boundary. Shared control boxes, Slider thumbs, joined ButtonGroup segments, and RangeSlider
 thumbs replace their regular border instead of adding another outline. Styles
 with a positive focus inset keep the upstream inset-ring behavior. Selection
 and focus still belong to the Xu widgets.
+When a program supplies widget input, Canvas leaves focus painting to those
+controls; it does not add a second outline around the entire preview. Basic
+Scroll paints its own viewport boundary. Tabs, Segmented and ListBox use the
+pinned on-brand ink for selected labels; browser ListBox, choice menus and
+pagination have 44 logical px hit areas at normal density. Fit scales the whole
+fixed canvas for an overview; use 100% and the phone pan control for original-size
+text and targets.
+Menu and ButtonGroup navigation guard a local positive item count before modulo.
 
 Open `/playground/?example=ui-gallery` (or `/zh/playground/?example=ui-gallery`)
 for a three-page control gallery. `ui-widgets`, `ui-draw`, and `ui-counter`
@@ -55,11 +66,12 @@ ListBox keeps the desktop basic paint API, rather than its richer styled rows.
 
 ## Real desktop control logic
 
-`stdlib/desktop_widgets.xu` contains complete, unchanged declarations selected
+`stdlib/desktop_widgets.xu` contains complete declarations selected
 from `xu/src/ui/widgets`, including constructors, state/input methods, basic
 paint, focus rings, rounded paths, theme primitives, StyledLabel text paint,
 and the read-only Editor paint path. Divider and Segmented Tabs basic APIs are
-also mirrored. This is a larger gallery subset, not the complete desktop suite.
+also mirrored, with the hashed browser adaptations described above. This is a
+larger gallery subset, not the complete desktop suite.
 
 `stdlib/desktop_*.xu` supplies necessary desktop layout, math, UTF-8 validation,
 input, text/color/path types, style resolution, and motion initialization.
@@ -85,13 +97,26 @@ for visible candidates, filtering, selection and dismissal. Modal uses the deskt
 dialog, real Cancel/Apply buttons, a trapped focus order and trigger restoration.
 Its background remains blocked until the dialog closes.
 
+The composed browser examples in `scripts/widget_state_examples.py` demonstrate
+TreeView expansion and node selection, a selectable October 25–31 date strip with
+Reset/Clear, minute adjustment and 12/24-hour formatting, focus/click tooltip
+dismissal, three visible notifications with Clear, and a refreshable WebView
+placeholder. They execute Xu and use native Button input; they do not implement
+the desktop tree, full calendar, hover timing, notification scheduler or webpage
+engine. Their captions describe that boundary. TaskButton also previews states
+without starting a background task. Bounded Input/Field examples edit the end of
+one line using basic keys; full selection, clipboard and IME require the SDK.
+Their end caret shares the text layout so browser glyph advances determine its
+position. Multiline counters consistently count Unicode code points.
+
 Extension declarations are partitioned by their dependency owners in
 `desktop-sources.json`. The runtime scans user identifier tokens, loads only the
 requested families and shared declarations, and parses each package once.
 Existing basic programs keep their original subset. Native event pumps, Screen,
-WebView, editable input and the remaining component families are not exposed by
-the WASM subset. Their separate playground interaction previews are clearly
-marked as not executing Xu; they are not substitutes inside the WASM runtime.
+WebView, editable input and the remaining complete component implementations are
+not exposed by the WASM subset. Composed Xu examples describe their limited
+behavior, while the separate JavaScript interaction previews are marked as not
+executing Xu; neither replaces the desktop implementation.
 
 The checked-in `stdlib/desktop-sources.json` records the upstream commit and a
 SHA-256 for every declaration. To resync against a clean or dirty Xu checkout

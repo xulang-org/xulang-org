@@ -8,7 +8,7 @@ CASES = {
     'breadcrumbs': ('breadcrumbs(&context,&identity,1,&bounds,&options)', '"Activated: " + str(last)', 'Activated: 0', 'styled'),
     'range-slider': ('range_slider(&context,&identity,1,&bounds,0.0,100.0,20.0,80.0)', '"Range: " + str(int(control.values().lower)) + " - " + str(int(control.values().upper))', 'Range: 20 - 80', 'styled'),
     'split-view': ('split_view(&identity,1,&bounds,0.4)', '"Ratio: " + str(int(control.value() * 100.0))', 'Ratio: 40', 'styled'),
-    'button-group': ('button_group(&context,&identity,1,&bounds,&items,widgets.BUTTON_GROUP_SINGLE)', '"Selected: " + str(control.active_key())', 'Selected: 1', 'styled'),
+    'button-group': ('button_group(&context,&identity,1,&bounds,&items,widgets.BUTTON_GROUP_SINGLE)', '"Selected: " + str(last)', 'Selected: 1', 'styled'),
     'table': ('table(&context,&identity,1,&bounds,&headers,3,0)', '"Selected: " + str(control.selected())', 'Selected: 0', 'styled'),
     'menu': ('menu(&context,&identity,1,&bounds,"Actions",&items,widgets.MENU_DROPDOWN,0)', '"Command: " + str(last)', 'Command: 0', 'styled'),
     'context-menu': ('menu(&context,&identity,1,&bounds,"Right-click here / 在此右键",&items,widgets.MENU_CONTEXT,0)', '"Command: " + str(last)', 'Command: 0', 'styled'),
@@ -61,6 +61,8 @@ fn demo() int {
     elif slug in ('menu', 'context-menu', 'split-button'):
         code += '    items := [widgets.menu_item(1,"Save"),widgets.menu_item(2,"Export"),widgets.menu_item(3,"Duplicate")]\n'
     code += '    $control := widgets.' + constructor + ' or >>\n    $last := 0\n'
+    if slug == 'button-group':
+        code += '    last = 1\n'
     if slug in ('menu', 'context-menu', 'split-button'):
         code += '    control.set_viewport(&box(0.0,0.0,640.0,360.0)) or >>\n'
     if slug == 'table':
@@ -93,6 +95,8 @@ fn demo() int {
         if action.request_focus { focus.focus(1) or >> }
         if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }
 '''
+    if slug == 'button-group':
+        code += '        if action.kind == widgets.ACTION_CHANGE { last = int(action.value) }\n'
     if slug in ('menu', 'context-menu', 'split-button'):
         code += '        _ := control.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>\n'
     code += '''    }

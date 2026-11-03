@@ -1762,7 +1762,7 @@ pub fn list_box(identity &ui.CanvasEvent,id int,bounds &layout.Rect,count int,se
         >> errors.new("widgets: invalid list_box count or selection")
     }
     << ListBox{appearance: list_appearance(),id: id,identity: copy_identity(identity),bounds: copy_rect(bounds),count_val: count,selected_val: selected,
-        hovered_idx: -1,armed_idx: -1,scroll_y: 0.0,scroll_dragging: false,scroll_grab: 0.0,row_h: 28.0,
+        hovered_idx: -1,armed_idx: -1,scroll_y: 0.0,scroll_dragging: false,scroll_grab: 0.0,row_h: 44.0,
         padding: layout.Insets{left: 6.0,top: 6.0,right: 6.0,bottom: 6.0},enabled: true,focused: false,hovered: false,
         dirty: true,closed: false,invalid: false,read_only: false,custom: empty_scalar_style()}
 }
@@ -2059,7 +2059,10 @@ pub fn (lb &ListBox) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &T
             }
             if i < labels.len {
                 lbl := labels[i]
-                frame.text_layout(&lbl,b.x + 10.0,ry + (rh - lbl.metrics.height) * 0.5,theme.foreground) or >>
+                $ink := theme.foreground
+                if i == lb.selected_val { ink = draw.rgb(255,248,250)
+                    if ((theme.foreground.value() >> 24) & 255) > 150 { ink = draw.rgb(25,12,18) } }
+                frame.text_layout(&lbl,b.x + 10.0,ry + (rh - lbl.metrics.height) * 0.5,ink) or >>
             }
         }
     }
@@ -2387,7 +2390,10 @@ pub fn (t &Tabs) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &Theme
             lbl := labels[i]
             tx := sx + (seg_w - lbl.metrics.width) * 0.5
             ty := b.y + (b.height - lbl.metrics.height) * 0.5
-            frame.text_layout(&lbl,tx,ty,theme.foreground) or >>
+            $ink := theme.foreground
+            if i == t.selected_val { ink = draw.rgb(255,248,250)
+                    if ((theme.foreground.value() >> 24) & 255) > 150 { ink = draw.rgb(25,12,18) } }
+            frame.text_layout(&lbl,tx,ty,ink) or >>
         }
     }
     if t.focused { focus_ring(frame,&b,theme.focus) or >> }

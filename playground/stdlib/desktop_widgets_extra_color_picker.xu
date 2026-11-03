@@ -171,11 +171,14 @@ pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) in
     state := picker.control.visual_state()
     style_box(frame,&b,&c,styles.density,state) or >>
     p := picker.preview_bounds()
-    for row in 0:4 { for col in 0:16 {
-        $ink := draw.rgb(232,235,240)
-        if (row + col) % 2 == 1 { ink = draw.rgb(179,187,199) }
-        frame.fill_rect(p.x + f64(col) * p.width / 16.0,p.y + f64(row) * p.height / 4.0,p.width / 16.0,p.height / 4.0,ink) or >>
-    } }
+    // An opaque swatch fully covers the transparency grid.
+    if (picker.value().value() & 255) < 255 {
+        for row in 0:4 { for col in 0:16 {
+            $ink := draw.rgb(232,235,240)
+            if (row + col) % 2 == 1 { ink = draw.rgb(179,187,199) }
+            frame.fill_rect(p.x + f64(col) * p.width / 16.0,p.y + f64(row) * p.height / 4.0,p.width / 16.0,p.height / 4.0,ink) or >>
+        } }
+    }
     frame.fill_rect(p.x,p.y,p.width,p.height,picker.value()) or >>
     frame.stroke_rect(p.x,p.y,p.width,p.height,c.resolve(state).border,1.0) or >>
     c.padding = layout.insets(0.0) or >>

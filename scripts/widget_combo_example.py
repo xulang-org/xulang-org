@@ -123,7 +123,9 @@ fn demo() int {
     draw.text(32,48,12,"#6d626e","展开候选项；方向键、Enter 选择，Escape 关闭。")
     draw.text(48,86,14,"#282329","Environment 环境选择")
     menu.paint_styled($&frame,&styles) or >>
-    $label := widgets.styled_label(&context,&text)
+    $display := text+""
+    if focus.current() == 1 { display = display+"│" }
+    $label := widgets.styled_label(&context,&display)
     $field := styles.input.clone()
     field.padding = layout.Insets{left:0.0,top:0.0,right:0.0,bottom:0.0}
     field.align_x = 0.0
@@ -132,12 +134,6 @@ fn demo() int {
     $state := 0
     if focus.current() == 1 { state = widgets.STATE_FOCUSED }
     label.paint_text_styled($&frame,&content,&styles,&field,state) or >>
-    if focus.current() == 1 {
-        size := label.measure_styled(&styles,&field) or >>
-        $x := content.x+size.width
-        if x > content.x+content.width { x = content.x+content.width }
-        frame.line(x,bounds.y+14.0,x,bounds.y+bounds.height-14.0,styles.button.palette.accent,1.5) or >>
-    }
     draw.text(48,174,12,"#6d626e","输入基本字符筛选；中文选项可直接选择。")
     menu.paint_popup_styled($&frame,&styles) or >>
     message := "Selected: "+text

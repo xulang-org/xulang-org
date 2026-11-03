@@ -15,7 +15,7 @@ test('MultiSelect paints its popup, retains multiple checks, unchecks, and dismi
  const r=await createRuntime(module),open=click(100,108);
  for(const name of ['Design','Develop','Review'])assert.ok(labels(run(r,'multi-select',open)).includes(name),name+' must be visible');
  const first=[...open,...click(100,150)];assert.equal(run(r,'multi-select',first).stdout,'Selected count: 1\n');
- const second=[...first,...click(100,180)];assert.equal(run(r,'multi-select',second).stdout,'Selected count: 2\n');
+ const second=[...first,...click(100,205)];assert.equal(run(r,'multi-select',second).stdout,'Selected count: 2\n');
  const third=[...second,...click(100,150)];assert.equal(run(r,'multi-select',third).stdout,'Selected count: 1\n');
  const closed=run(r,'multi-select',[...third,...key(256)]);assert.ok(!labels(closed).includes('Review'));
 });
