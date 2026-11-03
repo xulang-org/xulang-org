@@ -131,8 +131,9 @@ class StaticSiteTests(unittest.TestCase):
             self.assertNotIn('{{api_', status)
             self.assertIn(counts['api_standard_count'], status)
             self.assertIn(counts['api_external_count'], status)
-            banner = re.search(r'<p class="banner">(.*?)</p>', (output / (prefix + 'index.html')).read_text())[1]
-            self.assertNotRegex(banner, r'\d+\.\d+\.\d+')
+            brand = re.search(r'<div class="home-brand">(.*?)</div>', (output / (prefix + 'index.html')).read_text())[1]
+            self.assertIn('SYSTEMS LANGUAGE / MIT', brand)
+            self.assertNotRegex(brand, r'\d+\.\d+\.\d+')
             self.assertIn('id="language-switch"', (output / (prefix + 'index.html')).read_text())
             releases = (output / (prefix + 'releases/index.html')).read_text()
             for entry in json.loads((self.source / 'templates/releases.json').read_text()):
