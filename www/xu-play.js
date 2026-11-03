@@ -3,12 +3,32 @@
   var script = document.currentScript;
   var workerUrl = new URL('xu-play-worker.js', script.src);
   var examplesUrl = new URL('xu-play-examples.json', script.src);
-  workerUrl.search = examplesUrl.search = new URL(script.src).search;
+  var wasmUrl = new URL('xu-play.wasm', script.src);
+  workerUrl.search = examplesUrl.search = wasmUrl.search = new URL(script.src).search;
   var available = script.getAttribute('data-wasm-available') !== 'false';
   var en = document.documentElement.lang === 'en';
   function text(zh, english) { return en ? english : zh; }
 
   var sharedInline = null;
+  var compiledModule = null;
+
+  function loadModule() {
+    if (!compiledModule) {
+      // Start only on a run/warmup request. Async compilation avoids the
+      // browser's main-thread synchronous WASM size limit. Instantiation and
+      // all Xu execution remain in the worker; Module cloning shares code.
+      compiledModule = fetch(wasmUrl).then(function (response) {
+        if (!response.ok) throw new Error('Could not load Xu playground (HTTP ' + response.status + ')');
+        return response.arrayBuffer();
+      }).then(function (bytes) {
+        return window.WebAssembly.compile(bytes);
+      }).catch(function (error) {
+        compiledModule = null;
+        throw error;
+      });
+    }
+    return compiledModule;
+  }
 
   function getSharedInline() {
     if (sharedInline) return sharedInline;
@@ -92,7 +112,15 @@
         else if (onFailure) onFailure(msg);
       };
 
-      current.postMessage({type: 'init'});
+      loadModule().then(function (module) {
+        if (worker === current) current.postMessage({type: 'init', module: module});
+      }).catch(function (error) {
+        if (worker !== current) return;
+        var runner = activeRunner;
+        clearWorker();
+        if (onFailure) onFailure(error.message);
+        else if (runner) runner.onFailure(error.message);
+      });
     }
 
     sharedInline = {
@@ -396,7 +424,11 @@
       current.onerror = function () {
         if (worker === current) failure(text('在线运行器发生错误，请重试。', 'The playground encountered an error. Please retry.'));
       };
-      current.postMessage({type: 'init'});
+      loadModule().then(function (module) {
+        if (worker === current) current.postMessage({type: 'init', module: module});
+      }).catch(function (error) {
+        if (worker === current) failure(error.message);
+      });
     }
 
     if (select) {

@@ -254,7 +254,12 @@ count. Run Code, source edits, and example changes reset the session.
 Reading a documentation page does not preload WASM. Running an example starts
 the shared worker on demand; explicit playground example links still run when
 opened. Initialization loads the module and performs a bounded empty-program
-warmup before reporting ready. The checked-MIR cache compiles requested source
+warmup before reporting ready. The page downloads the module only when requested
+and uses asynchronous WebAssembly compilation, then shares the compiled Module
+with the worker. This avoids stalled large binary downloads in worker contexts
+without moving instantiation or Xu execution onto the main thread. Compilation
+is cached per page; failed downloads can be retried, and stopped workers never
+receive a late initialization. The checked-MIR cache compiles requested source
 once and reuses it for subsequent interactions.
 Programs without explicit module imports skip the UI declarations during
 preparation. Native map literals still load their runtime algorithms. Imported
