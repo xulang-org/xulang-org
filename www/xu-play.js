@@ -237,8 +237,8 @@
           status(text('运行中', 'Running'));
           inlineManager.run(runner, program, seconds);
         } else {
-          show(text('正在初始化 WebAssembly 运行时与预热…', 'Initializing WebAssembly runtime & warming up…'), false);
-          status(text('正在初始化…', 'Initializing…'));
+          show(options.loadingMessage || text('正在初始化 WebAssembly 运行时与预热…', 'Initializing WebAssembly runtime & warming up…'), false);
+          status(options.loadingStatus || text('正在初始化…', 'Initializing…'));
           inlineManager.startAndRun(runner, program, seconds, function () {
             show(text('正在运行…', 'Running…'), false);
             status(text('运行中', 'Running'));

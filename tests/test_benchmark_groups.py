@@ -57,3 +57,27 @@ class BenchmarkGroupTests(unittest.TestCase):
         groups = group_workloads([dict(name='osprey_fib', category='algo')])
         self.assertEqual(len(groups), 1)
         self.assertEqual([v['bench']['name'] for v in groups[0]['variants']], ['osprey_fib'])
+
+    def test_failures_remain_visible_and_are_excluded_from_metrics(self):
+        data = json.loads((ROOT / 'www/benchmarks.json').read_text())
+        platform = data['platforms']['macos-arm64']
+        prior_failures = sum(b.get('xu_status', 'ok') != 'ok' for p in data['platforms'].values() for b in p['benches'])
+        row = next(b for b in platform['benches'] if b['name'] == 'fib')
+        row.update(xu_status='compile_failed', xu_error='<script>bad</script>', xu_wall_ms=None)
+        row['implementations']['Xu'] = dict(status='compile_failed', error=row['xu_error'], wall_ms=0.01)
+        self.assertIsNone(benchmarks.get_bench_impl_metric(row, 'Xu', 'wall_ms'))
+        for en in (True, False):
+            section = benchmarks.render_category_integrated_section(benchmarks.CATEGORIES_CONFIG[0], data['platforms'], en)
+            self.assertIn('id="workload-fib"', section)
+            self.assertIn('Compile failed' if en else '编译失败', section)
+            self.assertIn('&lt;script&gt;bad&lt;/script&gt;', section)
+            self.assertNotIn('<script>bad</script>', section)
+            notice = benchmarks.render_outcome_summary(data['platforms'], en)
+            self.assertIn(f'data-failed-count="{prior_failures + 1}"', notice)
+        # The entire page, including coverage/footprint/metadata, accepts a
+        # genuine null-metric failure rather than dropping it or crashing.
+        row['implementations']['Xu'].pop('wall_ms')
+        for lang in ('en', 'zh'):
+            page = benchmarks.render_page(data, lang)
+            self.assertIn('id="workload-fib"', page)
+            self.assertNotIn('bench-radar-svg', page)

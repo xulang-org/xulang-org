@@ -45,6 +45,18 @@ def median_cell(platforms, metric='wall_ms', language='swift', en=False):
 
 
 class BenchmarkRankingTests(unittest.TestCase):
+    def test_overview_coverage_is_derived_from_valid_results(self):
+        data = self.fixture()
+        source = benchmarks.render_coverage_overview_section(data, True)
+        self.assertIn('data-language="Xu" data-metric="wall_ms">6/6', source)
+        data['macos-arm64']['benches'][0]['implementations']['Xu']['status'] = 'run_failed'
+        source = benchmarks.render_coverage_overview_section(data, True)
+        self.assertIn('data-language="Xu" data-metric="wall_ms">5/6', source)
+        self.assertNotIn('<polygon', source)
+        del data['windows-arm64']
+        source = benchmarks.render_coverage_overview_section(data, False)
+        self.assertIn('data-language="Xu" data-metric="wall_ms">4/6', source)
+
     def fixture(self):
         platforms = {}
         for cfg in benchmarks.PLATFORMS_CONFIG:
