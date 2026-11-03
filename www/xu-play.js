@@ -289,6 +289,7 @@
       output.className = 'xu-play-out' + (error ? ' is-err' : '');
     }
     function clearUI() {
+      if (window.XuPlayMobile) window.XuPlayMobile.cancelRun();
       interactive = false;
       clicks = [];
       queuedInputs = [];
@@ -301,7 +302,7 @@
       interactive = false;
       if (!panel || !canvas || !result.ui || result.exit !== 0 || activeSource !== currentSource()) {
         if (panel) panel.hidden = true;
-        return;
+        return false;
       }
       if (!window.XuPlayCanvas) throw new Error('Canvas host is unavailable');
       inputMode = !!result.ui.input;
@@ -317,6 +318,7 @@
       if (uiStatus) uiStatus.textContent = result.ui.interactive
         ? (inputMode ? text('真实控件 · 点击 / Tab 聚焦 · Enter/空格激活 · 方向键调节 · Esc 离开。', 'Real widgets · Click / Tab to focus · Enter/Space to activate · Arrows to adjust · Esc to leave.') : text('点击画布，或聚焦画布后按 Enter 点击中心。', 'Click the canvas, or focus it and press Enter to click its center.'))
         : text('静态画面 · 修改代码后重新运行。', 'Static drawing · Edit the source and run again.');
+      return committed;
     }
     function clearWorker() {
       clearTimeout(timer);
@@ -371,7 +373,8 @@
           show(value || text('（无输出）', '(no output)'), result.exit !== 0);
           status('exit ' + result.exit);
           try {
-            showUI(result);
+            var hasUI = showUI(result);
+            if (window.XuPlayMobile) window.XuPlayMobile.completeRun(!!hasUI);
             if (inputMode && queuedInputs.length && activeSource === currentSource()) {
               var maxEv = (window.XuPlayCanvas && window.XuPlayCanvas.maxEvents) || 100000;
               clicks = clicks.concat(queuedInputs.splice(0, Math.max(0, maxEv - clicks.length)));
@@ -519,6 +522,7 @@
       }
       clearUI();
       activeSource = program;
+      if (window.XuPlayMobile) window.XuPlayMobile.beginRun();
       execute();
     }
     function execute(interaction) {
