@@ -56,7 +56,7 @@ XACP documentation describes the language repository's development branch, separ
 
 ## Benchmark evidence
 
-The published dashboard contains {{benchmark_count}} workloads across {{benchmark_platforms}} platforms, measured with Xu {{benchmark_version}} on {{benchmark_date}}. The measurement identity is independent of the selected SDK. See https://xulang.org/benchmarks/ and the source CI run: {{benchmark_run}}. Consult the dashboard's per-platform results and methodology rather than infer a universal speedup.
+The published dashboard contains {{benchmark_group_count}} display groups with {{benchmark_count}} measured workload variants across {{benchmark_platforms}} platforms, measured with Xu {{benchmark_version}} on {{benchmark_date}}. Each algorithm and input size retains its own source and results; display groups do not combine measurements. The measurement identity is independent of the selected SDK. See https://xulang.org/benchmarks/ and the source CI run: {{benchmark_run}}. Consult the dashboard's per-platform results and methodology rather than infer a universal speedup.
 
 ## Documentation index
 

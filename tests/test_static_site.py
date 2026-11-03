@@ -67,8 +67,10 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn('# Xu Programming Language', llms)
         chinese = (output / 'zh/index.html').read_text()
         benchmark_count = json.loads((self.source / 'www/benchmarks.json').read_text())['metadata']['total_benches']
-        self.assertIn(f'across {benchmark_count} workloads', home)
-        self.assertIn(f'{benchmark_count} 项负载', chinese)
+        self.assertIn(f'{benchmark_count} workload variants', home)
+        self.assertIn('60 groups', home)
+        self.assertIn(f'{benchmark_count} 个负载变体', chinese)
+        self.assertIn('60 个项目组', chinese)
         self.assertIn('<html lang="zh-CN"', chinese)
         self.assertIn('href="/zh/docs/start/"', chinese)
         self.assertIn('href="/" hreflang="en"', chinese)
