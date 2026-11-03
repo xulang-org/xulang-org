@@ -159,6 +159,11 @@
         }
       },
       startAndRun: function (runner, program, seconds, onRunning) {
+        if (activeRunner && activeRunner !== runner) {
+          var previous = activeRunner;
+          clearWorker();
+          previous.onStopped();
+        }
         activeRunner = runner;
         if (ready && worker) {
           if (onRunning) onRunning();

@@ -224,6 +224,32 @@ test('module transport failure is reported instead of waiting for a loading time
   assert.match(wrapper.querySelector('.xu-play-out').textContent,/module transport unavailable/);
 });
 
+test('switching inline programs during download or execution abandons the previous owner', async () => {
+  const {context,pres,workers}=await mount({blocks:[
+    {source:'@main\nfn main() int { println("first")\n << 0 }'},
+    {source:'@main\nfn main() int { println("second")\n << 0 }'}
+  ]});
+  const wrappers=pres.map(pre=>pre.closest('.code-block-wrapper'));
+  const buttons=wrappers.map(wrapper=>wrapper.querySelector('.code-run-btn'));
+  let finishDownload;
+  context.fetch=()=>new Promise(resolve=>{finishDownload=resolve;});
+  buttons[0].click();buttons[1].click();
+  assert.equal(workers[0].terminated,true);
+  finishDownload({ok:true,arrayBuffer:async()=>new ArrayBuffer(8)});
+  await new Promise(setImmediate);
+  assert.equal(workers[0].messages.length,0);
+  assert.match(workers[1].messages.at(-1).source,/second/);
+  workers[1].respond({type:'result',exit:0,stdout:'second\n',stderr:''});
+  buttons[0].click();buttons[1].click();
+  await new Promise(setImmediate);
+  assert.equal(workers[1].terminated,true);
+  assert.match(workers[2].messages.at(-1).source,/second/);
+  workers[1].respond({type:'result',exit:0,stdout:'stale first\n',stderr:''});
+  assert.equal(wrappers[1].querySelector('.xu-play-out').textContent.includes('stale'),false);
+  workers[2].respond({type:'result',exit:0,stdout:'second\n',stderr:''});
+  assert.equal(wrappers[1].querySelector('.xu-play-out').textContent,'second\n');
+});
+
 test('Timeout terminates execution and late results cannot overwrite the next run', async () => {
   const {elements, workers, timers} = await mount();
   const button = elements['xu-play-run'];
