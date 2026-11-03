@@ -12,6 +12,13 @@ spec.loader.exec_module(play)
 
 
 class PlaygroundReleaseIdentityTests(unittest.TestCase):
+    def test_optimizer_dependency_is_required_for_wasm_builds(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            with patch.object(play.shutil, 'which', return_value=None):
+                with self.assertRaisesRegex(RuntimeError, 'Node.js 22.*npm ci'):
+                    play.optimize(base, base / 'runtime.wasm')
+
     def test_prerelease_banner_cannot_match_final_version_prefix(self):
         with tempfile.TemporaryDirectory() as temporary:
             base = Path(temporary)

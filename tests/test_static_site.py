@@ -304,8 +304,8 @@ class StaticSiteTests(unittest.TestCase):
             self.assertNotIn('xu-play.js', home)
             self.assertNotIn('xu-play.wasm', home)
         self.assertIn('data-wasm-available="true"', (output / 'playground/index.html').read_text())
-        self.assertRegex((output / 'playground/index.html').read_text(),
-                         r'<link rel="preload" href="/repo/xu-play\.wasm\?v=[0-9a-f]{16}" as="fetch" type="application/wasm" crossorigin>')
+        for page in ('zh/api/fmt/index.html', 'zh/docs/start/index.html', 'playground/index.html'):
+            self.assertNotIn('rel="preload" href="/repo/xu-play.wasm', (output / page).read_text(), page)
         for asset in ('xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):
             self.assertTrue((output / asset).is_file(), asset)
 

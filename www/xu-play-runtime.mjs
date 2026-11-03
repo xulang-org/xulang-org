@@ -56,8 +56,16 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
         timings.compileMs = 0;
         timings.executeMs = 0;
       }
-      const memory = exp.memory.buffer;
-      const view = new DataView(memory);
+      let memory = exp.memory.buffer;
+      let view = new DataView(memory);
+      // Growth detaches the previous ArrayBuffer. Reacquire host views after
+      // each entry point, including a trap after a successful growth.
+      const refreshMemory = () => {
+        if (memory !== exp.memory.buffer) {
+          memory = exp.memory.buffer;
+          view = new DataView(memory);
+        }
+      };
       if (input) {
         new Uint8Array(memory, 2048, input.length).set(input);
         view.setBigInt64(800, 2048n, true);
@@ -86,6 +94,7 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
         else {
           const compileStart = profile ? performance.now() : 0;
           exp.xu_prepare_frame(800, 140000);
+          refreshMemory();
           if (profile) timings.compileMs = performance.now() - compileStart;
           prepared = {source, exp, arenaEnd: view.getBigInt64(1040, true),
             stdoutLength: view.getBigInt64(1024, true), stderrLength: view.getBigInt64(1032, true)};
@@ -119,14 +128,16 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
             view.setBigInt64(1072, 0n, true);
             view.setBigInt64(1112, 0n, true);
             exp.xu_start_frame(800, 146000);
+            refreshMemory();
           }
           view.setBigInt64(792, 146000n, true);
           exp.xu_drive_frame(800, 768);
+          refreshMemory();
           prepared.checkpoint = undefined;
           if (view.getBigInt64(1120, true) !== 0n) {
             const end = Number(view.getBigInt64(1040, true));
             // Bounded extra host memory. Larger programs retain full replay.
-            if (end - base <= 200 * 1024 * 1024) {
+            if (end - base <= 8 * 1024 * 1024) {
               prepared.checkpoint = {
                 eventCount: events.length, key: JSON.stringify(events),
                 arena: new Uint8Array(memory, base, end - base).slice(),
@@ -139,13 +150,18 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
             // user's paint/print tail. Next input resumes before that branch.
             view.setBigInt64(1112, 1n, true);
             exp.xu_drive_frame(800, 768);
+            refreshMemory();
           }
-        } else exp.xu_execute_frame(800, 768);
+        } else {
+          exp.xu_execute_frame(800, 768);
+          refreshMemory();
+        }
         if (profile) timings.executeMs = performance.now() - executeStart;
         exit = Number(view.getBigInt64(768, true));
         if (exit !== 0 && prepared) prepared.checkpoint = undefined;
         if (profile) timings.checkpointBytes = prepared?.checkpoint?.arena.length ?? 0;
       } catch (error) {
+        refreshMemory();
         prepared = undefined;
         if (!(error instanceof WebAssembly.RuntimeError)) throw error;
         trap = error;
@@ -169,6 +185,7 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
         timings.outputDecodeMs = performance.now() - decodeStart;
         timings.totalMs = performance.now() - started;
         timings.arenaEnd = Number(view.getBigInt64(1040, true));
+        timings.memoryBytes = memory.byteLength;
       }
       return {exit, stdout, stderr, ui: exit === 0 && commands ? {
         commands, input: view.getBigInt64(1088, true) !== 0n, interactive: view.getBigInt64(1080, true) !== 0n

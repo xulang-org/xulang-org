@@ -1,13 +1,15 @@
 """Link a fixed set of scalar WASM instructions into the site's MIR VM.
 
-The development wasm32 backend supports typed f64 arithmetic; the site's
-selected 0.10.12 SDK predates it. The MIR interpreter,
+The wasm32 backend supports typed f64 arithmetic. The MIR interpreter,
 however, stores all VM values as integer bit patterns: vm_fp_* in runtime/float.xu
 are still trap stubs, not typed f64 functions. Numeric int/f64 casts would convert
 these values rather than reinterpret their bits, so they cannot replace this
 bridge. These helpers reinterpret the slots and perform scalar operations only;
 they never interpret source or draw controls. All functions retain the product's
 (args i32, result i32) -> void frame ABI.
+
+The allocator reserve helper also provides bounded linear-memory growth without
+host imports, keeping the selected SDK's stack/data/frame layout unchanged.
 """
 from pathlib import Path
 
@@ -64,11 +66,32 @@ def helper_bodies():
             for name, code in instructions.items()}
 
 
-# The disposable arena starts at 16 MiB and retains parser/checker/MIR/UI
-# allocations until evaluation ends. Styled table/chart programs add compiler
-# and paint work beyond the original gallery's roughly 107 MiB peak.
-# Keep this in sync with wasm_support.xu, build metadata and the gallery test.
-MEMORY_PAGES = 4096  # fixed 256 MiB initial and maximum memory
+def memory_reserve_body():
+    # Frame ABI: args[0] is an already checked end address, result is a bool.
+    # Local i32s 2/3/4 hold end/current pages/target pages. Grow geometrically
+    # up to the unchanged 256 MiB ceiling; the allocator reports grow failure.
+    return bytes.fromhex('''
+        01 03 7f
+        20 00 29 03 00 a7 21 02
+        3f 00 21 03
+        20 01 42 01 37 03 00
+        20 02 20 03 41 10 74 4b 04 40
+          20 02 41 ff ff 03 6a 41 10 76 21 04
+          20 04 20 03 41 01 74 49 04 40
+            20 03 41 01 74 21 04
+          0b
+          20 04 41 80 20 4b 04 40
+            41 80 20 21 04
+          0b
+          20 01 20 04 20 03 6b 40 00 41 7f 47 ad 37 03 00
+        0b 0b
+    ''')
+
+
+# The arena begins at 16 MiB, above stack/data. Large checker/MIR/UI programs
+# still have the original ceiling, without allocating all of it at startup.
+INITIAL_MEMORY_PAGES = 512  # 32 MiB
+MAXIMUM_MEMORY_PAGES = 4096  # 256 MiB; also enforced in wasm_support.xu
 
 
 def link(path):
@@ -94,17 +117,18 @@ def link(path):
                     names[label] = index
             pos = start + size
     helpers = helper_bodies()
+    helpers['_xu_main_wasm_rt_reserve'] = memory_reserve_body()
     if not helpers.keys() <= names.keys():
         raise ValueError('missing scalar VM helper labels')
     replacements = {names[label]: body for label, body in helpers.items()}
     out = bytearray(data[:8])
     for tag, payload in parts:
         if tag == 5:
-            # The SDK emits one fixed 64 MiB memory. Expand both limits for the
-            # checker/MIR/UI arena above; stack/data addresses stay intact.
+            # Keep the SDK stack/data layout, with a smaller initial memory
+            # and bounded growth through the linked allocator helper.
             if payload != b'\x01\x01' + uleb(1024) + uleb(1024):
                 raise ValueError('unexpected SDK memory limits')
-            payload = b'\x01\x01' + uleb(MEMORY_PAGES) + uleb(MEMORY_PAGES)
+            payload = b'\x01\x01' + uleb(INITIAL_MEMORY_PAGES) + uleb(MAXIMUM_MEMORY_PAGES)
         if tag == 10:
             count, pos = read_u(payload, 0)
             code = bytearray(uleb(count))
@@ -116,7 +140,7 @@ def link(path):
             payload = bytes(code)
         out += bytes([tag]) + uleb(len(payload)) + payload
     name = b'xu.playground.float'
-    provenance = uleb(len(name)) + name + b'Frame ABI v1; fixed IEEE f64 scalar helpers; bounded memory 256 MiB; scripts/link-playground-float.py'
+    provenance = uleb(len(name)) + name + b'Frame ABI v1; IEEE f64 helpers; memory reserve 32..256 MiB; scripts/link-playground-float.py'
     out += b'\x00' + uleb(len(provenance)) + provenance
     path.write_bytes(out)
 
