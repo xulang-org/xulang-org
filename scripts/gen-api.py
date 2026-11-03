@@ -195,6 +195,7 @@ class Package:
     n_type: int = 0
     n_const: int = 0
     n_iface: int = 0
+    source_sha256: str = ""
 
 
 def strip_strings_and_comments_for_braces(line: str, st: dict) -> str:
@@ -674,8 +675,11 @@ def load_package(src_root: str, pkg: str) -> Package:
         files.append(fn)
     # mod.xu first
     files.sort(key=lambda x: (x != "mod.xu", x))
+    digest = hashlib.sha256()
     for fn in files:
         path = os.path.join(folder, fn)
+        digest.update((fn + '\n').encode('utf-8'))
+        digest.update(Path(path).read_bytes().replace(b'\r\n', b'\n'))
         items, fcomment = parse_xu_file(path)
         if fn == "mod.xu" and fcomment and not p.file_comment:
             p.file_comment = fcomment
@@ -685,6 +689,7 @@ def load_package(src_root: str, pkg: str) -> Package:
                 continue
             seen.add(key)
             p.items.append(it)
+    p.source_sha256 = digest.hexdigest()
     for it in p.items:
         if it.kind == "fn":
             p.n_fn += 1
@@ -1569,12 +1574,13 @@ def param_meaning(pkg, fn: str, p: Param, lang: str) -> str:
     pkg = pkg_id(pkg)
     zh = lang == "zh"
     if p.is_recv:
-        _, kind = borrow_type(p.typ)
+        receiver, kind = borrow_type(p.typ)
         if zh:
-            mut = {'exclusive': '独占借用', 'shared': '借用', 'value': '值接收者'}[kind]
-            return f"接收者 {p.typ}（{mut}）"
+            how = {'exclusive': '以独占借用传入，方法可修改它，调用方仍持有实例',
+                   'shared': '以只读借用传入，调用方仍持有实例', 'value': '按值接收'}[kind]
+            return f"本次调用使用的 `{receiver}` 实例；{how}。"
         mut = {'exclusive': 'exclusive borrow', 'shared': 'borrow', 'value': 'value receiver'}[kind]
-        return f"receiver {p.typ} ({mut})"
+        return f"The `{receiver}` instance used by this call ({mut})."
     if p.variadic or p.typ.startswith("<->"):
         inner = p.typ.replace("<->", "").strip()
         if pkg == "fmt" and inner.endswith("Arg"):
@@ -1584,12 +1590,11 @@ def param_meaning(pkg, fn: str, p: Param, lang: str) -> str:
     # fmt.f format vs callback vs float
     if p.name == "f":
         if "fn(" in p.typ.replace(" ", ""):
-            return ("字节回调：参数为字节值 0..255，返回是否命中" if zh
-                    else "byte callback: argument is 0..255, return whether it matches")
-        if pkg == "fmt" or p.typ == "string":
-            if pkg == "fmt":
-                return ("格式串（支持 %- + # 0 宽 精度，与本包实现一致）" if zh
-                        else "format string (flags - + # 0, width, precision; as implemented in this package)")
+            return (f"回调函数，签名为 `{p.typ}`；传入函数值，由本接口在处理过程中调用。" if zh
+                    else f"Callback with signature `{p.typ}`; pass the function value for this operation to invoke.")
+        if pkg == "fmt":
+            return ("格式串（支持 %- + # 0 宽 精度，与本包实现一致）" if zh
+                    else "format string (flags - + # 0, width, precision; as implemented in this package)")
         if p.typ == "f64":
             return "浮点值" if zh else "floating-point value"
     if "[]" in p.typ and p.name in ("a", "b", "s", "xs", "arr"):
@@ -1621,9 +1626,9 @@ def type_note(typ: str, zh: bool) -> str:
     t, kind = borrow_type(typ)
     bits = []
     if kind == 'exclusive':
-        bits.append("独占借用" if zh else "exclusive borrow")
+        bits.append("独占借用，可修改原值" if zh else "exclusive borrow; may modify the original")
     elif kind == 'shared':
-        bits.append("借用，调用方仍持有" if zh else "borrowed; caller keeps it")
+        bits.append("只读借用，调用方仍持有原值" if zh else "read-only borrow; caller keeps the original")
     if t.startswith("<->"):
         bits.append("可变参" if zh else "variadic")
     if t.startswith("fn(") or t.startswith("fn ("):
@@ -1643,13 +1648,9 @@ def body_notes(item: Item, lang: str) -> list[str]:
     raw = re.sub(r"//.*?$", "", b, flags=re.M)
     throws = bool(re.search(r"\bor\s*>>", raw)) or bool(re.search(r"(^|[{;])\s*>>\s", raw, re.M)) or (">> errors." in raw)
     if throws:
-        notes.append("失败时 throw。" if zh else "Throws on failure.")
+        notes.append("失败时抛出错误，调用方需处理或继续传播。" if zh else "Throws on failure; handle the error or propagate it to the caller.")
     if re.search(r"<<\s*-1\b", raw) and ("index" in item.name or item.name.startswith("last_") or item.name in ("index_of", "index")):
         notes.append("未找到返回 -1。" if zh else "Returns -1 if not found.")
-    if item.name in ("to_lower", "to_upper") and "65" in raw:
-        notes.append("仅处理 ASCII 字母。" if zh else "ASCII letters only.")
-    if item.name == "split" and "sep.len == 0" in raw:
-        notes.append("空分隔符返回整段作为唯一元素。" if zh else "An empty separator yields the whole input as the only element.")
     return notes
 
 
@@ -1956,7 +1957,8 @@ def purpose_for(pkg: str, item: Item, lang: str) -> str:
         if c:
             return c
         if item.name == "Error":
-            return "通用错误方法集契约约束，要求实现 msg() string 与 cause() string。" if zh else "Error method-set constraint requiring msg() and cause()."
+            methods = ', '.join(method.name + '()' for method in item.methods)
+            return f"错误值的方法约束；实现类型须提供 {methods}。" if zh else f"Error-value method constraint; implementations must provide {methods}."
         if item.name in ("Reader", "Writer", "StreamReader", "StreamWriter", "ProgressReader", "ProgressWriter"):
             role = "读取" if "Reader" in item.name else "写入"
             return f"{item.name} 数据{role}方法集契约约束。" if zh else f"{item.name} data I/O method-set constraint."
@@ -2035,11 +2037,11 @@ def returns_for(pkg: str, item: Item, lang: str) -> str:
     ov = lookup_override(pkg, item, lang)
     if ov and ov.get("returns"):
         return ov["returns"]
-    if item.kind in ("struct", "const", "iface"):
+    if item.kind in ("struct", "const", "iface", "enum"):
         return ""
     ret = (item.ret or "").strip()
     if not ret:
-        return ""
+        return "不返回值。" if lang == 'zh' else "This call does not return a value."
     zh = lang == "zh"
     if pkg_id(pkg) == 'ui/widgets' and widget_constructor(item):
         return ('int — 组件节点 ID，供 place 和其他 Screen 方法使用。' if zh else
@@ -2050,12 +2052,12 @@ def returns_for(pkg: str, item: Item, lang: str) -> str:
     hinted = ""
     if ret == "bool":
         hinted = "是否成立" if zh else "true or false"
-    elif ret == "int" and ("index" in item.name or item.name.startswith("last_")):
-        hinted = "下标；未找到为 -1" if zh else "index; -1 if missing"
+    elif ret == "int" and "index" in item.name:
+        hinted = "索引值；有效范围和特殊值见用途说明" if zh else "index; see the description for its range and special values"
     elif ret == "int" and item.name.startswith("search_"):
         hinted = "已排序切片中的下标（未命中则为插入点）" if zh else "index in the sorted slice (insertion point if missing)"
     elif ret == "int" and item.name in ("compare", "compare_int", "compare_string", "compare_f64"):
-        hinted = "小于 -1、相等 0、大于 1" if zh else "-1 if less, 0 if equal, 1 if greater"
+        hinted = "负数表示小于，0 表示相等，正数表示大于" if zh else "negative if less, zero if equal, positive if greater"
     elif ret == "int" and item.name in ("write", "write_string", "write_byte", "write_rune"):
         hinted = "写入的字节数" if zh else "bytes written"
     elif ret == "string":
@@ -2076,8 +2078,8 @@ LANG_MD_EN: dict[str, str] = {}
 
 BLURB_ZH = {
     "fmt": "格式化：Arg 装箱（i/s/b/f/c），sprintf/sprint/print/printf/errorf。标志 -+#0、宽度、精度；无扫描、无反射动词。",
-    "strings": "字符串工具。只读函数吃 &string，调用方仍持有源。查找走 Horspool。含 Builder / Reader / Replacer。",
-    "bytes": "字节串工具，形状与 strings 对称。Buffer 可读写。查找同样走 Horspool。",
+    "strings": "查找、拆分、替换和拼接文本，也提供 Builder、Reader 与 Replacer。只读接口通常借用原字符串；查找结果以 UTF-8 字节偏移表示，不能直接当作字符序号。",
+    "bytes": "处理以 string 保存的字节数据，提供查找、替换以及 Buffer 读写。各接口会注明按字节还是按 Unicode 字符处理。",
     "errors": "错误值：StrErr / CodeErr / WrapErr 与 struct@ Error。动态装箱是语言语法 errors.Error(x)，不是本包函数。",
     "strconv": "数字与引号：atoi/itoa、parse/format、quote/unquote，以及 append_*。",
     "path": "POSIX 斜杠路径：join/clean/split/base/dir/ext/matches。",
@@ -2091,7 +2093,7 @@ BLURB_ZH = {
     "flag": "FlagSet，无全局状态：define_* + parse + print_defaults。",
     "time": "Duration 为纳秒 int。now/sleep、Time、Timer/Ticker（xu+chan+sleep）。无 IANA 时区。",
     "sync": "Mutex / WaitGroup / Once / RWMutex / Cond 与原子 int。",
-    "context": "Background / WithCancel / WithTimeout；Done 为 chan。无 WithValue。",
+    "context": "在任务间传递取消信号、截止时间和字符串键值。通过 Context.done 等待取消；需要主动结束任务时，保留构造函数返回的 Cancel 并调用 cancel。",
     "testing": "T：error/fatal/skip/run 与 *f 格式化。cleanup LIFO。非测试构建不能 import。",
     "runtime": "caller(skip) 仅允许常量 skip 0 或 1。",
     "cmp": "比较：struct@ Ord 与 less_*/compare_*。f64：NaN 小于非 NaN，NaN 等于 NaN。",
@@ -2193,8 +2195,8 @@ BLURB_ZH = {
 
 BLURB_EN = {
     "fmt": "Formatting: Arg boxing (i/s/b/f/c), sprintf/sprint/print/printf/errorf. Flags -+#0, width, precision. No scanning; no reflection verbs.",
-    "strings": "String helpers. Read-only functions take &string so the caller keeps the source. Search uses Horspool. Includes Builder / Reader / Replacer.",
-    "bytes": "Byte-string helpers, parallel to strings. Buffer is readable and writable. Search uses Horspool.",
+    "strings": "Find, split, replace and join text; also provides Builder, Reader and Replacer. Read-only calls generally borrow their input. Search indexes count UTF-8 bytes, not Unicode characters.",
+    "bytes": "Work with byte data stored in strings, including search, replacement and Buffer I/O. Individual APIs distinguish byte operations from Unicode character operations.",
     "errors": "Error values: StrErr / CodeErr / WrapErr and struct@ Error. Dynamic boxing is language syntax errors.Error(x), not a function here.",
     "strconv": "Numbers and quoting: atoi/itoa, parse/format, quote/unquote, and append_*.",
     "path": "POSIX slash paths: join/clean/split/base/dir/ext/matches.",
@@ -2208,7 +2210,7 @@ BLURB_EN = {
     "flag": "FlagSet with no globals: define_* + parse + print_defaults.",
     "time": "Duration is int nanoseconds. now/sleep, Time, Timer/Ticker (xu+chan+sleep). No IANA zones.",
     "sync": "Mutex / WaitGroup / Once / RWMutex / Cond and atomic int.",
-    "context": "Background / WithCancel / WithTimeout; Done is a chan. No WithValue.",
+    "context": "Carry cancellation, deadlines and string key-value pairs between tasks. Wait on Context.done for cancellation; retain the returned Cancel and call cancel when a task must end early.",
     "testing": "T: error/fatal/skip/run and *f formatters. LIFO cleanup. Cannot import outside test builds.",
     "runtime": "caller(skip) allows constant skip 0 or 1 only.",
     "cmp": "Comparison: struct@ Ord and less_*/compare_*. f64: NaN is less than non-NaN; NaN equals NaN.",
@@ -2335,11 +2337,16 @@ LABELS = {
     "zh": {
         "purpose": "用途",
         "params": "参数",
-        "returns": "返回",
+        "returns": "返回值",
+        "fields": "公开字段",
+        "requirements": "要求的方法",
+        "notes": "使用时注意",
+        "errors": "错误处理",
+        "examples": "调用示例",
         "none": "无",
         "crumb": "API",
-        "import": "import",
-        "counts": "counts",
+        "import": "导入方式",
+        "counts": "公开 API",
         "fn": "函数",
         "method": "方法",
         "type": "类型",
@@ -2350,21 +2357,36 @@ LABELS = {
         "purpose": "Purpose",
         "params": "Parameters",
         "returns": "Returns",
+        "fields": "Public fields",
+        "requirements": "Required methods",
+        "notes": "Usage notes",
+        "errors": "Error handling",
+        "examples": "Call example",
         "none": "none",
         "crumb": "API",
         "import": "import",
         "counts": "counts",
-        "fn": "fns",
+        "fn": "functions",
         "method": "methods",
         "type": "types",
-        "const": "consts",
-        "iface": "ifaces",
+        "const": "constants",
+        "iface": "method sets",
     },
 }
 
 
 def esc(s: str) -> str:
     return html.escape(s, quote=True)
+
+
+def prose(s: str) -> str:
+    """Render code identifiers in prose while treating all authored HTML as text."""
+    return ''.join('<code>' + esc(part[1:-1]) + '</code>' if len(part) > 2 and part.startswith('`') and part.endswith('`')
+                   else esc(part) for part in re.split(r'(`[^`\n]+`)', s))
+
+
+def source_digest(item: Item) -> str:
+    return hashlib.sha256((item.sig.strip() + '\n' + item.body.strip()).encode('utf-8')).hexdigest()
 
 
 def highlight_xu(sig: str) -> str:
@@ -2666,22 +2688,40 @@ def render_item(pkg: Package, item: Item, lang: str, used_ids: dict, examples: S
         f"<h2><code>{esc(heading)}</code></h2>",
         code_block(item.sig),
         f"<h3>{L['purpose']}</h3>",
-        f"<p>{esc(purpose)}</p>",
-        f"<h3>{L['params']}</h3>",
+        f"<p>{prose(purpose)}</p>",
     ]
-    if not params:
-        parts.append(f'<p class="api-none">{L["none"]}</p>')
-    else:
+    if item.kind not in ('const', 'enum'):
+        label = L['fields'] if item.kind == 'struct' else L['requirements'] if item.kind == 'iface' else L['params']
+        parts.append(f'<h3>{label}</h3>')
+    if not params and item.kind not in ('const', 'enum'):
+        empty = ('此类型没有公开字段。' if lang == 'zh' else 'This type has no public fields.') if item.kind == 'struct' else (
+            ('没有要求额外的方法。' if lang == 'zh' else 'No additional methods are required.') if item.kind == 'iface' else
+            ('无需传入参数。' if lang == 'zh' else 'No arguments are required.'))
+        parts.append(f'<p class="api-none">{empty}</p>')
+    elif params:
         parts.append('<dl class="api-params">')
         for name, typ, meaning in params:
             parts.append(
                 f"<dt><code>{esc(name)}</code> <span class=\"type\">{esc(typ)}</span></dt>"
-                f"<dd>{esc(meaning)}</dd>"
+                f"<dd>{prose(meaning)}</dd>"
             )
         parts.append("</dl>")
     if ret:
         parts.append(f"<h3>{L['returns']}</h3>")
-        parts.append(f"<p>{esc(ret)}</p>")
+        parts.append(f"<p>{prose(ret)}</p>")
+    details = lookup_override(pkg, item, lang) or {}
+    for section in ('notes', 'errors'):
+        if details.get(section):
+            parts.append(f'<h3>{L[section]}</h3><ul>')
+            parts.extend('<li>' + prose(note) + '</li>' for note in details[section])
+            parts.append('</ul>')
+    for example in details.get('examples', []):
+        parts.append(f'<h3>{L["examples"]}</h3><p>{prose(example["title"])}</p>')
+        parts.append('<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>' +
+                     ('本机 SDK 示例' if lang == 'zh' else 'Local SDK example') + '</span></div><pre><code class="language-xu">' +
+                     highlight_xu(example['code']) + '</code></pre></div>')
+        if 'output' in example:
+            parts.append('<p>' + ('预期输出：' if lang == 'zh' else 'Expected output:') + '</p><pre><samp>' + esc(example['output']) + '</samp></pre>')
     if item.kind in ('fn', 'struct', 'enum', 'const', 'iface'):
         module = pkg.import_path.split('#', 1)[1]
         related = next((ex for ex in examples if item.name in ex.uses.get(module, set())), None)
@@ -2817,6 +2857,7 @@ def validate_contracts(contracts: list[dict], packages: list[Package]) -> None:
             declarations.setdefault((package.path, receiver, item.name), []).append(item)
     seen = set()
     errors = []
+    package_digests = {package.path: package.source_sha256 for package in packages}
     for entry in contracts:
         receiver, _ = borrow_type(entry.get('receiver', ''))
         key = (entry['package'], receiver, entry['name'])
@@ -2829,10 +2870,27 @@ def validate_contracts(contracts: list[dict], packages: list[Package]) -> None:
             errors.append(f'{label}: resolves to {len(matches)} declarations (expected exactly one)')
             continue
         item = matches[0]
+        if 'source_sha256' in entry and entry['source_sha256'] != source_digest(item):
+            errors.append(f'{label}: documented source changed; review behavior before refreshing source_sha256')
+        if 'package_sha256' in entry and entry['package_sha256'] != package_digests.get(entry['package']):
+            errors.append(f'{label}: documented package sources changed; review helpers before refreshing package_sha256')
         names = {param.name for param in item.params} | {field.name for field in item.fields}
         names.update(method.name for method in item.methods)
         for lang in ('zh', 'en'):
-            for name in sorted(set(entry[lang].get('params', {})) - names):
+            detail = entry[lang]
+            for section in ('notes', 'errors'):
+                if section in detail and (not isinstance(detail[section], list) or any(not isinstance(value, str) or not value.strip() for value in detail[section])):
+                    errors.append(f'{label} [{lang}]: {section} must contain nonempty text entries')
+            call_examples = detail.get('examples', [])
+            if not isinstance(call_examples, list):
+                errors.append(f'{label} [{lang}]: examples must be a list')
+                call_examples = []
+            for example in call_examples:
+                if not isinstance(example, dict) or any(not isinstance(example.get(field), str) or not example[field].strip() for field in ('title', 'code')):
+                    errors.append(f'{label} [{lang}]: examples require a title and code')
+                elif 'output' in example and not isinstance(example['output'], str):
+                    errors.append(f'{label} [{lang}]: example output must be text')
+            for name in sorted(set(detail.get('params', {})) - names):
                 errors.append(f'{label} [{lang}]: unknown parameter/field {name!r}')
     if errors:
         raise ValueError('invalid API contracts:\n  ' + '\n  '.join(errors))
@@ -2887,6 +2945,7 @@ CSS_BLOCK = """
 .api-item {
   margin: 1.1rem 0 0;
   padding: 0.9rem 0 1.1rem;
+  scroll-margin-top: 5.5rem;
   border-bottom: 1px solid var(--xu-border-subtle);
 }
 .api-item:last-child { border-bottom: 0; }
@@ -2924,6 +2983,18 @@ CSS_BLOCK = """
   max-width: 72ch;
   overflow-wrap: anywhere;
 }
+.api-item > ul,
+.api-item > ol {
+  margin: 0.25rem 0 0;
+  padding-inline-start: 1.4rem;
+  color: var(--xu-text-secondary);
+  font-size: 14px;
+  line-height: 1.6;
+  max-width: 72ch;
+  overflow-wrap: anywhere;
+}
+.api-item > ul li + li,
+.api-item > ol li + li { margin-top: 0.25rem; }
 .api-item .code-block-wrapper {
   margin: 0.45rem 0 0.35rem;
 }

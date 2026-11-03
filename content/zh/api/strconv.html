@@ -3,8 +3,8 @@
 <h1><code>#strconv</code></h1>
 <!--xu-api-version: 0.11.2-->
 <p class="banner">Xu {{xu_version}} API</p>
-<p class="meta">import: <code>#strconv</code></p>
-<p class="meta">counts: 27 函数, 0 方法, 0 类型, 0 常量, 0 方法集</p>
+<p class="meta">导入方式: <code>#strconv</code></p>
+<p class="meta">公开 API: 27 函数, 0 方法, 0 类型, 0 常量, 0 方法集</p>
 <p class="lead">数字与引号：atoi/itoa、parse/format、quote/unquote，以及 append_*。</p>
 <p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
 <section class="api-examples" id="examples">
@@ -1148,138 +1148,213 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h2><code>atoi</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> atoi(s &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>把十进制字符串解析为 int。</p>
+<p>把十进制数字文本转换为整数，适合读取配置或解析用户输入。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>要转换的完整数字文本；不会自动去掉空白或进制前缀。</dd>
 </dl>
-<h3>返回</h3>
-<p>int — 该类型的值</p>
+<h3>返回值</h3>
+<p>解析出的整数；支持的数值范围受 <code>int</code> 限制。</p>
+<h3>使用时注意</h3><ul>
+<li>只接受数字和可选的前导负号；不接受前导 <code>+</code>、空白或 <code>0x</code> 前缀。</li>
+</ul>
+<h3>错误处理</h3><ul>
+<li>不支持的进制抛出 <code>strconv: unsupported base</code>；非法数字或越界也会抛错，应处理或继续传播。</li>
+</ul>
 <p><a href="#example-a2be48ce1c23">查看用法示例</a></p>
 </article>
 <article class="api-item" id="itoa">
 <h2><code>itoa</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> itoa(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>把 int 转成十进制字符串。</p>
+<p>把整数转换成十进制文本，适合输出或拼接消息。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
+<dt><code>n</code> <span class="type">int</span></dt><dd>要转换的整数。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>数字字符串；十六进制使用小写字母，不自动添加进制前缀。</p>
 </article>
 <article class="api-item" id="format_bool">
 <h2><code>format_bool</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> format_bool(b <span class="syn-type">bool</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>格式化为 bool。</p>
+<p>把布尔值写成稳定的小写文本，适合保存配置或拼接消息。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">bool</span></dt><dd>b（bool）</dd>
+<dt><code>b</code> <span class="type">bool</span></dt><dd>要转换的布尔值。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p><code>true</code> 或 <code>false</code> 字符串。</p>
 </article>
 <article class="api-item" id="parse_bool">
 <h2><code>parse_bool</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> parse_bool(s &amp;<span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
-<p>解析为 bool。失败时 throw。</p>
+<p>把常见布尔文本转换为 <code>bool</code>，适合读取环境变量和配置开关。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>完整输入文本；不会自动去掉空白。</dd>
 </dl>
-<h3>返回</h3>
-<p>bool — 是否成立</p>
+<h3>返回值</h3>
+<p><code>1</code>、<code>t</code>、<code>T</code>、<code>true</code>、<code>TRUE</code>、<code>True</code> 得到 <code>true</code>；<code>0</code>、<code>f</code>、<code>F</code>、<code>false</code>、<code>FALSE</code>、<code>False</code> 得到 <code>false</code>。</p>
+<h3>错误处理</h3><ul>
+<li>其他拼写（包括混合大小写或带空白的文本）抛出 <code>strconv: invalid bool</code>。</li>
+</ul>
 </article>
 <article class="api-item" id="format_int">
 <h2><code>format_int</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> format_int(n <span class="syn-type">int</span>, base <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>格式化为 int。失败时 throw。</p>
+<p>把整数转换成指定进制的文本，适合输出或拼接消息。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
-<dt><code>base</code> <span class="type">int</span></dt><dd>进制（int）</dd>
+<dt><code>n</code> <span class="type">int</span></dt><dd>要转换的整数。</dd>
+<dt><code>base</code> <span class="type">int</span></dt><dd>进制，只支持 <code>2</code>、<code>8</code>、<code>10</code>、<code>16</code>；不会根据 <code>0x</code> 等前缀自动推断。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>数字字符串；十六进制使用小写字母，不自动添加进制前缀。</p>
+<h3>错误处理</h3><ul>
+<li>进制不受支持时抛错。</li>
+</ul>
 </article>
 <article class="api-item" id="parse">
 <h2><code>parse</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> parse(s &amp;<span class="syn-type">string</span>, base <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>解析输入。失败时 throw。</p>
+<p>把指定进制的数字文本转换为整数，适合读取配置或解析用户输入。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
-<dt><code>base</code> <span class="type">int</span></dt><dd>进制（int）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>要转换的完整数字文本；不会自动去掉空白或进制前缀。</dd>
+<dt><code>base</code> <span class="type">int</span></dt><dd>进制，只支持 <code>2</code>、<code>8</code>、<code>10</code>、<code>16</code>；不会根据 <code>0x</code> 等前缀自动推断。</dd>
 </dl>
-<h3>返回</h3>
-<p>int — 该类型的值</p>
+<h3>返回值</h3>
+<p>解析出的整数；支持的数值范围受 <code>int</code> 限制。</p>
+<h3>使用时注意</h3><ul>
+<li>只接受数字和可选的前导负号；不接受前导 <code>+</code>、空白或 <code>0x</code> 前缀。</li>
+</ul>
+<h3>错误处理</h3><ul>
+<li>不支持的进制抛出 <code>strconv: unsupported base</code>；非法数字或越界也会抛错，应处理或继续传播。</li>
+</ul>
+<h3>调用示例</h3><p>显式指定进制并处理错误</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本机 SDK 示例</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strconv</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"ff"</span>
+    value <span class="syn-flow">:=</span> strconv.parse(&amp;text, 16) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(value)
+    bad <span class="syn-flow">:=</span> <span class="syn-str">"0xff"</span>
+    _ <span class="syn-flow">:=</span> strconv.parse(&amp;bad, 16) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+</code></pre></div>
+<p>预期输出：</p><pre><samp>255
+parse_int: invalid integer
+</samp></pre>
 </article>
 <article class="api-item" id="format_uint">
 <h2><code>format_uint</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> format_uint(n <span class="syn-type">int</span>, base <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>格式化为 uint。失败时 throw。</p>
+<p>把整数转换成指定进制的文本，适合输出或拼接消息。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
-<dt><code>base</code> <span class="type">int</span></dt><dd>进制（int）</dd>
+<dt><code>n</code> <span class="type">int</span></dt><dd>要转换的整数。</dd>
+<dt><code>base</code> <span class="type">int</span></dt><dd>进制，只支持 <code>2</code>、<code>8</code>、<code>10</code>、<code>16</code>；不会根据 <code>0x</code> 等前缀自动推断。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>数字字符串；十六进制使用小写字母，不自动添加进制前缀。</p>
+<h3>错误处理</h3><ul>
+<li>负数抛出 <code>strconv: unsigned of negative</code>，不支持的进制也会抛错。</li>
+</ul>
 </article>
 <article class="api-item" id="parse_uint">
 <h2><code>parse_uint</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> parse_uint(s &amp;<span class="syn-type">string</span>, base <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>用途</h3>
-<p>解析为 uint。失败时 throw。</p>
+<p>把指定进制的数字文本转换为整数，适合读取配置或解析用户输入。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
-<dt><code>base</code> <span class="type">int</span></dt><dd>进制（int）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>要转换的完整数字文本；不会自动去掉空白或进制前缀。</dd>
+<dt><code>base</code> <span class="type">int</span></dt><dd>进制，只支持 <code>2</code>、<code>8</code>、<code>10</code>、<code>16</code>；不会根据 <code>0x</code> 等前缀自动推断。</dd>
 </dl>
-<h3>返回</h3>
-<p>int — 该类型的值</p>
+<h3>返回值</h3>
+<p>解析出的整数；支持的数值范围受 <code>int</code> 限制。</p>
+<h3>使用时注意</h3><ul>
+<li>只接受非负整数；以 <code>int</code> 返回，因此不能表示超出有符号 <code>int</code> 上限的数值。</li>
+</ul>
+<h3>错误处理</h3><ul>
+<li>不支持的进制抛出 <code>strconv: unsupported base</code>；非法数字或越界也会抛错，应处理或继续传播。</li>
+</ul>
 </article>
 <article class="api-item" id="quote">
 <h2><code>quote</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> quote(s &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>加上引号并转义。</p>
+<p>把任意字节文本写成带双引号的转义文本，便于日志中看清换行、引号和不可见字节。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>要处理的原文本；以只读借用传入，本调用不会修改它。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>带双引号的文本；反斜杠和双引号被转义，非 ASCII 字节使用 <code>\xHH</code>。</p>
+<h3>使用时注意</h3><ul>
+<li>非 ASCII 字符按 UTF-8 字节逐个转义；需要按 Unicode 码点输出 <code>\u</code>/<code>\U</code> 时可使用 <code>quote_to_ascii</code>。</li>
+</ul>
+<h3>调用示例</h3><p>转义文本往返还原</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本机 SDK 示例</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strconv</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"甲"</span>
+    quoted <span class="syn-flow">:=</span> strconv.quote(&amp;text)
+    println(quoted)
+    decoded <span class="syn-flow">:=</span> strconv.unquote(&amp;quoted) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(decoded)
+}
+</code></pre></div>
+<p>预期输出：</p><pre><samp>&quot;\xe7\x94\xb2&quot;
+甲
+</samp></pre>
 </article>
 <article class="api-item" id="unquote">
 <h2><code>unquote</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> unquote(s &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>去掉引号并还原转义。失败时 throw。</p>
+<p>移除双引号并还原本实现支持的转义，适合读取由 <code>quote</code> 产生的文本。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>包含首尾双引号的完整文本。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>去除双引号并还原转义后的字符串。</p>
+<h3>使用时注意</h3><ul>
+<li>支持 <code>\n</code>、<code>\t</code>、<code>\r</code>、<code>\\</code>、<code>\&quot;</code> 和 <code>\xHH</code>；当前实现不解析 <code>\uXXXX</code> 或 <code>\UXXXXXXXX</code>。</li>
+</ul>
+<h3>错误处理</h3><ul>
+<li>缺少双引号抛出 <code>strconv: invalid quoted string</code>；不支持或不完整的转义抛出 <code>strconv: invalid escape</code>。</li>
+</ul>
 </article>
 <article class="api-item" id="quote_rune">
 <h2><code>quote_rune</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> quote_rune(r <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>执行 quote rune 操作。</p>
+<p>把一个 Unicode 码点转换为带单引号的字符表示。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">int</span></dt><dd>rune（Unicode 码点）（int）</dd>
+<dt><code>r</code> <span class="type">int</span></dt><dd>Unicode 码点；无效标量值会替换为 U+FFFD。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>带单引号的字符文本；可显示的非 ASCII 字符保留为 UTF-8，控制字符使用转义。</p>
 </article>
 <article class="api-item" id="is_print">
 <h2><code>is_print</code></h2>
@@ -1290,7 +1365,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">int</span></dt><dd>rune（Unicode 码点）（int）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>bool — 是否成立</p>
 </article>
 <article class="api-item" id="is_graphic">
@@ -1302,32 +1377,35 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dl class="api-params">
 <dt><code>r</code> <span class="type">int</span></dt><dd>rune（Unicode 码点）（int）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>bool — 是否成立</p>
 </article>
 <article class="api-item" id="quote_rune_to_ascii">
 <h2><code>quote_rune_to_ascii</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> quote_rune_to_ascii(r <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>执行 quote rune to ascii 操作。</p>
+<p>把一个 Unicode 码点转换为带单引号的字符表示。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">int</span></dt><dd>rune（Unicode 码点）（int）</dd>
+<dt><code>r</code> <span class="type">int</span></dt><dd>Unicode 码点；无效标量值会替换为 U+FFFD。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>带单引号的字符文本；非 ASCII 字符使用转义。</p>
 </article>
 <article class="api-item" id="quote_to_ascii">
 <h2><code>quote_to_ascii</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> quote_to_ascii(s &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>执行 quote to ascii 操作。</p>
+<p>把文本按 Unicode 字符转为只含 ASCII 的双引号表示，便于在只接受 ASCII 的场景中展示。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>要处理的原文本；以只读借用传入，本调用不会修改它。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>带引号的 ASCII 文本；非 ASCII 字符使用 <code>\u</code> 或 <code>\U</code>，无效 UTF-8 字节使用 <code>\xHH</code>。</p>
+<h3>使用时注意</h3><ul>
+<li>当前 <code>unquote</code> 不支持 <code>\u</code>/<code>\U</code>；需要在本包内往返转换时使用 <code>quote</code>。</li>
+</ul>
 </article>
 <article class="api-item" id="append_quote_to_ascii">
 <h2><code>append_quote_to_ascii</code></h2>
@@ -1337,9 +1415,9 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>dst</code> <span class="type">string</span></dt><dd>目标（string）</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="append_quote_rune_to_ascii">
@@ -1352,59 +1430,68 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>dst</code> <span class="type">string</span></dt><dd>目标（string）</dd>
 <dt><code>r</code> <span class="type">int</span></dt><dd>rune（Unicode 码点）（int）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="quoted_prefix">
 <h2><code>quoted_prefix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> quoted_prefix(s &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>执行 quoted prefix 操作。失败时 throw。</p>
+<p>从一段文本开头取出完整的引号片段，保留引号，方便再处理后面的内容。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>必须以双引号或单引号开头的文本。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>截至第一个未转义的同类结束引号的前缀，包括首尾引号。</p>
+<h3>使用时注意</h3><ul>
+<li>只查找引号边界，不解码或完整校验片段里的转义。</li>
+</ul>
+<h3>错误处理</h3><ul>
+<li>未以引号开头、缺少结束引号或末尾反斜杠不完整时抛出 <code>strconv: invalid quoted prefix</code>。</li>
+</ul>
 </article>
 <article class="api-item" id="can_backquote">
 <h2><code>can_backquote</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> can_backquote(s &amp;<span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>用途</h3>
-<p>检查字符串是否可以不经转义直接用反引号字面量表示。</p>
+<p>检查文本是否可以直接放在反引号中，适合决定日志或源码展示的引用形式。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>要处理的原文本；以只读借用传入，本调用不会修改它。</dd>
 </dl>
-<h3>返回</h3>
-<p>bool — 是否成立</p>
+<h3>返回值</h3>
+<p>不含反引号、ASCII 控制字节或 DEL 时为 <code>true</code>；空文本为 <code>true</code>。</p>
+<h3>使用时注意</h3><ul>
+<li>制表符和换行也属于拒绝的控制字节。</li>
+</ul>
 </article>
 <article class="api-item" id="append_int">
 <h2><code>append_int</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> append_int(dst <span class="syn-type">string</span>, n <span class="syn-type">int</span>, base <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>执行 append int 操作。失败时 throw。</p>
+<p>执行 append int 操作。失败时抛出错误，调用方需处理或继续传播。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>dst</code> <span class="type">string</span></dt><dd>目标（string）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 <dt><code>base</code> <span class="type">int</span></dt><dd>进制（int）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="append_uint">
 <h2><code>append_uint</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> append_uint(dst <span class="syn-type">string</span>, n <span class="syn-type">int</span>, base <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>执行 append uint 操作。失败时 throw。</p>
+<p>执行 append uint 操作。失败时抛出错误，调用方需处理或继续传播。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>dst</code> <span class="type">string</span></dt><dd>目标（string）</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>数量、长度或上限（int）</dd>
 <dt><code>base</code> <span class="type">int</span></dt><dd>进制（int）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="append_bool">
@@ -1417,7 +1504,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>dst</code> <span class="type">string</span></dt><dd>目标（string）</dd>
 <dt><code>b</code> <span class="type">bool</span></dt><dd>b（bool）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="append_quote">
@@ -1428,9 +1515,9 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>dst</code> <span class="type">string</span></dt><dd>目标（string）</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="append_quote_rune">
@@ -1443,14 +1530,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>dst</code> <span class="type">string</span></dt><dd>目标（string）</dd>
 <dt><code>r</code> <span class="type">int</span></dt><dd>rune（Unicode 码点）（int）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="append_float">
 <h2><code>append_float</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> append_float(dst <span class="syn-type">string</span>, f <span class="syn-type">f64</span>, verb <span class="syn-type">int</span>, prec <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>执行 append float 操作。失败时 throw。</p>
+<p>执行 append float 操作。失败时抛出错误，调用方需处理或继续传播。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>dst</code> <span class="type">string</span></dt><dd>目标（string）</dd>
@@ -1458,34 +1545,40 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dt><code>verb</code> <span class="type">int</span></dt><dd>verb（int）</dd>
 <dt><code>prec</code> <span class="type">int</span></dt><dd>精度（int）</dd>
 </dl>
-<h3>返回</h3>
+<h3>返回值</h3>
 <p>string — 结果字符串</p>
 </article>
 <article class="api-item" id="format_float">
 <h2><code>format_float</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> format_float(f <span class="syn-type">f64</span>, verb <span class="syn-type">int</span>, prec <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>用途</h3>
-<p>格式化为 float。失败时 throw。</p>
+<p>按指定格式和精度把浮点数转换为文本，适合控制显示的小数位数。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>f</code> <span class="type">f64</span></dt><dd>浮点值</dd>
-<dt><code>verb</code> <span class="type">int</span></dt><dd>verb（int）</dd>
-<dt><code>prec</code> <span class="type">int</span></dt><dd>精度（int）</dd>
+<dt><code>f</code> <span class="type">f64</span></dt><dd>要转换的浮点数。</dd>
+<dt><code>verb</code> <span class="type">int</span></dt><dd>格式字符的整数编码：<code>101</code>（e）为科学计数法，<code>102</code>（f）为定点，<code>103</code>（g）自动选择紧凑形式。</dd>
+<dt><code>prec</code> <span class="type">int</span></dt><dd>e/f 格式的小数位数，g 格式的有效数字数；负数选择可还原原值的最短表示，g 的 <code>0</code> 按 <code>1</code> 处理。</dd>
 </dl>
-<h3>返回</h3>
-<p>string — 结果字符串</p>
+<h3>返回值</h3>
+<p>格式化结果；特殊值分别写成 <code>NaN</code>、<code>+Inf</code>、<code>-Inf</code>。</p>
+<h3>错误处理</h3><ul>
+<li><code>verb</code> 不是 <code>101</code>、<code>102</code> 或 <code>103</code> 时抛出 <code>strconv: unknown format verb</code>。</li>
+</ul>
 <p><a href="#example-a2be48ce1c23">查看用法示例</a></p>
 </article>
 <article class="api-item" id="parse_float">
 <h2><code>parse_float</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> parse_float(s &amp;<span class="syn-type">string</span>) <span class="syn-type">f64</span></code></pre></div>
 <h3>用途</h3>
-<p>解析为 float。失败时 throw。</p>
+<p>解析十进制浮点文本，支持小数和科学计数法，适合读取数值输入。</p>
 <h3>参数</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>源字符串（借用，调用方仍持有；类型 &amp;string）</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>完整数字文本，可含正负号；不会自动去除首尾空白。</dd>
 </dl>
-<h3>返回</h3>
-<p>f64 — 该类型的值</p>
+<h3>返回值</h3>
+<p>解析出的 <code>f64</code>；也接受不区分大小写的 <code>NaN</code>、<code>Inf</code>、<code>Infinity</code> 形式。</p>
+<h3>错误处理</h3><ul>
+<li>空文本、非法格式、未消费完的字符或有限数值溢出会抛错。</li>
+</ul>
 <p><a href="#example-a2be48ce1c23">查看用法示例</a></p>
 </article>

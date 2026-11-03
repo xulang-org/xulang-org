@@ -151,6 +151,14 @@ LLM guides use `templates/llms/*.md`, shared site examples, `VERSION`, and `www/
 
 Curated prose lives in `templates/api-guides/{en,zh}/`. API generation combines it with declarations from the selected SDK. Examples are imported from the official examples repository at an immutable commit; bundled snapshots in `www/api-examples/` preserve independent local and CI builds.
 
+Function-level explanations live in `templates/api-contracts.json`, keyed by package, receiver type and symbol name. Write both languages with a concrete purpose, parameter meanings and return behavior; use `notes` for boundaries and preconditions, `errors` for failure handling, and `examples` for complete local SDK programs with optional expected `output`. Backticks mark inline code. Type members render as fields or required methods rather than function parameters.
+
+Source-reviewed entries carry `source_sha256` (signature and body) and `package_sha256` (package source files, including private helpers). Generation stops when either differs: review the implementation and update the explanation before refreshing the hashes. Parameter names and authored example fields are also validated before any pages are written. Run function-local examples with the matching native compiler:
+
+```sh
+python3 scripts/check-api-examples.py --xu /path/to/selected-sdk/bin/xu
+```
+
 To refresh declarations and examples, select compatible sources in `templates/api-examples.json`, check them with the selected SDK, and supply the examples checkout and its full commit SHA:
 
 ```sh

@@ -149,6 +149,14 @@ sitemap 有意省略 `lastmod`：检出时间和 API 重新生成时间不能证
 
 手写说明保存在 `templates/api-guides/{en,zh}/`，生成时与所选 SDK 的公开声明合并。示例从官方 examples 仓库的固定提交导入；`www/api-examples/` 中的快照支持本地与 CI 独立构建。
 
+逐函数说明保存在 `templates/api-contracts.json`，按包、接收者类型和名称定位。中英内容须说明具体用途、参数含义和返回行为；`notes` 补充边界与前提，`errors` 说明错误处理，`examples` 保存可独立运行的本机 SDK 程序和可选的预期 `output`。反引号表示行内代码。类型成员分别显示为公开字段或要求的方法，避免与函数参数混淆。
+
+经过源码核对的条目保存 `source_sha256`（签名与函数体）和 `package_sha256`（含私有辅助函数的包源码）。任一摘要变化都会阻止生成；先重新核对行为并更新说明，再刷新摘要。参数名与手写示例字段也会在写页面前校验。用匹配的原生编译器验证函数旁的示例：
+
+```sh
+python3 scripts/check-api-examples.py --xu /path/to/selected-sdk/bin/xu
+```
+
 LLM 文档使用 `templates/llms/*.md`、站点共享示例、`VERSION` 与 `www/benchmarks.json`。静态构建按选定 SDK 身份生成文档；运行 `python3 scripts/gen_llms.py` 更新已跟踪的 `www/llms*.txt` 副本。
 
 刷新声明与示例时，在 `templates/api-examples.json` 中选择兼容源码，用所选 SDK 检查，再指定示例仓库及完整提交 SHA：

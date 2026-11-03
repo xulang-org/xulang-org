@@ -4,8 +4,8 @@
 <!--xu-api-version: 0.11.2-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#context</code></p>
-<p class="meta">counts: 9 fns, 2 methods, 2 types, 0 consts, 0 ifaces</p>
-<p class="lead">Background / WithCancel / WithTimeout; Done is a chan. No WithValue.</p>
+<p class="meta">counts: 9 functions, 2 methods, 2 types, 0 constants, 0 method sets</p>
+<p class="lead">Carry cancellation, deadlines and string key-value pairs between tasks. Wait on Context.done for cancellation; retain the returned Cancel and call cancel when a task must end early.</p>
 <p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
 <section class="api-examples" id="examples">
 <h2>Examples</h2>
@@ -422,7 +422,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating done, deadline_ns, keys, vals.</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>done</code> <span class="type">chan int</span></dt><dd>field (channel; type chan int)</dd>
 <dt><code>deadline_ns</code> <span class="type">int</span></dt><dd>field (int)</dd>
@@ -437,7 +437,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating ctx.</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>ctx</code> <span class="type">Context</span></dt><dd>field (Context)</dd>
 </dl>
@@ -446,129 +446,161 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <h2><code>background</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> background() Context</code></pre></div>
 <h3>Purpose</h3>
-<p>Execute background.</p>
+<p>Create an independent context with no deadline or automatic cancellation.</p>
 <h3>Parameters</h3>
-<p class="api-none">none</p>
+<p class="api-none">No arguments are required.</p>
 <h3>Returns</h3>
-<p>Context — a value of this type</p>
+<p>A new <code>Context</code> with deadline <code>0</code>, no values and an open <code>done</code> channel.</p>
 <p><a href="#example-869911852ff2">See usage example</a></p>
 </article>
 <article class="api-item" id="with_cancel">
 <h2><code>with_cancel</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel() Cancel</code></pre></div>
 <h3>Purpose</h3>
-<p>Derive a new value with cancel.</p>
+<p>Create an independent, manually cancellable context; retain the handle to cancel it when the task ends.</p>
 <h3>Parameters</h3>
-<p class="api-none">none</p>
+<p class="api-none">No arguments are required.</p>
 <h3>Returns</h3>
-<p>Cancel — a value of this type</p>
+<p>A <code>Cancel</code> containing <code>ctx</code> and cancellation control; it takes no parent context.</p>
 </article>
 <article class="api-item" id="--Cancel-cancel">
 <h2><code>($&amp;Cancel) cancel</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">$&amp;</span>Cancel) cancel()</code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `cancel` on `$&amp;Cancel`.</p>
+<p>Signal cancellation by closing this handle&#x27;s <code>ctx.done</code>, releasing tasks waiting on that channel.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Cancel</span></dt><dd>receiver $&amp;Cancel (exclusive borrow)</dd>
+<dt><code>c</code> <span class="type">$&amp;Cancel</span></dt><dd>The <code>Cancel</code> instance used by this call (exclusive borrow).</dd>
 </dl>
+<h3>Returns</h3>
+<p>No return value; repeated calls do not close the channel twice.</p>
 </article>
 <article class="api-item" id="with_cancel_parent">
 <h2><code>with_cancel_parent</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel_parent(parent &amp;Context) Cancel</code></pre></div>
 <h3>Purpose</h3>
-<p>with_cancel_parent is the parent-aware form of with_cancel. The returned context shares the parent&#x27;s deadline and is canceled when the parent&#x27;s Done channel closes. Parent and child Cancel values can still be canceled explicitly; close_once makes all three paths idempotent.</p>
+<p>Derive a cancellable child whose cancellation follows its parent.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>Parent context; its string values and deadline are copied, and its cancellation channel is observed.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cancel — a value of this type</p>
+<p>A <code>Cancel</code> controlling the child. Cancelling the child does not cancel its parent.</p>
 </article>
 <article class="api-item" id="with_timeout">
 <h2><code>with_timeout</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_timeout(timeout_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
 <h3>Purpose</h3>
-<p>Derive a new value with timeout.</p>
+<p>Create an independent context that cancels after a duration, or earlier through its cancel handle.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>timeout_ns</code> <span class="type">int</span></dt><dd>timeout in nanoseconds (int)</dd>
+<dt><code>timeout_ns</code> <span class="type">int</span></dt><dd>Duration from now in nanoseconds; <code>1_000_000_000</code> is one second. Negative durations are treated as zero.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cancel — a value of this type</p>
+<p>A <code>Cancel</code> containing the deadline and cancellation handle.</p>
+<h3>Usage notes</h3><ul>
+<li>A coroutine sends the timeout signal; a zero duration does not guarantee that the channel is already closed on return.</li>
+</ul>
 </article>
 <article class="api-item" id="with_deadline">
 <h2><code>with_deadline</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_deadline(deadline_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
 <h3>Purpose</h3>
-<p>Derive a new value with deadline.</p>
+<p>Create an independent context that cancels at an absolute deadline.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>deadline_ns</code> <span class="type">int</span></dt><dd>deadline_ns (int)</dd>
+<dt><code>deadline_ns</code> <span class="type">int</span></dt><dd>Absolute nanosecond timestamp using the same clock as <code>now_ns()</code>, not a duration from now.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cancel — a value of this type</p>
+<p>A <code>Cancel</code> with this deadline; a past timestamp schedules immediate cancellation.</p>
 </article>
 <article class="api-item" id="Context-deadline">
 <h2><code>(Context) deadline</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c Context) deadline() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `deadline` on `Context`.</p>
+<p>Read the stored deadline without waiting or changing cancellation state.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">Context</span></dt><dd>receiver Context (value receiver)</dd>
+<dt><code>c</code> <span class="type">Context</span></dt><dd>The <code>Context</code> instance used by this call (value receiver).</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — a value of this type</p>
+<p>Absolute nanosecond deadline, or <code>0</code> for a <code>background</code> or <code>without_cancel</code> context.</p>
 </article>
 <article class="api-item" id="err">
 <h2><code>err</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> err(c &amp;Context) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute err. Throws on failure.</p>
+<p>Check cancellation and expiry, returning normally only while work may continue.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>byte or character code (borrowed; caller keeps it; type &amp;Context)</dd>
+<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>Context to check.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — a value of this type</p>
+<p>Returns <code>0</code> while active; cancellation and expiry throw instead of returning a status code.</p>
+<h3>Error handling</h3><ul>
+<li>Throws <code>context canceled</code> on cancellation or <code>context deadline exceeded</code> after the deadline.</li>
+</ul>
 </article>
 <article class="api-item" id="with_value">
 <h2><code>with_value</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_value(parent &amp;Context, key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) Context</code></pre></div>
 <h3>Purpose</h3>
-<p>with_value attaches a string key/value ( WithValue; v1 keys and values are strings, not any). Later with_value of the same key shadows earlier ones.</p>
+<p>Attach a string key-value pair, such as a request identifier, for downstream calls.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
-<dt><code>key</code> <span class="type">string</span></dt><dd>key (string)</dd>
-<dt><code>val</code> <span class="type">string</span></dt><dd>value (string)</dd>
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>Parent whose cancellation channel, deadline and existing values are inherited without modifying it.</dd>
+<dt><code>key</code> <span class="type">string</span></dt><dd>Case-sensitive string key; a newer value shadows an existing key.</dd>
+<dt><code>val</code> <span class="type">string</span></dt><dd>String value to store.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Context — a value of this type</p>
+<p>A new <code>Context</code> with the added value and shared parent cancellation.</p>
 </article>
 <article class="api-item" id="value">
 <h2><code>value</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> value(c &amp;Context, key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute value. Throws on failure.</p>
+<p>Read a string value, choosing the most recently added value for a repeated key.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>byte or character code (borrowed; caller keeps it; type &amp;Context)</dd>
-<dt><code>key</code> <span class="type">string</span></dt><dd>key (string)</dd>
+<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>Context containing the values.</dd>
+<dt><code>key</code> <span class="type">string</span></dt><dd>Exact, case-sensitive key to find.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Stored string, including a legitimately empty string.</p>
+<h3>Error handling</h3><ul>
+<li>A missing key throws <code>context: no value</code>; handle this to distinguish absence from an empty value.</li>
+</ul>
+<h3>Call example</h3><p>Read a value and handle a missing key</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>context</span>
+
+<span class="syn-kw">fn</span> main() {
+    base <span class="syn-flow">:=</span> context.background()
+    request <span class="syn-flow">:=</span> context.with_value(&amp;base, <span class="syn-str">"request_id"</span>, <span class="syn-str">"req-42"</span>)
+    value <span class="syn-flow">:=</span> context.value(&amp;request, <span class="syn-str">"request_id"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(value)
+    _ <span class="syn-flow">:=</span> context.value(&amp;request, <span class="syn-str">"missing"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>req-42
+context: no value
+</samp></pre>
 </article>
 <article class="api-item" id="without_cancel">
 <h2><code>without_cancel</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> without_cancel(parent &amp;Context) Context</code></pre></div>
 <h3>Purpose</h3>
-<p>without_cancel is WithoutCancel: values are copied, deadline and cancellation are not. The new Done channel never closes.</p>
+<p>Copy string values into a context independent of its parent&#x27;s cancellation and deadline.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>Source of values; its cancellation channel and deadline are not carried into the result.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Context — a value of this type</p>
+<p>A new <code>Context</code> with deadline <code>0</code> and an independent open cancellation channel.</p>
 </article>
