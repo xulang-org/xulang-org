@@ -34,7 +34,7 @@ class HomeTaskTests(unittest.TestCase):
         for lang in ('en', 'zh'):
             with self.subTest(lang=lang):
                 home = source(lang, 'home.html')
-                hero = home.split('<section', 1)[0]
+                hero = home.split('<div class="home-section-heading">', 1)[0]
                 self.assertEqual(home.count('class="hero-install"'), 1)
                 self.assertIn('class="hero-install"', hero)
                 self.assertIn('class="hero-install-tabs" role="tablist"', hero)
@@ -64,25 +64,28 @@ class HomeTaskTests(unittest.TestCase):
         catalog = json.loads((ROOT / 'www/xu-play-examples.json').read_text())['projects']
         for lang in ('en', 'zh'):
             home = source(lang, 'home.html')
-            hero = home.split('<section', 1)[0]
+            hero = home.split('<div class="home-section-heading">', 1)[0]
             ctas = re.findall(r'<a class="btn (pri|ghost)" href="([^"]+)"', hero)
             self.assertEqual(len(ctas), 2)
             primary = urlsplit(ctas[0][1])
-            self.assertEqual(primary.path, '/playground')
-            selected = parse_qs(primary.query)['example'][0]
+            self.assertEqual(primary.fragment, 'quick-example')
+            selected = re.search(r'data-playground-example="([^"]+)"', home)[1]
             project = catalog[selected]
-            self.assertEqual(ctas[1], ('ghost', '/docs/start'))
-            preview = re.search(r'<section class="home-example xu-project-example".*?</section>', home, re.S)[0]
+            self.assertEqual(ctas[1], ('ghost', '#install-xu'))
+            preview = re.search(r'<section class="home-example xu-project-example[^\"]*".*?</section>', home, re.S)[0]
             self.assertIn(f'data-playground-example="{selected}"', preview)
             files = {name: unescape(code) for name, code in re.findall(
                 r'<code class="language-xu" data-source-file="([^"]+)">(.*?)</code>', preview, re.S)}
             self.assertEqual(files, project['files'])
-            self.assertIn(f'<samp>{project["expected"]["value"].strip()}</samp>', preview)
-            self.assertIn('xu check .', preview)
-            self.assertIn('xu run .', preview)
+            self.assertEqual(selected, 'hello')
+            self.assertEqual(len(files), 1)
+            self.assertIn('id="install-xu"', hero)
             self.assertNotRegex(home, r'xu (check|run) [^ <]*\.xu')
             self.assertLess(home.index('</section>'), home.index('<section class="pillars">'))
             self.assertIn('WASM', preview)
+            self.assertIn('data-home-run', preview)
+            self.assertIn('data-home-edit', preview)
+            self.assertIn('class="xu-play-out"', preview)
             self.assert_links_resolve(home, lang)
 
     def test_four_task_paths_have_steps_api_links_and_limits_in_both_languages(self):
