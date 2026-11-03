@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import vm from 'node:vm';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
+const fixtureModule = await WebAssembly.compile(new Uint8Array([0,97,115,109,1,0,0,0]));
 
 class Element {
   constructor(tag) {
@@ -98,6 +99,8 @@ async function mount({blocks, en = false, available = true, supported = true, ui
     }
   }
   let nextTimer = 0;
+  const wasm = Object.create(WebAssembly);
+  wasm.compile = async () => fixtureModule;
   class Worker {
     constructor(url, options) {
       assert.equal(String(url), 'https://example.org/repo/xu-play-worker.js?v=fixture');
@@ -121,10 +124,13 @@ async function mount({blocks, en = false, available = true, supported = true, ui
       querySelectorAll: () => pres,
       addEventListener(name, handler) { (pageEvents[name] ||= []).push(handler); }
     },
-    window: {Worker: supported ? Worker : null, WebAssembly, location: Object.freeze({href: 'https://example.org/repo/zh/docs/tutorial/01/'}), addEventListener() {}}, Worker, URL,
+    window: {Worker: supported ? Worker : null, WebAssembly: wasm, location: Object.freeze({href: 'https://example.org/repo/zh/docs/tutorial/01/'}), addEventListener() {}}, Worker, URL,
     navigator: {clipboard: {writeText: async value => { copied.push(value); }}},
     fetch: async url => {
       fetches.push(String(url));
+      if (String(url) === 'https://example.org/repo/xu-play.wasm?v=fixture') {
+        return {ok: true, arrayBuffer: async () => new ArrayBuffer(8)};
+      }
       assert.equal(String(url), 'https://example.org/repo/xu-play-examples.json?v=fixture');
       return {ok: true, json: async () => ({hello: {source: '@main', description: {zh: 'Hello', en: 'Hello'}}})};
     },
@@ -156,6 +162,92 @@ test('Stop terminates the busy worker, preserves code, and permits another run',
   workers[1].respond({type: 'result', exit: 0, stdout: '42\n', stderr: ''});
   assert.equal(elements['xu-play-out'].textContent, '42\n');
   assert.equal(elements['xu-play-meta'].textContent, 'exit 0');
+});
+
+test('inline loading downloads once and hands the compiled module to restarted workers', async () => {
+  const {context, pres, workers, fetches} = await mount({blocks: [{source:'@main\nfn main() int { << 0 }'}]});
+  const button = pres[0].closest('.code-block-wrapper').querySelector('.code-run-btn');
+  assert.deepEqual(fetches, []);
+  context.window.WebAssembly.Instance = () => { throw new Error('No main-thread instantiation'); };
+  button.click();
+  await new Promise(setImmediate);
+  assert.equal(workers[0].messages[0].module, fixtureModule);
+  button.click();
+  button.click();
+  await new Promise(setImmediate);
+  assert.equal(workers[1].messages[0].module, fixtureModule);
+  assert.equal(fetches.length, 1);
+});
+
+test('failed module download can be retried without reloading the page', async () => {
+  const {context, pres, workers} = await mount({blocks: [{source:'@main\nfn main() int { << 0 }'}]});
+  const wrapper = pres[0].closest('.code-block-wrapper');
+  const button = wrapper.querySelector('.code-run-btn');
+  let attempts = 0;
+  context.fetch = async () => {
+    if (++attempts === 1) throw new Error('download unavailable');
+    return {ok:true,arrayBuffer:async()=>new ArrayBuffer(8)};
+  };
+  button.click();
+  await new Promise(setImmediate);
+  assert.match(wrapper.querySelector('.xu-play-out').textContent,/download unavailable/);
+  assert.equal(workers[0].terminated,true);
+  button.click();
+  await new Promise(setImmediate);
+  assert.equal(attempts,2);
+  assert.equal(workers[1].messages[0].module,fixtureModule);
+});
+
+test('stopping during download never initializes the abandoned worker', async () => {
+  const {context,pres,workers} = await mount({blocks:[{source:'@main\nfn main() int { << 0 }'}]});
+  const button=pres[0].closest('.code-block-wrapper').querySelector('.code-run-btn');
+  let finishDownload;
+  context.fetch=()=>new Promise(resolve=>{finishDownload=resolve;});
+  button.click();
+  button.click();
+  finishDownload({ok:true,arrayBuffer:async()=>new ArrayBuffer(8)});
+  await new Promise(setImmediate);
+  assert.equal(workers[0].terminated,true);
+  assert.equal(workers[0].messages.length,0);
+  button.click();
+  await new Promise(setImmediate);
+  assert.equal(workers[1].messages[0].module,fixtureModule);
+});
+
+test('module transport failure is reported instead of waiting for a loading timeout', async () => {
+  const {context,pres,workers}=await mount({blocks:[{source:'@main\nfn main() int { << 0 }'}]});
+  context.Worker.prototype.postMessage=()=>{throw new Error('module transport unavailable');};
+  const wrapper=pres[0].closest('.code-block-wrapper');
+  wrapper.querySelector('.code-run-btn').click();
+  await new Promise(setImmediate);
+  assert.equal(workers[0].terminated,true);
+  assert.match(wrapper.querySelector('.xu-play-out').textContent,/module transport unavailable/);
+});
+
+test('switching inline programs during download or execution abandons the previous owner', async () => {
+  const {context,pres,workers}=await mount({blocks:[
+    {source:'@main\nfn main() int { println("first")\n << 0 }'},
+    {source:'@main\nfn main() int { println("second")\n << 0 }'}
+  ]});
+  const wrappers=pres.map(pre=>pre.closest('.code-block-wrapper'));
+  const buttons=wrappers.map(wrapper=>wrapper.querySelector('.code-run-btn'));
+  let finishDownload;
+  context.fetch=()=>new Promise(resolve=>{finishDownload=resolve;});
+  buttons[0].click();buttons[1].click();
+  assert.equal(workers[0].terminated,true);
+  finishDownload({ok:true,arrayBuffer:async()=>new ArrayBuffer(8)});
+  await new Promise(setImmediate);
+  assert.equal(workers[0].messages.length,0);
+  assert.match(workers[1].messages.at(-1).source,/second/);
+  workers[1].respond({type:'result',exit:0,stdout:'second\n',stderr:''});
+  buttons[0].click();buttons[1].click();
+  await new Promise(setImmediate);
+  assert.equal(workers[1].terminated,true);
+  assert.match(workers[2].messages.at(-1).source,/second/);
+  workers[1].respond({type:'result',exit:0,stdout:'stale first\n',stderr:''});
+  assert.equal(wrappers[1].querySelector('.xu-play-out').textContent.includes('stale'),false);
+  workers[2].respond({type:'result',exit:0,stdout:'second\n',stderr:''});
+  assert.equal(wrappers[1].querySelector('.xu-play-out').textContent,'second\n');
 });
 
 test('Timeout terminates execution and late results cannot overwrite the next run', async () => {
@@ -299,7 +391,7 @@ for (const en of [false, true]) {
     assert.equal(buttons[0].attributes['aria-expanded'], 'true');
     assert.notEqual(buttons[0].attributes['aria-controls'], buttons[1].attributes['aria-controls']);
     assert.notEqual(workers[0].terminated, true);
-    assert.deepEqual(fetches, [], 'inline runs do not need playground examples');
+    assert.deepEqual(fetches, ['https://example.org/repo/xu-play.wasm?v=fixture'], 'inline runs load the module once without the example catalog');
     assert.equal(context.window.location.href, 'https://example.org/repo/zh/docs/tutorial/01/');
 
     buttons[0].click();

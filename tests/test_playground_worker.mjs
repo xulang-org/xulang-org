@@ -6,7 +6,8 @@ import {once} from 'node:events';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 
-test('cold worker initializes silently and executes the requested component', {timeout: 90000}, async () => {
+for (const precompiled of [false, true]) {
+test(precompiled ? 'precompiled module executes in a worker without worker fetch' : 'cold worker initializes silently and executes the requested component', {timeout: 90000}, async () => {
   const workerURL = new URL('../www/xu-play-worker.js', import.meta.url).href;
   const wasmURL = new URL('../build/playground/xu-play.wasm', import.meta.url).href;
   const bootstrap = `
@@ -14,8 +15,11 @@ test('cold worker initializes silently and executes the requested component', {t
     import {readFile} from 'node:fs/promises';
     globalThis.self = {location: new URL(${JSON.stringify(workerURL)}),
       postMessage: value => parentPort.postMessage(value)};
-    globalThis.fetch = async () => new Response(await readFile(new URL(${JSON.stringify(wasmURL)})),
-      {headers: {'Content-Type': 'application/wasm'}});
+    globalThis.fetch = async () => {
+      if (${precompiled}) throw new Error('A precompiled module must not fetch in the worker');
+      return new Response(await readFile(new URL(${JSON.stringify(wasmURL)})),
+        {headers: {'Content-Type': 'application/wasm'}});
+    };
     await import(${JSON.stringify(workerURL)});
     parentPort.on('message', data => self.onmessage({data}));
     parentPort.postMessage({type: 'booted'});
@@ -24,7 +28,8 @@ test('cold worker initializes silently and executes the requested component', {t
   try {
     assert.deepEqual((await once(worker, 'message'))[0], {type: 'booted'});
     const ready = once(worker, 'message');
-    worker.postMessage({type: 'init'});
+    const module = precompiled ? await WebAssembly.compile(readFileSync(new URL(wasmURL))) : undefined;
+    worker.postMessage({type: 'init', module});
     assert.deepEqual((await ready)[0], {type: 'ready'});
     const result = once(worker, 'message');
     worker.postMessage({type: 'run', source: readFileSync(new URL('../playground/examples/widget-button.xu', import.meta.url), 'utf8'),
@@ -36,3 +41,4 @@ test('cold worker initializes silently and executes the requested component', {t
     assert.ok(value.ui.commands.length);
   } finally { await worker.terminate(); }
 });
+}

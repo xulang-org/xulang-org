@@ -6,18 +6,15 @@ self.onmessage = async function (event) {
   try {
     if (event.data.type === 'init') {
       const {createRuntime} = await import(runtimeUrl.href);
-      const wasmUrl = new URL('xu-play.wasm', self.location.href);
-      wasmUrl.search = self.location.search;
-      const response = await fetch(wasmUrl);
-      if (!response.ok) throw new Error('Could not load Xu playground (HTTP ' + response.status + ')');
-      let module;
-      if (typeof WebAssembly.compileStreaming === 'function') {
-        try {
-          module = await WebAssembly.compileStreaming(response.clone());
-        } catch (_) {
-          module = await WebAssembly.compile(await response.arrayBuffer());
-        }
-      } else {
+      let module = event.data.module;
+      // Browser controllers download and asynchronously compile on demand,
+      // then clone the Module here. Retain the worker-only entry point for
+      // standalone hosts and older callers of this internal protocol.
+      if (!(module instanceof WebAssembly.Module)) {
+        const wasmUrl = new URL('xu-play.wasm', self.location.href);
+        wasmUrl.search = self.location.search;
+        const response = await fetch(wasmUrl);
+        if (!response.ok) throw new Error('Could not load Xu playground (HTTP ' + response.status + ')');
         module = await WebAssembly.compile(await response.arrayBuffer());
       }
       runtime = await createRuntime(module, {cache: event.data.cache !== false, checkpoints: event.data.checkpoints !== false});
