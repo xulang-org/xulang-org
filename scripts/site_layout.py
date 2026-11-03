@@ -3,6 +3,7 @@
 from html import escape
 from html.parser import HTMLParser
 from collections.abc import Iterable
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -327,13 +328,38 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
         f'</div>'
     )
 
-    return (
-        f'<aside class="side">'
-        f'  {side_header}'
-        f'  <div class="side-content">{"".join(sections)}</div>'
-        f'  {side_footer}'
-        f'</aside>'
-    )
+    contents = side_header + f'<div class="side-content">{"".join(sections)}</div>' + side_footer
+    if rest == '/api' or rest.startswith('/api/'):
+        label = 'Browse API directory' if en else '浏览 API 目录'
+        contents = ('<details class="api-directory" id="api-directory" open>'
+                    f'<summary>{label}<i class="xi xi-chevron-down" aria-hidden="true"></i></summary>'
+                    '<div class="api-directory-body">' + contents + '</div></details>')
+    return '<aside class="side">' + contents + '</aside>'
+
+
+def api_tools(route: str, en: bool, root: Path) -> str:
+    """Use real package parents and keep all declaration/bookmark IDs intact."""
+    prefix = '' if en else '/zh'
+    relative = route.removeprefix(prefix + '/api').strip('/')
+    crumbs = [f'<a href="{prefix}/api">API</a>']
+    pieces = relative.split('/') if relative else []
+    for depth in range(1, len(pieces)):
+        parent = '/'.join(pieces[:depth])
+        label = escape(pieces[depth - 1])
+        if parent != 'index' and (root / 'content' / ('en' if en else 'zh') / 'api' / (parent + '.html')).is_file():
+            crumbs.append(f'<a href="{prefix}/api/{escape(parent, quote=True)}">{label}</a>')
+        else:
+            crumbs.append(f'<span>{label}</span>')
+    if relative:
+        crumbs.append(f'<span aria-current="page">{escape(pieces[-1])}</span>')
+    return ('<div class="api-toolbar">'
+            f'<nav class="api-breadcrumbs" aria-label="{"API location" if en else "API 位置"}">'
+            + '<span aria-hidden="true">/</span>'.join(crumbs) + '</nav>'
+            '<div class="api-toolbar-actions">'
+            f'<button type="button" data-api-search hidden><i class="xi xi-search" aria-hidden="true"></i>'
+            f'<span>{"Search API" if en else "搜索 API"}</span><kbd>/</kbd></button>'
+            f'<button type="button" data-api-copy hidden>{"Copy link" if en else "复制链接"}</button>'
+            '</div><span class="api-feedback" role="status" data-api-feedback></span></div>')
 
 
 class FAQParser(HTMLParser):
@@ -561,6 +587,18 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     en = not (route == '/zh' or route.startswith('/zh/'))
     prefix = '' if en else '/zh'
     home = prefix or '/'
+    api_route = route == prefix + '/api' or route.startswith(prefix + '/api/')
+    api_assets = ''
+    if api_route:
+        digest = hashlib.sha256()
+        for name in ('api-browser.css', 'api-browser.js'):
+            digest.update((root / 'www' / name).read_bytes())
+        version = digest.hexdigest()[:16]
+        api_assets = (f'<link rel="stylesheet" href="/api-browser.css?v={version}">'
+                      f'<script src="/api-browser.js?v={version}" defer></script>')
+        body = re.sub(r'<p class="crumb">.*?</p>\s*', '', body, count=1, flags=re.DOTALL)
+        body = re.sub(r'<nav class="widget-crumb"[^>]*>.*?</nav>\s*', '', body, count=1, flags=re.DOTALL)
+        body = api_tools(route, en, root) + body
     nav = []
     for href, icon, zh, english in [
         ('/docs/start', 'book', '文档', 'Docs'),
@@ -589,7 +627,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     elif route in ('/benchmarks', '/zh/benchmarks'):
         main = '<main class="home bench-page">' + body + '</main>'
     else:
-        cls = 'doc download' if route == prefix + '/download' else 'doc'
+        cls = 'doc download' if route == prefix + '/download' else ('doc api-page' if api_route else 'doc')
         main = '<div class="page page-with-side">' + sidebar(route, en, xu_version, root) + f'<main class="{cls}">' + body + '</main></div>'
     other = ('/zh' if route == '/' else '/zh' + route) if en else (route[3:] or '/')
     if route == '/404':
@@ -607,7 +645,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         footer_identity='XU' if route in ('/', '/zh') else 'XU v' + escape(xu_version),
         nav=''.join(nav), main=main,
         playground_assets=playground_assets,
-        page_assets=('<link rel="stylesheet" href="/playground-design.css"><link rel="stylesheet" href="/widgets.css">'
+        page_assets=api_assets + ('<link rel="stylesheet" href="/playground-design.css"><link rel="stylesheet" href="/widgets.css">'
                      if '/api/ui/widgets' in route else '') + ('<link rel="stylesheet" href="/playground.css">'
                      '<link rel="stylesheet" href="/playground-design.css">'
                      '<link rel="stylesheet" href="/widgets.css">'
