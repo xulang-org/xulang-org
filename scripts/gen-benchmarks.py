@@ -9,6 +9,7 @@ import statistics
 from pathlib import Path
 import re
 from benchmark_groups import platform_groups
+from benchmark_results import FAILURES
 
 ROOT = Path(__file__).resolve().parents[1]
 DATA_FILE = ROOT / "www/benchmarks.json"
@@ -299,7 +300,7 @@ def get_bench_impl_metric(b: dict | None, lang_key: str, metric_key: str) -> flo
     elif lang_key == "go":
         target = impls.get("go build")
 
-    if not target:
+    if not target or target.get('status', 'ok') != 'ok':
         return None
     val = target.get(metric_key)
     if (not isinstance(val, (int, float)) or isinstance(val, bool)
@@ -419,6 +420,13 @@ def render_workload_metric_table(b_name: str, platforms: dict, m_cfg: dict, en: 
         for c in active_configs:
             pid = c["id"]
             val = table_data[lk].get(pid)
+            bench = next((b for b in platforms[pid].get('benches', []) if b['name'] == b_name), {})
+            failed = bench.get('xu_status') if is_xu else None
+            if failed in FAILURES:
+                label = FAILURES[failed][0 if en else 1]
+                error = html.escape(bench.get('xu_error', ''), quote=True)
+                cells.append(f'<td class="bench-result-failed" title="{error}">{label}</td>')
+                continue
             if val is not None and val > 0:
                 p_best = p_best_map.get(pid)
                 is_best = (p_best is not None and abs(val - p_best) < 1e-4)
@@ -617,6 +625,16 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
         )
 
     table_heading = "6-Platform Audited Data Matrix & Median" if en else "6 大目标平台审计实测数据表与中位数"
+    failure_rows = []
+    for c in active_configs:
+        item = p_map.get(c['id'])
+        if item and item.get('xu_status') in FAILURES:
+            status = FAILURES[item['xu_status']][0 if en else 1]
+            error = html.escape(item.get('xu_error', ''))
+            failure_rows.append(f"<li><strong>{c['name_en']} {c['arch_tag']}: {status}</strong><pre>{error}</pre></li>")
+    failures = ('<details class="bench-failure-detail"><summary>Xu: '
+                + (f'{len(failure_rows)} platform failures' if en else f'{len(failure_rows)} 个平台失败')
+                + '</summary><ul>' + ''.join(failure_rows) + '</ul></details>') if failure_rows else ''
 
     return f"""
 <div class="bench-workload-block" id="workload-{b_name}" data-name="{b_name.lower()}" data-desc="{desc.lower()}">
@@ -634,6 +652,7 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
       </button>
     </div>
   </div>
+  {failures}
   {bars_matrix_html}
   <div class="bench-workload-table-toolbar">
     <div class="bench-workload-table-heading">
@@ -833,140 +852,38 @@ def render_workload_bars_matrix(b_name: str, platforms: dict, en: bool) -> str:
 """
 
 
-def render_radar_overview_section(platforms: dict, en: bool) -> str:
-    any_p = next(iter(platforms.values()), {})
-    wcount = len(any_p.get("benches", [])) or 47
-
-    sec_title = "Language Engineering Profiles & Trade-offs" if en else "各语言多维工程特性与设计权衡 (Language Profiles)"
-    sec_desc = (
-        f"Synthesizing all 6 architecture platforms and {wcount} audited workloads across execution speed, RSS memory, binary size, and CPU efficiency:"
-        if en
-        else f"汇总 6 大操作系统与芯片架构平台、{wcount} 项实测负载，在运行速度、物理内存、二进制体积与 CPU 计算四大维度的综合工程特性全景与设计权衡："
-    )
-
-    lbl_speed = "⚡ Execution Speed" if en else "⚡ 运行速度 (Wall Time)"
-    lbl_rss = "🧠 Memory Compactness" if en else "🧠 内存轻量 (Low RSS)"
-    lbl_cpu = "⏱️ CPU Efficiency" if en else "⏱️ CPU 能效 (Low CPU)"
-    lbl_bin = "📦 Binary Compactness" if en else "📦 产物精简 (Small Binary)"
-
-    return f"""
+def render_coverage_overview_section(platforms: dict, en: bool) -> str:
+    """Count real valid measurements; do not imply an aggregate speed score."""
+    names = {b['name'] for p in platforms.values() for b in p.get('benches', [])}
+    total = len(names) * len(PLATFORMS_CONFIG)
+    headers = ''.join('<th>' + html.escape(m['title_en' if en else 'title_zh']) + '</th>'
+                      for m in BENCH_METRICS_CONFIG)
+    rows = []
+    for language in BENCH_LANGS_CONFIG:
+        cells = []
+        for metric in BENCH_METRICS_CONFIG:
+            count = 0
+            for cfg in PLATFORMS_CONFIG:
+                platform = platforms.get(cfg['id'], {})
+                if metric['key'] == 'rss_mib' and platform.get('rss_validated') is False:
+                    continue
+                count += sum(comparable_metric(get_bench_impl_metric(b, language['key'], metric['key']))
+                             for b in platform.get('benches', []))
+            cells.append(f'<td class="num" data-language="{language["key"]}" data-metric="{metric["key"]}">{count}/{total}</td>')
+        rows.append('<tr><th>' + html.escape(language['name']) + '</th>' + ''.join(cells) + '</tr>')
+    title = 'Measurement coverage' if en else '实测覆盖情况'
+    explanation = ('Valid results / scheduled platform-workload pairs. Failed, unavailable and below-resolution measurements are excluded. Each algorithm and input size keeps its own results below.'
+                   if en else '有效结果数 / 计划的平台负载组合数。失败、缺测和低于计时精度的结果不计入有效覆盖；各算法和输入规模的结果在下方分别展示。')
+    return f'''
 <div class="bench-cat-section bench-sec-radar">
-  <div class="bench-cat-section-header">
-    <div class="bench-cat-title-wrap">
-      <span class="bench-cat-icon">{SVG_RADAR}</span>
-      <h3 class="bench-cat-title">{sec_title}</h3>
-      <span class="bench-cat-count">{'Design Trade-offs' if en else '设计取向与权衡'}</span>
-    </div>
-    <p class="bench-cat-desc">{sec_desc}</p>
-  </div>
-
-  <div class="bench-radar-body">
-    <!-- 雷达图矢量 SVG：基于 47 项负载实测中位数几何标准化比例绘制 -->
-    <div class="bench-radar-svg-wrap">
-      <svg class="bench-radar-svg" viewBox="-140 0 620 320" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <!-- 同心菱形网格刻度 (25%, 50%, 75%, 100%) -->
-        <polygon points="190,45 305,160 190,275 75,160" stroke="currentColor" stroke-opacity="0.1" stroke-dasharray="3,3" fill="none"/>
-        <polygon points="190,74 276,160 190,246 104,160" stroke="currentColor" stroke-opacity="0.12" stroke-dasharray="3,3" fill="none"/>
-        <polygon points="190,103 248,160 190,218 133,160" stroke="currentColor" stroke-opacity="0.15" stroke-dasharray="3,3" fill="none"/>
-        <polygon points="190,131 219,160 190,189 161,160" stroke="currentColor" stroke-opacity="0.1" fill="none"/>
-
-        <!-- 轴线 -->
-        <line x1="190" y1="45" x2="190" y2="275" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5"/>
-        <line x1="75" y1="160" x2="305" y2="160" stroke="currentColor" stroke-opacity="0.2" stroke-width="1.5"/>
-
-        <!-- 轴端文字 -->
-        <text x="190" y="28" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor">{lbl_speed}</text>
-        <text x="316" y="164" text-anchor="start" font-size="11.5" font-weight="700" fill="currentColor">{lbl_rss}</text>
-        <text x="190" y="298" text-anchor="middle" font-size="11.5" font-weight="700" fill="currentColor">{lbl_cpu}</text>
-        <text x="64" y="164" text-anchor="end" font-size="11.5" font-weight="700" fill="currentColor">{lbl_bin}</text>
-
-        <!-- Go (绿色：并发/GC调度体系，原生并发生态卓越；内嵌GC与调度器带来基线体积与常驻内存取舍) -->
-        <polygon points="190.0,80.0 242.0,160.0 190.0,236.0 152.0,160.0" fill="#10b981" fill-opacity="0.12" stroke="#10b981" stroke-width="1.8" stroke-dasharray="3,2"/>
-        
-        <!-- Swift (品红：LLVM优化后端计算强劲；ARC原子引用计数与标准库基础运行时具有特定基线) -->
-        <polygon points="190.0,72.0 268.0,160.0 190.0,242.0 120.0,160.0" fill="#ec4899" fill-opacity="0.12" stroke="#ec4899" stroke-width="1.8"/>
-
-        <!-- Rust (橙色：系统级零成本抽象与强安全，计算吞吐拔尖；静态全量嵌入stdlib使部分产物体积略大) -->
-        <polygon points="190.0,47.0 300.0,160.0 190.0,273.0 128.0,160.0" fill="#f97316" fill-opacity="0.14" stroke="#f97316" stroke-width="1.8"/>
-
-        <!-- C (-O3) (天蓝：极致速度与轻巧基准，行业基准标尺) -->
-        <polygon points="190.0,45.0 304.0,160.0 190.0,275.0 80.0,160.0" fill="#0ea5e9" fill-opacity="0.14" stroke="#0ea5e9" stroke-width="1.8"/>
-
-        <!-- Xu (紫罗兰：AOT编译期借用与零GC，确定性微型体积与低内存) -->
-        <polygon points="190.0,49.0 298.0,160.0 190.0,271.0 82.0,160.0" fill="var(--bench-xu)" fill-opacity="0.22" stroke="var(--bench-xu)" stroke-width="2.4"/>
-        <circle cx="190.0" cy="49.0" r="4" fill="var(--bench-xu)" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
-        <circle cx="298.0" cy="160.0" r="4" fill="var(--bench-xu)" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
-        <circle cx="271.0" cy="271.0" r="0" fill="none"/>
-        <circle cx="190.0" cy="271.0" r="4" fill="var(--bench-xu)" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
-        <circle cx="82.0" cy="160.0" r="4" fill="var(--bench-xu)" stroke="var(--xu-bg-surface)" stroke-width="1.5"/>
-      </svg>
-    </div>
-
-    <!-- 右侧各语言工程特性与设计权衡卡片 -->
-    <div class="bench-radar-cards">
-      <div class="bench-radar-scorecard">
-        <div class="bench-radar-scorecard-header">
-          <span style="color: #0ea5e9;">🔵 C (Clang)</span>
-          <span class="bench-radar-tag" style="color: #0ea5e9; border-color: rgba(14, 165, 233, 0.35); background: rgba(14, 165, 233, 0.08);">
-            {'Direct Hardware Mapping · Zero Runtime' if en else '直接硬件映射 · 零语言运行时'}
-          </span>
-        </div>
-        <p class="bench-radar-scorecard-desc">
-          {'Direct mapping to machine instructions with zero language runtime overhead. Serves as the industry gold standard for wall time, CPU efficiency, and compact binary footprint.' if en else '直接面向底层机器指令，无语言层运行时开销。在端到端耗时、CPU 资源能效与独立产物体积上，始终是系统级高性能工程的行业参考基准。'}
-        </p>
-      </div>
-
-      <div class="bench-radar-scorecard">
-        <div class="bench-radar-scorecard-header">
-          <span style="color: #f97316;">🟠 Rust (rustc)</span>
-          <span class="bench-radar-tag" style="color: #f97316; border-color: rgba(249, 115, 22, 0.35); background: rgba(249, 115, 22, 0.08);">
-            {'Ownership Model · Zero-Cost Abstractions' if en else '所有权模型 · 零成本抽象'}
-          </span>
-        </div>
-        <p class="bench-radar-scorecard-desc">
-          {'Compile-time borrow checking provides type-safe memory management without garbage collection. Delivers top-tier compute performance; standalone binaries embed the standard library on static linking targets.' if en else '依托编译期借用检查（Borrow Checker），在无需垃圾回收的前提下实现强类型内存安全。数值计算与算法能效卓越；在部分系统静态链接下因内嵌全量标准库使独立产物体积有所增加。'}
-        </p>
-      </div>
-
-      <div class="bench-radar-scorecard scorecard-xu">
-        <div class="bench-radar-scorecard-header">
-          <span style="color: var(--bench-xu);">🟣 Xu</span>
-          <span class="bench-radar-tag" style="color: var(--bench-xu); border-color: rgba(var(--bench-xu-rgb), 0.4); background: rgba(var(--bench-xu-rgb), 0.1);">
-            {'AOT Compilation · Deterministic Zero-GC' if en else 'AOT 静态编译 · 零 GC 确定性析构'}
-          </span>
-        </div>
-        <p class="bench-radar-scorecard-desc">
-          {'Adopts deterministic scope-based destruction and compile-time borrowing without a tracing garbage collector. Delivers sub-millisecond startup, tight RSS footprint (0.5–4MB), and compact binaries (20–70KB) with near-C/Rust compute throughput.' if en else '采用编译期作用域生命周期与确定性析构，无需运行时垃圾回收（Zero-GC）。在追求极小产物体积（20~70KB）与毫秒级即时响应的同时，提供贴近 C 与 Rust 的原生计算吞吐。'}
-        </p>
-      </div>
-
-      <div class="bench-radar-scorecard">
-        <div class="bench-radar-scorecard-header">
-          <span style="color: #ec4899;">🌸 Swift (swiftc -O)</span>
-          <span class="bench-radar-tag" style="color: #ec4899; border-color: rgba(236, 72, 153, 0.35); background: rgba(236, 72, 153, 0.08);">
-            {'Modern Syntax · Auto ARC' if en else '现代语法特性 · 自动 ARC'}
-          </span>
-        </div>
-        <p class="bench-radar-scorecard-desc">
-          {'Combines expressive modern syntax with LLVM backend optimization for robust compute throughput. Manages memory via ARC, where atomic reference adjustments and standard runtime establish a baseline footprint.' if en else '结合现代高级语法表现力与 LLVM 优化后端，在密集算法与数值计算中吞吐强劲。采用自动引用计数（ARC）管理对象生命周期，原子引用计数增减与标准运行时使微循环耗时与常驻内存具有一定基线。'}
-        </p>
-      </div>
-
-      <div class="bench-radar-scorecard">
-        <div class="bench-radar-scorecard-header">
-          <span style="color: #10b981;">🟢 Go (gc)</span>
-          <span class="bench-radar-tag" style="color: #10b981; border-color: rgba(16, 185, 129, 0.35); background: rgba(16, 185, 129, 0.08);">
-            {'CSP Concurrency · Low-Latency Concurrent GC' if en else 'CSP 并发调度 · 低延迟并发 GC'}
-          </span>
-        </div>
-        <p class="bench-radar-scorecard-desc">
-          {'Renowned for fast compilation, developer velocity, and native Goroutine/Channel concurrency. Embeds a concurrent tri-color GC and cross-platform scheduler, trading runtime baseline footprint for robust concurrent engineering ergonomics.' if en else '以极高的工程构建速度、高开发效率与原生轻量 Goroutine/Channel 并发闻名。每个独立二进制均内嵌三色并发标记清除 GC 与跨平台调度器，其工程权衡带来了固定的运行时二进制内嵌体积与常驻内存底线。'}
-        </p>
-      </div>
-    </div>
-  </div>
+  <div class="bench-cat-section-header"><h3 class="bench-cat-title">{title}</h3>
+    <p class="bench-cat-desc">{explanation}</p></div>
+  <div class="bench-workload-table-wrap"><table class="bench-workload-table">
+    <thead><tr><th>{'Language' if en else '语言'}</th>{headers}</tr></thead>
+    <tbody>{''.join(rows)}</tbody>
+  </table></div>
 </div>
-"""
+'''
 
 
 def render_footprint_integrated_section(platforms: dict, en: bool) -> str:
@@ -1200,11 +1117,11 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
     desc = (
         f"Seven whole-program executions per implementation; reported wall time is the median including process launch. "
         f"C and Rust select the lowest measured median among O1/O2/O3. {rss_note} "
-        f"All Xu outputs and exit codes passed harness verification. Compiler identities, source closures and Gen2=Gen3 bootstrap verified."
+        f"Only successful, output-verified runs carry metrics. Failures retain their status and diagnostics, without ratios or rankings. Compiler identities, source closures and Gen2=Gen3 bootstrap verified."
         if en else
         f"每项实现独立运行七次整进程，展示包含进程冷启动的 Wall 耗时中位数。"
         f"C 与 Rust 自动选取该负载同平台 O1/O2/O3 中位数的最小值；Go、Swift 展示官方实测。{rss_note}"
-        f"全部 Xu 负载的输出与退出状态 100% 通过测试机校验；六份编译器身份的提交 SHA、版本、源闭包和 Gen2=Gen3 自举自验完全核验通过。"
+        f"仅成功且通过输出校验的运行记录实测指标；失败项保留状态和诊断，不计算倍率、不参与排名。六份编译器身份的提交 SHA、版本、源闭包和 Gen2=Gen3 自举自验已核验。"
     )
 
     t1_title = "Audited Platform & Telemetry Matrix" if en else "6 大目标测试机环境与遥测机制"
@@ -1240,13 +1157,13 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
     th_rt = "Runtime & Memory Model" if en else "运行时与内存机制"
 
     compilers_rows = [
-        ("Xu", "xu build -O", "零 GC · 编译期借用生命周期与 RAII 确定性析构"),
+        ("Xu", "xu build（版本默认优化参数）", "零 GC · 编译期借用生命周期与 RAII 确定性析构"),
         ("C (Clang)", "clang -O1 / -O2 / -O3 (取最优)", "手动 free · 零运行时开销 (性能标尺)"),
         ("Rust (rustc)", "rustc -C opt-level=1 / 2 / 3 (取最优)", "零 GC · 所有权生命周期与 Scope Drop"),
         ("Swift", "swiftc -O", "ARC 自动引用计数运行时 (含 Swift 标准库)"),
         ("Go", "go build (native)", "并发三色标记清除 GC 运行时 (含并发调度器)"),
     ] if not en else [
-        ("Xu", "xu build -O", "Zero GC / RAII Scope Drop / Native machine-code backend"),
+        ("Xu", "xu build (versioned defaults)", "Zero GC / RAII Scope Drop / Native machine-code backend"),
         ("C (Clang)", "clang -O1 / -O2 / -O3 (lowest median)", "Manual memory management / Zero runtime"),
         ("Rust (rustc)", "rustc -C opt-level=1 / 2 / 3 (lowest median)", "Zero GC / Ownership Drop / LLVM Backend"),
         ("Swift", "swiftc -O", "ARC (Automatic Reference Counting) runtime"),
@@ -1259,7 +1176,16 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
             f'<tr><td><strong>{clang}</strong></td><td><code>{cflag}</code></td><td><small>{crt}</small></td></tr>'
         )
 
-    repro_cmd = "git clone https://github.com/xulang-org/bench.git && cd bench && ./run.sh --all --reps 7"
+    bench_commit = meta.get('bench_commit', '')
+    checkout = f'git checkout {bench_commit} && ' if re.fullmatch(r'[0-9a-f]{40}', bench_commit) else ''
+    repro_cmd = html.escape('git clone https://github.com/xulang-org/bench.git && cd bench && '
+                           + checkout + f'XU_ROOT=/path/to/xu-source-{meta["xu_version"]} '
+                           + 'python3 scripts/bench_crosslang.py '
+                           + f'--xu /path/to/xu-sdk-{meta["xu_version"]}/bin/xu '
+                           + '--iters 7 --out reports/crosslang.txt', quote=True)
+    source_commit = html.escape(meta.get('xu_commit', 'unrecorded'))
+    repro_note = (f'Replace both /path/to paths: XU_ROOT is the Xu source checkout at {source_commit}; --xu is the matching published SDK executable (xu.exe on Windows).'
+                  if en else f'请替换两个 /path/to 路径：XU_ROOT 指向提交 {source_commit} 的 Xu 源码检出，--xu 指向对应正式 SDK 的可执行文件（Windows 为 xu.exe）。')
     copy_btn_txt = "Copy Command" if en else "复制复现指令"
 
     return f"""
@@ -1298,6 +1224,7 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
     </div>
   </div>
 
+  <p class="meta">{repro_note}</p>
   <div class="bench-repro-console">
     <div><span style="opacity: 0.6; user-select: none;">$ </span><span>{repro_cmd}</span></div>
     <button type="button" class="bench-repro-btn" onclick="copyBenchReproCmd(this, '{repro_cmd}')">
@@ -1360,6 +1287,27 @@ def render_pending_workloads(sources: dict, platforms: dict, en: bool) -> str:
   <p>{description}</p>
   <button type="button" class="bench-src-modal-btn" onclick="openBenchCodeModal('http_concurrent', 'HTTP concurrency')">{button}</button>
 </section>'''
+
+
+def render_outcome_summary(platforms: dict, en: bool) -> str:
+    rows = []
+    total = failed = 0
+    for cfg in PLATFORMS_CONFIG:
+        benches = platforms.get(cfg['id'], {}).get('benches', [])
+        failures = sum(b.get('xu_status', 'ok') != 'ok' for b in benches)
+        total += len(benches)
+        failed += failures
+        rows.append(f"<li>{cfg['name_en']} {cfg['arch_tag']}: "
+                    + (f'{len(benches) - failures} passed / {failures} failed' if en
+                       else f'{len(benches) - failures} 项通过 / {failures} 项失败') + '</li>')
+    if not failed:
+        return ''
+    title = (f'Xu: {total - failed}/{total} platform-workload checks passed; {failed} failed'
+             if en else f'Xu：{total - failed}/{total} 次平台负载检查通过，{failed} 项失败')
+    explanation = ('Failed workloads remain in the suite with diagnostics. They have no performance metrics or ranking.'
+                   if en else '失败负载继续保留并显示诊断，不填写性能指标、不参与排名。')
+    return (f'<aside class="bench-outcome-summary" data-failed-count="{failed}"><strong>{title}</strong>'
+            f'<p>{explanation}</p><ul>{"".join(rows)}</ul></aside>')
 
 
 def render_page(data: dict, lang: str) -> str:
@@ -1449,8 +1397,9 @@ def render_page(data: dict, lang: str) -> str:
                 f'</button>'
             )
 
-    # 2. 全语言四维综合战力罗盘 (置顶大盘)
-    radar_section = render_radar_overview_section(platforms, en)
+    # Summaries report measured coverage and observed ranges only.
+    coverage_section = render_coverage_overview_section(platforms, en)
+    footprint_section = render_footprint_integrated_section(platforms, en)
 
     # 阳光公开与严谨复现承诺 (Transparency Charter)
     charter_section = render_transparency_charter_section(meta, en)
@@ -1723,6 +1672,8 @@ function jumpToBenchSection(secKey) {
     <p class="banner"><i class="xi xi-benchmark xi-brand"></i> {meta_text}</p>
     <h1>{h1_text}</h1>
     <p class="lead">{lead_text}</p>
+    <p class="meta">{'Expand related workloads to compare their separate algorithms and input sizes. Results are never pooled.' if en else '展开同类项目可查看不同算法和输入规模的独立结果；各变体不合并计算。'}</p>
+    {render_outcome_summary(platforms, en)}
     {render_toolchain_versions(platforms, version, en)}
   </div>
 </div>
@@ -1740,7 +1691,7 @@ function jumpToBenchSection(secKey) {
   <div class="bench-anchor-bar">
     <div class="bench-anchor-links">
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('radar')">
-        {SVG_RADAR} <span>{'Engineering Profiles' if en else '四维特性全景'}</span>
+        {SVG_RADAR} <span>{'Coverage' if en else '实测覆盖'}</span>
       </button>
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('footprint')">
         {SVG_BRAIN} <span>{'Memory & Size' if en else '内存与体积'}</span>
@@ -1761,8 +1712,9 @@ function jumpToBenchSection(secKey) {
   <input id="bench-search" type="search" oninput="searchBenchAll(this.value)" placeholder="{'Name, algorithm or input size' if en else '名称、算法或输入规模'}">
 </label>
 
-<!-- 1. 全语言四维综合战力罗盘 (置顶大盘) -->
-{radar_section}
+<!-- Valid measurement coverage; workloads remain separate. -->
+{coverage_section}
+{footprint_section}
 
 <!-- 2. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 6 平台详细数据表) -->
 {''.join(category_sections)}

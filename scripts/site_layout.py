@@ -598,7 +598,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
     # Reading a page must not download the compiler. The worker fetches WASM
     # when a runnable example is started; explicit playground links still run.
-    playground_assets = '' if route in ('/', '/zh') else '<script src="/xu-play.js" defer></script>'
+    playground_assets = ('<script src="/xu-play.js" defer></script>\n'
+                         '  <script src="/home-demo.js" defer></script>') if route in ('/', '/zh') else '<script src="/xu-play.js" defer></script>'
     return template.substitute(
         lang='en' if en else 'zh-CN', title=escape(title), home=home,
         home_title='Xu Home' if en else 'Xu 官网首页',

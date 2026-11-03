@@ -7,6 +7,7 @@ import math
 from pathlib import Path
 import re
 from sync_all_benches import registered_benches, require_bench_commit
+from benchmark_results import FAILURES, METRICS, validate_failure
 
 ROOT = Path(__file__).resolve().parents[1]
 TARGETS = ('macos-arm64', 'linux-arm64', 'windows-arm64',
@@ -68,25 +69,48 @@ def load(artifacts, version, commit, run_id, measured_date, bench_root=None):
         names = names or current
         if current != names or len(set(current)) != len(current) or len(current) != meta['total_benches']:
             raise ValueError(f'{target}: incomplete workload matrix')
-        verified = re.findall(r'^Xu\s+(\S+)\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+\d+\s+OK\b',
-                              (folder / 'crosslang.txt').read_text(), re.M)
-        if sorted(verified) != sorted(current):
+        records = {}
+        for encoded in re.findall(r'^# result: (.+)$', raw, re.M):
+            record = json.loads(encoded)
+            pair = (record.pop('bench'), record.pop('impl'))
+            if pair in records:
+                raise ValueError(f'{target}: duplicate runtime outcome')
+            validate_failure(record)
+            records[pair] = record
+        if records and set(records) != {(b['name'], label) for b in data['benches'] for label in b['implementations']}:
+            raise ValueError(f'{target}: incomplete runtime implementation outcomes')
+        verified = re.findall(r'^Xu\s+(\S+)\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+[\d.]+\s+\d+\s+OK\b', raw, re.M)
+        successful = [b['name'] for b in data['benches'] if b.get('xu_status', 'ok') == 'ok']
+        if sorted(verified) != sorted(successful):
             raise ValueError(f'{target}: missing verified stdout')
         for item in data['benches']:
             impls = item['implementations']
-            if not positive(impls['Xu']['wall_ms']) or impls['Xu']['wall_ms'] != item['xu_wall_ms']:
-                raise ValueError(f'{target}/{item["name"]}: invalid Xu median')
+            status = item.get('xu_status', 'ok')
+            for label, result in impls.items():
+                validate_failure(result)
+                if records and records.get((item['name'], label)) != result:
+                    raise ValueError(f'{target}/{item["name"]}: {label} differs from runtime evidence')
+            xu = impls['Xu']
+            if xu.get('status', 'ok') != status:
+                raise ValueError(f'{target}/{item["name"]}: Xu outcome mismatch')
+            if status == 'ok':
+                if not positive(xu['wall_ms']) or xu['wall_ms'] != item['xu_wall_ms']:
+                    raise ValueError(f'{target}/{item["name"]}: invalid Xu median')
+            else:
+                if (not records or status not in FAILURES or item.get('xu_error') != xu.get('error')
+                        or any(item.get('xu_' + key) is not None for key in METRICS)):
+                    raise ValueError(f'{target}/{item["name"]}: unverified or measured Xu failure')
             for prefix, key in [('clang', 'c'), ('rustc', 'rust')]:
                 choices = [(name, impls[name]['wall_ms']) for name in
                            (f'{prefix} -O{i}' for i in (1, 2, 3))
-                           if name in impls and positive(impls[name]['wall_ms'])]
+                           if name in impls and positive(impls[name].get('wall_ms'))]
                 chosen = min(choices, key=lambda pair: pair[1]) if choices else (None, None)
                 item[key + '_implementation'], item[key + '_wall_ms'] = chosen
             for name, key in [('go build', 'go'), ('swiftc -O', 'swift')]:
                 item[key + '_wall_ms'] = impls.get(name, {}).get('wall_ms')
             for key in ('c', 'rust', 'go', 'swift'):
                 peer = item[key + '_wall_ms']
-                item['ratio_vs_' + key] = item['xu_wall_ms'] / peer if positive(peer) else None
+                item['ratio_vs_' + key] = item['xu_wall_ms'] / peer if positive(item['xu_wall_ms']) and positive(peer) else None
         rss_validated = not target.startswith('linux-') or meta.get('rss_method') == 'linux-post-exec-vmhwm-v1'
         footprint = []
         for impl, label in [('Xu', 'Xu'), ('clang -O3', 'Clang -O3'),
@@ -101,7 +125,10 @@ def load(artifacts, version, commit, run_id, measured_date, bench_root=None):
                 if values and (key != 'rss' or rss_validated):
                     record[key] = f'{min(values):.2f} – {max(values):.2f}'
             footprint.append(record)
-        platforms[target] = {**meta, 'rss_validated': rss_validated,
+        failed = len(current) - len(successful)
+        if meta.get('xu_failed_benches', failed) != failed:
+            raise ValueError(f'{target}: wrong failure count')
+        platforms[target] = {**meta, 'xu_failed_benches': failed, 'rss_validated': rss_validated,
                              'rss_note': '' if rss_validated else 'Invalid legacy wait4 peak includes launcher memory; pending retest',
                              'benches': data['benches'], 'footprint': footprint}
         identities[target] = identity
@@ -112,6 +139,7 @@ def load(artifacts, version, commit, run_id, measured_date, bench_root=None):
                          'bench_commit': bench_commit, 'source_closure_sha256': closure,
                          'run_url': f'https://github.com/xulang-org/bench/actions/runs/{run_id}',
                          'platforms': list(TARGETS), 'total_benches': len(names),
+                         'xu_failed_cases': sum(p['xu_failed_benches'] for p in platforms.values()),
                          'methodology': '7 whole-program wall-time samples; median; verified stdout; '
                                         'Xu / minimum same-platform clang/rustc O1/O2/O3 median'},
             'default_platform': 'macos-arm64', 'categories': categories,
