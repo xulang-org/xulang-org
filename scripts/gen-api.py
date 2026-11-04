@@ -114,6 +114,7 @@ def parse_receiver(recv: str) -> tuple[str, str]:
 def borrow_type(typ: str) -> tuple[str, str]:
     """Return the underlying type and borrow kind without changing source signatures."""
     t = typ.strip()
+    # Read historical contract snapshots; generated examples use current $& syntax.
     exclusive = re.match(r'^(?:\$&\s*|&mut\s+)', t)
     if exclusive:
         return t[exclusive.end():].strip(), 'exclusive'
@@ -420,9 +421,7 @@ def parse_struct_fields(block: str) -> list[Field]:
         if t.startswith("pub "):
             pub = True
             t = t[4:].strip()
-        if t.startswith("mut "):
-            t = t[4:].strip()
-        elif t.startswith("$"):
+        if t.startswith("$"):
             t = t[1:].strip()
         m = re.match(r"^([A-Za-z_][A-Za-z0-9_]*)\s+(.+?)$", t.rstrip(","))
         if not m:
@@ -2374,9 +2373,9 @@ def highlight_xu(sig: str) -> str:
         r'(?P<cmt>//[^\n]*|/\*[\s\S]*?\*/)'
         r'|(?P<str>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`[^`]*`)'
         r'|(?P<import>#[A-Za-z0-9_/]+)'
-        r'|(?P<borrow>\$&|&\s*mut\b|mut\s*&)'
+        r'|(?P<borrow>\$&)'
         r'|(?P<flow>>>|<<|:=|<-|->)'
-        r'|(?P<kw>\b(?:pub|fn|struct|mut|const|affine|defer|xu|if|else|match|return|interface|type|chan|or|for|while|in)\b@?)'
+        r'|(?P<kw>\b(?:pub|fn|struct|const|affine|defer|xu|if|else|match|return|interface|type|chan|or|for|while|in)\b@?)'
         r'|(?P<type>\b(?:int|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|string|bool|char|void|any|error|byte|rune|Self)\b)'
     )
     parts = []
