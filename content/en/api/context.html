@@ -1,18 +1,18 @@
 <!--title: #context-->
 <p class="crumb">API</p>
 <h1><code>#context</code></h1>
-<!--xu-api-version: 0.11.2-->
+<!--xu-api-version: 0.11.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#context</code></p>
-<p class="meta">counts: 9 fns, 2 methods, 2 types, 0 consts, 0 ifaces</p>
-<p class="lead">Background / WithCancel / WithTimeout; Done is a chan. No WithValue.</p>
+<p class="meta">counts: 9 functions, 2 methods, 2 types, 0 constants, 0 method sets</p>
+<p class="lead">Carry cancellation, deadlines and string key-value pairs between tasks. Wait on Context.done for cancellation; retain the returned Cancel and call cancel when a task must end early.</p>
 <p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
 <section class="api-examples" id="examples">
 <h2>Examples</h2>
 <p>These sources come from the official examples repository and can be copied or downloaded. Run them with a local Xu SDK in the complete project; network, database, and desktop examples require the corresponding services or assets.</p>
 <details class="api-example" id="example-869911852ff2" open>
 <summary><code>34_standalone_postgres/main.xu</code></summary>
-<p class="meta">Required SDK: Xu 0.8.3 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/34_standalone_postgres">Complete project</a> · <a href="/api-examples/sources/examples/34_standalone_postgres/main.xu" download>Download source</a></p>
+<p class="meta">Required SDK: Xu 0.8.3 · <a href="https://github.com/xulang-org/examples/tree/2da227ae61a90e1dfe73f4fc7989e6e5f5bdadd8/examples/34_standalone_postgres">Complete project</a> · <a href="/api-examples/sources/examples/34_standalone_postgres/main.xu" download>Download source</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="34_standalone_postgres/main.xu"><code class="language-xu">@main
 
 postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/postgres
@@ -22,7 +22,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <span class="syn-kw">fn</span> verify_postgres_live() {
     println(<span class="syn-str">"--- Testing Native Postgres Driver Wire Protocol ---"</span>)
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
-    <span class="syn-kw">mut</span> conn <span class="syn-flow">:=</span> postgres.open(dsn)
+    $conn <span class="syn-flow">:=</span> postgres.open(dsn)
 
     <span class="syn-cmt">// 1. Ping</span>
     err <span class="syn-flow">:=</span> conn.ping()
@@ -49,7 +49,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Table 'xu_heroes' created."</span>)
 
     <span class="syn-cmt">// 3. Exec DML Insert</span>
-    <span class="syn-kw">mut</span> args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    $args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
     args1.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
     args1.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Ironman"</span>})
     args1.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 100})
@@ -62,7 +62,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Hero inserted (rows="</span> + str(r3.rows_affected) + <span class="syn-str">")."</span>)
 
     <span class="syn-cmt">// 4. Query</span>
-    <span class="syn-kw">mut</span> q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
+    $q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
     q_args.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
     rows <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, power FROM xu_heroes WHERE id = $$1;"</span>, q_args)
     <span class="syn-kw">if</span> rows.err.len &gt; 0 {
@@ -71,13 +71,13 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] Query executed, columns count: "</span> + str(rows.columns.len))
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    $i <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> i &lt; rows.columns.len {
         println(<span class="syn-str">"      Col["</span> + str(i) + <span class="syn-str">"]: "</span> + rows.columns[i])
         i = i + 1
     }
     println(<span class="syn-str">"   Total cells retrieved: "</span> + str(rows.cells.len))
-    <span class="syn-kw">mut</span> j <span class="syn-flow">:=</span> 0
+    $j <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> j &lt; rows.cells.len {
         println(<span class="syn-str">"      Cell["</span> + str(j) + <span class="syn-str">"]: "</span> + rows.cells[j])
         j = j + 1
@@ -85,8 +85,8 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 
     <span class="syn-cmt">// 5. Transaction</span>
     println(<span class="syn-str">"   Testing Transaction Commit..."</span>)
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> conn.begin()
-    <span class="syn-kw">mut</span> args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    $tx <span class="syn-flow">:=</span> conn.begin()
+    $args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
     args2.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 2})
     args2.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Thor"</span>})
     args2.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 200})
@@ -122,7 +122,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 <span class="syn-kw">fn</span> verify_postgres_pool() {
     println(<span class="syn-str">"\n--- Testing Native Postgres Connection Pool ---"</span>)
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
-    <span class="syn-kw">mut</span> pool <span class="syn-flow">:=</span> postgres.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
+    $pool <span class="syn-flow">:=</span> postgres.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
 
     pool.ping() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
@@ -142,7 +142,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Pool created table xu_pool_users."</span>)
 
     <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    $i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
         pool.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, i, <span class="syn-str">"User_"</span> + str(i), i * 100) <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
@@ -153,11 +153,11 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
 
     <span class="syn-cmt">// 3. Query</span>
-    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, name, balance FROM xu_pool_users ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+    $rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, name, balance FROM xu_pool_users ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    $count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
         vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
@@ -177,7 +177,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
 
     <span class="syn-cmt">// 4. Transaction via Pool</span>
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+    $tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -212,7 +212,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
 </details>
 <details class="api-example" id="example-4d43ae676054">
 <summary><code>35_standalone_mysql/main.xu</code></summary>
-<p class="meta">Required SDK: Xu 0.8.3 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/35_standalone_mysql">Complete project</a> · <a href="/api-examples/sources/examples/35_standalone_mysql/main.xu" download>Download source</a></p>
+<p class="meta">Required SDK: Xu 0.8.3 · <a href="https://github.com/xulang-org/examples/tree/2da227ae61a90e1dfe73f4fc7989e6e5f5bdadd8/examples/35_standalone_mysql">Complete project</a> · <a href="/api-examples/sources/examples/35_standalone_mysql/main.xu" download>Download source</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre tabindex="0" aria-label="35_standalone_mysql/main.xu"><code class="language-xu">@main
 
 mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xulang-org/packages/mysql
@@ -222,7 +222,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <span class="syn-kw">fn</span> verify_mysql_live() {
     println(<span class="syn-str">"--- Testing Native MySQL/MariaDB Driver Wire Protocol ---"</span>)
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
-    <span class="syn-kw">mut</span> conn <span class="syn-flow">:=</span> mysql.open(dsn)
+    $conn <span class="syn-flow">:=</span> mysql.open(dsn)
 
     <span class="syn-cmt">// 1. Ping</span>
     err <span class="syn-flow">:=</span> conn.ping()
@@ -249,7 +249,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Table 'xu_developers' created."</span>)
 
     <span class="syn-cmt">// 3. Exec DML Insert</span>
-    <span class="syn-kw">mut</span> args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    $args1 <span class="syn-flow">:=</span> []driver.NamedValue{}
     args1.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
     args1.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"Antigravity"</span>})
     args1.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 500})
@@ -262,7 +262,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Developer inserted (rows="</span> + str(r3.rows_affected) + <span class="syn-str">")."</span>)
 
     <span class="syn-cmt">// 4. Query</span>
-    <span class="syn-kw">mut</span> q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
+    $q_args <span class="syn-flow">:=</span> []driver.NamedValue{}
     q_args.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 1})
     rows <span class="syn-flow">:=</span> conn.query(<span class="syn-str">"SELECT id, name, commits FROM xu_developers WHERE id = ?;"</span>, q_args)
     <span class="syn-kw">if</span> rows.err.len &gt; 0 {
@@ -271,13 +271,13 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] Query executed, columns count: "</span> + str(rows.columns.len))
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 0
+    $i <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> i &lt; rows.columns.len {
         println(<span class="syn-str">"      Col["</span> + str(i) + <span class="syn-str">"]: "</span> + rows.columns[i])
         i = i + 1
     }
     println(<span class="syn-str">"   Total cells retrieved: "</span> + str(rows.cells.len))
-    <span class="syn-kw">mut</span> j <span class="syn-flow">:=</span> 0
+    $j <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> j &lt; rows.cells.len {
         println(<span class="syn-str">"      Cell["</span> + str(j) + <span class="syn-str">"]: "</span> + rows.cells[j])
         j = j + 1
@@ -285,8 +285,8 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
     <span class="syn-cmt">// 5. Transaction</span>
     println(<span class="syn-str">"   Testing Transaction Commit..."</span>)
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> conn.begin()
-    <span class="syn-kw">mut</span> args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
+    $tx <span class="syn-flow">:=</span> conn.begin()
+    $args2 <span class="syn-flow">:=</span> []driver.NamedValue{}
     args2.push(driver.NamedValue{ordinal: 1, name: <span class="syn-str">""</span>, value: 2})
     args2.push(driver.NamedValue{ordinal: 2, name: <span class="syn-str">""</span>, value: <span class="syn-str">"XuArchitect"</span>})
     args2.push(driver.NamedValue{ordinal: 3, name: <span class="syn-str">""</span>, value: 1000})
@@ -322,7 +322,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <span class="syn-kw">fn</span> verify_mysql_pool() {
     println(<span class="syn-str">"\n--- Testing Native MySQL/MariaDB Connection Pool ---"</span>)
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
-    <span class="syn-kw">mut</span> pool <span class="syn-flow">:=</span> mysql.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
+    $pool <span class="syn-flow">:=</span> mysql.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
 
     pool.ping() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
@@ -342,7 +342,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Pool created table xu_pool_orders."</span>)
 
     <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
-    <span class="syn-kw">mut</span> i <span class="syn-flow">:=</span> 1
+    $i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
         pool.exec(<span class="syn-str">"INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"Order_"</span> + str(i), i * 150) <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
@@ -353,11 +353,11 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
 
     <span class="syn-cmt">// 3. Query</span>
-    <span class="syn-kw">mut</span> rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, title, amount FROM xu_pool_orders ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+    $rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, title, amount FROM xu_pool_orders ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    <span class="syn-kw">mut</span> count <span class="syn-flow">:=</span> 0
+    $count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
         vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
             println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
@@ -377,7 +377,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
 
     <span class="syn-cmt">// 4. Transaction via Pool</span>
-    <span class="syn-kw">mut</span> tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+    $tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -422,7 +422,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating done, deadline_ns, keys, vals.</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>done</code> <span class="type">chan int</span></dt><dd>field (channel; type chan int)</dd>
 <dt><code>deadline_ns</code> <span class="type">int</span></dt><dd>field (int)</dd>
@@ -437,7 +437,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating ctx.</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>ctx</code> <span class="type">Context</span></dt><dd>field (Context)</dd>
 </dl>
@@ -446,129 +446,161 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <h2><code>background</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> background() Context</code></pre></div>
 <h3>Purpose</h3>
-<p>Execute background.</p>
+<p>Create an independent context with no deadline or automatic cancellation.</p>
 <h3>Parameters</h3>
-<p class="api-none">none</p>
+<p class="api-none">No arguments are required.</p>
 <h3>Returns</h3>
-<p>Context — a value of this type</p>
+<p>A new <code>Context</code> with deadline <code>0</code>, no values and an open <code>done</code> channel.</p>
 <p><a href="#example-869911852ff2">See usage example</a></p>
 </article>
 <article class="api-item" id="with_cancel">
 <h2><code>with_cancel</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel() Cancel</code></pre></div>
 <h3>Purpose</h3>
-<p>Derive a new value with cancel.</p>
+<p>Create an independent, manually cancellable context; retain the handle to cancel it when the task ends.</p>
 <h3>Parameters</h3>
-<p class="api-none">none</p>
+<p class="api-none">No arguments are required.</p>
 <h3>Returns</h3>
-<p>Cancel — a value of this type</p>
+<p>A <code>Cancel</code> containing <code>ctx</code> and cancellation control; it takes no parent context.</p>
 </article>
 <article class="api-item" id="--Cancel-cancel">
 <h2><code>($&amp;Cancel) cancel</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">$&amp;</span>Cancel) cancel()</code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `cancel` on `$&amp;Cancel`.</p>
+<p>Signal cancellation by closing this handle&#x27;s <code>ctx.done</code>, releasing tasks waiting on that channel.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">$&amp;Cancel</span></dt><dd>receiver $&amp;Cancel (exclusive borrow)</dd>
+<dt><code>c</code> <span class="type">$&amp;Cancel</span></dt><dd>The <code>Cancel</code> instance used by this call (exclusive borrow).</dd>
 </dl>
+<h3>Returns</h3>
+<p>No return value; repeated calls do not close the channel twice.</p>
 </article>
 <article class="api-item" id="with_cancel_parent">
 <h2><code>with_cancel_parent</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_cancel_parent(parent &amp;Context) Cancel</code></pre></div>
 <h3>Purpose</h3>
-<p>with_cancel_parent is the parent-aware form of with_cancel. The returned context shares the parent&#x27;s deadline and is canceled when the parent&#x27;s Done channel closes. Parent and child Cancel values can still be canceled explicitly; close_once makes all three paths idempotent.</p>
+<p>Derive a cancellable child whose cancellation follows its parent.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>Parent context; its string values and deadline are copied, and its cancellation channel is observed.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cancel — a value of this type</p>
+<p>A <code>Cancel</code> controlling the child. Cancelling the child does not cancel its parent.</p>
 </article>
 <article class="api-item" id="with_timeout">
 <h2><code>with_timeout</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_timeout(timeout_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
 <h3>Purpose</h3>
-<p>Derive a new value with timeout.</p>
+<p>Create an independent context that cancels after a duration, or earlier through its cancel handle.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>timeout_ns</code> <span class="type">int</span></dt><dd>timeout in nanoseconds (int)</dd>
+<dt><code>timeout_ns</code> <span class="type">int</span></dt><dd>Duration from now in nanoseconds; <code>1_000_000_000</code> is one second. Negative durations are treated as zero.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cancel — a value of this type</p>
+<p>A <code>Cancel</code> containing the deadline and cancellation handle.</p>
+<h3>Usage notes</h3><ul>
+<li>A coroutine sends the timeout signal; a zero duration does not guarantee that the channel is already closed on return.</li>
+</ul>
 </article>
 <article class="api-item" id="with_deadline">
 <h2><code>with_deadline</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_deadline(deadline_ns <span class="syn-type">int</span>) Cancel</code></pre></div>
 <h3>Purpose</h3>
-<p>Derive a new value with deadline.</p>
+<p>Create an independent context that cancels at an absolute deadline.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>deadline_ns</code> <span class="type">int</span></dt><dd>deadline_ns (int)</dd>
+<dt><code>deadline_ns</code> <span class="type">int</span></dt><dd>Absolute nanosecond timestamp using the same clock as <code>now_ns()</code>, not a duration from now.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cancel — a value of this type</p>
+<p>A <code>Cancel</code> with this deadline; a past timestamp schedules immediate cancellation.</p>
 </article>
 <article class="api-item" id="Context-deadline">
 <h2><code>(Context) deadline</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c Context) deadline() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `deadline` on `Context`.</p>
+<p>Read the stored deadline without waiting or changing cancellation state.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">Context</span></dt><dd>receiver Context (value receiver)</dd>
+<dt><code>c</code> <span class="type">Context</span></dt><dd>The <code>Context</code> instance used by this call (value receiver).</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — a value of this type</p>
+<p>Absolute nanosecond deadline, or <code>0</code> for a <code>background</code> or <code>without_cancel</code> context.</p>
 </article>
 <article class="api-item" id="err">
 <h2><code>err</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> err(c &amp;Context) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute err. Throws on failure.</p>
+<p>Check cancellation and expiry, returning normally only while work may continue.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>byte or character code (borrowed; caller keeps it; type &amp;Context)</dd>
+<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>Context to check.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — a value of this type</p>
+<p>Returns <code>0</code> while active; cancellation and expiry throw instead of returning a status code.</p>
+<h3>Error handling</h3><ul>
+<li>Throws <code>context canceled</code> on cancellation or <code>context deadline exceeded</code> after the deadline.</li>
+</ul>
 </article>
 <article class="api-item" id="with_value">
 <h2><code>with_value</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> with_value(parent &amp;Context, key <span class="syn-type">string</span>, val <span class="syn-type">string</span>) Context</code></pre></div>
 <h3>Purpose</h3>
-<p>with_value attaches a string key/value ( WithValue; v1 keys and values are strings, not any). Later with_value of the same key shadows earlier ones.</p>
+<p>Attach a string key-value pair, such as a request identifier, for downstream calls.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
-<dt><code>key</code> <span class="type">string</span></dt><dd>key (string)</dd>
-<dt><code>val</code> <span class="type">string</span></dt><dd>value (string)</dd>
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>Parent whose cancellation channel, deadline and existing values are inherited without modifying it.</dd>
+<dt><code>key</code> <span class="type">string</span></dt><dd>Case-sensitive string key; a newer value shadows an existing key.</dd>
+<dt><code>val</code> <span class="type">string</span></dt><dd>String value to store.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Context — a value of this type</p>
+<p>A new <code>Context</code> with the added value and shared parent cancellation.</p>
 </article>
 <article class="api-item" id="value">
 <h2><code>value</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> value(c &amp;Context, key <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute value. Throws on failure.</p>
+<p>Read a string value, choosing the most recently added value for a repeated key.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>byte or character code (borrowed; caller keeps it; type &amp;Context)</dd>
-<dt><code>key</code> <span class="type">string</span></dt><dd>key (string)</dd>
+<dt><code>c</code> <span class="type">&amp;Context</span></dt><dd>Context containing the values.</dd>
+<dt><code>key</code> <span class="type">string</span></dt><dd>Exact, case-sensitive key to find.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Stored string, including a legitimately empty string.</p>
+<h3>Error handling</h3><ul>
+<li>A missing key throws <code>context: no value</code>; handle this to distinguish absence from an empty value.</li>
+</ul>
+<h3>Call example</h3><p>Read a value and handle a missing key</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>context</span>
+
+<span class="syn-kw">fn</span> main() {
+    base <span class="syn-flow">:=</span> context.background()
+    request <span class="syn-flow">:=</span> context.with_value(&amp;base, <span class="syn-str">"request_id"</span>, <span class="syn-str">"req-42"</span>)
+    value <span class="syn-flow">:=</span> context.value(&amp;request, <span class="syn-str">"request_id"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+    println(value)
+    _ <span class="syn-flow">:=</span> context.value(&amp;request, <span class="syn-str">"missing"</span>) <span class="syn-kw">or</span> (err) {
+        println(err.msg())
+        <span class="syn-flow">&lt;&lt;</span>
+    }
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>req-42
+context: no value
+</samp></pre>
 </article>
 <article class="api-item" id="without_cancel">
 <h2><code>without_cancel</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> without_cancel(parent &amp;Context) Context</code></pre></div>
 <h3>Purpose</h3>
-<p>without_cancel is WithoutCancel: values are copied, deadline and cancellation are not. The new Done channel never closes.</p>
+<p>Copy string values into a context independent of its parent&#x27;s cancellation and deadline.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>parent (borrowed; caller keeps it; type &amp;Context)</dd>
+<dt><code>parent</code> <span class="type">&amp;Context</span></dt><dd>Source of values; its cancellation channel and deadline are not carried into the result.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Context — a value of this type</p>
+<p>A new <code>Context</code> with deadline <code>0</code> and an independent open cancellation channel.</p>
 </article>
