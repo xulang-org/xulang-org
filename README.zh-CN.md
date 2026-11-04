@@ -84,6 +84,8 @@ xu build main.xu -o hello
 
 XU 正在 **0.x 阶段**持续演进。已发布 SDK 见 [Releases](https://github.com/xulang-org/xu/releases)，平台与运行时覆盖见 [限制与现状](https://xulang.org/zh/docs/status)。[基准看板](https://xulang.org/zh/benchmarks) 保留实测负载、编译器版本与源码来源。
 
+打开 [API 文档](https://xulang.org/zh/api/)，使用「搜索 API」查找包或直达本页声明。在输入框外按 `/` 打开搜索，方向键和 Enter 操作结果，Escape 关闭。手机上目录默认收起，便于直接阅读正文；声明标题可直达对应位置，「复制链接」可分享当前页面或声明。
+
 ## 探索生态
 
 | 项目 | 入口 |

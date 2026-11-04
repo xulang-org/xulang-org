@@ -84,6 +84,8 @@ Continue with the [getting started guide](https://xulang.org/docs/start), [langu
 
 XU is actively evolving in the **0.x series**. See [Releases](https://github.com/xulang-org/xu/releases) for published SDKs and [status and limitations](https://xulang.org/docs/status) for platform and runtime coverage. The [benchmark dashboard](https://xulang.org/benchmarks) records measured workloads, compiler versions, and source provenance.
 
+Use [Search API](https://xulang.org/api/) to find a package or jump to a declaration on the current page. Press `/` outside an input to open search; arrows and Enter navigate results, and Escape closes it. The API directory collapses on phones so content stays within reach. Declaration headings are permanent links, and Copy link shares the current page or declaration.
+
 ## Explore the ecosystem
 
 | Project | Where to go |
