@@ -3,7 +3,7 @@
 #ui/draw
 demo #"github.com/xulang-org/examples/ui_demo"
 
-fn paint(context &draw.Context,frame &mut draw.Frame,hits int) int {
+fn paint(context &draw.Context,frame $&draw.Frame,hits int) int {
     frame.begin() or >>
     frame.set_bg(demo.background()) or >>
     demo.text(context,frame,32.0,28.0,14.0,demo.accent(),"01 / FRAME RECORDER") or >>
@@ -29,17 +29,17 @@ fn scene(ech chan ui.Event) int {
     if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
-    mut frame := context.new_frame(4096)
-    mut hits := 0
-    mut pressed := false
-    paint(&context,mut &frame,hits) or >>
+    $frame := context.new_frame(4096)
+    $hits := 0
+    $pressed := false
+    paint(&context,$&frame,hits) or >>
     while true {
         event := demo.next(ech)
         if event.kind == ui.EV_EXIT { <- }
         if event.window_id != identity.window_id { -> }
         if event.kind == ui.EV_CANVAS_CLOSED { <- }
         if event.kind == ui.EV_BLURRED { pressed = false }
-        if event.kind == ui.EV_CANVAS_METRICS { paint(&context,mut &frame,hits) or >> }
+        if event.kind == ui.EV_CANVAS_METRICS { paint(&context,$&frame,hits) or >> }
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
             if input.generation != identity.generation { -> }
@@ -51,7 +51,7 @@ fn scene(ech chan ui.Event) int {
             if input.kind == ui.EV_POINTER_CANCEL { pressed = false }
             if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT {
                 if pressed && inside { hits = hits + 1
-                    paint(&context,mut &frame,hits) or >> }
+                    paint(&context,$&frame,hits) or >> }
                 pressed = false
             }
         }
@@ -62,7 +62,7 @@ fn scene(ech chan ui.Event) int {
 fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
     << } }
 fn launch() int {
-    mut app := demo.app("Xu UI / Frame",680,430) or >>
+    $app := demo.app("Xu UI / Frame",680,430) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }
