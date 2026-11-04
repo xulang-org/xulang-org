@@ -45,6 +45,23 @@ def median_cell(platforms, metric='wall_ms', language='swift', en=False):
 
 
 class BenchmarkRankingTests(unittest.TestCase):
+    def test_comparison_failures_show_localized_escaped_diagnostics(self):
+        data = self.fixture()
+        self.assertEqual(benchmarks.render_peer_failures(data, True), '')
+        row = data['windows-x64']['benches'][0]
+        row['implementations']['go build'] = dict(status='run_failed', error='socket <unavailable> & retry')
+        row['implementations']['Xu'] = dict(status='run_failed', error='separate Xu outcome')
+        for en, title in ((True, 'Comparison measurements: 1 failed'), (False, '比较程序测量：1 项失败')):
+            with self.subTest(en=en):
+                source = benchmarks.render_peer_failures(data, en)
+                self.assertIn(title, source)
+                self.assertIn(title + ' (go build)</strong>', source)
+                self.assertIn('data-peer-failed-count="1"', source)
+                self.assertIn('startup · go build', source)
+                self.assertIn('socket &lt;unavailable&gt; &amp; retry', source)
+                self.assertNotIn('socket <unavailable>', source)
+                self.assertNotIn('separate Xu outcome', source)
+
     def test_overview_coverage_is_derived_from_valid_results(self):
         data = self.fixture()
         source = benchmarks.render_coverage_overview_section(data, True)
