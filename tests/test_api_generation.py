@@ -20,6 +20,20 @@ spec.loader.exec_module(api)
 
 
 class APIGenerationTests(unittest.TestCase):
+    def test_state_parameters_are_not_described_as_strings(self):
+        item = api.Item('fn', 'wpa2_handshake_receive',
+                        'pub fn wpa2_handshake_receive(s $&Handshake) bool',
+                        params=[api.Param('s', '$&Handshake')], ret='bool')
+        package = api.Package('embedded/wifi', '#embedded/wifi', items=[item])
+        for lang, string_hint, borrow_hint in (('en', 'source string', 'exclusive borrow'),
+                                                ('zh', '源字符串', '独占借用')):
+            with self.subTest(lang=lang):
+                page = api.render_page(package, lang, '0.11.3')
+                self.assertNotIn(string_hint, page)
+                self.assertIn(borrow_hint, page)
+                meaning = api.param_meaning('sample', 'consume', api.Param('s', '&string'), lang)
+                self.assertIn(string_hint, meaning)
+
     def test_file_only_public_packages_are_discovered_and_rendered(self):
         with tempfile.TemporaryDirectory() as temporary:
             source = Path(temporary)

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Generate public Xu and external-package API HTML from companion sources.
 
-Reads packages with mod.xu under --src (default ../xu/src).
+Reads public packages under --src (default ../xu/src).
 Writes content/{zh,en}/api/**.html under --site.
 Does not touch companion repositories. Excludes compiler internals and tests.
 """
@@ -1630,6 +1630,9 @@ def param_meaning(pkg, fn: str, p: Param, lang: str) -> str:
     if p.name == "a" and "[]" not in p.typ:
         extra = type_note(p.typ, zh)
         return ("值" if zh else "value") + extra
+    if p.name == "s" and borrow_type(p.typ)[0] != "string":
+        # A short name alone does not make a state object a source string.
+        return p.name + type_note(p.typ, zh)
     if p.name in PARAM_HINTS:
         h = PARAM_HINTS[p.name][0 if zh else 1]
         extra = type_note(p.typ, zh)
