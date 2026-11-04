@@ -1310,6 +1310,33 @@ def render_outcome_summary(platforms: dict, en: bool) -> str:
             f'<p>{explanation}</p><ul>{"".join(rows)}</ul></aside>')
 
 
+def render_peer_failures(platforms: dict, en: bool) -> str:
+    rows = []
+    peers = set()
+    for cfg in PLATFORMS_CONFIG:
+        for bench in platforms.get(cfg['id'], {}).get('benches', []):
+            for name, result in bench.get('implementations', {}).items():
+                status = result.get('status', 'ok')
+                if name == 'Xu' or status not in FAILURES:
+                    continue
+                peers.add(name)
+                label = FAILURES[status][0 if en else 1]
+                heading = f"{cfg['name_en']} {cfg['arch_tag']} · {bench['name']} · {name}: {label}"
+                rows.append(f'<li><strong>{html.escape(heading)}</strong>'
+                            f'<pre>{html.escape(result.get("error", ""))}</pre></li>')
+    if not rows:
+        return ''
+    title = (f'Comparison measurements: {len(rows)} failed' if en
+             else f'比较程序测量：{len(rows)} 项失败')
+    title += ' (' + ', '.join(sorted(peers)) + ')'
+    explanation = ('Failed comparison results have no metrics, ratios or ranking.' if en
+                   else '失败的比较结果不填写性能指标，不计算倍率、不参与排名。')
+    details = 'View failure diagnostics' if en else '查看失败诊断'
+    return (f'<aside class="bench-outcome-summary" data-peer-failed-count="{len(rows)}">'
+            f'<strong>{html.escape(title)}</strong><p>{explanation}</p><details><summary>{details}</summary>'
+            f'<ul>{"".join(rows)}</ul></details></aside>')
+
+
 def render_page(data: dict, lang: str) -> str:
     en = lang == "en"
     meta = data["metadata"]
@@ -1674,6 +1701,7 @@ function jumpToBenchSection(secKey) {
     <p class="lead">{lead_text}</p>
     <p class="meta">{'Expand related workloads to compare their separate algorithms and input sizes. Results are never pooled.' if en else '展开同类项目可查看不同算法和输入规模的独立结果；各变体不合并计算。'}</p>
     {render_outcome_summary(platforms, en)}
+    {render_peer_failures(platforms, en)}
     {render_toolchain_versions(platforms, version, en)}
   </div>
 </div>

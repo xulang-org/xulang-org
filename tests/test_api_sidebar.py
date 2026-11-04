@@ -5,6 +5,8 @@ from html.parser import HTMLParser
 from pathlib import Path
 import tempfile
 import unittest
+import shutil
+import subprocess
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,7 +72,8 @@ class APISidebarTests(unittest.TestCase):
                 with self.subTest(lang=lang, route=route):
                     rendered = site_layout.sidebar(route, lang == 'en')
                     parsed = SidebarLinks(rendered)
-                    self.assertEqual(parsed.buckets, [('standard-library', 1), ('ui', 1), ('extensions', 1)])
+                    self.assertEqual(parsed.buckets, [('standard-library', 2), ('ui', 2), ('extensions', 2)])
+                    self.assertIn('id="api-directory" open', rendered)
                     expected = {prefix + '/api/' + p for p in on_disk}
                     self.assertEqual(set(parsed.hrefs), {prefix + '/api'} | expected)
                     self.assertEqual(len(parsed.hrefs), len(on_disk) + 1)
@@ -128,6 +131,40 @@ class APISidebarTests(unittest.TestCase):
             self.assertEqual(parsed.link_buckets['/api/packages/future'], 'extensions')
             self.assertEqual(parsed.link_buckets['/api/ui/future'], 'ui')
             self.assertTrue(parsed.visible_links['/api/packages/future'])
+
+    def test_breadcrumbs_only_link_to_real_parent_packages(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            parent = root / 'content/zh/api/ui.html'
+            parent.parent.mkdir(parents=True)
+            parent.write_text('<h1>UI</h1>')
+            rendered = site_layout.api_tools('/zh/api/ui/widgets/button', False, root)
+            self.assertIn('href="/zh/api/ui"', rendered)
+            self.assertNotIn('href="/zh/api/ui/widgets"', rendered)
+            self.assertIn('aria-current="page">button', rendered)
+            (parent.parent / 'index.html').write_text('<h1>API index</h1>')
+            rendered = site_layout.api_tools('/zh/api/index/suffixarray', False, root)
+            self.assertNotIn('href="/zh/api/index"', rendered)
+            self.assertIn('<span>index</span>', rendered)
+
+    def test_search_assets_and_tools_are_scoped_and_versioned(self):
+        rendered = site_layout.render(ROOT, '#strings', '/zh/api/strings', '<h1>#strings</h1>', '0.11.2')
+        self.assertRegex(rendered, r'/api-browser\.js\?v=[a-f0-9]{16}')
+        self.assertIn('class="doc api-page"', rendered)
+        self.assertIn('data-api-search hidden', rendered)
+        self.assertIn('data-api-copy hidden', rendered)
+        other = site_layout.render(ROOT, 'Docs', '/zh/docs/start', '<h1>Docs</h1>', '0.11.2')
+        self.assertNotIn('/api-browser.', other)
+        self.assertNotIn('data-api-search', other)
+        component = site_layout.render(ROOT, 'Button', '/zh/api/ui/widgets/button',
+                                       '<nav class="widget-crumb">Old trail</nav><h1>Button</h1>', '0.11.2')
+        self.assertNotIn('class="widget-crumb"', component)
+        self.assertIn('class="api-breadcrumbs"', component)
+
+    @unittest.skipUnless(shutil.which('node'), 'Node is optional for static builds')
+    def test_search_matches_packages_receivers_and_localized_descriptions(self):
+        result = subprocess.run(['node', '--test', str(ROOT / 'tests/test_api_browser.mjs')], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 if __name__ == '__main__':

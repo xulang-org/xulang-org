@@ -39,6 +39,12 @@
 <tr><td><code>void</code></td><td><code>void</code></td><td>Procedures without returns, for state initialization and side-effects</td></tr>
 </tbody></table></div>
 
+<h2>2.1 Synchronous borrowed i64 spans: xu-c-2</h2>
+<p>Xu 0.11.3 adds the opt-in <code>abi: "xu-c-2"</code> contract. A manifest parameter <code>i64_span</code> maps to Xu <code>&amp;[]int</code> and a pointer to <code>xu_i64_span</code>; <code>i64_span_mut</code> maps to <code>$&amp;[]int</code> and a pointer to <code>xu_i64_span_mut</code>. The matching <code>include/xu_native.h</code> defines the C layouts: an eight-byte element count followed by a data pointer.</p>
+<p>Each synchronous call receives a separate temporary descriptor. Native code must not retain the descriptor or data pointer, change descriptor fields, resize the array or take ownership. A writable span permits element writes only. Empty spans may have a null data pointer. Capacity and Xu's private descriptor remain inside the runtime.</p>
+<p>C2 currently supports hosted 64-bit targets, 64-bit <code>int</code> scalar parameters, and <code>int</code>/<code>void</code> results. It does not define floating signatures, general callbacks or borrowed results. Platform argument registers, stack arguments and Win64 shadow space are handled by the adapter; this does not extend the one-step linker support described above. Use a Xu wrapper when a native function must be passed as a function value.</p>
+<p>C2 selects XUOBJ version 2 and <code>xulib-2</code>, with container version 2 at byte offset 7. Older products explicitly reject the new format; C1 libraries remain supported. The following binary diagram describes the C1 container layout. Container selection and slice extraction happen during the build; C2 still performs its call-scoped descriptor and argument staging at runtime.</p>
+
 <h2>3. .xulib Binary Layout</h2>
 <p><code>.xulib</code> is a self-describing multi-architecture static library container (specification <code>xulib-1</code>). It follows a compact linear segment layout consisting of a magic signature, fixed header, manifest contract, slice index table, and multi-architecture payload slices:</p>
 
@@ -463,6 +469,6 @@ cc -nostartfiles -no-pie main.o native_add-linux.a -o app
 A: Yes, on the supported macOS targets. You can point directly to <code>native_add: file:./native/native_add-arm64.a</code> in <code>xu.xun</code> or pass it on the command line: <code>xu build main.xu ./native/native_add-arm64.a</code>. Ensure the archive contains the <code>xu.o</code> metadata member produced by <code>xu native compile</code> or <code>xu native archive</code>.</p>
 
 <p><strong>Q: Does <code>.xulib</code> introduce any runtime overhead?</strong><br>
-A: <strong>Zero runtime overhead</strong>. <code>.xulib</code> operates purely at compile time. The selected slice is directly fed to the native platform linker, producing an identical static binary with zero runtime wrappers.</p>
+A: The container is processed at build time and needs no runtime unpacker. The selected native slice is linked into the application. C2 calls also prepare borrowed descriptors and platform arguments; container extraction does not remove that ABI adapter work.</p>
 
 <p><a href="/docs/modules">Modules and dependencies</a> · <a href="/docs/packages">External packages</a> · <a href="/docs/cli">CLI reference</a></p>

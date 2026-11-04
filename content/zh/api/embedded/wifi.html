@@ -1,0 +1,429 @@
+<!--title: #embedded/wifi-->
+<p class="crumb">API</p>
+<h1><code>#embedded/wifi</code></h1>
+<!--xu-api-version: 0.11.3-->
+<p class="banner">Xu {{xu_version}} API</p>
+<p class="meta">导入方式: <code>#embedded/wifi</code></p>
+<p class="meta">公开 API: 12 函数, 4 方法, 6 类型, 13 常量, 0 方法集</p>
+<h2>协议基础组件与设备职责</h2>
+<p>本包提供有界信标解析、AP 选择、关联及受限的 PSK/CCMP pairwise 握手。它负责构造协议消息、验证接收字节；控制器事件循环、密钥安装、重放计数器和报文所有权由应用维护。解析 DMA 数据前须确认硬件完成状态与 RX 状态。</p>
+<p><a href="/api/embedded/wifi/key_data">key_data</a> 负责包装密钥数据验证，<a href="/api/embedded/wifi/ccmp">ccmp</a> 处理认证保护帧，<a href="/api/embedded/wifi/ipv4">ipv4</a> 提供 DHCP/ARP/ICMP 获取探针。标准 <code>WifiDevice</code> 操作仍返回未接入；持久站点服务、租约续期、DNS/TCP、WPA3/PMF 与 BLE/Wi-Fi 共存仍需后续实现。</p>
+<article class="api-item" id="struct-Beacon">
+<h2><code>struct Beacon</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Beacon {
+    <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> ssid []<span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> bssid []<span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> channel <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> interval_tu <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> privacy <span class="syn-type">bool</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 valid、ssid、bssid、channel、interval_tu 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>valid</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>ssid</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
+<dt><code>bssid</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
+<dt><code>channel</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>interval_tu</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>privacy</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="beacon_parse_bytes">
+<h2><code>beacon_parse_bytes</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> beacon_parse_bytes(frame &amp;<span class="syn-type">string</span>) Beacon</code></pre></div>
+<h3>用途</h3>
+<p>执行 beacon parse bytes 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;string</span></dt><dd>frame（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Beacon — 该类型的值</p>
+</article>
+<article class="api-item" id="beacon_parse">
+<h2><code>beacon_parse</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> beacon_parse(frame &amp;[]<span class="syn-type">int</span>) Beacon</code></pre></div>
+<h3>用途</h3>
+<p>执行 beacon parse 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;[]int</span></dt><dd>frame（只读借用，调用方仍持有原值；类型 &amp;[]int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Beacon — 该类型的值</p>
+</article>
+<article class="api-item" id="const-STA_IDLE">
+<h2><code>const STA_IDLE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_IDLE = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_IDLE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STA_READY">
+<h2><code>const STA_READY</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_READY = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_READY</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STA_AUTH_WAIT">
+<h2><code>const STA_AUTH_WAIT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_AUTH_WAIT = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_AUTH_WAIT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STA_AUTHENTICATED">
+<h2><code>const STA_AUTHENTICATED</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_AUTHENTICATED = 3</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_AUTHENTICATED</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STA_ASSOC_WAIT">
+<h2><code>const STA_ASSOC_WAIT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_ASSOC_WAIT = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_ASSOC_WAIT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STA_ASSOCIATED">
+<h2><code>const STA_ASSOCIATED</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_ASSOCIATED = 5</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_ASSOCIATED</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STA_REJECTED">
+<h2><code>const STA_REJECTED</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_REJECTED = 6</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_REJECTED</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STA_SECURITY_OPEN">
+<h2><code>const STA_SECURITY_OPEN</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_SECURITY_OPEN = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_SECURITY_OPEN</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STA_SECURITY_WPA2_PSK_CCMP">
+<h2><code>const STA_SECURITY_WPA2_PSK_CCMP</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STA_SECURITY_WPA2_PSK_CCMP = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STA_SECURITY_WPA2_PSK_CCMP</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="struct-StationAp">
+<h2><code>struct StationAp</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> StationAp {
+    <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> ssid <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> bssid <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> channel <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> capability <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> rates []<span class="syn-type">int</span> <span class="syn-cmt">// common legacy rates in units of 500kb/s; bit7 = basic</span>
+    <span class="syn-kw">pub</span> security <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> rsn <span class="syn-type">string</span> <span class="syn-cmt">// selected association-request RSN IE, including ID/length</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 valid、ssid、bssid、channel、capability 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>valid</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>ssid</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>bssid</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>channel</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>capability</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>rates</code> <span class="type">[]int // common legacy rates in units of 500kb/s; bit7 = basic</span></dt><dd>字段（[]int // common legacy rates in units of 500kb/s; bit7 = basic）</dd>
+<dt><code>security</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>rsn</code> <span class="type">string // selected association-request RSN IE, including ID/length</span></dt><dd>字段（string // selected association-request RSN IE, including ID/length）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-Station">
+<h2><code>struct Station</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Station {
+    <span class="syn-kw">pub</span> state <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> mac <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> ap StationAp
+    <span class="syn-kw">pub</span> sequence <span class="syn-type">int</span> <span class="syn-cmt">// our management sequence counter, modulo 4096</span>
+    <span class="syn-kw">pub</span> status_code <span class="syn-type">int</span> <span class="syn-cmt">// last matched authentication/association status</span>
+    <span class="syn-kw">pub</span> aid <span class="syn-type">int</span> <span class="syn-cmt">// set only after a successful matched association response</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 state、mac、ap、sequence、status_code 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>state</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>mac</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>ap</code> <span class="type">StationAp</span></dt><dd>字段（StationAp）</dd>
+<dt><code>sequence</code> <span class="type">int // our management sequence counter, modulo 4096</span></dt><dd>字段（int // our management sequence counter, modulo 4096）</dd>
+<dt><code>status_code</code> <span class="type">int // last matched authentication/association status</span></dt><dd>字段（int // last matched authentication/association status）</dd>
+<dt><code>aid</code> <span class="type">int // set only after a successful matched association response</span></dt><dd>字段（int // set only after a successful matched association response）</dd>
+</dl>
+</article>
+<article class="api-item" id="station_ap_from_beacon">
+<h2><code>station_ap_from_beacon</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> station_ap_from_beacon(frame &amp;<span class="syn-type">string</span>, rx_channel <span class="syn-type">int</span>) StationAp</code></pre></div>
+<h3>用途</h3>
+<p>执行 station ap from beacon 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;string</span></dt><dd>frame（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>rx_channel</code> <span class="type">int</span></dt><dd>rx_channel（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>StationAp — 该类型的值</p>
+</article>
+<article class="api-item" id="station_create">
+<h2><code>station_create</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> station_create(mac <span class="syn-type">string</span>, ap StationAp) Station</code></pre></div>
+<h3>用途</h3>
+<p>创建station。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>mac</code> <span class="type">string</span></dt><dd>mac（string）</dd>
+<dt><code>ap</code> <span class="type">StationAp</span></dt><dd>ap（StationAp）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Station — 该类型的值</p>
+</article>
+<article class="api-item" id="--Station-authentication_request">
+<h2><code>($&amp;Station) authentication_request</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sta <span class="syn-borrow">$&amp;</span>Station) authentication_request() <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Station</code> 上的操作：执行 authentication request 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>sta</code> <span class="type">$&amp;Station</span></dt><dd>本次调用使用的 <code>Station</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="--Station-association_request">
+<h2><code>($&amp;Station) association_request</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sta <span class="syn-borrow">$&amp;</span>Station) association_request() <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Station</code> 上的操作：执行 association request 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>sta</code> <span class="type">$&amp;Station</span></dt><dd>本次调用使用的 <code>Station</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="--Station-receive_management">
+<h2><code>($&amp;Station) receive_management</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sta <span class="syn-borrow">$&amp;</span>Station) receive_management(frame &amp;<span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Station</code> 上的操作：执行 receive management 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>sta</code> <span class="type">$&amp;Station</span></dt><dd>本次调用使用的 <code>Station</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+<dt><code>frame</code> <span class="type">&amp;string</span></dt><dd>frame（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="--Station-reset_management">
+<h2><code>($&amp;Station) reset_management</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sta <span class="syn-borrow">$&amp;</span>Station) reset_management()</code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Station</code> 上的操作：执行 reset management 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>sta</code> <span class="type">$&amp;Station</span></dt><dd>本次调用使用的 <code>Station</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>不返回值。</p>
+</article>
+<article class="api-item" id="station_ap_from_probe_response">
+<h2><code>station_ap_from_probe_response</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> station_ap_from_probe_response(frame &amp;<span class="syn-type">string</span>, rx_channel <span class="syn-type">int</span>, receiver &amp;<span class="syn-type">string</span>) StationAp</code></pre></div>
+<h3>用途</h3>
+<p>执行 station ap from probe response 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;string</span></dt><dd>frame（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>rx_channel</code> <span class="type">int</span></dt><dd>rx_channel（int）</dd>
+<dt><code>receiver</code> <span class="type">&amp;string</span></dt><dd>receiver（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>StationAp — 该类型的值</p>
+</article>
+<article class="api-item" id="const-WPA2_WAIT_M1">
+<h2><code>const WPA2_WAIT_M1</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> WPA2_WAIT_M1 = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>WPA2_WAIT_M1</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-WPA2_WAIT_M3">
+<h2><code>const WPA2_WAIT_M3</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> WPA2_WAIT_M3 = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>WPA2_WAIT_M3</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-WPA2_KEY_DATA_PENDING">
+<h2><code>const WPA2_KEY_DATA_PENDING</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> WPA2_KEY_DATA_PENDING = 3</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>WPA2_KEY_DATA_PENDING</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-WPA2_M4_READY">
+<h2><code>const WPA2_M4_READY</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> WPA2_M4_READY = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>WPA2_M4_READY</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="wpa2_hmac_sha1">
+<h2><code>wpa2_hmac_sha1</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> wpa2_hmac_sha1(key &amp;<span class="syn-type">string</span>, data &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 wpa2 hmac sha1 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>key</code> <span class="type">&amp;string</span></dt><dd>键（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>data</code> <span class="type">&amp;string</span></dt><dd>数据（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="wpa2_pmk">
+<h2><code>wpa2_pmk</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> wpa2_pmk(passphrase &amp;<span class="syn-type">string</span>, ssid &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 wpa2 pmk 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>passphrase</code> <span class="type">&amp;string</span></dt><dd>passphrase（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>ssid</code> <span class="type">&amp;string</span></dt><dd>ssid（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="wpa2_ptk">
+<h2><code>wpa2_ptk</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> wpa2_ptk(pmk &amp;<span class="syn-type">string</span>, aa &amp;<span class="syn-type">string</span>, spa &amp;<span class="syn-type">string</span>, anonce &amp;<span class="syn-type">string</span>, snonce &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 wpa2 ptk 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pmk</code> <span class="type">&amp;string</span></dt><dd>pmk（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>aa</code> <span class="type">&amp;string</span></dt><dd>aa（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>spa</code> <span class="type">&amp;string</span></dt><dd>spa（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>anonce</code> <span class="type">&amp;string</span></dt><dd>anonce（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>snonce</code> <span class="type">&amp;string</span></dt><dd>snonce（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>string — 结果字符串</p>
+</article>
+<article class="api-item" id="struct-Wpa2Key">
+<h2><code>struct Wpa2Key</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Wpa2Key {
+    <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> version <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> info <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> key_length <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> replay <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> nonce <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> mic <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> key_data <span class="syn-type">string</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 valid、version、info、key_length、replay 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>valid</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>version</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>info</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>key_length</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>replay</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>nonce</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>mic</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>key_data</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+</dl>
+</article>
+<article class="api-item" id="wpa2_key_parse">
+<h2><code>wpa2_key_parse</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> wpa2_key_parse(frame &amp;<span class="syn-type">string</span>) Wpa2Key</code></pre></div>
+<h3>用途</h3>
+<p>wpa2键解析。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;string</span></dt><dd>frame（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Wpa2Key — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-Wpa2Handshake">
+<h2><code>struct Wpa2Handshake</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Wpa2Handshake {
+    <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> phase <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 valid、phase 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>valid</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>phase</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-Wpa2Step">
+<h2><code>struct Wpa2Step</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Wpa2Step {
+    <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> transmit <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> validate_key_data <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> key_data <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> kek <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> tk <span class="syn-type">string</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 valid、transmit、validate_key_data、key_data、kek 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>valid</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>transmit</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>validate_key_data</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>key_data</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>kek</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>tk</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+</dl>
+</article>
+<article class="api-item" id="wpa2_handshake_start">
+<h2><code>wpa2_handshake_start</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> wpa2_handshake_start(pmk &amp;<span class="syn-type">string</span>, aa &amp;<span class="syn-type">string</span>, spa &amp;<span class="syn-type">string</span>, snonce &amp;<span class="syn-type">string</span>, rsn_ie &amp;<span class="syn-type">string</span>) Wpa2Handshake</code></pre></div>
+<h3>用途</h3>
+<p>执行 wpa2 handshake start 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pmk</code> <span class="type">&amp;string</span></dt><dd>pmk（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>aa</code> <span class="type">&amp;string</span></dt><dd>aa（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>spa</code> <span class="type">&amp;string</span></dt><dd>spa（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>snonce</code> <span class="type">&amp;string</span></dt><dd>snonce（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+<dt><code>rsn_ie</code> <span class="type">&amp;string</span></dt><dd>rsn_ie（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Wpa2Handshake — 该类型的值</p>
+</article>
+<article class="api-item" id="wpa2_handshake_receive">
+<h2><code>wpa2_handshake_receive</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> wpa2_handshake_receive(s <span class="syn-borrow">$&amp;</span>Wpa2Handshake, frame &amp;<span class="syn-type">string</span>) Wpa2Step</code></pre></div>
+<h3>用途</h3>
+<p>执行 wpa2 handshake receive 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Wpa2Handshake</span></dt><dd>s（独占借用，可修改原值；类型 $&amp;Wpa2Handshake）</dd>
+<dt><code>frame</code> <span class="type">&amp;string</span></dt><dd>frame（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Wpa2Step — 该类型的值</p>
+</article>
+<article class="api-item" id="wpa2_handshake_confirm_keys">
+<h2><code>wpa2_handshake_confirm_keys</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> wpa2_handshake_confirm_keys(s <span class="syn-borrow">$&amp;</span>Wpa2Handshake, verified_m3 &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 wpa2 handshake confirm keys 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;Wpa2Handshake</span></dt><dd>s（独占借用，可修改原值；类型 $&amp;Wpa2Handshake）</dd>
+<dt><code>verified_m3</code> <span class="type">&amp;string</span></dt><dd>verified_m3（只读借用，调用方仍持有原值；类型 &amp;string）</dd>
+</dl>
+<h3>返回值</h3>
+<p>string — 结果字符串</p>
+</article>

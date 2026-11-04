@@ -7,7 +7,7 @@ mysql #github.com/xulang-org/packages/mysql
 fn verify_mysql_live() {
     println("--- Testing Native MySQL/MariaDB Driver Wire Protocol ---")
     dsn := "root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"
-    mut conn := mysql.open(dsn)
+    $conn := mysql.open(dsn)
 
     // 1. Ping
     err := conn.ping()
@@ -34,7 +34,7 @@ fn verify_mysql_live() {
     println("   [PASS] Table 'xu_developers' created.")
 
     // 3. Exec DML Insert
-    mut args1 := []driver.NamedValue{}
+    $args1 := []driver.NamedValue{}
     args1.push(driver.NamedValue{ordinal: 1, name: "", value: 1})
     args1.push(driver.NamedValue{ordinal: 2, name: "", value: "Antigravity"})
     args1.push(driver.NamedValue{ordinal: 3, name: "", value: 500})
@@ -47,7 +47,7 @@ fn verify_mysql_live() {
     println("   [PASS] Developer inserted (rows=" + str(r3.rows_affected) + ").")
 
     // 4. Query
-    mut q_args := []driver.NamedValue{}
+    $q_args := []driver.NamedValue{}
     q_args.push(driver.NamedValue{ordinal: 1, name: "", value: 1})
     rows := conn.query("SELECT id, name, commits FROM xu_developers WHERE id = ?;", q_args)
     if rows.err.len > 0 {
@@ -56,13 +56,13 @@ fn verify_mysql_live() {
         <<
     }
     println("   [PASS] Query executed, columns count: " + str(rows.columns.len))
-    mut i := 0
+    $i := 0
     while i < rows.columns.len {
         println("      Col[" + str(i) + "]: " + rows.columns[i])
         i = i + 1
     }
     println("   Total cells retrieved: " + str(rows.cells.len))
-    mut j := 0
+    $j := 0
     while j < rows.cells.len {
         println("      Cell[" + str(j) + "]: " + rows.cells[j])
         j = j + 1
@@ -70,8 +70,8 @@ fn verify_mysql_live() {
 
     // 5. Transaction
     println("   Testing Transaction Commit...")
-    mut tx := conn.begin()
-    mut args2 := []driver.NamedValue{}
+    $tx := conn.begin()
+    $args2 := []driver.NamedValue{}
     args2.push(driver.NamedValue{ordinal: 1, name: "", value: 2})
     args2.push(driver.NamedValue{ordinal: 2, name: "", value: "XuArchitect"})
     args2.push(driver.NamedValue{ordinal: 3, name: "", value: 1000})
@@ -107,7 +107,7 @@ fn verify_mysql_live() {
 fn verify_mysql_pool() {
     println("\n--- Testing Native MySQL/MariaDB Connection Pool ---")
     dsn := "root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"
-    mut pool := mysql.open_pool(dsn + "", 5, 2)
+    $pool := mysql.open_pool(dsn + "", 5, 2)
 
     pool.ping() or (err) {
         println("   [FAIL] Pool ping error: " + err.msg())
@@ -127,7 +127,7 @@ fn verify_mysql_pool() {
     println("   [PASS] Pool created table xu_pool_orders.")
 
     // 2. Concurrency / multiple inserts
-    mut i := 1
+    $i := 1
     while i <= 5 {
         pool.exec("INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);", i, "Order_" + str(i), i * 150) or (err) {
             println("   [FAIL] Insert row error: " + err.msg())
@@ -138,11 +138,11 @@ fn verify_mysql_pool() {
     println("   [PASS] Concurrently inserted 5 rows across pooled connections.")
 
     // 3. Query
-    mut rows := pool.query("SELECT id, title, amount FROM xu_pool_orders ORDER BY id;") or (err) {
+    $rows := pool.query("SELECT id, title, amount FROM xu_pool_orders ORDER BY id;") or (err) {
         println("   [FAIL] Pool query error: " + err.msg())
         <<
     }
-    mut count := 0
+    $count := 0
     while rows.next() {
         vals := rows.take() or (err) {
             println("   [FAIL] rows.take error: " + err.msg())
@@ -162,7 +162,7 @@ fn verify_mysql_pool() {
     }
 
     // 4. Transaction via Pool
-    mut tx := pool.begin() or (err) {
+    $tx := pool.begin() or (err) {
         println("   [FAIL] Pool begin tx error: " + err.msg())
         <<
     }

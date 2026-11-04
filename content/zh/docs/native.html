@@ -39,6 +39,12 @@
 <tr><td><code>void</code></td><td><code>void</code></td><td>无返回值过程，用于重置、初始化或内部有状态副作用操作</td></tr>
 </tbody></table></div>
 
+<h2>2.1 同步借用 i64 批量数据：xu-c-2</h2>
+<p>Xu 0.11.3 新增显式的 <code>abi: "xu-c-2"</code> 契约。清单参数 <code>i64_span</code> 映射为 Xu <code>&amp;[]int</code> 及指向 <code>xu_i64_span</code> 的 C 指针；<code>i64_span_mut</code> 映射为 <code>$&amp;[]int</code> 及指向 <code>xu_i64_span_mut</code> 的指针。匹配 SDK 的 <code>include/xu_native.h</code> 定义布局：八字节元素数量，随后是数据指针。</p>
+<p>每次同步调用提供独立的临时描述符。原生代码不得保留描述符或数据指针、修改描述符字段、调整数组大小或接管所有权；可写借用仅允许修改元素。空借用的数据指针可以为空。容量和 Xu 内部描述符不跨越此边界。</p>
+<p>当前 C2 支持宿主 64 位目标、64 位 <code>int</code> 标量参数，以及 <code>int</code>/<code>void</code> 返回值，不定义浮点签名、通用回调或借用返回值。适配器处理平台参数寄存器、栈参数与 Win64 shadow space，但不扩展前述一步链接支持。需要传递原生函数值时，应通过 Xu 包装函数使用。</p>
+<p>C2 使用 XUOBJ version 2 与 <code>xulib-2</code>，容器在偏移 7 处记录版本 2；旧产品明确拒绝此格式，C1 库继续兼容。下方布局图描述 C1 容器。容器选择与切片提取发生在构建期，C2 仍需在运行期准备调用临时描述符与参数。</p>
+
 <h2>3. .xulib 内部结构与二进制规范</h2>
 <p><code>.xulib</code> 是自描述的多架构静态库容器（规范版本 <code>xulib-1</code>）。容器采用紧凑的线性段式布局，由魔数签名、定长头部、契约清单、切片索引表与二进制切片负载五大部分组成：</p>
 
@@ -466,6 +472,6 @@ cc -nostartfiles -no-pie main.o native_add-linux.a -o app
 A：在上述 macOS 目标上可以。直接在 <code>xu.xun</code> 中写 <code>native_add: file:./native/native_add-arm64.a</code> 或在命令行执行 <code>xu build main.xu ./native/native_add-arm64.a</code> 即可。注意 <code>.a</code> 内需包含带有导出签名的 <code>xu.o</code>（可使用 <code>xu native compile</code> 或 <code>xu native archive</code> 生成）。</p>
 
 <p><strong>Q：<code>.xulib</code> 会影响运行期性能吗？</strong><br>
-A：<strong>完全为零开销</strong>。<code>.xulib</code> 仅在编译链接期工作，构建器提取切片后直接由平台链接器完成静态硬链接，生成的可执行文件与手写静态 C 链接二进制完全一致，无任何中间件代理或运行时解包负担。</p>
+A：容器在构建期处理，不需要运行时解包器；选中的原生切片直接链接到应用。C2 调用仍须准备借用描述符与平台参数，容器提取不会消除这些 ABI 适配工作。</p>
 
 <p><a href="/docs/modules">模块与依赖规范</a> · <a href="/docs/packages">官方扩展包 (Packages)</a> · <a href="/docs/cli">命令行工具链参考</a></p>
