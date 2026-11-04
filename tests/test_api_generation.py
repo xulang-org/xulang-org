@@ -20,6 +20,28 @@ spec.loader.exec_module(api)
 
 
 class APIGenerationTests(unittest.TestCase):
+    def test_file_only_public_packages_are_discovered_and_rendered(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary)
+            wifi = source / 'embedded/wifi'
+            wifi.mkdir(parents=True)
+            (wifi / 'beacon.xu').write_text('@embedded/wifi\npub fn parse_beacon(data &string) bool { << true }\n')
+            flash = source / 'embedded/chips/esp32/flash'
+            flash.mkdir(parents=True)
+            (flash / 'bond.xu').write_text('@embedded/chips/esp32/flash\npub fn valid_slot(slot int) bool { << true }\n')
+            compiler = source / 'xu/types'
+            compiler.mkdir(parents=True)
+            (compiler / 'mir.xu').write_text('@xu/types\npub fn compiler_helper() {}\n')
+            ignored = source / 'test_only'
+            ignored.mkdir()
+            (ignored / 'test_case.xu').write_text('@test_only\npub fn test_helper() {}\n')
+            self.assertEqual(api.list_packages(str(source)), ['embedded/chips/esp32/flash', 'embedded/wifi'])
+            package = api.load_package(str(source), 'embedded/wifi')
+            self.assertEqual([item.name for item in package.items], ['parse_beacon'])
+            page = api.render_page(package, 'en', '0.11.3', '', [])
+            self.assertIn('parse_beacon', page)
+            self.assertIn('<!--xu-api-version: 0.11.3-->', page)
+
     def test_bilingual_indexes_have_three_sections_topics_and_native_captures(self):
         class Index(HTMLParser):
             def __init__(self, source):

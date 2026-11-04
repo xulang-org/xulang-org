@@ -650,13 +650,30 @@ def list_packages(src_root: str) -> list[str]:
     pkgs = []
     for root, dirs, files in os.walk(src_root):
         dirs[:] = [d for d in dirs if d not in ("cmd", "internal", "dummy_pkg", ".git", "vendor", "native")]
+        if os.path.abspath(root) == os.path.abspath(src_root):
+            # Compiler implementation packages are shipped for self-hosting,
+            # not as part of the standard-library API inventory.
+            dirs[:] = [d for d in dirs if d != "xu"]
         rel = os.path.relpath(root, src_root)
         if rel == "cmd" or rel.startswith("cmd" + os.sep):
             continue
+        if rel == ".":
+            continue
         if "mod.xu" in files:
-            if rel == ".":
-                continue
             pkgs.append(rel.replace(os.sep, "/"))
+            continue
+        # Xu packages can consist entirely of named source files. Wi-Fi and
+        # ESP32 flash use that layout; an index-file convention must not hide
+        # their public declarations from the released API.
+        package = rel.replace(os.sep, "/")
+        for name in sorted(files):
+            if not name.endswith(".xu") or name.startswith(("test_", "test.", "bench_", "bench.")):
+                continue
+            text = Path(root, name).read_text(encoding="utf-8")
+            declaration = re.search(r'(?m)^@([A-Za-z0-9_/]+)\s*$', text)
+            if declaration and declaration[1] == package and re.search(r'(?m)^pub\s', text):
+                pkgs.append(package)
+                break
     pkgs.sort()
     return pkgs
 

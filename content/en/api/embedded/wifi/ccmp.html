@@ -1,0 +1,74 @@
+<!--title: #embedded/wifi/ccmp-->
+<p class="crumb">API</p>
+<h1><code>#embedded/wifi/ccmp</code></h1>
+<!--xu-api-version: 0.11.3-->
+<p class="banner">Xu {{xu_version}} API</p>
+<p class="meta">import: <code>#embedded/wifi/ccmp</code></p>
+<p class="meta">counts: 3 functions, 0 methods, 1 types, 1 constants, 0 method sets</p>
+<p class="lead">CCMP-128 for ordinary three-address Data/QoS Data MPDUs without FCS. AES is variable-time. PN values are six LITTLE-endian bytes, never int the physical ESP32 backend uses 32-bit native integer registers.</p>
+<article class="api-item" id="const-MAX_FRAME">
+<h2><code>const MAX_FRAME</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_FRAME = 1600</code></pre></div>
+<h3>Purpose</h3>
+<p>CCMP-128 for ordinary three-address Data/QoS Data MPDUs without FCS. AES is variable-time. PN values are six LITTLE-endian bytes, never int the physical ESP32 backend uses 32-bit native integer registers.</p>
+</article>
+<article class="api-item" id="struct-CcmpPacket">
+<h2><code>struct CcmpPacket</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> CcmpPacket {
+    <span class="syn-kw">pub</span> valid <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> payload <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> pn <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> key_index <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>Structure encapsulating valid, payload, pn, key_index.</p>
+<h3>Public fields</h3>
+<dl class="api-params">
+<dt><code>valid</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>payload</code> <span class="type">string</span></dt><dd>field (string)</dd>
+<dt><code>pn</code> <span class="type">string</span></dt><dd>field (string)</dd>
+<dt><code>key_index</code> <span class="type">int</span></dt><dd>field (int)</dd>
+</dl>
+</article>
+<article class="api-item" id="next_pn">
+<h2><code>next_pn</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> next_pn(pn &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Start with six zero bytes, consume next_pn BEFORE submitting a new frame, and retain the consumed value even when transmission fails. Empty means invalid input or exhaustion: install a fresh key; NEVER wrap or reset the counter while using the same key. Retransmit an already protected MPDU unchanged rather than encrypting different contents with its old PN.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>pn</code> <span class="type">&amp;string</span></dt><dd>pn (read-only borrow; caller keeps the original; type &amp;string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>string — result string</p>
+</article>
+<article class="api-item" id="protect">
+<h2><code>protect</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> protect(key &amp;<span class="syn-type">string</span>, header &amp;<span class="syn-type">string</span>, payload &amp;<span class="syn-type">string</span>, pn &amp;<span class="syn-type">string</span>, key_index <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Protect one MPDU using an explicitly consumed PN. Returns empty on invalid input or AES failure; sets Protected and inserts CCMP header plus 8-byte MIC. This stateless function cannot detect caller PN reuse; follow next_pn&#x27;s per-key lifetime rules. key_index must select the actual installed key.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>key</code> <span class="type">&amp;string</span></dt><dd>key (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>header</code> <span class="type">&amp;string</span></dt><dd>header (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>payload</code> <span class="type">&amp;string</span></dt><dd>payload (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>pn</code> <span class="type">&amp;string</span></dt><dd>pn (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>key_index</code> <span class="type">int</span></dt><dd>key_index (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>string — result string</p>
+</article>
+<article class="api-item" id="unprotect">
+<h2><code>unprotect</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> unprotect(key &amp;<span class="syn-type">string</span>, frame &amp;<span class="syn-type">string</span>, last_pn &amp;<span class="syn-type">string</span>) CcmpPacket</code></pre></div>
+<h3>Purpose</h3>
+<p>last_pn is exactly six LE bytes, scoped to installed key + transmitter + TID (a separate non-QoS replay domain). Reject PN &lt;= floor before AES. Commit the returned PN after valid=true, before dispatching the payload. Caller selects the receive key from the CCMP Key ID and checks key_index the Key ID itself is not included in CCMP&#x27;s authenticated data.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>key</code> <span class="type">&amp;string</span></dt><dd>key (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>frame</code> <span class="type">&amp;string</span></dt><dd>frame (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>last_pn</code> <span class="type">&amp;string</span></dt><dd>last_pn (read-only borrow; caller keeps the original; type &amp;string)</dd>
+</dl>
+<h3>Returns</h3>
+<p>CcmpPacket — a value of this type</p>
+</article>

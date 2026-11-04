@@ -35,7 +35,7 @@ fn demo_url_parsing() {
 
 fn redis_pool_worker(id int, addr string, idle chan int, done chan int) {
     p := redis.Pool{addr: addr, auth: "", db: 0, idle: idle, max_idle: 5}
-    mut c := p.get() or (err) {
+    $c := p.get() or (err) {
         println("worker " + str(id) + " get failed: " + err.msg())
         done <- -id
         <<
@@ -72,7 +72,7 @@ fn main() int {
 
     url := "redis://127.0.0.1:6379/0"
     println("Connecting to Redis via URL " + url + "...")
-    mut client := redis.open_url(url + "") or (err) {
+    $client := redis.open_url(url + "") or (err) {
         println("Connection via URL failed: " + err.msg())
         << 1
     }
@@ -133,7 +133,7 @@ fn main() int {
         << 1
     }
     println("5. LRANGE items count: " + str(items.len))
-    mut i := 0
+    $i := 0
     while i < items.len {
         println("   - item " + str(i) + ": " + items[i])
         i = i + 1
@@ -175,12 +175,12 @@ fn main() int {
     println("7. ZSET: card=" + str(zcard) + ", Alice score=" + zscore + ", members=" + zleaders[0] + "," + zleaders[1] + "," + zleaders[2])
 
     // Pipeline
-    mut pipe := client.pipeline()
+    $pipe := client.pipeline()
     pipe.set("xu_pipe_a", "pipe_val_a")
     pipe.set("xu_pipe_b", "pipe_val_b")
     pipe.get("xu_pipe_a")
     pipe.incr("xu_pipe_c")
-    pipe_results := client.exec_pipeline(mut &pipe) or (err) {
+    pipe_results := client.exec_pipeline($&pipe) or (err) {
         println("Pipeline exec failed: " + err.msg())
         << 1
     }
@@ -200,7 +200,7 @@ fn main() int {
 
     // Test Pool with URL, Reuse & Concurrency
     pool := redis.new_pool_url("redis://127.0.0.1:6379/0", 5)
-    mut p_conn := pool.get() or (err) {
+    $p_conn := pool.get() or (err) {
         println("Pool get failed: " + err.msg())
         << 1
     }
@@ -214,7 +214,7 @@ fn main() int {
     println("11. Pool connection returned successfully.")
 
     // Verify Pool Connection REUSE: second get should give the exact same fd
-    mut p_conn2 := pool.get() or (err) {
+    $p_conn2 := pool.get() or (err) {
         println("Pool second get failed: " + err.msg())
         << 1
     }
@@ -226,7 +226,7 @@ fn main() int {
     }
 
     // Concurrent borrow another connection
-    mut p_conn3 := pool.get() or (err) {
+    $p_conn3 := pool.get() or (err) {
         println("Pool third get failed: " + err.msg())
         << 1
     }
@@ -254,7 +254,7 @@ fn main() int {
     xu redis_pool_worker(4, pool.addr + "", pool.idle, done_ch)
     xu redis_pool_worker(5, pool.addr + "", pool.idle, done_ch)
 
-    mut success_count := 0
+    $success_count := 0
     for w in 0:5 {
         res_id := <-done_ch
         if res_id > 0 {

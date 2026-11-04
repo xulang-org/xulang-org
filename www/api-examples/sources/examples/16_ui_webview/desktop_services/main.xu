@@ -27,7 +27,7 @@ fn submit(identity &ui.CanvasEvent,choice int) ui.Request {
     if choice == 1 { << ui.clipboard_read_async(identity,&options) or >> }
     if choice == 5 { prompt := ui.PromptOptions{title: "Your greeting",seed: "Hello, Xu",timeout_ms: 15000}
         << ui.prompt_async(identity,&prompt) or >> }
-    mut files := ui.file_dialog_options()
+    $files := ui.file_dialog_options()
     if choice == 2 {
         files.title = "Select one or more text files"
         files.multiple = true
@@ -41,7 +41,7 @@ fn submit(identity &ui.CanvasEvent,choice int) ui.Request {
     files.multiple = true
     << ui.select_folders_async(identity,&files) or >>
 }
-fn paint(context &draw.Context,frame &mut draw.Frame,message string,pending int) int {
+fn paint(context &draw.Context,frame $&draw.Frame,message string,pending int) int {
     frame.begin() or >>
     frame.set_bg(demo.background()) or >>
     demo.text(context,frame,28.0,26.0,14.0,demo.accent(),"05 / ASYNCHRONOUS DESKTOP SERVICES") or >>
@@ -52,9 +52,9 @@ fn paint(context &draw.Context,frame &mut draw.Frame,message string,pending int)
         demo.text(context,frame,40.0,y + 8.0,15.0,demo.ink(),caption(id)) or >>
     }
     demo.text(context,frame,430.0,124.0,17.0,demo.accent(),"Pending request: " + str(pending)) or >>
-    mut options := draw.text_options(16.0)
+    $options := draw.text_options(16.0)
     options.width = 360.0
-    mut label := context.layout_text(&message,&options) or >>
+    $label := context.layout_text(&message,&options) or >>
     frame.text_layout(&label,430.0,172.0,demo.ink()) or >>
     demo.text(context,frame,28.0,490.0,13.0,demo.muted(),"One event channel / request IDs / distinct terminal states / Escape to close") or >>
     frame.present() or >>
@@ -66,16 +66,16 @@ fn scene(ech chan ui.Event) int {
     if ready.kind == ui.EV_EXIT { << 0 }
     identity := ui.canvas_of(&ready) or >>
     context := draw.context_of(&ready) or >>
-    mut frame := context.new_frame(4096)
-    mut pending := ui.Request{id: 0,window_id: 0,canvas_id: 0,generation: 0,kind: 0}
-    mut message := "Choose an action. File dialogs return paths; selecting a save path does not write a file."
-    mut armed := -1
-    paint(&context,mut &frame,message + "",pending.id) or >>
+    $frame := context.new_frame(4096)
+    $pending := ui.Request{id: 0,window_id: 0,canvas_id: 0,generation: 0,kind: 0}
+    $message := "Choose an action. File dialogs return paths; selecting a save path does not write a file."
+    $armed := -1
+    paint(&context,$&frame,message + "",pending.id) or >>
     while true {
         event := demo.next(ech)
         if event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <- }
         if event.window_id != identity.window_id { -> }
-        mut dirty := event.kind == ui.EV_CANVAS_METRICS
+        $dirty := event.kind == ui.EV_CANVAS_METRICS
         if event.kind == ui.EV_REQUEST {
             result := ui.request_of(&event) or >>
             if result.matches(&pending) {
@@ -95,14 +95,14 @@ fn scene(ech chan ui.Event) int {
         if ui.is_input_event(event.kind) {
             input := ui.input_of(&event) or >>
             if input.generation != identity.generation { -> }
-            mut choice := -1
+            $choice := -1
             for id in 0:7 {
                 bounds := layout.Rect{x: 28.0,y: 120.0 + f64(id) * 48.0,width: 370.0,height: 38.0}
                 if bounds.contains(input.x,input.y) { choice = id }
             }
             if input.kind == ui.EV_POINTER_DOWN && input.button == ui.BUTTON_LEFT { armed = choice }
             if input.kind == ui.EV_POINTER_CANCEL { armed = -1 }
-            mut activate := -1
+            $activate := -1
             if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT {
                 if choice == armed { activate = choice }
                 armed = -1
@@ -117,7 +117,7 @@ fn scene(ech chan ui.Event) int {
             if activate >= 0 && activate < 6 {
                 if pending.id == 0 {
                     request := submit(&identity,activate) or (err) { message = err.msg()
-                        paint(&context,mut &frame,message + "",pending.id) or >>
+                        paint(&context,$&frame,message + "",pending.id) or >>
                         -> }
                     pending = request
                     message = "Request admitted. Keep interacting; the event loop remains active."
@@ -125,7 +125,7 @@ fn scene(ech chan ui.Event) int {
                 dirty = true
             }
         }
-        if dirty { paint(&context,mut &frame,message + "",pending.id) or >> }
+        if dirty { paint(&context,$&frame,message + "",pending.id) or >> }
     }
     if pending.id > 0 { _ := pending.cancel() }
     frame.dispose()
@@ -134,7 +134,7 @@ fn scene(ech chan ui.Event) int {
 fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
     << } }
 fn launch() int {
-    mut app := demo.app("Xu UI / Desktop Services",850,550) or >>
+    $app := demo.app("Xu UI / Desktop Services",850,550) or >>
     xu worker(app.event_ch)
     << app.run() or >>
 }

@@ -1,18 +1,19 @@
 <!--title: #math-->
 <p class="crumb">API</p>
 <h1><code>#math</code></h1>
-<!--xu-api-version: 0.11.2-->
+<!--xu-api-version: 0.11.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">导入方式: <code>#math</code></p>
 <p class="meta">公开 API: 49 函数, 0 方法, 2 类型, 0 常量, 0 方法集</p>
-<p class="lead">常用实函数与 Pi/E。pow 为整指数；pow_f64 为浮点幂。</p>
+<h2>舍入与特殊值</h2>
+<p>Xu 0.11.3 舍入保留接近 2<sup>52</sup> 的既有 binary64 整数值、带符号零与非有限输入。<code>round</code> 在中点向远离零的方向舍入，<code>round_to_even</code> 在中点选择偶数。<code>log(±0)</code> 返回负无穷，<code>log(+Inf)</code> 返回正无穷；<code>frexp</code> 对零、无穷或 NaN 原样返回分量，指数为零。这些边界修复不代表对所有有限超越函数近似给出精度保证。</p>
 <p><a href="#examples">示例代码</a> · <a href="#api-declarations">API 声明</a></p>
 <section class="api-examples" id="examples">
 <h2>示例代码</h2>
 <p>以下源码来自官方 examples 仓库，可复制或下载。请在完整工程中使用本地 Xu SDK 运行；网络、数据库和桌面示例需要对应的服务或资源。</p>
 <details class="api-example" id="example-fecca66f5617" open>
 <summary><code>16_ui_webview/webview_component/main.xu</code></summary>
-<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/16_ui_webview/webview_component">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_component/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_component/events.xu" download>events.xu</a></p>
+<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/2da227ae61a90e1dfe73f4fc7989e6e5f5bdadd8/examples/16_ui_webview/webview_component">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_component/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/webview_component/events.xu" download>events.xu</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/webview_component/main.xu"><code class="language-xu">@main
 <span class="syn-import"><span class="hash">#</span>ui</span>
 <span class="syn-import"><span class="hash">#</span>ui/widgets</span>
@@ -102,7 +103,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </details>
 <details class="api-example" id="example-008f8a20c76f">
 <summary><code>16_ui_webview/text_input/main.xu</code></summary>
-<p class="meta">所需 SDK：Xu 0.10.11 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/16_ui_webview/text_input">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/text_input/main.xu" download>下载源码</a></p>
+<p class="meta">所需 SDK：Xu 0.10.11 · <a href="https://github.com/xulang-org/examples/tree/2da227ae61a90e1dfe73f4fc7989e6e5f5bdadd8/examples/16_ui_webview/text_input">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/text_input/main.xu" download>下载源码</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/text_input/main.xu"><code class="language-xu">@main
 <span class="syn-import"><span class="hash">#</span>ui</span>
 <span class="syn-import"><span class="hash">#</span>ui/draw</span>
@@ -110,12 +111,12 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-import"><span class="hash">#</span>math</span>
 demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 
-<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">&amp;mut</span> draw.Frame,input &amp;ui.TextInput) <span class="syn-type">int</span> {
+<span class="syn-kw">fn</span> paint(context &amp;draw.Context,frame <span class="syn-borrow">$&amp;</span>draw.Frame,input &amp;ui.TextInput) <span class="syn-type">int</span> {
     state <span class="syn-flow">:=</span> input.snapshot() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     value <span class="syn-flow">:=</span> state.display_value()
     println(<span class="syn-str">"Text revision: "</span> + str(state.revision) + <span class="syn-str">" / display bytes: "</span> + str(value.len))
     options <span class="syn-flow">:=</span> draw.text_options(28.0)
-    <span class="syn-kw">mut</span> text <span class="syn-flow">:=</span> context.layout_text(&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $text <span class="syn-flow">:=</span> context.layout_text(&amp;value,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     text.bind_input(input,state.revision,44.0,180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.begin() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     frame.set_bg(demo.background()) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
@@ -149,14 +150,14 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     seed <span class="syn-flow">:=</span> <span class="syn-str">"你好，Xu 👩‍💻 · café"</span>
     caret <span class="syn-flow">:=</span> ui.TextInputRect{x: 44.0,y: 180.0,width: 2.0,height: 36.0}
     options <span class="syn-flow">:=</span> ui.text_input_options(&amp;seed,caret)
-    <span class="syn-kw">mut</span> input <span class="syn-flow">:=</span> ui.start_text_input(identity.canvas_id,identity.generation,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    <span class="syn-kw">mut</span> frame <span class="syn-flow">:=</span> context.new_frame(4096)
-    paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,&amp;input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $input <span class="syn-flow">:=</span> ui.start_text_input(identity.canvas_id,identity.generation,&amp;options) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $frame <span class="syn-flow">:=</span> context.new_frame(4096)
+    paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,&amp;input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">while</span> true {
         event <span class="syn-flow">:=</span> demo.next(ech)
         <span class="syn-kw">if</span> event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <span class="syn-flow">&lt;-</span> }
         <span class="syn-kw">if</span> event.window_id != identity.window_id { <span class="syn-flow">-&gt;</span> }
-        <span class="syn-kw">mut</span> dirty <span class="syn-flow">:=</span> event.kind == ui.EV_CANVAS_METRICS
+        $dirty <span class="syn-flow">:=</span> event.kind == ui.EV_CANVAS_METRICS
         <span class="syn-kw">if</span> event.kind &gt;= ui.EV_TEXT_COMMIT &amp;&amp; event.kind &lt;= ui.EV_TEXT_SURROUNDING_DELETE {
             edit <span class="syn-flow">:=</span> ui.text_edit_of(&amp;event) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
             <span class="syn-kw">if</span> edit.input.id == input.id {
@@ -180,7 +181,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
                 }
             }
         }
-        <span class="syn-kw">if</span> dirty { paint(&amp;context,<span class="syn-borrow">mut &amp;</span>frame,&amp;input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
+        <span class="syn-kw">if</span> dirty { paint(&amp;context,<span class="syn-borrow">$&amp;</span>frame,&amp;input) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span> }
     }
     frame.dispose()
     input.stop() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> 0 }
@@ -189,7 +190,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <span class="syn-kw">fn</span> worker(ech <span class="syn-kw">chan</span> ui.Event) { scene(ech) <span class="syn-kw">or</span> (err) { demo.fail(err.msg())
     <span class="syn-flow">&lt;&lt;</span> } }
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    <span class="syn-kw">mut</span> app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Native Text Input"</span>,860,430) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu UI / Native Text Input"</span>,860,430) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
     <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
 }
@@ -198,7 +199,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 </details>
 <details class="api-example" id="example-6ee2790cc9f4">
 <summary><code>16_ui_webview/component_catalog/main.xu</code></summary>
-<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/16_ui_webview/component_catalog">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_catalog/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_catalog/events.xu" download>events.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_catalog/style.xu" download>style.xu</a></p>
+<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/2da227ae61a90e1dfe73f4fc7989e6e5f5bdadd8/examples/16_ui_webview/component_catalog">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_catalog/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_catalog/events.xu" download>events.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_catalog/style.xu" download>style.xu</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/component_catalog/main.xu"><code class="language-xu">@main
 <span class="syn-import"><span class="hash">#</span>ui</span>
 <span class="syn-import"><span class="hash">#</span>ui/widgets</span>
@@ -372,7 +373,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <li>
 <details class="api-example" id="example-b1a0463173fe">
 <summary><code>16_ui_webview/workbench/main.xu</code></summary>
-<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/16_ui_webview/workbench">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/events.xu" download>events.xu</a></p>
+<p class="meta">所需 SDK：Xu 0.10.13-dev.1 · <a href="https://github.com/xulang-org/examples/tree/2da227ae61a90e1dfe73f4fc7989e6e5f5bdadd8/examples/16_ui_webview/workbench">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/workbench/events.xu" download>events.xu</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>本地 SDK 示例</span></div><pre tabindex="0" aria-label="16_ui_webview/workbench/main.xu"><code class="language-xu">@main
 <span class="syn-import"><span class="hash">#</span>ui</span>
 <span class="syn-import"><span class="hash">#</span>ui/draw</span>
@@ -656,7 +657,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <li>
 <details class="api-example" id="example-a2be48ce1c23">
 <summary><code>16_ui_webview/component_workshop/main.xu</code></summary>
-<p class="meta">所需 SDK：Xu 0.10.13-dev.3 · <a href="https://github.com/xulang-org/examples/tree/0501d9c7fd92659a1778fe3d4646f1b794a05845/examples/16_ui_webview/component_workshop">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events.xu" download>events.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events_tools.xu" download>events_tools.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/layout.xu" download>layout.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/model.xu" download>model.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/style.xu" download>style.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/view.xu" download>view.xu</a></p>
+<p class="meta">所需 SDK：Xu 0.10.13-dev.3 · <a href="https://github.com/xulang-org/examples/tree/2da227ae61a90e1dfe73f4fc7989e6e5f5bdadd8/examples/16_ui_webview/component_workshop">完整工程</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/main.xu" download>下载源码</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events.xu" download>events.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/events_tools.xu" download>events_tools.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/layout.xu" download>layout.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/model.xu" download>model.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/style.xu" download>style.xu</a> · <a href="/api-examples/sources/examples/16_ui_webview/component_workshop/view.xu" download>view.xu</a></p>
 <div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>main.xu</span></div><pre tabindex="0" aria-label="16_ui_webview/component_workshop/main.xu"><code class="language-xu">@main
 
 <span class="syn-import"><span class="hash">#</span>ui</span>

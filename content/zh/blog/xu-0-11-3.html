@@ -1,0 +1,16 @@
+<!--title: Xu 0.11.3：原生数组借用、ESP32 协议原语与正确性修复-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.11.3：原生数组借用、ESP32 协议原语与正确性修复</h1>
+<p class="meta">2026-11-04 · <a href="https://github.com/xulang-org/xu/releases/tag/v0.11.3">Xu v0.11.3</a></p>
+<p>Xu 0.11.3 新增同步原生数组借用、纯 Xu ESP32 后端及无线协议基础组件，并修复数值边界与拥有型字符串切片。请一起升级编译器、标准库和产品工具。</p>
+<h2>在原生调用中借用 i64 数组</h2>
+<p>显式启用的 <code>xu-c-2</code> ABI 将 <code>i64_span</code>、<code>i64_span_mut</code> 映射为 <code>&amp;[]int</code>、<code>$&amp;[]int</code>。每次调用提供只包含长度与连续数据指针的临时 C 描述符。原生代码只能在同步调用期间使用，不能保留指针、调整数组大小或接管所有权；可写借用允许修改元素。参数遵循目标平台 C 寄存器与栈约定，包括 Win64 shadow space。</p>
+<p>当前 C2 支持 64 位整数标量及 <code>int</code>/<code>void</code> 返回值。原有 C1 库继续兼容，旧产品会明确拒绝新对象与容器版本。需要函数值时请用 Xu 函数包装原生调用。链接要求与边界见<a href="/docs/native">原生互操作指南</a>。</p>
+<h2>ESP32 编译与协议基础组件</h2>
+<p><code>xtensa-esp32-none</code> 可直接生成 Xtensa ELF，镜像工具核对布局、XOR 和 SHA-256。在 ROM 调用与回调、BLE ATT/HOGP 和 legacy 配对组件之外，本版提供有界 WPA2 握手、密钥数据、CCMP、DHCP、ARP 和 ICMP 原语。板级证据限于 ESP32-D0WD-V3 rev3.1、40 MHz 晶振与 4 MiB Flash。</p>
+<p>硬件事件循环、密钥、重放计数器与 DMA 生命周期仍由应用负责。标准 <code>WifiDevice</code> API 继续报告驱动未接入；持久站点运行、租约续期、DNS/TCP、互联网以及 BLE/Wi-Fi 共存仍未提供。接入前请阅读<a href="/api/embedded/wifi">Wi-Fi API</a>及包内限制。</p>
+<h2>数值与所有权正确性</h2>
+<p>binary64 舍入保留大整数值、带符号零与非有限输入；<code>log(±0)</code> 现在返回负无穷，<code>log(+Inf)</code> 和 <code>frexp</code> 特殊输入可以终止。全宽无符号算术使用两个输入分量并报告除法错误。字符串数组切片按 24 字节描述符推进源索引，保持独立所有权。SSA 周期归约证明沿实际循环回边追踪，窄整数归一化也依据目标物理寄存器位宽。</p>
+<h2>安装与测量</h2>
+<p>Windows SDK 安装器内嵌 <code>asInvoker</code> 清单，以当前用户权限启动；为所有用户安装仍须管理员权限。通过<a href="/download">下载页</a>升级完整 SDK，并核对 <a href="https://github.com/xulang-org/xu/releases/download/v0.11.3/SHA256SUMS">SHA256SUMS</a>；详细变化见<a href="https://github.com/xulang-org/xu/blob/v0.11.3/RELEASES.zh-CN.md">完整发布说明</a>。</p>
+<p><a href="/benchmarks">横测页</a>会标明每批数据的编译器、源码提交与负载集合。新版本测量须在六个平台完成正确性与来源核验后才能作为完整数据发布。</p>
