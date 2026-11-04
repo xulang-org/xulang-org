@@ -4,7 +4,7 @@
 <!--xu-api-version: 0.11.2-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#strings</code></p>
-<p class="meta">counts: 52 fns, 33 methods, 7 types, 0 consts, 0 ifaces</p>
+<p class="meta">counts: 52 functions, 33 methods, 7 types, 0 constants, 0 method sets</p>
 <h2 id="quickstart">Split and join text</h2>
 <p>Use <code>strings</code> to trim text, split it into fields and join the result.</p>
 <p>The input is borrowed by <code>trim_space</code> and <code>split</code>; their results are owned values.</p>
@@ -170,352 +170,476 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>index_of</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> index_of(s &amp;<span class="syn-type">string</span>, sub <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Byte index of the first occurrence of sub in s. Empty sub returns 0; not found returns -1. Search uses Horspool.</p>
+<p>Find the first occurrence of a substring, for example before slicing text around a delimiter.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>haystack (borrowed; caller keeps it)</dd>
-<dt><code>sub</code> <span class="type">string</span></dt><dd>needle substring</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>sub</code> <span class="type">string</span></dt><dd>Literal substring to match, not a regular expression.</dd>
 </dl>
 <h3>Returns</h3>
-<p>first index, or -1 if missing; empty sub yields 0</p>
+<p>Byte offset of the first match, or <code>-1</code> if absent. An empty substring matches at <code>0</code>.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+</ul>
+<h3>Call example</h3><p>Chinese text indexes count bytes</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"你好, Xu"</span>
+    println(strings.index_of(&amp;text, <span class="syn-str">","</span>))
+    println(strings.index_of(&amp;text, <span class="syn-str">"missing"</span>))
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>6
+-1
+</samp></pre>
 </article>
 <article class="api-item" id="contains">
 <h2><code>contains</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> contains(s &amp;<span class="syn-type">string</span>, sub <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Whether s contains substring sub. An empty sub is treated as contained (index 0).</p>
+<p>Check whether text contains a literal substring when the position itself is not needed.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>haystack (borrowed; caller keeps it)</dd>
-<dt><code>sub</code> <span class="type">string</span></dt><dd>needle substring</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>sub</code> <span class="type">string</span></dt><dd>Literal substring to match, not a regular expression.</dd>
 </dl>
 <h3>Returns</h3>
-<p>true if found, else false</p>
+<p><code>true</code> if present, otherwise <code>false</code>; an empty substring always returns <code>true</code>.</p>
 </article>
 <article class="api-item" id="trim_space">
 <h2><code>trim_space</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> trim_space(s &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Strip leading and trailing ASCII whitespace.</p>
+<p>Remove Unicode whitespace from both ends while preserving whitespace inside the text.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Text without surrounding whitespace, or an empty string if all characters are whitespace.</p>
 </article>
 <article class="api-item" id="repeat">
 <h2><code>repeat</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> repeat(s &amp;<span class="syn-type">string</span>, n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Repeat the content n times; n&lt;=0 yields empty.</p>
+<p>Repeat the original text a given number of times.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>n</code> <span class="type">int</span></dt><dd>count, length, or limit (int)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>n</code> <span class="type">int</span></dt><dd>Repeat count; this implementation returns an empty string when it is zero or negative.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Repeated text, or an empty string when the input is empty or <code>n &lt;= 0</code>.</p>
 </article>
 <article class="api-item" id="join">
 <h2><code>join</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> join(parts []<span class="syn-type">string</span>, sep <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Join parts with sep. An empty slice yields the empty string.</p>
+<p>Join strings in slice order, inserting a separator only between adjacent elements.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>parts</code> <span class="type">[]string</span></dt><dd>strings to join</dd>
-<dt><code>sep</code> <span class="type">string</span></dt><dd>separator inserted between elements</dd>
+<dt><code>parts</code> <span class="type">[]string</span></dt><dd>Strings to join; empty elements are retained.</dd>
+<dt><code>sep</code> <span class="type">string</span></dt><dd>Text inserted between elements; an empty string concatenates directly.</dd>
 </dl>
 <h3>Returns</h3>
-<p>the joined string</p>
+<p>Joined string; an empty slice yields an empty string, and one element gets no separator.</p>
 </article>
 <article class="api-item" id="split">
 <h2><code>split</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> split(s &amp;<span class="syn-type">string</span>, sep <span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Split s on sep. An empty sep does not split into bytes; the result is a one-element slice holding all of s.</p>
+<p>Split text into ordered pieces at a delimiter, preserving empty fields in delimited data.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source (borrowed; caller keeps it)</dd>
-<dt><code>sep</code> <span class="type">string</span></dt><dd>separator; empty keeps the whole string as one part</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>sep</code> <span class="type">string</span></dt><dd>Literal delimiter; an empty string splits into individual Unicode characters.</dd>
 </dl>
 <h3>Returns</h3>
-<p>[]string parts (including a trailing empty piece when s ends with sep)</p>
+<p>A slice of strings without the delimiter. With a nonempty delimiter, consecutive, leading and trailing delimiters produce empty pieces. If no delimiter occurs, the only piece is the original text.</p>
+<h3>Usage notes</h3><ul>
+<li>Empty text with a nonempty delimiter produces one empty piece; empty text with an empty delimiter produces an empty slice.</li>
+<li>Character splitting follows UTF-8 boundaries rather than splitting valid Chinese characters into individual bytes.</li>
+</ul>
+<h3>Call example</h3><p>Keep empty fields and split Chinese text into characters</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"a,,b,"</span>
+    parts <span class="syn-flow">:=</span> strings.split(&amp;text, <span class="syn-str">","</span>)
+    println(parts.len)
+    words <span class="syn-flow">:=</span> <span class="syn-str">"甲乙"</span>
+    chars <span class="syn-flow">:=</span> strings.split(&amp;words, <span class="syn-str">""</span>)
+    println(strings.join(chars, <span class="syn-str">" / "</span>))
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>4
+甲 / 乙
+</samp></pre>
 </article>
 <article class="api-item" id="has_prefix">
 <h2><code>has_prefix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> has_prefix(s &amp;<span class="syn-type">string</span>, pre <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Whether s starts with pre.</p>
+<p>Check for an exact, case-sensitive match at the beginning of the text.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source (borrowed)</dd>
-<dt><code>pre</code> <span class="type">string</span></dt><dd>prefix</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>pre</code> <span class="type">string</span></dt><dd>Literal text to match; an empty string also matches.</dd>
 </dl>
 <h3>Returns</h3>
-<p>true if it does</p>
+<p><code>true</code> on a match, otherwise <code>false</code>.</p>
 </article>
 <article class="api-item" id="has_suffix">
 <h2><code>has_suffix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> has_suffix(s &amp;<span class="syn-type">string</span>, suf <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Whether s ends with suf.</p>
+<p>Check for an exact, case-sensitive match at the end of the text.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source (borrowed)</dd>
-<dt><code>suf</code> <span class="type">string</span></dt><dd>suffix</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>suf</code> <span class="type">string</span></dt><dd>Literal text to match; an empty string also matches.</dd>
 </dl>
 <h3>Returns</h3>
-<p>true if it does</p>
+<p><code>true</code> on a match, otherwise <code>false</code>.</p>
 </article>
 <article class="api-item" id="ends_with">
 <h2><code>ends_with</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> ends_with(s &amp;<span class="syn-type">string</span>, suf <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Whether s ends with suf (same idea as has_suffix).</p>
+<p>Check for an exact, case-sensitive match at the end of the text.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source (borrowed)</dd>
-<dt><code>suf</code> <span class="type">string</span></dt><dd>suffix</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>suf</code> <span class="type">string</span></dt><dd>Literal text to match; an empty string also matches.</dd>
 </dl>
 <h3>Returns</h3>
-<p>true if it does</p>
+<p><code>true</code> on a match, otherwise <code>false</code>.</p>
 </article>
 <article class="api-item" id="replace">
 <h2><code>replace</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> replace(s &amp;<span class="syn-type">string</span>, old <span class="syn-type">string</span>, new <span class="syn-type">string</span>, n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Replace old with new in s. n==0 or empty old returns s unchanged; n&lt;0 replaces all; n&gt;0 replaces at most n times.</p>
+<p>Replace non-overlapping substring matches from left to right, producing new text without modifying the original.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source (borrowed)</dd>
-<dt><code>old</code> <span class="type">string</span></dt><dd>substring to replace; empty means no replacement</dd>
-<dt><code>new</code> <span class="type">string</span></dt><dd>replacement</dd>
-<dt><code>n</code> <span class="type">int</span></dt><dd>max replacements; 0 leaves s unchanged; negative means all</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>old</code> <span class="type">string</span></dt><dd>Literal substring to replace; an empty string inserts text at character boundaries.</dd>
+<dt><code>new</code> <span class="type">string</span></dt><dd>Replacement text for each match; an empty string removes matched text.</dd>
+<dt><code>n</code> <span class="type">int</span></dt><dd>Maximum replacements; negative replaces all, while <code>0</code> leaves the text unchanged.</dd>
 </dl>
 <h3>Returns</h3>
-<p>a new string</p>
+<p>Text after replacement, retaining the original content if no match is found.</p>
+<h3>Usage notes</h3><ul>
+<li>When <code>old</code> is empty, insertion positions include before the first character, between characters and after the last character.</li>
+</ul>
+<h3>Call example</h3><p>Limit the number of replacements</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"a-a-a"</span>
+    println(strings.replace(&amp;text, <span class="syn-str">"a"</span>, <span class="syn-str">"x"</span>, 2))
+    println(text)
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>x-x-a
+a-a-a
+</samp></pre>
 </article>
 <article class="api-item" id="fields">
 <h2><code>fields</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> fields(s &amp;<span class="syn-type">string</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Split on whitespace runs and drop the whitespace.</p>
+<p>Split text at Unicode whitespace, omitting empty fields from leading, trailing and repeated separators.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
 </dl>
 <h3>Returns</h3>
-<p>[]string — slice result</p>
+<p>Nonempty fields only; empty text or text consisting solely of separators yields an empty slice.</p>
+<h3>Usage notes</h3><ul>
+<li>Use <code>split</code> when empty fields must be retained.</li>
+</ul>
 </article>
 <article class="api-item" id="fields_func">
 <h2><code>fields_func</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> fields_func(s &amp;<span class="syn-type">string</span>, f <span class="syn-kw">fn</span>(<span class="syn-type">int</span>) <span class="syn-type">bool</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>FieldsFunc: separator is any Unicode rune for which f returns true.</p>
+<p>Split text at characters selected by the callback, omitting empty fields from leading, trailing and repeated separators.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>byte callback: argument is 0..255, return whether it matches</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>Receives a Unicode code point; <code>true</code> marks it as a separator.</dd>
 </dl>
 <h3>Returns</h3>
-<p>[]string — slice result</p>
+<p>Nonempty fields only; empty text or text consisting solely of separators yields an empty slice.</p>
+<h3>Usage notes</h3><ul>
+<li>Use <code>split</code> when empty fields must be retained.</li>
+</ul>
 </article>
 <article class="api-item" id="to_lower">
 <h2><code>to_lower</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> to_lower(s &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Map ASCII letters to lowercase.</p>
+<p>Convert characters to lowercase using Unicode simple mappings, leaving other characters unchanged.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Converted text without modifying the original string.</p>
+<h3>Usage notes</h3><ul>
+<li>This is not limited to ASCII. Simple mappings do not expand one character into several or apply locale-specific casing.</li>
+</ul>
+<h3>Call example</h3><p>Convert non-ASCII letters</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"ÄBC"</span>
+    println(strings.to_lower(&amp;text))
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>äbc
+</samp></pre>
 </article>
 <article class="api-item" id="to_upper">
 <h2><code>to_upper</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> to_upper(s &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Map ASCII letters to uppercase.</p>
+<p>Convert characters to uppercase using Unicode simple mappings, leaving other characters unchanged.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Converted text without modifying the original string.</p>
+<h3>Usage notes</h3><ul>
+<li>This is not limited to ASCII. Simple mappings do not expand one character into several or apply locale-specific casing.</li>
+</ul>
 </article>
 <article class="api-item" id="trim_left">
 <h2><code>trim_left</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> trim_left(s &amp;<span class="syn-type">string</span>, cutset <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Strip leading bytes that appear in the cutset.</p>
+<p>Remove consecutive characters from the beginning while they belong to the supplied set.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>cutset</code> <span class="type">string</span></dt><dd>bytes to trim (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>cutset</code> <span class="type">string</span></dt><dd>Set of Unicode characters that may be removed, not one complete prefix or suffix.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Trimmed text; an empty character set leaves the original content unchanged.</p>
+<h3>Usage notes</h3><ul>
+<li>Use <code>trim_prefix</code> or <code>trim_suffix</code> to remove one fixed prefix or suffix.</li>
+</ul>
 </article>
 <article class="api-item" id="trim_right">
 <h2><code>trim_right</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> trim_right(s &amp;<span class="syn-type">string</span>, cutset <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Strip trailing bytes that appear in the cutset.</p>
+<p>Remove consecutive characters from the end while they belong to the supplied set.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>cutset</code> <span class="type">string</span></dt><dd>bytes to trim (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>cutset</code> <span class="type">string</span></dt><dd>Set of Unicode characters that may be removed, not one complete prefix or suffix.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Trimmed text; an empty character set leaves the original content unchanged.</p>
+<h3>Usage notes</h3><ul>
+<li>Use <code>trim_prefix</code> or <code>trim_suffix</code> to remove one fixed prefix or suffix.</li>
+</ul>
 </article>
 <article class="api-item" id="trim">
 <h2><code>trim</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> trim(s &amp;<span class="syn-type">string</span>, cutset <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Strip leading and trailing bytes that appear in the cutset.</p>
+<p>Remove consecutive characters from both ends while they belong to the supplied set.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>cutset</code> <span class="type">string</span></dt><dd>bytes to trim (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>cutset</code> <span class="type">string</span></dt><dd>Set of Unicode characters that may be removed, not one complete prefix or suffix.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Trimmed text; an empty character set leaves the original content unchanged.</p>
+<h3>Usage notes</h3><ul>
+<li>Use <code>trim_prefix</code> or <code>trim_suffix</code> to remove one fixed prefix or suffix.</li>
+</ul>
 </article>
 <article class="api-item" id="trim_prefix">
 <h2><code>trim_prefix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> trim_prefix(s &amp;<span class="syn-type">string</span>, pre <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Remove prefix if present; otherwise return the input.</p>
+<p>Remove one exact prefix if present; the removal is not repeated.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>pre</code> <span class="type">string</span></dt><dd>prefix (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>pre</code> <span class="type">string</span></dt><dd>Complete prefix to remove, matched case-sensitively.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Text after removal, or the original content if there is no match.</p>
 </article>
 <article class="api-item" id="trim_suffix">
 <h2><code>trim_suffix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> trim_suffix(s &amp;<span class="syn-type">string</span>, suf <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Remove suffix if present; otherwise return the input.</p>
+<p>Remove one exact suffix if present; the removal is not repeated.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>suf</code> <span class="type">string</span></dt><dd>suffix (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>suf</code> <span class="type">string</span></dt><dd>Complete suffix to remove, matched case-sensitively.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Text after removal, or the original content if there is no match.</p>
 </article>
 <article class="api-item" id="compare">
 <h2><code>compare</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> compare(a &amp;<span class="syn-type">string</span>, b &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Lexicographic compare: -1, 0, or 1.</p>
+<p>Compare two strings lexicographically by bytes.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>a</code> <span class="type">&amp;string</span></dt><dd>left operand (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>b</code> <span class="type">&amp;string</span></dt><dd>right operand (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>a</code> <span class="type">&amp;string</span></dt><dd>Left-hand text.</dd>
+<dt><code>b</code> <span class="type">&amp;string</span></dt><dd>Right-hand text.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — -1 if less, 0 if equal, 1 if greater</p>
+<p>Negative when <code>a</code> precedes <code>b</code>, zero when equal, positive when it follows.</p>
+<h3>Usage notes</h3><ul>
+<li>Compare UTF-8 bytes in order, without case conversion or locale-specific collation.</li>
+</ul>
 </article>
 <article class="api-item" id="index_byte">
 <h2><code>index_byte</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> index_byte(s &amp;<span class="syn-type">string</span>, c <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Index of the first byte c; -1 if missing.</p>
+<p>Find a single byte forward, for example an ASCII punctuation or protocol delimiter.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>c</code> <span class="type">int</span></dt><dd>byte or character code (int)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>c</code> <span class="type">int</span></dt><dd>Byte to locate, normally in <code>0..255</code>.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Byte offset of the match, or <code>-1</code> if absent.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+<li>This searches bytes; use <code>index_rune</code> for a complete Unicode character.</li>
+</ul>
 </article>
 <article class="api-item" id="last_index">
 <h2><code>last_index</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> last_index(s &amp;<span class="syn-type">string</span>, sub <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Index of the last occurrence; -1 if missing. Returns -1 if not found.</p>
+<p>Search backward for the last occurrence of a substring.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>sub</code> <span class="type">string</span></dt><dd>substring (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>sub</code> <span class="type">string</span></dt><dd>Literal substring to match, not a regular expression.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Byte offset of the last match, or <code>-1</code> if absent. An empty substring returns <code>s.len</code>.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+</ul>
 </article>
 <article class="api-item" id="last_index_byte">
 <h2><code>last_index_byte</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> last_index_byte(s &amp;<span class="syn-type">string</span>, c <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Index of the last byte c; -1 if missing.</p>
+<p>Find a single byte backward, for example an ASCII punctuation or protocol delimiter.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>c</code> <span class="type">int</span></dt><dd>byte or character code (int)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>c</code> <span class="type">int</span></dt><dd>Byte to locate, normally in <code>0..255</code>.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Byte offset of the match, or <code>-1</code> if absent.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+<li>This searches bytes; use <code>index_rune</code> for a complete Unicode character.</li>
+</ul>
 </article>
 <article class="api-item" id="count">
 <h2><code>count</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> count(s &amp;<span class="syn-type">string</span>, sub <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Non-overlapping count of sub in s. Empty sub returns 1+s.len.</p>
+<p>Count non-overlapping occurrences of a literal substring.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source (borrowed)</dd>
-<dt><code>sub</code> <span class="type">string</span></dt><dd>substring to count</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>sub</code> <span class="type">string</span></dt><dd>Literal substring to match, not a regular expression.</dd>
 </dl>
 <h3>Returns</h3>
-<p>occurrence count</p>
+<p>Number of matches, or <code>0</code> if absent. An empty substring counts character boundaries: the Unicode character count plus <code>1</code>.</p>
+<h3>Usage notes</h3><ul>
+<li>For example, <code>&quot;aa&quot;</code> occurs once in <code>&quot;aaa&quot;</code>; matched bytes are not reused.</li>
+</ul>
+<h3>Call example</h3><p>Count substring matches and empty boundaries</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"aaa"</span>
+    println(strings.count(&amp;text, <span class="syn-str">"aa"</span>))
+    words <span class="syn-flow">:=</span> <span class="syn-str">"甲乙"</span>
+    println(strings.count(&amp;words, <span class="syn-str">""</span>))
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>1
+3
+</samp></pre>
 </article>
 <article class="api-item" id="split_n">
 <h2><code>split_n</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> split_n(s &amp;<span class="syn-type">string</span>, sep <span class="syn-type">string</span>, n <span class="syn-type">int</span>) []<span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Split on the separator, at most n parts.</p>
+<p>Split text with a limit on the number of pieces, keeping any unsplit remainder in the last piece.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>sep</code> <span class="type">string</span></dt><dd>separator (string)</dd>
-<dt><code>n</code> <span class="type">int</span></dt><dd>count, length, or limit (int)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>sep</code> <span class="type">string</span></dt><dd>Literal delimiter; an empty string splits at Unicode character boundaries.</dd>
+<dt><code>n</code> <span class="type">int</span></dt><dd>Maximum number of pieces: <code>0</code> returns none, a negative value removes the limit, and <code>1</code> keeps the text whole.</dd>
 </dl>
 <h3>Returns</h3>
-<p>[]string — slice result</p>
+<p>Ordered pieces, at most <code>n</code> when positive; <code>n &lt; 0</code> behaves like <code>split</code>.</p>
+<h3>Usage notes</h3><ul>
+<li>At most <code>n - 1</code> splits are made: <code>n</code> limits pieces, not delimiter matches.</li>
+</ul>
 </article>
 <article class="api-item" id="replace_all">
 <h2><code>replace_all</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> replace_all(s &amp;<span class="syn-type">string</span>, old <span class="syn-type">string</span>, new <span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Replace every occurrence of the substring.</p>
+<p>Replace non-overlapping substring matches from left to right, producing new text without modifying the original.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>old</code> <span class="type">string</span></dt><dd>old value / piece to replace (string)</dd>
-<dt><code>new</code> <span class="type">string</span></dt><dd>new value / replacement (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>old</code> <span class="type">string</span></dt><dd>Literal substring to replace; an empty string inserts text at character boundaries.</dd>
+<dt><code>new</code> <span class="type">string</span></dt><dd>Replacement text for each match; an empty string removes matched text.</dd>
 </dl>
 <h3>Returns</h3>
-<p>string — result string</p>
+<p>Text after replacement, retaining the original content if no match is found.</p>
+<h3>Usage notes</h3><ul>
+<li>When <code>old</code> is empty, insertion positions include before the first character, between characters and after the last character.</li>
+</ul>
 </article>
 <article class="api-item" id="equal_fold">
 <h2><code>equal_fold</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> equal_fold(a &amp;<span class="syn-type">string</span>, b &amp;<span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>ASCII case-insensitive equality.</p>
+<p>Compare text using Unicode simple case folding.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>a</code> <span class="type">&amp;string</span></dt><dd>value (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>b</code> <span class="type">&amp;string</span></dt><dd>b (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>a</code> <span class="type">&amp;string</span></dt><dd>First text to compare.</dd>
+<dt><code>b</code> <span class="type">&amp;string</span></dt><dd>Second text to compare.</dd>
 </dl>
 <h3>Returns</h3>
-<p>bool — true or false</p>
+<p><code>true</code> when the texts differ only by supported case mappings; otherwise <code>false</code>.</p>
+<h3>Usage notes</h3><ul>
+<li>Does not trim whitespace, normalize Unicode, or perform multi-character case expansion.</li>
+</ul>
 </article>
 <article class="api-item" id="struct-Cut">
 <h2><code>struct Cut</code></h2>
@@ -526,7 +650,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating before, after, found.</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>before</code> <span class="type">string</span></dt><dd>field (string)</dd>
 <dt><code>after</code> <span class="type">string</span></dt><dd>field (string)</dd>
@@ -537,40 +661,57 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>cut</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> cut(s &amp;<span class="syn-type">string</span>, sep <span class="syn-type">string</span>) Cut</code></pre></div>
 <h3>Purpose</h3>
-<p>Cut into before/after at the first sep.</p>
+<p>Cut text at the first delimiter; inspect <code>found</code> to distinguish an absent delimiter from an empty piece.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>sep</code> <span class="type">string</span></dt><dd>separator (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>sep</code> <span class="type">string</span></dt><dd>Complete delimiter to match; the pieces do not include it.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cut — a value of this type</p>
+<p><code>Cut.before</code> and <code>Cut.after</code> hold the text before and after the delimiter; <code>found</code> reports a match. Without a match, <code>before</code> is the original text and <code>after</code> is empty.</p>
+<h3>Usage notes</h3><ul>
+<li>An empty delimiter matches at the beginning: <code>before</code> is empty, <code>after</code> is the original text and <code>found</code> is <code>true</code>.</li>
+</ul>
 </article>
 <article class="api-item" id="cut_prefix">
 <h2><code>cut_prefix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> cut_prefix(s &amp;<span class="syn-type">string</span>, pre <span class="syn-type">string</span>) Cut</code></pre></div>
 <h3>Purpose</h3>
-<p>Cut off a prefix when present.</p>
+<p>Try to remove an exact prefix, reporting whether a match was made.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>pre</code> <span class="type">string</span></dt><dd>prefix (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>pre</code> <span class="type">string</span></dt><dd>Complete prefix to match.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cut — a value of this type</p>
+<p>The remaining text is stored in <code>Cut.before</code>, while <code>Cut.after</code> is always empty. <code>found</code> reports success; without a match, <code>before</code> holds the original text.</p>
+<h3>Call example</h3><p>Check a prefix and read the remainder</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"Bearer token123"</span>
+    result <span class="syn-flow">:=</span> strings.cut_prefix(&amp;text, <span class="syn-str">"Bearer "</span>)
+    println(result.found)
+    println(result.before)
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>true
+token123
+</samp></pre>
 </article>
 <article class="api-item" id="cut_suffix">
 <h2><code>cut_suffix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> cut_suffix(s &amp;<span class="syn-type">string</span>, suf <span class="syn-type">string</span>) Cut</code></pre></div>
 <h3>Purpose</h3>
-<p>Cut off a suffix when present.</p>
+<p>Try to remove an exact suffix, reporting whether a match was made.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>suf</code> <span class="type">string</span></dt><dd>suffix (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>suf</code> <span class="type">string</span></dt><dd>Complete suffix to match.</dd>
 </dl>
 <h3>Returns</h3>
-<p>Cut — a value of this type</p>
+<p>The remaining text is stored in <code>Cut.before</code>, while <code>Cut.after</code> is always empty. <code>found</code> reports success; without a match, <code>before</code> holds the original text.</p>
 </article>
 <article class="api-item" id="struct-Builder">
 <h2><code>struct Builder</code></h2>
@@ -579,7 +720,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating buf.</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>buf</code> <span class="type">string</span></dt><dd>buffer</dd>
 </dl>
@@ -590,7 +731,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h3>Purpose</h3>
 <p>Execute builder.</p>
 <h3>Parameters</h3>
-<p class="api-none">none</p>
+<p class="api-none">No arguments are required.</p>
 <h3>Returns</h3>
 <p>Builder — a value of this type</p>
 </article>
@@ -598,11 +739,11 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Builder) write_string</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">$&amp;</span>Builder) write_string(s &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Builder`: write a string and return the byte count.</p>
+<p>Operation on <code>$&amp;Builder</code>: write a string and return the byte count.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>receiver $&amp;Builder (exclusive borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — bytes written</p>
@@ -611,22 +752,24 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Builder) grow</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">$&amp;</span>Builder) grow(n <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Builder`: ensure room for at least n more bytes.</p>
+<p>Operation on <code>$&amp;Builder</code>: ensure room for at least n more bytes.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>receiver $&amp;Builder (exclusive borrow)</dd>
+<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>count, length, or limit (int)</dd>
 </dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
 </article>
 <article class="api-item" id="--Builder-write_view">
 <h2><code>($&amp;Builder) write_view</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">$&amp;</span>Builder) write_view(s &amp;<span class="syn-type">string</span>, v ByteView) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Builder`: write view.</p>
+<p>Operation on <code>$&amp;Builder</code>: write view.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>receiver $&amp;Builder (exclusive borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>v</code> <span class="type">ByteView</span></dt><dd>value (ByteView)</dd>
 </dl>
 <h3>Returns</h3>
@@ -636,10 +779,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Builder) write_int</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">$&amp;</span>Builder) write_int(n <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Builder`: write int.</p>
+<p>Operation on <code>$&amp;Builder</code>: write int.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>receiver $&amp;Builder (exclusive borrow)</dd>
+<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>count, length, or limit (int)</dd>
 </dl>
 <h3>Returns</h3>
@@ -649,10 +792,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;Builder) length</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;Builder) length() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;Builder`: return the current length.</p>
+<p>Operation on <code>&amp;Builder</code>: return the current length.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">&amp;Builder</span></dt><dd>receiver &amp;Builder (borrow)</dd>
+<dt><code>b</code> <span class="type">&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -661,10 +804,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;Builder) text</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;Builder) text() <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;Builder`: return the current text.</p>
+<p>Operation on <code>&amp;Builder</code>: return the current text.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">&amp;Builder</span></dt><dd>receiver &amp;Builder (borrow)</dd>
+<dt><code>b</code> <span class="type">&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
@@ -673,37 +816,45 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Builder) reset</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">$&amp;</span>Builder) reset()</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Builder`: clear internal state so the value can be reused.</p>
+<p>Operation on <code>$&amp;Builder</code>: clear internal state so the value can be reused.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>receiver $&amp;Builder (exclusive borrow)</dd>
+<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (exclusive borrow).</dd>
 </dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
 </article>
 <article class="api-item" id="index_func">
 <h2><code>index_func</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> index_func(s &amp;<span class="syn-type">string</span>, f <span class="syn-kw">fn</span>(<span class="syn-type">int</span>) <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Index of the first byte that satisfies the callback; -1 if missing. Returns -1 if not found.</p>
+<p>Visit Unicode characters and locate the first one accepted by the callback.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>byte callback: argument is 0..255, return whether it matches</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>Receives a Unicode code point and returns <code>true</code> for a match, not a single UTF-8 byte.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Starting byte offset of the match, or <code>-1</code> when none matches.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+</ul>
 </article>
 <article class="api-item" id="last_index_func">
 <h2><code>last_index_func</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> last_index_func(s &amp;<span class="syn-type">string</span>, f <span class="syn-kw">fn</span>(<span class="syn-type">int</span>) <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Last index where the callback is true; -1 if missing. Returns -1 if not found.</p>
+<p>Visit Unicode characters and locate the last one accepted by the callback.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>byte callback: argument is 0..255, return whether it matches</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>Receives a Unicode code point and returns <code>true</code> for a match, not a single UTF-8 byte.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Starting byte offset of the match, or <code>-1</code> when none matches.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+</ul>
 </article>
 <article class="api-item" id="map_bytes">
 <h2><code>map_bytes</code></h2>
@@ -712,8 +863,8 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Map each byte through f and rebuild the string.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>f</code> <span class="type">fn(int) int</span></dt><dd>byte callback: argument is 0..255, return whether it matches</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>f</code> <span class="type">fn(int) int</span></dt><dd>Callback with signature <code>fn(int) int</code>; pass the function value for this operation to invoke.</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
@@ -726,7 +877,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>growable byte buffer for hot concat paths (compiler / fmt).</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>buf</code> <span class="type">[]int</span></dt><dd>buffer</dd>
 <dt><code>len</code> <span class="type">int</span></dt><dd>field (int)</dd>
@@ -748,43 +899,49 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;ByteBuilder) reserve</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb <span class="syn-borrow">$&amp;</span>ByteBuilder) reserve(extra <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `reserve` on `$&amp;ByteBuilder`.</p>
+<p>Execute <code>reserve</code> on <code>$&amp;ByteBuilder</code>.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>sb</code> <span class="type">$&amp;ByteBuilder</span></dt><dd>receiver $&amp;ByteBuilder (exclusive borrow)</dd>
+<dt><code>sb</code> <span class="type">$&amp;ByteBuilder</span></dt><dd>The <code>ByteBuilder</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>extra</code> <span class="type">int</span></dt><dd>extra (int)</dd>
 </dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
 </article>
 <article class="api-item" id="--ByteBuilder-write_byte">
 <h2><code>($&amp;ByteBuilder) write_byte</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb <span class="syn-borrow">$&amp;</span>ByteBuilder) write_byte(c <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;ByteBuilder`: write one byte.</p>
+<p>Operation on <code>$&amp;ByteBuilder</code>: write one byte.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>sb</code> <span class="type">$&amp;ByteBuilder</span></dt><dd>receiver $&amp;ByteBuilder (exclusive borrow)</dd>
+<dt><code>sb</code> <span class="type">$&amp;ByteBuilder</span></dt><dd>The <code>ByteBuilder</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>c</code> <span class="type">int</span></dt><dd>byte or character code (int)</dd>
 </dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
 </article>
 <article class="api-item" id="--ByteBuilder-write_str">
 <h2><code>($&amp;ByteBuilder) write_str</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb <span class="syn-borrow">$&amp;</span>ByteBuilder) write_str(s <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;ByteBuilder`: write a string.</p>
+<p>Operation on <code>$&amp;ByteBuilder</code>: write a string.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>sb</code> <span class="type">$&amp;ByteBuilder</span></dt><dd>receiver $&amp;ByteBuilder (exclusive borrow)</dd>
+<dt><code>sb</code> <span class="type">$&amp;ByteBuilder</span></dt><dd>The <code>ByteBuilder</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>s</code> <span class="type">string</span></dt><dd>source string (string)</dd>
 </dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
 </article>
 <article class="api-item" id="ByteBuilder-to_string">
 <h2><code>(ByteBuilder) to_string</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sb ByteBuilder) to_string() <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `ByteBuilder`: convert to string.</p>
+<p>Operation on <code>ByteBuilder</code>: convert to string.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>sb</code> <span class="type">ByteBuilder</span></dt><dd>receiver ByteBuilder (value receiver)</dd>
+<dt><code>sb</code> <span class="type">ByteBuilder</span></dt><dd>The <code>ByteBuilder</code> instance used by this call (value receiver).</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
@@ -796,7 +953,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Copy into a new independent string.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
@@ -809,8 +966,8 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Report whether any byte satisfies the callback.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>byte callback: argument is 0..255, return whether it matches</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>Callback with signature <code>fn(int) bool</code>; pass the function value for this operation to invoke.</dd>
 </dl>
 <h3>Returns</h3>
 <p>bool — true or false</p>
@@ -819,27 +976,33 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>index_any</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> index_any(s &amp;<span class="syn-type">string</span>, chars <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Index of the first byte that appears in the cutset; -1 if missing. Returns -1 if not found.</p>
+<p>Find the first character belonging to a set of accepted characters.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>chars</code> <span class="type">string</span></dt><dd>byte cutset (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>chars</code> <span class="type">string</span></dt><dd>A set of characters, not a contiguous substring or regular expression.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Byte offset of a matching character, or <code>-1</code> if there is no match or the set is empty.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+</ul>
 </article>
 <article class="api-item" id="last_index_any">
 <h2><code>last_index_any</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> last_index_any(s &amp;<span class="syn-type">string</span>, chars <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Last index of any cutset byte; -1 if missing. Returns -1 if not found.</p>
+<p>Find the last character belonging to a set of accepted characters.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>chars</code> <span class="type">string</span></dt><dd>byte cutset (string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>chars</code> <span class="type">string</span></dt><dd>A set of characters, not a contiguous substring or regular expression.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Byte offset of a matching character, or <code>-1</code> if there is no match or the set is empty.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+</ul>
 </article>
 <article class="api-item" id="contains_any">
 <h2><code>contains_any</code></h2>
@@ -848,7 +1011,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Report whether any byte from the cutset occurs.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>chars</code> <span class="type">string</span></dt><dd>byte cutset (string)</dd>
 </dl>
 <h3>Returns</h3>
@@ -858,14 +1021,17 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>index_rune</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> index_rune(s &amp;<span class="syn-type">string</span>, r <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Index of the first rune; -1 if missing. Returns -1 if not found.</p>
+<p>Find the first occurrence of a Unicode code point.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>r</code> <span class="type">int</span></dt><dd>rune (Unicode code point) (int)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>r</code> <span class="type">int</span></dt><dd>Unicode code point to find, such as the integer value of a Chinese character.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Starting byte offset of the character, or <code>-1</code> if absent or if <code>r</code> is not a valid Unicode scalar value.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+</ul>
 </article>
 <article class="api-item" id="contains_rune">
 <h2><code>contains_rune</code></h2>
@@ -874,7 +1040,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Report whether the rune occurs.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>r</code> <span class="type">int</span></dt><dd>rune (Unicode code point) (int)</dd>
 </dl>
 <h3>Returns</h3>
@@ -887,7 +1053,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Split after the separator, keeping it on each piece.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>sep</code> <span class="type">string</span></dt><dd>separator (string)</dd>
 </dl>
 <h3>Returns</h3>
@@ -900,7 +1066,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Split after the separator, at most n parts.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>sep</code> <span class="type">string</span></dt><dd>separator (string)</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>count, length, or limit (int)</dd>
 </dl>
@@ -914,8 +1080,8 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Trim leading bytes using the callback.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>byte callback: argument is 0..255, return whether it matches</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>Callback with signature <code>fn(int) bool</code>; pass the function value for this operation to invoke.</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
@@ -927,8 +1093,8 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Trim trailing bytes using the callback.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>byte callback: argument is 0..255, return whether it matches</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>Callback with signature <code>fn(int) bool</code>; pass the function value for this operation to invoke.</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
@@ -940,8 +1106,8 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Trim bytes on both ends using the callback.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>byte callback: argument is 0..255, return whether it matches</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>f</code> <span class="type">fn(int) bool</span></dt><dd>Callback with signature <code>fn(int) bool</code>; pass the function value for this operation to invoke.</dd>
 </dl>
 <h3>Returns</h3>
 <p>string — result string</p>
@@ -953,7 +1119,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Replace invalid UTF-8 sequences with replacement.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>replacement</code> <span class="type">string</span></dt><dd>replacement for invalid sequences (string)</dd>
 </dl>
 <h3>Returns</h3>
@@ -963,10 +1129,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Builder) write_byte</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">$&amp;</span>Builder) write_byte(c <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Builder`: write one byte.</p>
+<p>Operation on <code>$&amp;Builder</code>: write one byte.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>receiver $&amp;Builder (exclusive borrow)</dd>
+<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>c</code> <span class="type">int</span></dt><dd>byte or character code (int)</dd>
 </dl>
 <h3>Returns</h3>
@@ -976,10 +1142,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Builder) write_rune</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b <span class="syn-borrow">$&amp;</span>Builder) write_rune(r <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Builder`: write a rune as UTF-8.</p>
+<p>Operation on <code>$&amp;Builder</code>: write a rune as UTF-8.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>receiver $&amp;Builder (exclusive borrow)</dd>
+<dt><code>b</code> <span class="type">$&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>r</code> <span class="type">int</span></dt><dd>rune (Unicode code point) (int)</dd>
 </dl>
 <h3>Returns</h3>
@@ -989,10 +1155,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;Builder) cap</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (b &amp;Builder) cap() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;Builder`: return the capacity.</p>
+<p>Operation on <code>&amp;Builder</code>: return the capacity.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>b</code> <span class="type">&amp;Builder</span></dt><dd>receiver &amp;Builder (borrow)</dd>
+<dt><code>b</code> <span class="type">&amp;Builder</span></dt><dd>The <code>Builder</code> instance used by this call (borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -1003,15 +1169,15 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 
 }</code></pre></div>
 <h3>Purpose</h3>
-<p>`Replacer` context or state structure.</p>
-<h3>Parameters</h3>
-<p class="api-none">none</p>
+<p><code>Replacer</code> context or state structure.</p>
+<h3>Public fields</h3>
+<p class="api-none">This type has no public fields.</p>
 </article>
 <article class="api-item" id="new_replacer">
 <h2><code>new_replacer</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> new_replacer(oldnew <span class="syn-flow">&lt;-</span>&gt; <span class="syn-type">string</span>) Replacer</code></pre></div>
 <h3>Purpose</h3>
-<p>Construct replacer. Throws on failure.</p>
+<p>Construct replacer. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>oldnew</code> <span class="type">&lt;-&gt; string</span></dt><dd>variadic string (seen inside the function as []string)</dd>
@@ -1023,14 +1189,30 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;Replacer) replace</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;Replacer) replace(s0 &amp;<span class="syn-type">string</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Replace old with new in s. n==0 or empty old returns s unchanged; n&lt;0 replaces all; n&gt;0 replaces at most n times.</p>
+<p>Replace non-overlapping substring matches from left to right, producing new text without modifying the original.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">&amp;Replacer</span></dt><dd>receiver &amp;Replacer (borrow)</dd>
-<dt><code>s0</code> <span class="type">&amp;string</span></dt><dd>s0 (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>r</code> <span class="type">&amp;Replacer</span></dt><dd>The <code>Replacer</code> instance used by this call (borrow).</dd>
+<dt><code>s0</code> <span class="type">&amp;string</span></dt><dd>s0 (read-only borrow; caller keeps the original; type &amp;string)</dd>
 </dl>
 <h3>Returns</h3>
-<p>a new string</p>
+<p>Text after replacement, retaining the original content if no match is found.</p>
+<h3>Usage notes</h3><ul>
+<li>When <code>old</code> is empty, insertion positions include before the first character, between characters and after the last character.</li>
+</ul>
+<h3>Call example</h3><p>Limit the number of replacements</p>
+<div class="code-block-wrapper xu-local-only"><div class="code-block-header"><span>Xu</span><span>Local SDK example</span></div><pre><code class="language-xu">@main
+<span class="syn-import"><span class="hash">#</span>strings</span>
+
+<span class="syn-kw">fn</span> main() {
+    text <span class="syn-flow">:=</span> <span class="syn-str">"a-a-a"</span>
+    println(strings.replace(&amp;text, <span class="syn-str">"a"</span>, <span class="syn-str">"x"</span>, 2))
+    println(text)
+}
+</code></pre></div>
+<p>Expected output:</p><pre><samp>x-x-a
+a-a-a
+</samp></pre>
 </article>
 <article class="api-item" id="struct-Reader">
 <h2><code>struct Reader</code></h2>
@@ -1039,8 +1221,8 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Strings Streaming reader and decoder.</p>
-<h3>Parameters</h3>
-<p class="api-none">none</p>
+<h3>Public fields</h3>
+<p class="api-none">This type has no public fields.</p>
 </article>
 <article class="api-item" id="struct-RuneRead">
 <h2><code>struct RuneRead</code></h2>
@@ -1050,7 +1232,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating ch, size.</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>ch</code> <span class="type">int</span></dt><dd>character code</dd>
 <dt><code>size</code> <span class="type">int</span></dt><dd>field (int)</dd>
@@ -1072,10 +1254,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;Reader) size</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;Reader) size() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;Reader`: return the size.</p>
+<p>Operation on <code>&amp;Reader</code>: return the size.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">&amp;Reader</span></dt><dd>receiver &amp;Reader (borrow)</dd>
+<dt><code>r</code> <span class="type">&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -1084,10 +1266,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;Reader) length</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r &amp;Reader) length() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;Reader`: return the current length.</p>
+<p>Operation on <code>&amp;Reader</code>: return the current length.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">&amp;Reader</span></dt><dd>receiver &amp;Reader (borrow)</dd>
+<dt><code>r</code> <span class="type">&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -1096,21 +1278,23 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Reader) reset</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Reader) reset(s <span class="syn-type">string</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Reader`: clear internal state so the value can be reused.</p>
+<p>Operation on <code>$&amp;Reader</code>: clear internal state so the value can be reused.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>receiver $&amp;Reader (exclusive borrow)</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>s</code> <span class="type">string</span></dt><dd>source string (string)</dd>
 </dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
 </article>
 <article class="api-item" id="--Reader-read_n">
 <h2><code>($&amp;Reader) read_n</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Reader) read_n(n <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Reader`: read at most n bytes; may return shorter or empty at end.</p>
+<p>Operation on <code>$&amp;Reader</code>: read at most n bytes; may return shorter or empty at end.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>receiver $&amp;Reader (exclusive borrow)</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>count, length, or limit (int)</dd>
 </dl>
 <h3>Returns</h3>
@@ -1120,10 +1304,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Reader) read_byte</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Reader) read_byte() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Reader`: read one byte; throws on failure. Throws on failure.</p>
+<p>Operation on <code>$&amp;Reader</code>: read one byte; throws on failure. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>receiver $&amp;Reader (exclusive borrow)</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (exclusive borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -1132,10 +1316,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Reader) unread_byte</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Reader) unread_byte() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Reader`: unread the last byte. Throws on failure.</p>
+<p>Operation on <code>$&amp;Reader</code>: unread the last byte. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>receiver $&amp;Reader (exclusive borrow)</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (exclusive borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -1144,10 +1328,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Reader) read_rune</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Reader) read_rune() RuneRead</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Reader`: read one UTF-8 rune. Throws on failure.</p>
+<p>Operation on <code>$&amp;Reader</code>: read one UTF-8 rune. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>receiver $&amp;Reader (exclusive borrow)</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (exclusive borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>RuneRead — a value of this type</p>
@@ -1156,10 +1340,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Reader) unread_rune</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Reader) unread_rune() <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Reader`: unread the last rune. Throws on failure.</p>
+<p>Operation on <code>$&amp;Reader</code>: unread the last rune. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>receiver $&amp;Reader (exclusive borrow)</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (exclusive borrow).</dd>
 </dl>
 <h3>Returns</h3>
 <p>int — a value of this type</p>
@@ -1168,10 +1352,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Reader) seek</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Reader) seek(offset <span class="syn-type">int</span>, whence <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Reader`: move the read position. whence 0/1/2 = absolute / relative / from end. Throws on failure.</p>
+<p>Operation on <code>$&amp;Reader</code>: move the read position. whence 0/1/2 = absolute / relative / from end. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>receiver $&amp;Reader (exclusive borrow)</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>offset</code> <span class="type">int</span></dt><dd>offset (int)</dd>
 <dt><code>whence</code> <span class="type">int</span></dt><dd>seek base: 0 start / 1 current / 2 end (int)</dd>
 </dl>
@@ -1182,10 +1366,10 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>($&amp;Reader) read_at</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (r <span class="syn-borrow">$&amp;</span>Reader) read_at(n <span class="syn-type">int</span>, off <span class="syn-type">int</span>) <span class="syn-type">string</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `$&amp;Reader`: read at most n bytes starting at offset off. Throws on failure.</p>
+<p>Operation on <code>$&amp;Reader</code>: read at most n bytes starting at offset off. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>receiver $&amp;Reader (exclusive borrow)</dd>
+<dt><code>r</code> <span class="type">$&amp;Reader</span></dt><dd>The <code>Reader</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>count, length, or limit (int)</dd>
 <dt><code>off</code> <span class="type">int</span></dt><dd>offset (int)</dd>
 </dl>
@@ -1200,7 +1384,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Structure encapsulating off, len.</p>
-<h3>Parameters</h3>
+<h3>Public fields</h3>
 <dl class="api-params">
 <dt><code>off</code> <span class="type">int</span></dt><dd>offset</dd>
 <dt><code>len</code> <span class="type">int</span></dt><dd>field (int)</dd>
@@ -1213,7 +1397,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>Create a borrowed read-only ByteView over the string.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 </dl>
 <h3>Returns</h3>
 <p>ByteView — a value of this type</p>
@@ -1225,7 +1409,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <p>View slice.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>off</code> <span class="type">int</span></dt><dd>offset (int)</dd>
 <dt><code>n</code> <span class="type">int</span></dt><dd>count, length, or limit (int)</dd>
 </dl>
@@ -1236,11 +1420,11 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;ByteView) at</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (v &amp;ByteView) at(s &amp;<span class="syn-type">string</span>, i <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute `at` on `&amp;ByteView`.</p>
+<p>Execute <code>at</code> on <code>&amp;ByteView</code>.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>receiver &amp;ByteView (borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>The <code>ByteView</code> instance used by this call (borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>i</code> <span class="type">int</span></dt><dd>index or integer (int)</dd>
 </dl>
 <h3>Returns</h3>
@@ -1250,12 +1434,12 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;ByteView) equal</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (v &amp;ByteView) equal(s &amp;<span class="syn-type">string</span>, t &amp;<span class="syn-type">string</span>, w ByteView) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;ByteView`: report whether the two values are equal.</p>
+<p>Operation on <code>&amp;ByteView</code>: report whether the two values are equal.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>receiver &amp;ByteView (borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>t</code> <span class="type">&amp;string</span></dt><dd>t (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>The <code>ByteView</code> instance used by this call (borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>t</code> <span class="type">&amp;string</span></dt><dd>t (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>w</code> <span class="type">ByteView</span></dt><dd>writer or width (ByteView)</dd>
 </dl>
 <h3>Returns</h3>
@@ -1265,84 +1449,95 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;ByteView) compare</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (v &amp;ByteView) compare(s &amp;<span class="syn-type">string</span>, t &amp;<span class="syn-type">string</span>, w ByteView) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;ByteView`: lexicographic compare: -1, 0, or 1.</p>
+<p>Compare two strings lexicographically by bytes.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>receiver &amp;ByteView (borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>t</code> <span class="type">&amp;string</span></dt><dd>t (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>The <code>ByteView</code> instance used by this call (borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>t</code> <span class="type">&amp;string</span></dt><dd>t (read-only borrow; caller keeps the original; type &amp;string)</dd>
 <dt><code>w</code> <span class="type">ByteView</span></dt><dd>writer or width (ByteView)</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — -1 if less, 0 if equal, 1 if greater</p>
+<p>Negative when <code>a</code> precedes <code>b</code>, zero when equal, positive when it follows.</p>
+<h3>Usage notes</h3><ul>
+<li>Compare UTF-8 bytes in order, without case conversion or locale-specific collation.</li>
+</ul>
 </article>
 <article class="api-item" id="-ByteView-index_byte">
 <h2><code>(&amp;ByteView) index_byte</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (v &amp;ByteView) index_byte(s &amp;<span class="syn-type">string</span>, c <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;ByteView`: index of the first byte c; -1 if missing. Returns -1 if not found.</p>
+<p>Find a single byte forward, for example an ASCII punctuation or protocol delimiter.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>receiver &amp;ByteView (borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>c</code> <span class="type">int</span></dt><dd>byte or character code (int)</dd>
+<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>The <code>ByteView</code> instance used by this call (borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>c</code> <span class="type">int</span></dt><dd>Byte to locate, normally in <code>0..255</code>.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Byte offset of the match, or <code>-1</code> if absent.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+<li>This searches bytes; use <code>index_rune</code> for a complete Unicode character.</li>
+</ul>
 </article>
 <article class="api-item" id="-ByteView-last_index_byte">
 <h2><code>(&amp;ByteView) last_index_byte</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (v &amp;ByteView) last_index_byte(s &amp;<span class="syn-type">string</span>, c <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on `&amp;ByteView`: index of the last byte c; -1 if missing. Returns -1 if not found.</p>
+<p>Find a single byte backward, for example an ASCII punctuation or protocol delimiter.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>receiver &amp;ByteView (borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>c</code> <span class="type">int</span></dt><dd>byte or character code (int)</dd>
+<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>The <code>ByteView</code> instance used by this call (borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>c</code> <span class="type">int</span></dt><dd>Byte to locate, normally in <code>0..255</code>.</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>Byte offset of the match, or <code>-1</code> if absent.</p>
+<h3>Usage notes</h3><ul>
+<li>Indexes start at zero and count UTF-8 bytes, not Unicode characters.</li>
+<li>This searches bytes; use <code>index_rune</code> for a complete Unicode character.</li>
+</ul>
 </article>
 <article class="api-item" id="-ByteView-has_prefix">
 <h2><code>(&amp;ByteView) has_prefix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (v &amp;ByteView) has_prefix(s &amp;<span class="syn-type">string</span>, pre &amp;<span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Whether s starts with pre.</p>
+<p>Check for an exact, case-sensitive match at the beginning of the text.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>receiver &amp;ByteView (borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source (borrowed)</dd>
-<dt><code>pre</code> <span class="type">&amp;string</span></dt><dd>prefix</dd>
+<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>The <code>ByteView</code> instance used by this call (borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>pre</code> <span class="type">&amp;string</span></dt><dd>Literal text to match; an empty string also matches.</dd>
 </dl>
 <h3>Returns</h3>
-<p>true if it does</p>
+<p><code>true</code> on a match, otherwise <code>false</code>.</p>
 </article>
 <article class="api-item" id="-ByteView-has_suffix">
 <h2><code>(&amp;ByteView) has_suffix</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (v &amp;ByteView) has_suffix(s &amp;<span class="syn-type">string</span>, suf &amp;<span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Whether s ends with suf.</p>
+<p>Check for an exact, case-sensitive match at the end of the text.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>receiver &amp;ByteView (borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source (borrowed)</dd>
-<dt><code>suf</code> <span class="type">&amp;string</span></dt><dd>suffix</dd>
+<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>The <code>ByteView</code> instance used by this call (borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>Original text, passed as a read-only borrow; this call does not modify it.</dd>
+<dt><code>suf</code> <span class="type">&amp;string</span></dt><dd>Literal text to match; an empty string also matches.</dd>
 </dl>
 <h3>Returns</h3>
-<p>true if it does</p>
+<p><code>true</code> on a match, otherwise <code>false</code>.</p>
 </article>
 <article class="api-item" id="-ByteView-index">
 <h2><code>(&amp;ByteView) index</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (v &amp;ByteView) index(s &amp;<span class="syn-type">string</span>, sub &amp;<span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Index of `sub` relative to the window. Empty needle matches at 0. Returns -1 if not found.</p>
+<p>Index of <code>sub</code> relative to the window. Empty needle matches at 0. Returns -1 if not found.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
-<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>receiver &amp;ByteView (borrow)</dd>
-<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (borrowed; caller keeps it; type &amp;string)</dd>
-<dt><code>sub</code> <span class="type">&amp;string</span></dt><dd>substring (borrowed; caller keeps it; type &amp;string)</dd>
+<dt><code>v</code> <span class="type">&amp;ByteView</span></dt><dd>The <code>ByteView</code> instance used by this call (borrow).</dd>
+<dt><code>s</code> <span class="type">&amp;string</span></dt><dd>source string (read-only borrow; caller keeps the original; type &amp;string)</dd>
+<dt><code>sub</code> <span class="type">&amp;string</span></dt><dd>substring (read-only borrow; caller keeps the original; type &amp;string)</dd>
 </dl>
 <h3>Returns</h3>
-<p>int — index; -1 if missing</p>
+<p>int — index; see the description for its range and special values</p>
 </article>

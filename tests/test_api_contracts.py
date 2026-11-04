@@ -56,7 +56,7 @@ class ContractValidationTests(unittest.TestCase):
                     page = (site / 'content' / lang / 'api' / ('preview' if preview else '') / 'sample.html').read_text()
                     for entry in entries:
                         if entry['package'] == 'sample':
-                            self.assertIn(api.esc(entry[lang]['purpose']), page)
+                            self.assertIn(api.prose(entry[lang]['purpose']), page)
             return result
 
     def test_missing_ambiguous_and_duplicate_symbols_exit_nonzero(self):
@@ -106,6 +106,94 @@ class ContractValidationTests(unittest.TestCase):
                                        extra_sources={'other': 'pub fn open() {}'})
                 self.assertEqual(result.returncode, expected, result.stderr)
 
+    def test_stale_source_digests_fail_before_writing(self):
+        for field, diagnostic in [('source_sha256', 'documented source changed'),
+                                  ('package_sha256', 'documented package sources changed')]:
+            entry = contract()
+            entry[field] = '0' * 64
+            for dry_run in (False, True):
+                with self.subTest(field=field, dry_run=dry_run):
+                    result = self.generate([entry], 'pub fn open() {}', dry_run=dry_run)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertIn(diagnostic, result.stderr)
+
+    def test_private_helper_changes_invalidate_documented_behavior(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            package = Path(temporary) / 'sample'
+            package.mkdir()
+            (package / 'mod.xu').write_text('pub fn open() int { << helper() }')
+            helper = package / 'helper.xu'
+            helper.write_text('fn helper() int { << 1 }')
+            before = api.load_package(temporary, 'sample')
+            entry = contract()
+            entry['source_sha256'] = api.source_digest(before.items[0])
+            entry['package_sha256'] = before.source_sha256
+            api.validate_contracts([entry], [before])
+            helper.write_text('fn helper() int { << 2 }')
+            after = api.load_package(temporary, 'sample')
+            self.assertEqual(entry['source_sha256'], api.source_digest(after.items[0]))
+            with self.assertRaisesRegex(ValueError, 'review helpers'):
+                api.validate_contracts([entry], [after])
+
+    def test_malformed_usage_and_examples_fail_closed(self):
+        for section, value, diagnostic in [
+            ('notes', 'text', 'notes must contain'),
+            ('errors', [''], 'errors must contain'),
+            ('examples', {}, 'examples must be a list'),
+            ('examples', [{'title': 'Use it'}], 'examples require a title and code'),
+            ('examples', [{'title': 'Use it', 'code': 'open()', 'output': 0}], 'example output must be text'),
+        ]:
+            entry = contract()
+            entry['zh'][section] = value
+            with self.subTest(section=section, value=value):
+                result = self.generate([entry], 'pub fn open() {}', dry_run=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(diagnostic, result.stderr)
+
+
+class DescriptionRenderingTests(unittest.TestCase):
+    def test_prose_formats_identifiers_and_escapes_html(self):
+        self.assertEqual(api.prose('Use `<T>` & <script>'), 'Use <code>&lt;T&gt;</code> &amp; &lt;script&gt;')
+        self.assertEqual(api.prose('Unpaired `'), 'Unpaired `')
+
+    def test_void_functions_and_type_members_have_appropriate_sections(self):
+        package = api.Package('sample', '#sample')
+        function = api.render_item(package, api.Item('fn', 'open', 'pub fn open()'), 'zh', {})
+        self.assertIn('不返回值', function)
+        self.assertIn('无需传入参数', function)
+        structure = api.render_item(package, api.Item('struct', 'Options', 'pub struct Options {}'), 'zh', {})
+        self.assertIn('公开字段', structure)
+        self.assertNotIn('返回值', structure)
+        self.assertNotIn('无需传入参数', structure)
+        constant = api.render_item(package, api.Item('const', 'LIMIT', 'const LIMIT = 1'), 'zh', {})
+        self.assertNotIn('<h3>参数', constant)
+
+    def test_usage_errors_and_local_examples_are_rendered_safely(self):
+        entry = {'purpose': 'Open `Reader`.', 'params': {}, 'returns': '',
+                 'notes': ['Use `<T>` safely.'], 'errors': ['Throws `<error>`.'],
+                 'examples': [{'title': 'Example `<script>`', 'code': 'println("<script>")', 'output': '<result>\n'}]}
+        saved = api.OVERRIDES.copy()
+        try:
+            api.OVERRIDES[('sample', 'open')] = {'zh': entry, 'en': entry}
+            page = api.render_item(api.Package('sample', '#sample'), api.Item('fn', 'open', 'pub fn open()'), 'en', {})
+            self.assertIn('Usage notes', page)
+            self.assertIn('Error handling', page)
+            self.assertIn('<code>&lt;T&gt;</code>', page)
+            self.assertIn('xu-local-only', page)
+            self.assertIn('<samp>&lt;result&gt;', page)
+            self.assertNotIn('<script>', page)
+        finally:
+            api.OVERRIDES.clear()
+            api.OVERRIDES.update(saved)
+
+    def test_body_patterns_do_not_invent_split_or_case_conversion_rules(self):
+        split = api.Item('fn', 'split', 'pub fn split(s &string, sep string) []string', ret='[]string',
+                         body='if sep.len == 0 { << split_runes(s) }')
+        lower = api.Item('fn', 'to_lower', 'pub fn to_lower(s &string) string', ret='string',
+                         body='if code == 65 { << unicode_case(s) }')
+        self.assertNotIn('空分隔符', ' '.join(api.body_notes(split, 'zh')))
+        self.assertNotIn('ASCII', ' '.join(api.body_notes(lower, 'en')))
+
 
 class UIReceiverRegressionTests(unittest.TestCase):
     def test_all_17_audited_receivers_in_release_and_preview(self):
@@ -138,7 +226,7 @@ class UIReceiverRegressionTests(unittest.TestCase):
                             self.assertNotIn('value receiver', page)
                             for entry in entries:
                                 if entry['package'] == package.path:
-                                    self.assertIn(api.esc(entry[lang]['purpose']), page)
+                                    self.assertIn(api.prose(entry[lang]['purpose']), page)
                             for item in package.items:
                                 self.assertIn(api.highlight_xu(item.sig), page)
                                 receiver = api.params_for(package, item, lang)[0][2]
