@@ -226,6 +226,10 @@
         return 'help';
       }
 
+      // Xu's standalone -> is continue, so recognize complete programs before
+      // applying diagram heuristics. Explicit block markers still take priority.
+      if (isCompleteProgram(rawCode)) return 'xu';
+
       // 1. ASCII Diagram / Layout / Flowchart / Tree / EBNF
       if (/^[+]{3,}|^[+]-+|^[|].*[|]$|^┌─|^└──|^├──/.test(firstLine)) {
         return 'diagram';

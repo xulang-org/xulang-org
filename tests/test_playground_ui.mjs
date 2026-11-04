@@ -482,6 +482,35 @@ test('Browser HTMLCollection parent.children without indexOf does not throw', as
   assert.ok(wrapper.querySelector('.code-run-btn'));
 });
 
+for (const lang of ['zh', 'en']) {
+  test(`Control-flow tutorial is runnable Xu despite its continue arrow (${lang})`, async () => {
+    const html = readFileSync(new URL(`../content/${lang}/docs/tutorial/03.html`, import.meta.url), 'utf8');
+    const source = html.match(/<pre><code>([\s\S]*?)<\/code><\/pre>/)[1]
+      .replace(/\r\n?/g, '\n') // HTML parsing normalizes source newlines.
+      .replace(/&gt;/g, '>').replace(/&lt;/g, '<').replace(/&amp;/g, '&');
+    const {pres, workers} = await mount({en: lang === 'en', blocks: [{source}]});
+    const wrapper = pres[0].closest('.code-block-wrapper');
+    assert.ok(wrapper.classList.contains('block-kind-xu'));
+    assert.doesNotMatch(wrapper.querySelector('.code-block-header-title').innerHTML, /SPEC/);
+    assert.ok(wrapper.querySelector('.code-edit-btn'));
+    wrapper.querySelector('.code-run-btn').click();
+    await new Promise(setImmediate);
+    assert.equal(workers[0].messages.at(-1).source, source.trim());
+  });
+}
+
+test('Flowchart arrows and explicitly marked diagrams retain SPEC without Run', async () => {
+  const {pres} = await mount({blocks: [
+    {source: 'Start\n->\nFinish'},
+    {source: '@main\nfn main() int { << 0 }', codeClass: 'language-diagram'}
+  ]});
+  for (const pre of pres) {
+    const wrapper = pre.closest('.code-block-wrapper');
+    assert.ok(wrapper.classList.contains('block-kind-diagram'));
+    assert.equal(wrapper.querySelector('.code-run-btn'), null);
+  }
+});
+
 for (const en of [false, true]) {
   test(`Editing docs and API code updates every run and copy (${en ? 'en' : 'zh'})`, async () => {
     const {pres, workers, copied} = await mount({en, blocks: [
