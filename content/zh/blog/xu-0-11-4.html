@@ -1,0 +1,16 @@
+<!--title: Xu 0.11.4：有界尾调用、字节处理与 XUN 正确性修复-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.11.4：有界尾调用、字节处理与 XUN 正确性修复</h1>
+<p class="meta">2026-11-06 · <a href="https://github.com/xulang-org/xu/releases/tag/v0.11.4">Xu v0.11.4</a></p>
+<p>Xu 0.11.4 改善符合条件的递归与字节处理代码，并修复 XUN 解析、序列化边界。请一起升级编译器、标准库和产品工具。</p>
+<h2>编译器与字符串操作</h2>
+<p>符合条件的 ARM64 整数／布尔兄弟调用会先恢复当前栈帧和保存寄存器，再执行尾跳转。递归结果只参与一次 wrapping 加法的纯标量自递归可转换为累加器循环。算术检查、有界只读字节扫描、部分字符串操作和已证明恰为八轮的 CRC 循环可使用对应优化路径；涉及所有权、地址、ABI、调试或插桩限制时，仍保留普通实现。</p>
+<h2>XUN 兼容性</h2>
+<p>duration 校验持续推进输入位置；根以下的容器嵌套最多为 64 层。多行解析在验证必要结构缩进后保留正文空白。带类型列表会验证继承的标量类型，并在序列化往返中保留容器和元素标签。</p>
+<p><strong>迁移：</strong>带类型列表的序列化拼写可能变化，但解析后的值保持一致。请更新依赖原始文本的快照；若文本拼写不是契约的一部分，可比较解析树。旧的非空 <code>!s[...]</code> 标量输入仍被接受。详见 <a href="/api/encoding/xun">XUN API</a>。</p>
+<h2>实验性 ESP32 源码</h2>
+<p>固定 profile 的 Wi-Fi/BLE 共存与 CYD 状态应用以实验源码形式提供。主机局域网返回 <code>EHOSTUNREACH</code> 后，最终完整 MTU 的外部 ICMP 应答验收仍待完成。本次 SDK 发布不代表板级应用已通过生产验收，也不分发已烧录固件。</p>
+<p>当前 profile 支持 WPA2-PSK/CCMP 和单个 legacy SMP Just Works peer。DHCP 续租／重新绑定、Group Rekey、DNS/TCP、SoftAP、WPA3/PMF，以及 BLE 连接期间的 Wi-Fi 重连均未实现。Just Works 不提供 MITM 防护或 LE Secure Connections。更换网络须联合重启。</p>
+<h2>下载与验证范围</h2>
+<p>原生验收覆盖 macOS、Linux、Windows 的 ARM64/x64；LoongArch64 和 RISC-V SDK 通过交叉构建提供。请从<a href="/download">下载页</a>获取完整 SDK，并核对 <a href="https://github.com/xulang-org/xu/releases/download/v0.11.4/SHA256SUMS">SHA256SUMS</a>。完整变更与限制见<a href="https://github.com/xulang-org/xu/blob/v0.11.4/RELEASES.zh-CN.md">发布说明</a>。</p>
+<p><a href="/benchmarks">基准页面</a>保留实际测量的 0.11.3 编译器身份和来源运行记录。这些结果不会重新标记为 0.11.4 测量，本次也不承诺普遍加速。</p>
