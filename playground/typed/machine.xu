@@ -1,0 +1,586 @@
+@main
+
+#xu/mir
+#runtime/core
+
+const MAX_MEMORY = 67108864
+const MAX_STEPS = 10000000
+const GLOBALS = 8
+const INITIAL_USED = 4096
+const INITIAL_MEMORY = 131072
+
+struct Frame {
+    fn_index int
+    block int
+    next int
+    parent int
+    dest int
+    base int
+    temps int
+    bytes int
+}
+
+struct SuspendedTask {
+    record int
+    frame int
+}
+
+struct Machine {
+    words []int
+    used int
+    frames []Frame
+    unused_frames []int
+    suspended []SuspendedTask
+    function_ids map[string]int
+    literal_ptrs map[int]int
+    events string
+    event_position int
+    interactive bool
+    input bool
+    labels []int
+    current int
+    steps int
+    stopped bool
+    failed bool
+    status int
+}
+
+fn machine_new(m &mir.Mir, events string) Machine {
+    $function_ids := map[string]int{}
+    for i in 0:m.fns.len {
+        if !m.fns[i].is_extern { function_ids[m.fns[i].label + ""] = i + 1 }
+    }
+    << Machine{
+        words: make_ints(INITIAL_MEMORY / 8),
+        used: INITIAL_USED,
+        frames: []Frame{},
+        unused_frames: []int{},
+        suspended: []SuspendedTask{},
+        function_ids: function_ids,
+        literal_ptrs: map[int]int{},
+        events: events,
+        event_position: 0,
+        interactive: false,
+        input: false,
+        labels: []int{},
+        current: -1,
+        steps: 0,
+        stopped: false,
+        failed: false,
+        status: 0
+    }
+}
+
+fn (s $&Machine) fail(message string) {
+    if !s.failed { eprintln(message) }
+    s.failed = true
+    s.status = 1
+}
+
+fn (s $&Machine) alloc(size int) int {
+    if size < 0 || size > MAX_MEMORY - s.used {
+        s.fail("playground memory limit exceeded")
+        << 0
+    }
+    result := s.used
+    s.used += (size + 7) & -8
+    if s.used > s.words.len * 8 {
+        $capacity := s.words.len
+        while capacity * 8 < s.used { capacity *= 2 }
+        $grown := make_ints(capacity)
+        for i in 0:s.words.len { grown[i] = s.words[i] }
+        s.words = grown
+    }
+    << result
+}
+
+fn (s $&Machine) load(address int, width int) int {
+    $count := width
+    if count == -4 { count = 4 }
+    if address < 8 || count < 1 || count > 8 || address > s.used - count {
+        s.fail("invalid playground memory read")
+        << 0
+    }
+    if count == 8 && address % 8 == 0 { << s.words[address / 8] }
+    $value := 0
+    for i in 0:count {
+        byte_address := address + i
+        octet := (s.words[byte_address / 8] >> ((byte_address % 8) * 8)) & 255
+        value = value | (octet << (i * 8))
+    }
+    if width == -4 && (value & 2147483648) != 0 { value -= 4294967296 }
+    << value
+}
+
+fn (s $&Machine) store(address int, width int, value int) {
+    $count := width
+    if count == -4 { count = 4 }
+    if address < 8 || count < 1 || count > 8 || address > s.used - count {
+        s.fail("invalid playground memory write")
+        <<
+    }
+    if count == 8 && address % 8 == 0 {
+        s.words[address / 8] = value
+        <<
+    }
+    for i in 0:count {
+        byte_address := address + i
+        shift := (byte_address % 8) * 8
+        word := s.words[byte_address / 8] & ((255 << shift) ^ -1)
+        s.words[byte_address / 8] = word | (((value >> (i * 8)) & 255) << shift)
+    }
+}
+
+fn (s $&Machine) operand(f &mir.MFn, frame int, value int) int {
+    if value >= 0 { << s.load(s.frames[frame].temps + value * 8, 8) }
+    if value <= -2 { << f.consts[-value - 2] }
+    << 0
+}
+
+fn (s $&Machine) set_temp(frame int, index int, value int) {
+    if index >= 0 { s.store(s.frames[frame].temps + index * 8, 8, value) }
+}
+
+fn local_offset(f &mir.MFn, index int) int {
+    $offset := 0
+    for i in 0:index { offset += f.locals_nslots[i] * 8 }
+    << offset
+}
+
+fn (s &Machine) find_fn(label &string) int {
+    << s.function_ids.get_or(*label, 0) - 1
+}
+
+fn (s $&Machine) enter(m &mir.Mir, fn_index int, parent int, dest int, args &[]int) int {
+    if fn_index < 0 || fn_index >= m.fns.len {
+        s.fail("invalid playground function address")
+        << -1
+    }
+    f := &m.fns[fn_index]
+    if f.nparams != args.len || f.blocks.len == 0 {
+        s.fail("invalid playground function call: " + f.label)
+        << -1
+    }
+    locals := local_offset(f, f.locals.len)
+    bytes := locals + f.temps.len * 8
+    $base := 0
+    $frame := -1
+    $capacity := bytes
+    for i in 0:s.unused_frames.len {
+        candidate := s.unused_frames[i]
+        if candidate >= 0 && s.frames[candidate].bytes >= bytes {
+            frame = candidate
+            s.unused_frames[i] = -1
+            base = s.frames[candidate].base
+            capacity = s.frames[candidate].bytes
+            <-
+        }
+    }
+    if frame < 0 { base = s.alloc(bytes) }
+    if s.failed { << -1 }
+    for i in 0:bytes / 8 { s.words[base / 8 + i] = 0 }
+    for i in 0:args.len { s.store(base + local_offset(f, i), 8, args[i]) }
+    new_frame := Frame{
+        fn_index: fn_index, block: 0, next: f.blocks[0].head, parent: parent,
+        dest: dest, base: base, temps: base + locals, bytes: capacity
+    }
+    if frame < 0 {
+        frame = s.frames.len
+        s.frames.push(new_frame)
+    } else { s.frames[frame] = new_frame }
+    << frame
+}
+
+fn (s $&Machine) release_frame(frame int) {
+    for i in 0:s.unused_frames.len {
+        if s.unused_frames[i] < 0 {
+            s.unused_frames[i] = frame
+            <<
+        }
+    }
+    s.unused_frames.push(frame)
+}
+
+fn (s $&Machine) switch_task(m &mir.Mir, frame int, from int, to int) {
+    fn_index := s.frames[frame].fn_index
+    if m.fns[fn_index].label == "_xu_runtime_core_task_exit" {
+        s.release_frame(frame)
+    } else {
+        $slot := -1
+        for i in 0:s.suspended.len {
+            if s.suspended[i].record == 0 { slot = i
+                <- }
+        }
+        task := SuspendedTask{record: from, frame: frame}
+        if slot < 0 { s.suspended.push(task) } else { s.suspended[slot] = task }
+    }
+    for i in 0:s.suspended.len {
+        if s.suspended[i].record == to {
+            s.current = s.suspended[i].frame
+            s.suspended[i].record = 0
+            <<
+        }
+    }
+
+    fn_addr := s.load(to + 8, 8) - 1
+    block := s.load(to + 16, 8)
+    exit_addr := s.load(to + 24, 8) - 1
+    if s.failed || fn_addr < 0 || fn_addr >= m.fns.len {
+        s.fail("invalid playground task entry")
+        <<
+    }
+    $params := []int{}
+    for i in 0:m.fns[fn_addr].nparams { params.push(s.load(block + i * 8, 8)) }
+    exit_args := [to]
+    parent := s.enter(m, exit_addr, -1, -1, &exit_args)
+    if !s.failed { s.current = s.enter(m, fn_addr, parent, -1, &params) }
+}
+
+fn (s $&Machine) mark_interactive(input bool) {
+    if s.input || (s.interactive && !input) { << }
+    s.interactive = true
+    s.input = input
+    $mode := "click\n"
+    if input { mode = "input\n" }
+    os_fd_write(6, mode) or (err) {
+        s.fail("playground event channel is unavailable")
+        <<
+    }
+}
+
+fn (s &Machine) event_word(index int) int {
+    offset := s.event_position + index * 8
+    $word := 0
+    for i in 0:8 { word = word | ((s.events[offset + i] & 255) << (i * 8)) }
+    << word
+}
+
+fn (s $&Machine) next_click(address int) {
+    s.mark_interactive(false)
+    if s.event_position < s.events.len {
+        s.store(address, 8, s.event_word(1))
+        s.store(address + 8, 8, s.event_word(2))
+        s.store(address + 16, 8, 1)
+        s.event_position += 80
+    } else {
+        s.store(address, 8, 0)
+        s.store(address + 8, 8, 0)
+        s.store(address + 16, 8, 0)
+    }
+}
+
+fn (s $&Machine) next_input(address int) {
+    s.mark_interactive(true)
+    for i in 0:16 { s.store(address + i * 8, 8, 0) }
+    if s.event_position >= s.events.len { << }
+    s.store(address, 8, s.event_word(0))
+    for i in 1:4 { s.store(address + i * 8, 8, 1) }
+    s.store(address + 32, 8, core.playground_float_bits(f64(s.event_word(1))))
+    s.store(address + 40, 8, core.playground_float_bits(f64(s.event_word(2))))
+    s.store(address + 48, 8, s.event_word(8))
+    s.store(address + 56, 8, s.event_word(9))
+    s.store(address + 64, 8, s.event_word(6))
+    s.store(address + 72, 8, s.event_word(7))
+    s.store(address + 80, 8, s.event_word(4))
+    s.store(address + 88, 8, s.event_word(3))
+    s.store(address + 104, 8, s.event_word(5))
+    s.store(address + 120, 8, (s.event_position / 80 + 1) * 16000000)
+    s.event_position += 80
+}
+
+fn (s $&Machine) string_result(address int, text string) {
+    ptr := s.alloc(text.len + 1)
+    if s.failed { << }
+    for i in 0:text.len { s.store(ptr + i, 1, text[i]) }
+    s.store(address, 8, ptr)
+    s.store(address + 8, 8, text.len)
+}
+
+fn canvas_scalar(bits int) string {
+    if ((bits >> 52) & 2047) == 2047 { << "nan" }
+    value := core.playground_bits_float(bits & 9223372036854775807)
+    if value > 1000000000.0 { << "overflow" }
+    $sign := ""
+    if bits < 0 { sign = "-" }
+    scaled := int(value * 1000000.0 + 0.5)
+    whole := sign + str(scaled / 1000000)
+    fraction := scaled % 1000000
+    if fraction == 0 { << whole }
+    digits := str(fraction + 1000000)
+    $end := digits.len
+    while end > 1 && digits[end - 1] == 48 { end -= 1 }
+    << whole + "." + digits[1:end]
+}
+
+fn (s $&Machine) draw_command(descriptor int) {
+    address := s.load(descriptor, 8)
+    length := s.load(descriptor + 8, 8)
+    if length < 0 || length > 262143 || address < 8 || address > s.used - length {
+        s.fail("invalid playground draw command")
+        <<
+    }
+    $line := make_string(length + 1)
+    for i in 0:length { line[i] = s.load(address + i, 1) }
+    line[length] = 10
+    os_fd_write(5, line) or (err) {
+        s.fail("UI command buffer limit exceeded")
+        <<
+    }
+}
+
+fn (s $&Machine) syscall(m &mir.Mir, frame int, args &[]int) int {
+    if args.len != 7 {
+        s.fail("invalid playground system call")
+        << 0
+    }
+    nr := args[0]
+    a := args[1]
+    b := args[2]
+    c := args[3]
+    if nr == -1 {
+        s.switch_task(m, frame, a, b)
+        << 0
+    }
+    if nr == -2 { << s.frames[frame].base }
+    if nr == -3 { << s.frames[frame].base }
+    if nr == -4 || nr == -5 {
+        $count := c
+        if nr == -5 { count = b }
+        if count < 0 || count > s.used || a < 8 || a > s.used - count ||
+            (nr == -4 && (b < 8 || b > s.used - count)) {
+            s.fail("invalid playground memory range")
+            << 0
+        }
+        $width := 1
+        if a % 8 == 0 && (nr == -5 || b % 8 == 0) && count % 8 == 0 { width = 8 }
+        units := count / width
+        if units > MAX_STEPS - s.steps {
+            s.fail("playground execution step limit exceeded")
+            << 0
+        }
+        s.steps += units
+        for i in 0:units {
+            $value := 0
+            $offset := i * width
+            if nr == -4 {
+                if a > b && a < b + count { offset = count - width - i * width }
+                value = s.load(b + offset, width)
+            }
+            s.store(a + offset, width, value)
+        }
+        << 0
+    }
+    if nr == 222 { << s.alloc(b) }
+    if nr == 215 { << 0 }
+    if nr == 64 {
+        if (a != 1 && a != 2) || c < 0 || c > 262144 { << -22 }
+        $text := make_string(c)
+        for i in 0:c { text[i] = s.load(b + i, 1) }
+        << os_fd_write(a, text) or (err) { << -5 }
+    }
+    if nr == 94 {
+        s.status = a
+        s.stopped = true
+        << 0
+    }
+    if nr == 113 {
+        s.store(b, 8, 0)
+        s.store(b + 8, 8, s.steps * 1000)
+        << 0
+    }
+    << -38
+}
+
+fn (s $&Machine) integer_op(op int, x int, y int) int {
+    if op == mir.BIN_ADD { << x + y }
+    if op == mir.BIN_SUB { << x - y }
+    if op == mir.BIN_MUL { << x * y }
+    if op == mir.BIN_DIV || op == mir.BIN_MOD {
+        if y == 0 {
+            s.fail("division by zero")
+            << 0
+        }
+        if x == -9223372036854775807 - 1 && y == -1 {
+            if op == mir.BIN_MOD { << 0 }
+            << x
+        }
+        if op == mir.BIN_MOD { << x % y }
+        << x / y
+    }
+    if op == mir.BIN_AND { << x & y }
+    if op == mir.BIN_OR { << x | y }
+    if op == mir.BIN_XOR { << x ^ y }
+    if op == mir.BIN_SHL { << x << (y & 63) }
+    if op == mir.BIN_SHR { << x >> (y & 63) }
+    if (op == mir.BIN_EQ && x == y) || (op == mir.BIN_NE && x != y) ||
+        (op == mir.BIN_LT && x < y) || (op == mir.BIN_LE && x <= y) ||
+        (op == mir.BIN_GT && x > y) || (op == mir.BIN_GE && x >= y) { << 1 }
+    if op >= mir.BIN_EQ && op <= mir.BIN_GE { << 0 }
+    s.fail("unsupported playground binary instruction " + str(op))
+    << 0
+}
+
+fn float_op(op int, x int, y int) int {
+    left := core.playground_bits_float(x)
+    right := core.playground_bits_float(y)
+    if op == mir.BIN_FADD { << core.playground_float_bits(left + right) }
+    if op == mir.BIN_FSUB { << core.playground_float_bits(left - right) }
+    if op == mir.BIN_FMUL { << core.playground_float_bits(left * right) }
+    if op == mir.BIN_FDIV { << core.playground_float_bits(left / right) }
+    if (op == mir.BIN_FEQ && left == right) || (op == mir.BIN_FNE && left != right) ||
+        (op == mir.BIN_FLT && left < right) || (op == mir.BIN_FLE && left <= right) ||
+        (op == mir.BIN_FGT && left > right) || (op == mir.BIN_FGE && left >= right) { << 1 }
+    << 0
+}
+
+fn (s $&Machine) step(m &mir.Mir) {
+    frame := s.current
+    state := &s.frames[frame]
+    fn_index := state.fn_index
+    block := state.block
+    next := state.next
+    parent := state.parent
+    dest := state.dest
+    base := state.base
+    f := &m.fns[fn_index]
+    if next < 0 {
+        terminator := &f.blocks[block]
+        if terminator.tkind == mir.TKIND_RETURN {
+            value := s.operand(f, frame, terminator.ta)
+            s.release_frame(frame)
+            s.current = parent
+            if parent >= 0 { s.set_temp(parent, dest, value) } else { s.status = value }
+            <<
+        }
+        $target := terminator.ta
+        if terminator.tkind == mir.TKIND_BRANCH {
+            target = terminator.tc
+            if s.operand(f, frame, terminator.ta) != 0 { target = terminator.tb }
+        } else if terminator.tkind != mir.TKIND_JUMP {
+            s.fail("invalid playground block terminator")
+            <<
+        }
+        s.frames[frame].block = target
+        s.frames[frame].next = f.blocks[target].head
+        <<
+    }
+
+    ins := &f.instrs[next]
+    s.frames[frame].next = ins.next
+    k := ins.kind
+    if k == mir.MI_LOAD_LOCAL {
+        $offset := ins.c
+        if offset < 0 { offset = 0 }
+        value := s.load(base + local_offset(f, ins.b) + offset * 8, 8)
+        s.set_temp(frame, ins.a, value)
+    } else if k == mir.MI_STORE_LOCAL {
+        $offset := ins.c
+        if offset < 0 { offset = 0 }
+        value := s.operand(f, frame, ins.b)
+        s.store(base + local_offset(f, ins.a) + offset * 8, 8, value)
+    } else if k == mir.MI_ADDR {
+        s.set_temp(frame, ins.a, base + local_offset(f, ins.b))
+    } else if k == mir.MI_LOAD_PTR {
+        address := s.operand(f, frame, ins.b) + ins.c
+        value := s.load(address, ins.d)
+        s.set_temp(frame, ins.a, value)
+    } else if k == mir.MI_STORE_PTR {
+        address := s.operand(f, frame, ins.a) + ins.c
+        value := s.operand(f, frame, ins.b)
+        s.store(address, ins.d, value)
+    } else if k == mir.MI_BIN {
+        x := s.operand(f, frame, ins.c)
+        y := s.operand(f, frame, ins.d)
+        if ins.b >= mir.BIN_FADD && ins.b <= mir.BIN_FGE {
+            s.set_temp(frame, ins.a, float_op(ins.b, x, y))
+        } else {
+            value := s.integer_op(ins.b, x, y)
+            s.set_temp(frame, ins.a, value)
+        }
+    } else if k == mir.MI_UN {
+        operand := s.operand(f, frame, ins.c)
+        if ins.b == mir.UN_I2F {
+            s.set_temp(frame, ins.a, core.playground_float_bits(f64(operand)))
+        } else if ins.b == mir.UN_F2I {
+            s.set_temp(frame, ins.a, int(core.playground_bits_float(operand)))
+        } else {
+            s.fail("unsupported playground conversion")
+        }
+    } else if k == mir.MI_COPY {
+        value := s.operand(f, frame, ins.b)
+        s.set_temp(frame, ins.a, value)
+    } else if k == mir.MI_STR_CONST {
+        key := (fn_index << 32) | next
+        $ptr := s.literal_ptrs.get_or(key, 0)
+        if ptr == 0 {
+            text := &ins.sval
+            ptr = s.alloc(text.len + 1)
+            if s.failed { << }
+            for i in 0:text.len { s.store(ptr + i, 1, text[i]) }
+            s.literal_ptrs[key] = ptr
+        }
+        s.set_temp(frame, ins.a, ptr)
+    } else if k == mir.MI_LOAD_FN_ADDR {
+        s.set_temp(frame, ins.a, s.find_fn(&ins.sval) + 1)
+    } else if k == mir.MI_CALL || k == mir.MI_CALL_IND {
+        $args := []int{}
+        $arg := ins.c
+        while arg >= 0 {
+            args.push(s.operand(f, frame, f.margs[arg].v))
+            arg = f.margs[arg].next
+        }
+        if k == mir.MI_CALL && ins.sval == "__xu_syscall" {
+            value := s.syscall(m, frame, &args)
+            if s.current == frame && !s.stopped { s.set_temp(frame, ins.a, value) }
+        } else if k == mir.MI_CALL && ins.sval == "__xu_globals" {
+            s.set_temp(frame, ins.a, GLOBALS)
+        } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_emit" && args.len == 1 {
+            s.draw_command(args[0])
+            s.set_temp(frame, ins.a, 0)
+        } else if k == mir.MI_CALL && ins.sval == "_xu_playground_next_click" && args.len == 1 {
+            s.next_click(args[0])
+        } else if k == mir.MI_CALL && ins.sval == "_xu_playground_next_input" && args.len == 1 {
+            s.next_input(args[0])
+        } else if k == mir.MI_CALL && ins.sval == "_xu_time_now_ns" && args.len == 0 {
+            s.set_temp(frame, ins.a, (s.event_position / 80 + 1) * 16000000)
+        } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_scalar" && args.len == 2 {
+            s.string_result(args[0], canvas_scalar(args[1]))
+        } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_retain" && args.len == 1 {
+            s.labels.push(s.load(args[0], 8))
+            s.labels.push(s.load(args[0] + 8, 8))
+            s.set_temp(frame, ins.a, s.labels.len / 2)
+        } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_lookup" && args.len == 2 {
+            id := args[1]
+            if id > 0 && id <= s.labels.len / 2 {
+                s.store(args[0], 8, s.labels[(id - 1) * 2])
+                s.store(args[0] + 8, 8, s.labels[(id - 1) * 2 + 1])
+            } else { s.string_result(args[0], "") }
+        } else {
+            $target := s.find_fn(&ins.sval)
+            if k == mir.MI_CALL_IND { target = s.operand(f, frame, ins.b) - 1 }
+            if target < 0 {
+                s.fail("unsupported playground function: " + ins.sval)
+                <<
+            }
+            s.current = s.enter(m, target, frame, ins.a, &args)
+        }
+    } else if k != mir.MI_NOP {
+        s.fail("unsupported playground MIR instruction " + str(k))
+    }
+}
+
+fn run_machine(m &mir.Mir, events string) int {
+    $machine := machine_new(m, events)
+    entry := "_xu_main"
+    args := []int{}
+    start := machine.find_fn(&entry)
+    machine.current = machine.enter(m, start, -1, -1, &args)
+    while machine.current >= 0 && !machine.failed && !machine.stopped {
+        if machine.steps >= MAX_STEPS { machine.fail("playground execution step limit exceeded") }
+        if !machine.failed {
+            machine.steps += 1
+            machine.step(m)
+        }
+    }
+    << machine.status
+}
