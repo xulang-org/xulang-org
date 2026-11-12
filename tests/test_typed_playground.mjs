@@ -168,6 +168,7 @@ test('checked MIR is reused while each run replays from clean user state', async
   for (let i = 0; i < 12; i++) {
     const replay = cache.run(source, {profile: true});
     assert.equal(replay.exit, 0, replay.stderr);
+    assert.equal(replay.timings.cacheHit, true);
     assert.equal(replay.stdout, first.stdout);
     assert.equal(replay.ui.commands, first.ui.commands);
   }

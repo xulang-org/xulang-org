@@ -7,7 +7,11 @@ const MAX_MEMORY = 67108864
 const MAX_STEPS = 10000000
 const GLOBALS = 8
 const INITIAL_USED = 4096
-const INITIAL_MEMORY = 131072
+const PAGE_WORDS = 8192
+
+struct Page {
+    words []int
+}
 
 struct Frame {
     fn_index int
@@ -26,7 +30,7 @@ struct SuspendedTask {
 }
 
 struct Machine {
-    words []int
+    pages []Page
     used int
     frames []Frame
     unused_frames []int
@@ -50,8 +54,12 @@ fn machine_new(m &mir.Mir, events string) Machine {
     for i in 0:m.fns.len {
         if !m.fns[i].is_extern { function_ids[m.fns[i].label + ""] = i + 1 }
     }
+    // User allocations reserve virtual ranges. Materialize pages on write
+    // so unused task stacks and allocator reserves consume little WASM heap.
+    $pages := []Page{}
+    for i in 0:MAX_MEMORY / 8 / PAGE_WORDS { pages.push(Page{words: []int{}}) }
     << Machine{
-        words: make_ints(INITIAL_MEMORY / 8),
+        pages: pages,
         used: INITIAL_USED,
         frames: []Frame{},
         unused_frames: []int{},
@@ -84,14 +92,23 @@ fn (s $&Machine) alloc(size int) int {
     }
     result := s.used
     s.used += (size + 7) & -8
-    if s.used > s.words.len * 8 {
-        $capacity := s.words.len
-        while capacity * 8 < s.used { capacity *= 2 }
-        $grown := make_ints(capacity)
-        for i in 0:s.words.len { grown[i] = s.words[i] }
-        s.words = grown
-    }
     << result
+}
+
+fn (s &Machine) load_word(index int) int {
+    page := index / PAGE_WORDS
+    words := &s.pages[page].words
+    if words.len == 0 { << 0 }
+    << words[index % PAGE_WORDS]
+}
+
+fn (s $&Machine) store_word(index int, value int) {
+    page := index / PAGE_WORDS
+    if s.pages[page].words.len == 0 {
+        if value == 0 { << }
+        s.pages[page].words = make_ints(PAGE_WORDS)
+    }
+    s.pages[page].words[index % PAGE_WORDS] = value
 }
 
 fn (s $&Machine) load(address int, width int) int {
@@ -101,11 +118,11 @@ fn (s $&Machine) load(address int, width int) int {
         s.fail("invalid playground memory read")
         << 0
     }
-    if count == 8 && address % 8 == 0 { << s.words[address / 8] }
+    if count == 8 && address % 8 == 0 { << s.load_word(address / 8) }
     $value := 0
     for i in 0:count {
         byte_address := address + i
-        octet := (s.words[byte_address / 8] >> ((byte_address % 8) * 8)) & 255
+        octet := (s.load_word(byte_address / 8) >> ((byte_address % 8) * 8)) & 255
         value = value | (octet << (i * 8))
     }
     if width == -4 && (value & 2147483648) != 0 { value -= 4294967296 }
@@ -120,14 +137,14 @@ fn (s $&Machine) store(address int, width int, value int) {
         <<
     }
     if count == 8 && address % 8 == 0 {
-        s.words[address / 8] = value
+        s.store_word(address / 8, value)
         <<
     }
     for i in 0:count {
         byte_address := address + i
         shift := (byte_address % 8) * 8
-        word := s.words[byte_address / 8] & ((255 << shift) ^ -1)
-        s.words[byte_address / 8] = word | (((value >> (i * 8)) & 255) << shift)
+        word := s.load_word(byte_address / 8) & ((255 << shift) ^ -1)
+        s.store_word(byte_address / 8, word | (((value >> (i * 8)) & 255) << shift))
     }
 }
 
@@ -178,7 +195,7 @@ fn (s $&Machine) enter(m &mir.Mir, fn_index int, parent int, dest int, args &[]i
     }
     if frame < 0 { base = s.alloc(bytes) }
     if s.failed { << -1 }
-    for i in 0:bytes / 8 { s.words[base / 8 + i] = 0 }
+    for i in 0:bytes / 8 { s.store_word(base / 8 + i, 0) }
     for i in 0:args.len { s.store(base + local_offset(f, i), 8, args[i]) }
     new_frame := Frame{
         fn_index: fn_index, block: 0, next: f.blocks[0].head, parent: parent,
