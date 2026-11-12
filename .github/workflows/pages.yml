@@ -30,7 +30,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: python3 scripts/resolve-xu-release.py --version "$(cat VERSION)" --github-env "$GITHUB_ENV"
-      - name: Install WASM-capable Xu SDK
+      - name: Install the published native SDK
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -54,8 +54,24 @@ jobs:
           cache: npm
       - name: Install pinned WASM optimizer
         run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Install the pinned browser SDK
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(awk '$1 == "xu:" && $2 == "!ver" { print $3 }' playground/runtime/xu.xun)
+          test -n "$VERSION"
+          RELEASE=$(python3 scripts/resolve-xu-release.py --version "$VERSION")
+          ARCHIVE=$(jq -er .archive <<< "$RELEASE")
+          DIGEST=$(jq -er .sha256 <<< "$RELEASE")
+          mkdir -p build/playground-sdk
+          gh release download "v$VERSION" --repo xulang-org/xu --pattern "$ARCHIVE" --dir build/playground-sdk
+          cd build/playground-sdk
+          printf '%s  %s\n' "$DIGEST" "$ARCHIVE" | sha256sum --check
+          tar -xzf "$ARCHIVE"
+          test "$(cat "xu-v$VERSION/VERSION")" = "$VERSION"
+          echo "XU_PLAYGROUND_ROOT=$GITHUB_WORKSPACE/build/playground-sdk/xu-v$VERSION" >> "$GITHUB_ENV"
       - name: Compile playground runtime with Xu
-        run: ./scripts/build-playground.sh
+        run: XU_ROOT="$XU_PLAYGROUND_ROOT" ./scripts/build-playground.sh
       - name: Test Xu playground execution
         run: make check-playground
       - name: Read Pages configuration

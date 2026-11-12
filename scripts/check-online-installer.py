@@ -101,7 +101,11 @@ def main() -> None:
             assert sha256(prefix / vsix) == sha256(sdk / vsix)
             example = "examples/16_ui_webview/shared/mod.xu"
             assert sha256(prefix / example) == sha256(sdk / example)
-            output = run([str(prefix / "bin/xu"), "update", "--check", "--version", manifest["version"]], work, env)
+            output = run(
+                ["bash", "-c", 'source "$1/env.sh" && xu update --check --version "$2"',
+                 "xu-website-installer", str(prefix), manifest["version"]],
+                work, env,
+            )
             assert "already up to date" in output, output
             print(f"website-installer: PASS {manifest['target']} {manifest['version']}; "
                   f"streamed download/reinstall, PATH repair, {len(manifest['binaries'])} tool hashes, "

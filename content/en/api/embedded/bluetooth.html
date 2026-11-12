@@ -1,10 +1,10 @@
 <!--title: #embedded/bluetooth-->
 <p class="crumb">API</p>
 <h1><code>#embedded/bluetooth</code></h1>
-<!--xu-api-version: 0.11.4-->
+<!--xu-api-version: 0.12.2-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#embedded/bluetooth</code></p>
-<p class="meta">counts: 101 functions, 28 methods, 14 types, 157 constants, 0 method sets</p>
+<p class="meta">counts: 102 functions, 28 methods, 14 types, 158 constants, 0 method sets</p>
 <p class="lead">Xu Bluetooth Standard Library Package Portable Bluetooth Low Energy stack for bare-metal Xu targets. The package is split into a portable core and a thin chip binding backend.xu chip hook table (`BtBackend`) btdm.xu BTDM application layer: OSI table, controller lifecycle, sleep sequencing, VHCI host transport, work dispatch hci.xu H4 transport framing (command / ACL / SCO / event) ke.xu KE style event scheduler skeleton hogp.xu HOGP (HID Over GATT Profile) &amp; Report Map for Mouse, Consumer &amp; Keyboard att.xu Attribute Protocol (ATT) &amp; Lightweight GATT Server The BTDM application layer is Espressif-generic: the same semantics serve esp32, esp32c3 and esp32s3. Only a few operations touch chip registers or ROM entry points, and those live behind `BtBackend`, so a chip package registers its implementation instead of the core importing a chip. Usage import bt #embedded/bluetooth $ctl := bt.btdm_controller_create bt.btdm_controller_init($&amp;ctl, bt.btdm_config_mask_load, bt.ESP_BT_MODE_BLE) bt.btdm_controller_enable($&amp;ctl) bt.api_vhci_host_register_callback($&amp;ctl,...) $att := bt.att_server_create(&quot;XU-Agent-HID&quot;) $report := bt.hogp_build_consumer(bt.HID_CC_VOLUME_UP) $acl_pkt := bt.hogp_make_acl_notification(0x0000, bt.ATT_HANDLE_CONSUMER_REPORT, report) $wire_bytes := bt.hci_encode(&amp;acl_pkt) bt.api_vhci_host_send_packet($&amp;ctl, wire_bytes) The closed Espressif library this package replaces is `libbtdm_app.a` the recovered ABI contract is documented in `src/embedded/bluetooth/BTDM_XU_PORT.md` and the reverse engineering evidence in `docs/rea-btdm/BTDM_REA_DOSSIER.md`.</p>
 <article class="api-item" id="const-ATT_CID">
 <h2><code>const ATT_CID</code></h2>
@@ -2248,6 +2248,12 @@
 <h3>Purpose</h3>
 <p>Constant <code>HID_RPT_ID_CONSUMER</code>, defining protocol or algorithm parameters.</p>
 </article>
+<article class="api-item" id="const-HID_MOUSE_ABS_MAX">
+<h2><code>const HID_MOUSE_ABS_MAX</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> HID_MOUSE_ABS_MAX = 32767</code></pre></div>
+<h3>Purpose</h3>
+<p>Absolute pointer logical range shared by Android/iOS absolute mouse hosts. Pixel mapping uses inclusive endpoints: 0 and span-1 own 0 and 32767.</p>
+</article>
 <article class="api-item" id="const-HID_CC_VOLUME_UP">
 <h2><code>const HID_CC_VOLUME_UP</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> HID_CC_VOLUME_UP   = 0x01</code></pre></div>
@@ -2300,23 +2306,35 @@
 <h2><code>hogp_report_map</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> hogp_report_map() []<span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Standard BLE HID Report Map (136 bytes)</p>
+<p>BLE HID Report Map: absolute mouse (no relative wheel), keyboard, consumer.</p>
 <h3>Parameters</h3>
 <p class="api-none">No arguments are required.</p>
 <h3>Returns</h3>
 <p>[]int — slice result</p>
 </article>
+<article class="api-item" id="hogp_scale_axis">
+<h2><code>hogp_scale_axis</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> hogp_scale_axis(pixel <span class="syn-type">int</span>, span <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Map a pixel on [0, span) onto the absolute HID axis. Inclusive endpoints own 0 and HID_MOUSE_ABS_MAX so phone edges are not biased inward.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>pixel</code> <span class="type">int</span></dt><dd>pixel (int)</dd>
+<dt><code>span</code> <span class="type">int</span></dt><dd>span (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
 <article class="api-item" id="hogp_build_mouse">
 <h2><code>hogp_build_mouse</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> hogp_build_mouse(buttons <span class="syn-type">int</span>, dx <span class="syn-type">int</span>, dy <span class="syn-type">int</span>, wheel <span class="syn-type">int</span>) []<span class="syn-type">int</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> hogp_build_mouse(buttons <span class="syn-type">int</span>, x <span class="syn-type">int</span>, y <span class="syn-type">int</span>) []<span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Hogp build mouse.</p>
+<p>Build absolute Mouse Report (Report ID 1): buttons, X low/high, Y low/high.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>buttons</code> <span class="type">int</span></dt><dd>buttons (int)</dd>
-<dt><code>dx</code> <span class="type">int</span></dt><dd>dx (int)</dd>
-<dt><code>dy</code> <span class="type">int</span></dt><dd>dy (int)</dd>
-<dt><code>wheel</code> <span class="type">int</span></dt><dd>wheel (int)</dd>
+<dt><code>x</code> <span class="type">int</span></dt><dd>value (int)</dd>
+<dt><code>y</code> <span class="type">int</span></dt><dd>value (int)</dd>
 </dl>
 <h3>Returns</h3>
 <p>[]int — slice result</p>

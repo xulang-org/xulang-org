@@ -46,19 +46,23 @@ def xu_literal(value):
 
 def build(root: Path, xu: Path, compiler: Path):
     version = (xu / 'VERSION').read_text(encoding='utf-8').strip()
-    expected = os.environ.get('XU_RELEASE_VERSION', version)
-    site_version = (root / 'VERSION').read_text(encoding='utf-8').strip()
     allow_dev = os.environ.get('XU_ALLOW_DEV') == '1'
     version_pattern = r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)'
     if allow_dev:
+        expected = os.environ.get('XU_RELEASE_VERSION', version)
         prerelease = r'(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)'
         version_pattern += rf'(?:-{prerelease}(?:\.{prerelease})*)?'
+    else:
+        runtime_manifest = (root / 'playground/runtime/xu.xun').read_text(encoding='utf-8')
+        pin = re.search(r'^xu:[ \t]*!ver[ \t]+(\S+)[ \t]*$', runtime_manifest, re.MULTILINE)
+        if not pin:
+            raise RuntimeError('Missing pinned Xu version in the playground runtime manifest')
+        expected = pin[1]
     banner = subprocess.check_output([str(compiler), '--version'], cwd=xu, text=True)
     identity = re.search(r'Xu Compiler Toolchain v([0-9A-Za-z.-]+)(?:\s|$)', banner)
-    if (version != expected or (not allow_dev and site_version != version) or
-            not re.fullmatch(version_pattern, version) or
+    if (version != expected or not re.fullmatch(version_pattern, version) or
             not identity or identity[1] != version):
-        raise RuntimeError('Xu compiler, SDK sources and selected final release versions must match')
+        raise RuntimeError('Xu compiler, SDK sources and selected playground versions must match')
     if allow_dev:
         print('WARNING: XU_ALLOW_DEV=1: this is a dev build, not for release.', file=sys.stderr)
     help_text = subprocess.check_output([str(compiler), '--help'], cwd=xu, text=True)
@@ -122,7 +126,7 @@ def build(root: Path, xu: Path, compiler: Path):
         env.update(XU_ROOT=str(xu), XU_STDLIB_ROOT=str(xu / 'src'), XUPATH='', XU_CACHE=temporary)
         for name in ('XUOS', 'XUARCH', 'XU_BOOT_EXTRA', 'XU_SEED', 'XU_ALLOW_ORACLE_SEED'):
             env.pop(name, None)
-        subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-O1', '-o', str(wasm)], cwd=xu, env=env, check=True)
+        subprocess.run([str(compiler), 'build', str(runtime), '--target', 'wasm32', '-o', str(wasm)], cwd=xu, env=env, check=True)
     subprocess.run([sys.executable, str(root / 'scripts/link-playground-float.py'), str(wasm)], check=True)
     unoptimized_bytes = optimize(root, wasm)
     if (xu / 'VERSION').read_text(encoding='utf-8').strip() != version:
@@ -130,7 +134,7 @@ def build(root: Path, xu: Path, compiler: Path):
     (wasm.parent / 'build.json').write_text(json.dumps({
         'initial_memory_bytes': 32 * 1024 * 1024,
         'memory_limit_bytes': 256 * 1024 * 1024,
-        'compiler_optimization': '-O1',
+        'compiler_optimization': 'default',
         'optimizer': {'name': 'binaryen', 'version': OPTIMIZER_VERSION, 'flags': OPTIMIZER_FLAGS},
         'unoptimized_bytes': unoptimized_bytes,
         'wasm_bytes': wasm.stat().st_size,

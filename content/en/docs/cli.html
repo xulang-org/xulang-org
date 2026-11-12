@@ -14,7 +14,6 @@
 <tr><td><code>debug</code></td><td><code>xu debug [options] &lt;input.xu...&gt; [-- args]</code></td><td>Build a DWARF-enabled binary and start LLDB, or GDB if LLDB is unavailable. Requires an installed debugger. This is source debugging; <code>xu xacp debug</code> only inspects and launches a program.</td></tr>
 <tr><td><code>test</code></td><td><code>xu test [options] &lt;file.xu...&gt;</code></td><td>Build a test harness and execute <code>fn test_*</code> assertion suites and <code>fn bench_*</code> benchmarks</td></tr>
 <tr><td><code>check</code></td><td><code>xu check [options] &lt;file.xu...&gt;</code></td><td>Perform lexical, parser, type, and ownership/borrow checking without emitting machine code</td></tr>
-<tr><td><code>parse</code></td><td><code>xu parse [options] &lt;file.xu...&gt;</code></td><td>Lex and parse source files, printing one statistics line per file</td></tr>
 <tr><td><code>init</code></td><td><code>xu init [options] [module]</code></td><td>Initialize a canonical <code>xu.xun</code> manifest and starter <code>main.xu</code> source in the current directory</td></tr>
 <tr><td><code>get</code></td><td><code>xu get [options] &lt;module&gt;@&lt;version&gt;</code></td><td><strong>(Recommended)</strong> Add or update an explicit dependency, write to <code>xu.xun</code>, download to <code>vendor/</code>, and refresh <code>xu.lock</code></td></tr>
 <tr><td><code>install</code></td><td><code>xu install [options] [dir]</code></td><td>Resolve the full dependency graph declared in <code>xu.xun</code> via MVS, download to <code>vendor/</code>, and verify locks</td></tr>
@@ -52,23 +51,22 @@
 <tr><td><code>linux-x64</code></td><td>Linux x86_64</td><td>ELF 64-bit x86_64</td></tr>
 <tr><td><code>linux-loongarch64</code></td><td>Linux LoongArch64</td><td>ELF 64-bit loongarch64</td></tr>
 <tr><td><code>linux-riscv64</code></td><td>Linux RISC-V 64</td><td>ELF 64-bit riscv64</td></tr>
-<tr><td><code>linux-arm32</code></td><td>Linux 32-bit ARM (armv7)</td><td>ELF 32-bit armhf</td></tr>
 <tr><td><code>windows-x64</code></td><td>Windows 64-bit x86_64</td><td>PE32+ x86-64</td></tr>
 <tr><td><code>windows-arm64</code></td><td>Windows 64-bit ARM64</td><td>PE32+ ARM64</td></tr>
-<tr><td><code>wasm32</code></td><td>Modern Web Browsers &amp; WASM runtimes</td><td>Standard WebAssembly <code>.wasm</code> (slot ABI, zero host imports)</td></tr>
+<tr><td><code>wasm32-wasi</code></td><td>WebAssembly runtimes with WASI Preview 1</td><td><code>.wasm</code> module with WASI imports</td></tr>
 <tr><td><code>thumbv7em-none</code></td><td>Cortex-M4/M7 Microcontrollers</td><td>Bare-metal static ELF / firmware binary</td></tr>
 <tr><td><code>riscv32imac-none</code></td><td>32-bit RISC-V Embedded Chips</td><td>Bare-metal firmware binary</td></tr>
 </tbody></table></div>
 
 <h3>Build &amp; Optimization Flags</h3>
+<p><code>xu build</code>, <code>xu run</code>, and <code>xu test</code> optimize by default. Pass <code>--no-opt</code> to disable optimization. Xu 0.12.2 removed <code>-O0</code> through <code>-O3</code>.</p>
 <div class="doc-table-wrap"><table>
 <thead><tr><th>Option</th><th>Description</th></tr></thead>
 <tbody>
 <tr><td><code>-o, --output &lt;path&gt;</code></td><td>Specify destination binary path. Windows automatically appends <code>.exe</code>.</td></tr>
-<tr><td><code>--no-opt</code></td><td>Disable all MIR optimizations and default register allocation (disables inlining and reduction) for fastest compile speeds.</td></tr>
+<tr><td><code>--no-opt</code></td><td>Disable compiler optimization.</td></tr>
 <tr><td><code>--debug-build</code></td><td>Unoptimized source build with full DWARF line tables and debug symbols.</td></tr>
-<tr><td><code>--debug</code></td><td>Emit DWARF line tables while preserving the selected optimization policy. The default level is 1; request <code>-O2</code> explicitly for level 2.</td></tr>
-<tr><td><code>--timings</code></td><td>Print phase timings across parsing, MIR optimization, register allocation, and codegen to stderr, plus <code>pattern-hits:</code> counters and each function's register-allocation mode.</td></tr>
+<tr><td><code>-g, --debug</code></td><td>Emit DWARF debug information with the selected optimization policy.</td></tr>
 <tr><td><code>--offline</code></td><td>Offline build: strictly resolves dependencies from local <code>vendor/</code> or cache without network requests.</td></tr>
 <tr><td><code>--frozen</code></td><td>Frozen build: offline and requires exact matches with <code>xu.lock</code>; rejects any missing dependencies.</td></tr>
 <tr><td><code>--xacp</code></td><td>Embed XACP startup discovery and the stdio control hook. <code>./app --xacp-help</code> prints the machine-readable summary (<code>capabilities: stdio</code>). Hosted native executables only.</td></tr>
@@ -76,41 +74,21 @@
 <tr><td><code>--desktop</code></td><td>Desktop packaging mode: invokes <code>xu-desktop</code> to produce macOS <code>.app</code>, Windows <code>.exe</code>, or Linux ELF bundles. Not combinable with <code>--xacp</code>.</td></tr>
 <tr><td><code>--www &lt;dir&gt;</code></td><td>Desktop packaging: specify an alternate static web asset directory to embed (overrides <code>www/</code>).</td></tr>
 <tr><td><code>--emit-obj</code></td><td>Emit native <code>XUOBJ</code> object files for external system linkers instead of final executables.</td></tr>
-<tr><td><code>--cover</code></td><td>Instrument basic blocks with execution coverage counters.</td></tr>
 </tbody></table></div>
 
 <h3>Examples</h3>
-<pre><code># 1. Compile and execute
+<pre><code># Compile with default optimization
 xu build main.xu -o myapp
 xu run main.xu -- --port 8080 --verbose
 
-# 2. Cross-compile directly to WebAssembly
-xu build src/calc.xu --target wasm32 -o dist/calc.wasm
+# Run with optimization disabled
+xu run main.xu --no-opt -- --port 8080
 
-# 3. Production frozen and offline build
-xu build . --frozen -o release/server
+# Compile for a WASI runtime
+xu build src/calc.xu --target wasm32-wasi -o dist/calc.wasm
 
-# 4. View compiler phase breakdown and register allocation metrics
-xu build main.xu --timings -o server</code></pre>
-
-<h3>Compiler Diagnostics</h3>
-<p>Use these environment variables to investigate compilation or optimization problems.</p>
-<div class="doc-table-wrap"><table>
-<thead><tr><th>Environment variable</th><th>Behavior</th></tr></thead>
-<tbody>
-<tr><td><code>XU_VERIFY=1</code></td><td>Run the full MIR verifier after each optimization pass to check intermediate-representation consistency.</td></tr>
-<tr><td><code>XU_DUMP_MIR=&lt;function&gt;</code></td><td>Dump a named function's MIR to inspect lowering and optimization results.</td></tr>
-<tr><td><code>XU_PATTERNS_OFF=all</code></td><td>Disable all named backend patterns, or supply a comma-separated list of pattern names. Use for differential comparison with a default build; unknown names are rejected.</td></tr>
-</tbody></table></div>
-<pre><code># macOS / Linux: verify each pass and inspect pattern hits
-XU_VERIFY=1 xu build main.xu --timings -o myapp
-
-# Dump main's MIR
-XU_DUMP_MIR=main xu build main.xu -o myapp
-
-# Build a reference executable with backend patterns disabled
-XU_PATTERNS_OFF=all xu build main.xu -o myapp-reference</code></pre>
-<p>In PowerShell, set the variable first, for example <code>$env:XU_VERIFY = '1'</code>, then run the same <code>xu build</code> command. Clear it afterward with <code>Remove-Item Env:XU_VERIFY</code>.</p>
+# Build from an existing lockfile in offline mode
+xu build . --frozen -o release/server</code></pre>
 
 <h2 id="xacp">XACP control (<code>xu xacp</code> / <code>xu-xacp</code>)</h2>
 <p>The <a href="/api/xacp"><code>#xacp</code> API</a> is published in the {{xu_version}} SDK extract. This section follows the matching release source. <code>xu xacp</code> runs the sibling <code>xu-xacp</code> tool, built from source with <code>make xu-xacp</code>. Importing <code>#xacp</code> does not embed discovery or a control loop. The <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">release source</a> and smoke scripts define the contract; older example README/design notes can drift on framing, permissions, and timeouts. Native sessions and platform/UI runtime acceptance remain <strong>unverified</strong>.</p>
@@ -155,34 +133,20 @@ xu xacp connect 4321 &lt; control.xacp</code></pre>
 <p>Hello requires <code>ver: !ver 1.0.0</code> and a non-empty nonce. Without <code>XU_XACP_TOKEN</code> on the host, permissions are capped at INFO. With a host token, a missing or mismatched client token closes the session with <code>auth_failed</code>; a matching token permits the requested subset of <code>PERM_ALL</code> (<code>15</code>). <code>proc.status</code> returns the pid under INFO. Output/UI operations need their permission bits and return <code>not_implemented</code> without adapters. Startup control has no registered Screen; UI attachment needs registration and polling. Its default request deadline is 5000 ms, configurable with <code>XU_XACP_REQUEST_TIMEOUT_MS</code> (<code>1..600000</code>). Callers still need process/I/O timeouts for stalled targets.</p>
 
 <h2>2. Automated Testing (test)</h2>
-<p><code>xu test</code> discovers and builds automated test runners. Test and benchmark functions must be in a file named <code>test.&lt;name&gt;.xu</code>, in package <code>@main</code>, with no parameters or return type. Ordinary source files cannot declare <code>fn test_*</code> or <code>fn bench_*</code>. Save this example as <code>test.example.xu</code>:</p>
+<p>Pass one or more Xu source files to <code>xu test</code>. In 0.12.2, the temporary executable runs the supplied <code>main</code> function. Call your tests from that entry point. Save this example as <code>test.example.xu</code>.</p>
 <pre><code class="language-xu">@main
 
 fn test_add() {
     assert(1 + 1 == 2)
+}
+
+fn main() {
+    test_add()
 }</code></pre>
-<pre><code class="language-shell">xu test test.example.xu -v</code></pre>
-<div class="doc-table-wrap"><table>
-<thead><tr><th>Option</th><th>Description</th></tr></thead>
-<tbody>
-<tr><td><code>-run &lt;REGEXP&gt;</code></td><td>Filter: only run test functions matching the regular expression.</td></tr>
-<tr><td><code>-v</code></td><td>Verbose: output execution status and elapsed time for each test function.</td></tr>
-<tr><td><code>-count &lt;N&gt;</code></td><td>Repeat the test suite N times (1–1000 in the current parser; CLI help still says 1–100) to diagnose flaky concurrency bugs.</td></tr>
-<tr><td><code>-failfast</code></td><td>Immediately stop after the first assertion failure.</td></tr>
-<tr><td><code>-list</code></td><td>List matching test names and exit 0 without executing tests.</td></tr>
-<tr><td><code>-short</code></td><td>Short run: sets <code>testing.short()</code> to true to skip expensive integration scenarios.</td></tr>
-<tr><td><code>-bench &lt;REGEXP&gt;</code></td><td>Also run performance benchmark functions matching the regex (<code>fn bench_*</code>).</td></tr>
-<tr><td><code>--cover</code></td><td>Collect and display basic-block code coverage statistics upon completion.</td></tr>
-</tbody></table></div>
-
-<pre><code># Run all tests with timing logs
-xu test app/ -v
-
-# Run only networking tests and stop on first error
-xu test . -run "net_.*" -failfast
-
-# Execute SHA-256 benchmarks
-xu test . -bench "bench_sha256"</code></pre>
+<pre><code class="language-shell">xu test test.example.xu
+xu test test.example.xu --no-opt
+xu test test.example.xu -list</code></pre>
+<p>Use <code>-list</code> to list parameterless <code>fn test_*</code> declarations.</p>
 
 <h2>3. Project Initialization &amp; Dependency Management (init / get / install)</h2>
 
@@ -341,17 +305,23 @@ Toolchain management:
   --ver, --version show toolchain version
 
 Common build options:
-  -o, --output OUT  output binary path (default &lt;stem&gt;; Windows &lt;stem&gt;.exe)
-  --target TARGET   target platform (default: host platform)
-  --xacp            enable XACP stdio control and --xacp-help
-  --xacp-port PORT  loopback TCP control port (0 disables TCP)
-  --offline         resolve dependencies from local cache/vendor; never download
-  --frozen          require offline build with existing lockfile
-  --cover           instrument block coverage (hosted targets only)
-  --debug-build     unoptimized source build with DWARF line tables
-  --no-opt          disable MIR optimization and register allocator
-  --debug           emit DWARF line tables without changing optimization
-  --timings         print per-phase timings and optimization stats on stderr
+  -o, --output OUT  output binary path (default a.out)
+  --target TARGET   target platform (macos-arm64, linux-x64, wasm32-wasi, xtensa-esp32-none, ...)
+  --debug-build     disable optimization and emit DWARF
+  -g, --debug       emit DWARF
+  --emit-obj        emit an application object (XUOBJ)
+  --desktop         package a native desktop application
+  --webview         include the WebView host in a desktop build
+  --no-webview      use the Draw-only desktop host
+  --www DIR         embed resources in a desktop build
+  --xacp            embed XACP startup and discovery
+  --xacp-port PORT  enable XACP TCP on loopback (0 = stdio only)
+  --no-opt          disable optimization
+  --release         select a release build (default)
+  --ra=1            select the default register allocator
+  --offline         resolve dependencies using local sources, vendor, and cache
+  --frozen          use locked dependencies without writes or downloads
+  -v, --verbose    print the selected target and chip features
 
 Use "xu &lt;command&gt; --help" or "xu help &lt;command&gt;" for more information.</code></pre>
 
