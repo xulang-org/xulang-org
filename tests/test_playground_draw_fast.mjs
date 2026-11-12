@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import {createRuntime} from '../www/xu-play-runtime.mjs';
 const module=await WebAssembly.compile(readFileSync(new URL('../build/playground/xu-play.wasm',import.meta.url)));
 
-test('text option scaling, copying and cache invalidation match checked MIR',async()=>{
+test('text option scaling, copying and cache invalidation in checked MIR',async()=>{
  const source=`@main
 #playground
 #ui/widgets
@@ -41,11 +41,11 @@ fn probe() int {
 fn main() int { << probe() or (err) { eprintln(err.msg())
     << 1 } }
 `;
- const fast=await createRuntime(module),reference=await createRuntime(module,{fastIntrinsics:false});
+ const fast=await createRuntime(module),reference=await createRuntime(module,{checkpoints:false});
  const result=fast.run(source); assert.equal(result.exit,0,result.stderr); assert.deepEqual(result,reference.run(source));
 });
 
-test('AOT style clones own their strings and state arrays and resolve every state like MIR',async()=>{
+test('style clones own their strings and state arrays and resolve every state',async()=>{
  const source=`@main
 #playground
 #ui/widgets
@@ -129,11 +129,11 @@ fn probe() int {
 fn main() int { << probe() or (err) { eprintln(err.msg())
     << 1 } }
 `;
- const fast=await createRuntime(module),reference=await createRuntime(module,{fastIntrinsics:false});
+ const fast=await createRuntime(module),reference=await createRuntime(module,{checkpoints:false});
  const result=fast.run(source);assert.equal(result.exit,0,result.stderr);assert.deepEqual(result,reference.run(source));
 });
 
-test('AOT drawing preserves paths, RGBA clamping, text masking and catchable frame errors',async()=>{
+test('drawing preserves paths, RGBA clamping, text masking and catchable frame errors',async()=>{
  const source=`@main
 #ui/draw
 #ui/layout
@@ -172,6 +172,6 @@ fn probe() int {
 fn main() int { << probe() or (err) { eprintln(err.msg())
     << 1 } }
 `;
- const fast=await createRuntime(module),reference=await createRuntime(module,{fastIntrinsics:false});
+ const fast=await createRuntime(module),reference=await createRuntime(module,{checkpoints:false});
  const result=fast.run(source);assert.equal(result.exit,0,result.stderr);assert.doesNotMatch(result.ui.commands,/secret/);assert.deepEqual(result,reference.run(source));
 });

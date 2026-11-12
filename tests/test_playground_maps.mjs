@@ -29,9 +29,9 @@ fn main() int {
   assert.equal(result.exit,0,result.stderr);
   assert.equal(result.stdout,'scalar maps passed\n');
 });
-test('unsupported owning map values fail clearly and a fresh evaluation recovers', () => {
+test('owned map values follow the released compiler semantics', () => {
   const result = runtime.run('@main\nfn main() int { $values := map[int]string{}\nvalues[1] = "owner"\nprintln(values[1])\n<< 0 }');
-  assert.notEqual(result.exit,0);
-  assert.match(result.stderr,/maps support int and bool values/);
+  assert.equal(result.exit,0,result.stderr);
+  assert.equal(result.stdout,'owner\n');
   assert.equal(runtime.run('@main\nfn main() int { println(42)\n<< 0 }').stdout,'42\n');
 });

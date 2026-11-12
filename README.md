@@ -130,7 +130,7 @@ make clean                       # Remove dist/ and build/playground/
 | `content/{en,zh}/` | Documentation, tutorials, blog posts, and API content. |
 | `templates/` | Page templates, API guides, and example selections. |
 | `www/` | Styles, scripts, fonts, icons, and static assets. |
-| `playground/runtime/` | Browser WebAssembly runtime written in XU. |
+| `playground/typed/` | Browser WebAssembly runtime written in XU. |
 | `scripts/` | Static builder, API generation, and release validation. |
 | `tests/` | Static site, playground, and channel regression coverage. |
 | `brand/` | Brand assets and visual identity guidelines. |
@@ -190,7 +190,7 @@ The lockfile pins the build-time Binaryen optimizer; static-only builds still ne
 
 ```sh
 npm ci --ignore-scripts # Install the pinned WASM optimizer
-make wasm XU_ROOT=/path/to/browser-sdk
+make wasm XU_ROOT=/path/to/released-sdk
 make check-playground  # Check real WASM execution and examples in Node.js
 make check-chan        # Check native channel examples with XU
 make build             # Bundle the runtime into dist/
@@ -198,7 +198,7 @@ make build             # Bundle the runtime into dist/
 
 The playground runs client-side in the browser. Documentation and the homepage do not preload WASM. The first run downloads and asynchronously compiles the module in the page, then shares it with a worker for instantiation and Xu execution. Compiled code is reused within that page; failed initialization can be retried, and stopping or switching programs cancels the old worker's initialization.
 
-Linear memory starts at 32 MiB and can grow to a 256 MiB maximum; this is separate from the download size. `build/playground/build.json` records the actual WASM and gzip sizes, digest, optimizer settings and memory limits. Generated WASM stays in `build/playground/`; `www/` remains source-only.
+Linear memory starts at the size emitted by the SDK and can grow to 256 MiB. `build/playground/build.json` records the WASM and gzip sizes, digest, optimizer settings and memory limits. Generated WASM stays in `build/playground/`.
 
 ### Benchmarks and deployment
 
@@ -212,7 +212,7 @@ python3 scripts/gen-benchmarks.py
 
 Pin the bench checkout to the artifact identity's `bench_commit`. Import verifies compiler identities, source closure, fixed point, the full registered workload inventory, and stdout. Source export preserves every canonical workload ID and the original source text; it never filters, aliases, or rewrites measured rows. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
 
-The native SDK version in `VERSION` drives downloads and the API reference. Build the browser runtime with the SDK pinned in `playground/runtime/xu.xun`. The Pages workflow verifies the SHA-256 digests of both published SDKs, checks their outputs, and deploys to GitHub Pages on pushes to `main`.
+The release in `VERSION` drives downloads, the API reference, and the browser runtime. The Pages workflow verifies the published SDK's SHA-256, tests its output, and deploys to GitHub Pages on pushes to `main`.
 
 </details>
 

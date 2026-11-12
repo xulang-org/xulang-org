@@ -242,18 +242,15 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     xu_version = xu_version or match[1]
     if not re.fullmatch(r'(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)', xu_version):
         raise ValueError('invalid Xu release version: only official releases (x.y.z) are supported')
-    runtime_manifest = (root / 'playground/runtime/xu.xun').read_text(encoding='utf-8')
-    runtime_pin = re.search(r'^xu:[ \t]*!ver[ \t]+(\d+\.\d+\.\d+)[ \t]*$', runtime_manifest, re.MULTILINE)
-    if not runtime_pin:
-        raise ValueError('missing official Xu version in the playground runtime manifest')
-    playground_version = runtime_pin[1]
     if wasm.is_file():
         record = wasm.parent / 'build.json'
         if not record.is_file():
             raise ValueError('WASM build version is missing; run make wasm')
         built = json.loads(record.read_text(encoding='utf-8'))
-        if built.get('xu_version') != playground_version or built.get('dev_build'):
-            raise ValueError(f'WASM version does not match the pinned Xu {playground_version} playground SDK')
+        if built.get('xu_version') != xu_version or built.get('dev_build'):
+            raise ValueError(f'WASM version does not match the released Xu {xu_version} SDK')
+        if built.get('target') != 'wasm32-wasi':
+            raise ValueError('WASM target does not match the playground worker')
         if built.get('wasm_sha256') != hashlib.sha256(wasm.read_bytes()).hexdigest():
             raise ValueError('WASM build checksum does not match; run make wasm')
     for source in pages.values():
@@ -308,14 +305,13 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     for route, source in pages.items():
         lang = source.relative_to(root / 'content').parts[0]
         raw = (source.read_text(encoding='utf-8').replace('{{xu_version}}', xu_version)
-               .replace('{{playground_version}}', playground_version))
+               .replace('{{playground_version}}', xu_version))
         for key, value in shared[lang].items():
             raw = raw.replace('{{' + key + '}}', value)
         title = TITLE.match(raw)
         body = raw[title.end():] if title else raw
         body = playground_options(root, body, lang)
-        page_version = playground_version if route in ('/playground', '/zh/playground') else xu_version
-        html = render(root, title[1].strip() if title else 'Xu', route, body, page_version)
+        html = render(root, title[1].strip() if title else 'Xu', route, body, xu_version)
         parser = RewriteHTML(base, set(pages), playground, asset_key, lang)
         parser.feed(html)
         target = output / route.strip('/') / 'index.html'
