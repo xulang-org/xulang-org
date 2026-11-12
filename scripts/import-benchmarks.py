@@ -139,6 +139,7 @@ def load(artifacts, version, commit, run_id, measured_date, bench_root=None):
             raise ValueError(f'{target}: mixed category definitions')
     return {'metadata': {'date': measured_date, 'xu_version': version, 'xu_commit': commit,
                          'bench_commit': bench_commit, 'source_closure_sha256': closure,
+                         'fixed_point_pair': fixed_point,
                          'run_url': f'https://github.com/xulang-org/bench/actions/runs/{run_id}',
                          'platforms': list(TARGETS), 'total_benches': len(names),
                          'xu_failed_cases': sum(p['xu_failed_benches'] for p in platforms.values()),
