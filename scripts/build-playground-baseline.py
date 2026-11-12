@@ -4,7 +4,7 @@
 Use the same SDK as the candidate to avoid compiler-version confounding:
   python3 scripts/build-playground-baseline.py --revision <pre-change-commit> \
     --xu-root /path/to/sdk --output /tmp/playground-baseline
-  node scripts/bench-playground.mjs \
+  node /path/to/legacy-checkout/scripts/bench-playground.mjs \
     --wasm=/tmp/playground-baseline/build/playground/xu-play.wasm \
     --cache=false --checkpoints=false --rounds=3
 """

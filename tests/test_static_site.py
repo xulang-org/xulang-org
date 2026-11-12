@@ -30,9 +30,6 @@ class StaticSiteTests(unittest.TestCase):
             shutil.copytree(ROOT / directory, cls.source / directory,
                             ignore=shutil.ignore_patterns('releases', 'xu-play.wasm', '.DS_Store'))
         shutil.copyfile(ROOT / 'xu.xun', cls.source / 'xu.xun')
-        runtime = Path('playground/runtime/xu.xun')
-        (cls.source / runtime).parent.mkdir(parents=True)
-        shutil.copyfile(ROOT / runtime, cls.source / runtime)
 
     @classmethod
     def tearDownClass(cls):
@@ -301,9 +298,10 @@ class StaticSiteTests(unittest.TestCase):
         # A minimal valid module verifies packaging; actual Xu ABI is exercised
         # by the production-runtime tests in test_playground.mjs.
         wasm.write_bytes(b'\x00asm\x01\x00\x00\x00')
-        version = re.search(r'(?m)^xu: !ver (\S+)', (source / 'playground/runtime/xu.xun').read_text())[1]
+        version = re.search(r'(?m)^xu: !ver (\S+)', (source / 'xu.xun').read_text())[1]
         record = wasm.parent / 'build.json'
-        stamp = {'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest()}
+        stamp = {'xu_version': version, 'target': 'wasm32-wasi',
+                 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest()}
         record.write_text(json.dumps(stamp))
         output = self.workspace / 'with-wasm-output'
         site.build(source, output, '/repo', require_playground=True)

@@ -94,11 +94,13 @@ test('empty source and oversized source are bounded', async () => {
 });
 
 
-test('WASM is built from Xu and has no host evaluator imports', async () => {
+test('WASM runs the Xu evaluator with only WASI host imports', async () => {
   const module = await WebAssembly.compile(bytes);
-  assert.deepEqual(WebAssembly.Module.imports(module), []);
+  assert.ok(WebAssembly.Module.imports(module).every(item =>
+    item.module === 'wasi_snapshot_preview1' && item.kind === 'function'));
   assert.ok(WebAssembly.Module.customSections(module, 'xu.source').length);
-  assert.ok(WebAssembly.Module.exports(module).some(item => item.name === 'xu_eval_frame'));
+  assert.ok(WebAssembly.Module.exports(module).some(item => item.name === 'playground_prepare'));
+  assert.ok(WebAssembly.Module.exports(module).some(item => item.name === 'playground_execute'));
 });
 
 test('unbuffered chan rendezvous and repeated evaluation', async () => {
@@ -125,7 +127,7 @@ fn main() int {
  << 0
 }`);
   assert.notEqual(result.exit, 0);
-  assert.match(result.stderr, /channel deadlock/);
+  assert.match(result.stderr, /all tasks are asleep - deadlock/);
   assert.equal(runtime.run(exampleSource(examples['chan-workers'])).stdout, '60\n');
 });
 

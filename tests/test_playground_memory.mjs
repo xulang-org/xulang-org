@@ -5,6 +5,7 @@ import {createRuntime} from '../www/xu-play-runtime.mjs';
 
 const bytes = readFileSync(new URL('../build/playground/xu-play.wasm', import.meta.url));
 const color = readFileSync(new URL('../playground/examples/widget-color-picker.xu', import.meta.url), 'utf8');
+const build = JSON.parse(readFileSync(new URL('../build/playground/build.json', import.meta.url)));
 const hello = '@main\nfn main() int { println("small")\n << 0 }';
 const MiB = 1024 * 1024;
 
@@ -27,22 +28,25 @@ function withMaximum(mebibytes) {
     const [size, body] = read(at);
     at = body + size;
     if (tag === 5) {
-      const memory = Buffer.concat([Buffer.from([1, 1]), leb(512), leb(mebibytes * 16)]);
+      const memory = Buffer.concat([Buffer.from([1, 1]), leb(build.initial_memory_bytes / 65536), leb(mebibytes * 16)]);
       parts.push(Buffer.from([tag]), leb(memory.length), memory);
     } else parts.push(bytes.subarray(start, at));
   }
   return Buffer.concat(parts);
 }
 
-test('small programs retain the 32 MiB initial memory', async () => {
+test('small programs reuse the WASM instance after compiler memory growth', async () => {
   const module = await WebAssembly.compile(bytes);
   assert.equal(WebAssembly.Module.customSections(module, 'xu.source').length, 1);
-  assert.equal(WebAssembly.Module.customSections(module, 'xu.playground.float').length, 1);
   const runtime = await createRuntime(module);
   const result = runtime.run(hello, {profile: true});
   assert.equal(result.exit, 0, result.stderr);
   assert.equal(result.stdout, 'small\n');
-  assert.equal(result.timings.memoryBytes, 32 * MiB);
+  assert.ok(result.timings.memoryBytes >= build.initial_memory_bytes);
+  assert.ok(result.timings.memoryBytes <= 64 * MiB);
+  const again = runtime.run(hello, {profile: true});
+  assert.equal(again.timings.cacheHit, true);
+  assert.equal(again.timings.memoryBytes, result.timings.memoryBytes);
 });
 
 test('component preparation grows memory and cached input preserves views and checkpoints', async () => {
@@ -60,7 +64,7 @@ test('component preparation grows memory and cached input preserves views and ch
   assert.ok(selected.ui.commands.length);
   const edited = runtime.run(hello, {profile: true});
   assert.equal(edited.stdout, 'small\n');
-  assert.equal(edited.timings.memoryBytes, 32 * MiB);
+  assert.ok(edited.timings.memoryBytes < initial.timings.memoryBytes);
 });
 
 test('execution growth works without checkpoint entry points', async () => {
@@ -85,13 +89,14 @@ test('large execution snapshots fall back to replay within the 8 MiB host budget
   assert.equal(next.timings.checkpointBytes, 0);
 });
 
-for (const maximum of [32, 64]) {
+for (const maximum of [64, 96]) {
   test(`engine growth failure at ${maximum} MiB reports a limit and permits recovery`, async () => {
     const runtime = await createRuntime(withMaximum(maximum));
     const result = runtime.run(color, {profile: true});
     assert.equal(result.exit, 1);
     assert.match(result.stderr, /memory limit exceeded/);
-    assert.equal(result.timings.memoryBytes, maximum * MiB);
+    assert.ok(result.timings.memoryBytes > build.initial_memory_bytes);
+    assert.ok(result.timings.memoryBytes <= maximum * MiB);
     const recovered = runtime.run(hello, {profile: true});
     assert.equal(recovered.exit, 0, recovered.stderr);
     assert.equal(recovered.stdout, 'small\n');

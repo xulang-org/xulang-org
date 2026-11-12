@@ -1,6 +1,7 @@
 @main
 
 #os
+#errors
 #xu/ast
 #xu/lexer
 #xu/token
@@ -13,6 +14,11 @@
 const USER_TARGET = 12
 const USER_OS = 1
 const USER_ARCH = 0
+
+struct Program {
+    body mir.Mir
+    functions types.StrMap
+}
 
 fn parse_source(source string, name string) parser.Parser {
     $tokens := []token.Token{}
@@ -79,29 +85,76 @@ fn prepare_source(source string, program $&mir.Mir) int {
     << mir.lower_typed(&p, $&typed, USER_OS, USER_ARCH, false, false, program)
 }
 
-pub fn playground_prepare(program $&mir.Mir) int {
+pub fn playground_prepare(program $&Program) int {
     source := os.read("/program.xu") or (err) {
         eprintln(err.msg())
         << 1
     }
-    << prepare_source(source, program)
+    status := prepare_source(source, $&program.body)
+    if status != 0 { << status }
+    $functions := types.new_strmap()
+    for i in 0:program.body.fns.len {
+        f := &program.body.fns[i]
+        if !f.is_extern { functions.put(f.label + "", i) }
+    }
+    program.functions = functions
+    << 0
 }
 
-pub fn playground_execute(program &mir.Mir) int {
-    events := os.read("/events.bin") or (err) {
-        eprintln(err.msg())
-        << 1
+fn read_events() string {
+    events := os.read("/events.bin") or >>
+    if events.len % EVENT_BYTES != 0 || events.len > 100000 * EVENT_BYTES {
+        >> errors.new("invalid playground events")
     }
-    if events.len % 80 != 0 || events.len > 8000000 {
-        eprintln("error: invalid playground events")
+    << events
+}
+
+pub fn playground_execute(program &Program) int {
+    events := read_events() or (err) {
+        eprintln(err.msg())
         << 2
     }
-    << run_machine(program, events)
+    $machine := machine_start(program)
+    << machine.drive(program, &events, false)
+}
+
+struct Replay {
+    state Machine
+}
+
+pub fn playground_drive(program &Program, replay $&Replay, resume int) int {
+    events := read_events() or (err) {
+        eprintln(err.msg())
+        << 2
+    }
+    if resume == 0 { replay.state = machine_start(program) }
+    state := $&replay.state
+    result := state.drive(program, &events, true)
+    if !replay.state.waiting { replay.state = machine_empty() }
+    << result
+}
+
+pub fn playground_checkpoint(replay &Replay) int {
+    if !replay.state.waiting { << 0 }
+    << replay.state.checkpoint_bytes()
+}
+
+pub fn playground_preview(program &Program, replay &Replay) int {
+    $preview := replay.state.preview()
+    events := ""
+    << preview.drive(program, &events, false)
 }
 
 fn main() int {
-    $program := mir.mir_new()
+    $program := Program{body: mir.mir_new(), functions: types.new_strmap()}
     status := playground_prepare($&program)
     if status != 0 { << status }
+    // Keep the named WASI entry points reachable in the SDK linker.
+    if os.argv().len > 1 {
+        $replay := Replay{state: machine_empty()}
+        result := playground_drive(&program, $&replay, 0)
+        if playground_checkpoint(&replay) == 0 { << result }
+        << playground_preview(&program, &replay)
+    }
     << playground_execute(&program)
 }

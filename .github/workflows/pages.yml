@@ -52,30 +52,10 @@ jobs:
         with:
           node-version: '22'
           cache: npm
-      - name: Verify typed MIR playground with the released SDK
-        run: |
-          python3 scripts/build-typed-playground.py --sdk "$XU_ROOT"
-          node --test tests/test_typed_playground.mjs
       - name: Install pinned WASM optimizer
         run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Install the pinned browser SDK
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          VERSION=$(awk '$1 == "xu:" && $2 == "!ver" { print $3 }' playground/runtime/xu.xun)
-          test -n "$VERSION"
-          RELEASE=$(python3 scripts/resolve-xu-release.py --version "$VERSION")
-          ARCHIVE=$(jq -er .archive <<< "$RELEASE")
-          DIGEST=$(jq -er .sha256 <<< "$RELEASE")
-          mkdir -p build/playground-sdk
-          gh release download "v$VERSION" --repo xulang-org/xu --pattern "$ARCHIVE" --dir build/playground-sdk
-          cd build/playground-sdk
-          printf '%s  %s\n' "$DIGEST" "$ARCHIVE" | sha256sum --check
-          tar -xzf "$ARCHIVE"
-          test "$(cat "xu-v$VERSION/VERSION")" = "$VERSION"
-          echo "XU_PLAYGROUND_ROOT=$GITHUB_WORKSPACE/build/playground-sdk/xu-v$VERSION" >> "$GITHUB_ENV"
       - name: Compile playground runtime with Xu
-        run: XU_ROOT="$XU_PLAYGROUND_ROOT" ./scripts/build-playground.sh
+        run: ./scripts/build-playground.sh
       - name: Test Xu playground execution
         run: make check-playground
       - name: Read Pages configuration

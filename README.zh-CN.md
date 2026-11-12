@@ -130,7 +130,7 @@ make clean                       # 清理 dist/ 与 build/playground/
 | `content/{en,zh}/` | 文档、教程、博客与 API 正文。 |
 | `templates/` | 页面模板、API 手写指南与示例选择配置。 |
 | `www/` | 样式、脚本、字体、图标与静态资源。 |
-| `playground/runtime/` | 使用 XU 编写的浏览器 WebAssembly 运行器。 |
+| `playground/typed/` | 使用 XU 编写的浏览器 WebAssembly 运行器。 |
 | `scripts/` | 静态构建、API 生成与发布校验。 |
 | `tests/` | 站点、演练场与信道回归检查。 |
 | `brand/` | 品牌物料与视觉识别规范。 |
@@ -177,7 +177,7 @@ make api XU_ROOT=/path/to/selected-sdk XU_PACKAGES_ROOT=/path/to/selected-sdk/pa
 
 ```sh
 npm ci --ignore-scripts # 安装固定版本的 WASM 优化器
-make wasm XU_ROOT=/path/to/browser-sdk
+make wasm XU_ROOT=/path/to/released-sdk
 make check-playground  # 在 Node.js 中检查真实 WASM 与示例执行
 make check-chan        # 使用 XU 检查原生信道示例
 make build             # 将运行器打包到 dist/
@@ -185,7 +185,7 @@ make build             # 将运行器打包到 dist/
 
 演练场在浏览器客户端运行。阅读文档或仅打开首页不会预加载 WASM。首次运行时，页面下载模块并异步编译，再将编译结果交给 worker 实例化和执行 Xu。编译结果在当前页面内复用；初始化失败可以重试，停止或切换程序会取消旧 worker 的初始化。
 
-运行器线性内存从 32 MiB 开始，最多增长到 256 MiB，与下载体积分别计算。`build/playground/build.json` 记录实际 WASM 与 gzip 体积、摘要、优化参数和内存限制。生成的 WASM 保存在 `build/playground/`，`www/` 只保存源码。
+运行器线性内存的初始大小由 SDK 决定，最多增长到 256 MiB。`build/playground/build.json` 记录 WASM 与 gzip 体积、摘要、优化参数和内存限制。生成的 WASM 保存在 `build/playground/`。
 
 ### 基准与部署
 
@@ -198,7 +198,7 @@ python3 scripts/gen-benchmarks.py
 
 导入会验证编译器身份、源闭包、自举定点、完整负载与 stdout。未测项保留空缺，C、Rust 行取 O1/O2/O3 中位数最小值。
 
-`VERSION` 中的原生 SDK 版本用于下载页和 API 文档。浏览器运行时使用 `playground/runtime/xu.xun` 固定的 SDK 构建。Pages 工作流校验两套已发布 SDK 的 SHA-256，验证构建产物，并在推送到 `main` 后部署。
+`VERSION` 指定下载页、API 文档和浏览器运行时使用的正式 SDK。Pages 工作流校验 SDK 的 SHA-256、测试构建产物，并在推送到 `main` 后部署。
 
 </details>
 

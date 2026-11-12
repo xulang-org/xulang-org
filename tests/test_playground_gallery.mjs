@@ -71,9 +71,11 @@ test('display page paints real StyledLabel, Card stroke, Badge, Progress and dis
 test('full event history stays within bounded WASM memory and rejects malformed scroll input', () => {
   const events = Array.from({length:32}, () => click(100,125)).flat();
   assert.match(run(events).stdout, /Count: 32/);
-  const instance = new WebAssembly.Instance(new WebAssembly.Module(bytes), {});
-  assert.equal(instance.exports.memory.buffer.byteLength, 32 * 1024 * 1024);
-  instance.exports.memory.grow((256 - 32) * 16);
+  const module = new WebAssembly.Module(bytes);
+  const wasi = Object.fromEntries(WebAssembly.Module.imports(module).map(({name}) => [name, () => 52]));
+  const instance = new WebAssembly.Instance(module, {wasi_snapshot_preview1: wasi});
+  const pages = instance.exports.memory.buffer.byteLength / 65536;
+  instance.exports.memory.grow(4096 - pages);
   assert.throws(() => instance.exports.memory.grow(1), RangeError);
   for (const event of [{kind:80,dy:NaN}, {kind:80,dx:Infinity}, {kind:80,dy:100001}])
     assert.throws(() => runtime.run(source, {events:[event]}), /Invalid UI scroll/);

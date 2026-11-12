@@ -5,9 +5,12 @@
 
 const MAX_MEMORY = 67108864
 const MAX_STEPS = 10000000
+const MAX_OUTPUT = 262144
 const GLOBALS = 8
 const INITIAL_USED = 4096
 const PAGE_WORDS = 8192
+const EVENT_BYTES = 80
+const MAX_CHECKPOINT_BYTES = 8388608
 
 struct Page {
     words []int
@@ -31,51 +34,92 @@ struct SuspendedTask {
 
 struct Machine {
     pages []Page
+    page_count int
     used int
     frames []Frame
     unused_frames []int
     suspended []SuspendedTask
-    function_ids map[string]int
-    literal_ptrs map[int]int
-    events string
+    literal_ptrs [][]int
+    literal_slots int
     event_position int
     interactive bool
     input bool
     labels []int
     current int
     steps int
+    concurrent bool
+    waiting bool
     stopped bool
     failed bool
     status int
 }
 
-fn machine_new(m &mir.Mir, events string) Machine {
-    $function_ids := map[string]int{}
-    for i in 0:m.fns.len {
-        if !m.fns[i].is_extern { function_ids[m.fns[i].label + ""] = i + 1 }
-    }
-    // User allocations reserve virtual ranges. Materialize pages on write
-    // so unused task stacks and allocator reserves consume little WASM heap.
-    $pages := []Page{}
-    for i in 0:MAX_MEMORY / 8 / PAGE_WORDS { pages.push(Page{words: []int{}}) }
+fn machine_empty() Machine {
     << Machine{
-        pages: pages,
+        pages: []Page{},
+        page_count: 0,
         used: INITIAL_USED,
         frames: []Frame{},
         unused_frames: []int{},
         suspended: []SuspendedTask{},
-        function_ids: function_ids,
-        literal_ptrs: map[int]int{},
-        events: events,
+        literal_ptrs: [][]int{},
+        literal_slots: 0,
         event_position: 0,
         interactive: false,
         input: false,
         labels: []int{},
         current: -1,
         steps: 0,
+        concurrent: false,
+        waiting: false,
         stopped: false,
         failed: false,
         status: 0
+    }
+}
+
+fn machine_start(program &Program) Machine {
+    $machine := machine_empty()
+    // User allocations reserve virtual ranges. Materialize pages on write
+    // so unused task stacks and allocator reserves consume little WASM heap.
+    for i in 0:MAX_MEMORY / 8 / PAGE_WORDS { machine.pages.push(Page{words: []int{}}) }
+    for i in 0:program.body.fns.len { machine.literal_ptrs.push([]int{}) }
+    entry := "_xu_main"
+    args := []int{}
+    start := program.functions.lookup(&entry)
+    machine.current = machine.enter(&program.body, start, -1, -1, &args)
+    << machine
+}
+
+fn (s &Machine) checkpoint_bytes() int {
+    // Only materialized pages and execution metadata are copied. The
+    // checked program and its function index are shared.
+    << s.page_count * PAGE_WORDS * 8 + s.pages.len * 24 + s.frames.len * 64 +
+        s.unused_frames.len * 8 + s.labels.len * 8 + s.literal_ptrs.len * 24 +
+        s.literal_slots * 8 + 256
+}
+
+fn (s &Machine) preview() Machine {
+    << Machine{
+        pages: ~s.pages,
+        page_count: s.page_count,
+        used: s.used,
+        frames: ~s.frames,
+        unused_frames: ~s.unused_frames,
+        suspended: []SuspendedTask{},
+        literal_ptrs: ~s.literal_ptrs,
+        literal_slots: s.literal_slots,
+        event_position: s.event_position,
+        interactive: s.interactive,
+        input: s.input,
+        labels: ~s.labels,
+        current: s.current,
+        steps: s.steps,
+        concurrent: false,
+        waiting: false,
+        stopped: false,
+        failed: false,
+        status: s.status
     }
 }
 
@@ -107,6 +151,7 @@ fn (s $&Machine) store_word(index int, value int) {
     if s.pages[page].words.len == 0 {
         if value == 0 { << }
         s.pages[page].words = make_ints(PAGE_WORDS)
+        s.page_count += 1
     }
     s.pages[page].words[index % PAGE_WORDS] = value
 }
@@ -164,10 +209,6 @@ fn local_offset(f &mir.MFn, index int) int {
     << offset
 }
 
-fn (s &Machine) find_fn(label &string) int {
-    << s.function_ids.get_or(*label, 0) - 1
-}
-
 fn (s $&Machine) enter(m &mir.Mir, fn_index int, parent int, dest int, args &[]int) int {
     if fn_index < 0 || fn_index >= m.fns.len {
         s.fail("invalid playground function address")
@@ -219,6 +260,7 @@ fn (s $&Machine) release_frame(frame int) {
 }
 
 fn (s $&Machine) switch_task(m &mir.Mir, frame int, from int, to int) {
+    s.concurrent = true
     fn_index := s.frames[frame].fn_index
     if m.fns[fn_index].label == "_xu_runtime_core_task_exit" {
         s.release_frame(frame)
@@ -265,20 +307,20 @@ fn (s $&Machine) mark_interactive(input bool) {
     }
 }
 
-fn (s &Machine) event_word(index int) int {
-    offset := s.event_position + index * 8
+fn event_word(events &string, offset int, index int) int {
+    start := offset + index * 8
     $word := 0
-    for i in 0:8 { word = word | ((s.events[offset + i] & 255) << (i * 8)) }
+    for i in 0:8 { word = word | ((events[start + i] & 255) << (i * 8)) }
     << word
 }
 
-fn (s $&Machine) next_click(address int) {
+fn (s $&Machine) next_click(address int, events &string, offset int) {
     s.mark_interactive(false)
-    if s.event_position < s.events.len {
-        s.store(address, 8, s.event_word(1))
-        s.store(address + 8, 8, s.event_word(2))
+    if offset < events.len {
+        s.store(address, 8, event_word(events, offset, 1))
+        s.store(address + 8, 8, event_word(events, offset, 2))
         s.store(address + 16, 8, 1)
-        s.event_position += 80
+        s.event_position += EVENT_BYTES
     } else {
         s.store(address, 8, 0)
         s.store(address + 8, 8, 0)
@@ -286,23 +328,23 @@ fn (s $&Machine) next_click(address int) {
     }
 }
 
-fn (s $&Machine) next_input(address int) {
+fn (s $&Machine) next_input(address int, events &string, offset int) {
     s.mark_interactive(true)
     for i in 0:16 { s.store(address + i * 8, 8, 0) }
-    if s.event_position >= s.events.len { << }
-    s.store(address, 8, s.event_word(0))
+    if offset >= events.len { << }
+    s.store(address, 8, event_word(events, offset, 0))
     for i in 1:4 { s.store(address + i * 8, 8, 1) }
-    s.store(address + 32, 8, core.playground_float_bits(f64(s.event_word(1))))
-    s.store(address + 40, 8, core.playground_float_bits(f64(s.event_word(2))))
-    s.store(address + 48, 8, s.event_word(8))
-    s.store(address + 56, 8, s.event_word(9))
-    s.store(address + 64, 8, s.event_word(6))
-    s.store(address + 72, 8, s.event_word(7))
-    s.store(address + 80, 8, s.event_word(4))
-    s.store(address + 88, 8, s.event_word(3))
-    s.store(address + 104, 8, s.event_word(5))
-    s.store(address + 120, 8, (s.event_position / 80 + 1) * 16000000)
-    s.event_position += 80
+    s.store(address + 32, 8, core.playground_float_bits(f64(event_word(events, offset, 1))))
+    s.store(address + 40, 8, core.playground_float_bits(f64(event_word(events, offset, 2))))
+    s.store(address + 48, 8, event_word(events, offset, 8))
+    s.store(address + 56, 8, event_word(events, offset, 9))
+    s.store(address + 64, 8, event_word(events, offset, 6))
+    s.store(address + 72, 8, event_word(events, offset, 7))
+    s.store(address + 80, 8, event_word(events, offset, 4))
+    s.store(address + 88, 8, event_word(events, offset, 3))
+    s.store(address + 104, 8, event_word(events, offset, 5))
+    s.store(address + 120, 8, (s.event_position / EVENT_BYTES + 1) * 16000000)
+    s.event_position += EVENT_BYTES
 }
 
 fn (s $&Machine) string_result(address int, text string) {
@@ -332,7 +374,7 @@ fn canvas_scalar(bits int) string {
 fn (s $&Machine) draw_command(descriptor int) {
     address := s.load(descriptor, 8)
     length := s.load(descriptor + 8, 8)
-    if length < 0 || length > 262143 || address < 8 || address > s.used - length {
+    if length < 0 || length >= MAX_OUTPUT || address < 8 || address > s.used - length {
         s.fail("invalid playground draw command")
         <<
     }
@@ -390,10 +432,18 @@ fn (s $&Machine) syscall(m &mir.Mir, frame int, args &[]int) int {
     if nr == 222 { << s.alloc(b) }
     if nr == 215 { << 0 }
     if nr == 64 {
-        if (a != 1 && a != 2) || c < 0 || c > 262144 { << -22 }
-        $text := make_string(c)
-        for i in 0:c { text[i] = s.load(b + i, 1) }
-        << os_fd_write(a, text) or (err) { << -5 }
+        if (a != 1 && a != 2) || c < 0 || b < 8 || b > s.used - c { << -22 }
+        $length := c
+        if length > MAX_OUTPUT { length = MAX_OUTPUT }
+        if length > MAX_STEPS - s.steps {
+            s.fail("playground execution step limit exceeded")
+            << -5
+        }
+        s.steps += length
+        $text := make_string(length)
+        for i in 0:length { text[i] = s.load(b + i, 1) }
+        os_fd_write(a, text) or (err) { << -5 }
+        << c
     }
     if nr == 94 {
         s.status = a
@@ -450,7 +500,7 @@ fn float_op(op int, x int, y int) int {
     << 0
 }
 
-fn (s $&Machine) step(m &mir.Mir) {
+fn (s $&Machine) step(program &Program, events &string, batch_start int, checkpoint bool) {
     frame := s.current
     state := &s.frames[frame]
     fn_index := state.fn_index
@@ -459,6 +509,7 @@ fn (s $&Machine) step(m &mir.Mir) {
     parent := state.parent
     dest := state.dest
     base := state.base
+    m := &program.body
     f := &m.fns[fn_index]
     if next < 0 {
         terminator := &f.blocks[block]
@@ -527,18 +578,21 @@ fn (s $&Machine) step(m &mir.Mir) {
         value := s.operand(f, frame, ins.b)
         s.set_temp(frame, ins.a, value)
     } else if k == mir.MI_STR_CONST {
-        key := (fn_index << 32) | next
-        $ptr := s.literal_ptrs.get_or(key, 0)
+        if s.literal_ptrs[fn_index].len == 0 {
+            s.literal_ptrs[fn_index] = make_ints(f.instrs.len)
+            s.literal_slots += f.instrs.len
+        }
+        $ptr := s.literal_ptrs[fn_index][next]
         if ptr == 0 {
             text := &ins.sval
             ptr = s.alloc(text.len + 1)
             if s.failed { << }
             for i in 0:text.len { s.store(ptr + i, 1, text[i]) }
-            s.literal_ptrs[key] = ptr
+            s.literal_ptrs[fn_index][next] = ptr
         }
         s.set_temp(frame, ins.a, ptr)
     } else if k == mir.MI_LOAD_FN_ADDR {
-        s.set_temp(frame, ins.a, s.find_fn(&ins.sval) + 1)
+        s.set_temp(frame, ins.a, program.functions.lookup(&ins.sval) + 1)
     } else if k == mir.MI_CALL || k == mir.MI_CALL_IND {
         $args := []int{}
         $arg := ins.c
@@ -554,12 +608,21 @@ fn (s $&Machine) step(m &mir.Mir) {
         } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_emit" && args.len == 1 {
             s.draw_command(args[0])
             s.set_temp(frame, ins.a, 0)
-        } else if k == mir.MI_CALL && ins.sval == "_xu_playground_next_click" && args.len == 1 {
-            s.next_click(args[0])
-        } else if k == mir.MI_CALL && ins.sval == "_xu_playground_next_input" && args.len == 1 {
-            s.next_input(args[0])
+        } else if k == mir.MI_CALL && args.len == 1 &&
+            (ins.sval == "_xu_playground_next_click" || ins.sval == "_xu_playground_next_input") {
+            offset := s.event_position - batch_start
+            if checkpoint && !s.concurrent && offset == events.len && s.checkpoint_bytes() <= MAX_CHECKPOINT_BYTES {
+                // Leave the call unexecuted. Preview consumes the exhausted
+                // read in a copy while a later batch can supply a real event.
+                s.frames[frame].next = next
+                s.steps -= 1
+                s.waiting = true
+                <<
+            }
+            if ins.sval == "_xu_playground_next_input" { s.next_input(args[0], events, offset) }
+            else { s.next_click(args[0], events, offset) }
         } else if k == mir.MI_CALL && ins.sval == "_xu_time_now_ns" && args.len == 0 {
-            s.set_temp(frame, ins.a, (s.event_position / 80 + 1) * 16000000)
+            s.set_temp(frame, ins.a, (s.event_position / EVENT_BYTES + 1) * 16000000)
         } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_scalar" && args.len == 2 {
             s.string_result(args[0], canvas_scalar(args[1]))
         } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_retain" && args.len == 1 {
@@ -573,12 +636,14 @@ fn (s $&Machine) step(m &mir.Mir) {
                 s.store(args[0] + 8, 8, s.labels[(id - 1) * 2 + 1])
             } else { s.string_result(args[0], "") }
         } else {
-            $target := s.find_fn(&ins.sval)
+            $target := program.functions.lookup(&ins.sval)
             if k == mir.MI_CALL_IND { target = s.operand(f, frame, ins.b) - 1 }
             if target < 0 {
                 s.fail("unsupported playground function: " + ins.sval)
                 <<
             }
+            if m.fns[target].label == "_xu_runtime_core_task_spawn" ||
+                m.fns[target].label == "_xu_runtime_core_chan_new" { s.concurrent = true }
             s.current = s.enter(m, target, frame, ins.a, &args)
         }
     } else if k != mir.MI_NOP {
@@ -586,18 +651,15 @@ fn (s $&Machine) step(m &mir.Mir) {
     }
 }
 
-fn run_machine(m &mir.Mir, events string) int {
-    $machine := machine_new(m, events)
-    entry := "_xu_main"
-    args := []int{}
-    start := machine.find_fn(&entry)
-    machine.current = machine.enter(m, start, -1, -1, &args)
-    while machine.current >= 0 && !machine.failed && !machine.stopped {
-        if machine.steps >= MAX_STEPS { machine.fail("playground execution step limit exceeded") }
-        if !machine.failed {
-            machine.steps += 1
-            machine.step(m)
+fn (s $&Machine) drive(program &Program, events &string, checkpoint bool) int {
+    batch_start := s.event_position
+    s.waiting = false
+    while s.current >= 0 && !s.failed && !s.stopped && !s.waiting {
+        if s.steps >= MAX_STEPS { s.fail("playground execution step limit exceeded") }
+        if !s.failed {
+            s.steps += 1
+            s.step(program, events, batch_start, checkpoint)
         }
     }
-    << machine.status
+    << s.status
 }
