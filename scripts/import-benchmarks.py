@@ -27,13 +27,13 @@ def load(artifacts, version, commit, run_id, measured_date, bench_root=None):
     bench_root = Path(bench_root or ROOT.parent / 'bench')
     registered = registered_benches(bench_root)
     platforms, identities = {}, {}
-    names = closure = bench_commit = categories = None
+    names = closure = bench_commit = fixed_point = categories = None
     for target in TARGETS:
         folder = artifacts / ('benchmark-reports-' + target)
-        identity = json.loads((folder / 'compiler-identity.json').read_text())
+        identity = json.loads((folder / 'compiler-identity.json').read_text(encoding='utf-8'))
         if (identity['target'] != target or identity['xu_commit'] != commit
                 or identity['xu_version'] != version
-                or identity['fixed_point_pair'] != 'gen2_gen3'):
+                or identity['fixed_point_pair'] not in ('gen2_gen3', 'gen3_gen4')):
             raise ValueError(f'{target}: compiler identity mismatch')
         for field, width in [('source_closure_sha256', 64), ('compiler_sha256', 64),
                              ('bench_commit', 40)]:
@@ -41,15 +41,17 @@ def load(artifacts, version, commit, run_id, measured_date, bench_root=None):
                 raise ValueError(f'{target}: missing {field}')
         closure = closure or identity['source_closure_sha256']
         bench_commit = bench_commit or identity['bench_commit']
+        fixed_point = fixed_point or identity['fixed_point_pair']
         if names is None:
             require_bench_commit(bench_root, bench_commit)
-        if closure != identity['source_closure_sha256'] or bench_commit != identity['bench_commit']:
-            raise ValueError(f'{target}: mixed source closures or benchmark commits')
-        data = json.loads((folder / f'benchmarks-{target}.json').read_text())
+        if (closure != identity['source_closure_sha256'] or bench_commit != identity['bench_commit']
+                or fixed_point != identity['fixed_point_pair']):
+            raise ValueError(f'{target}: mixed source closures, benchmark commits or bootstrap fixed points')
+        data = json.loads((folder / f'benchmarks-{target}.json').read_text(encoding='utf-8'))
         meta = data['metadata']
         if meta['xu_version'] != version or meta['platform_id'] != target:
             raise ValueError(f'{target}: result identity mismatch')
-        raw = (folder / 'crosslang.txt').read_text()
+        raw = (folder / 'crosslang.txt').read_text(encoding='utf-8')
         toolchains = meta.get('toolchains')
         if not isinstance(toolchains, dict):
             raise ValueError(f'{target}: missing measured toolchain versions')
@@ -155,9 +157,9 @@ def main():
     parser.add_argument('--date', required=True, help='Actions run date (YYYY-MM-DD)')
     parser.add_argument('--bench-root', type=Path, help='checkout pinned to the measured bench_commit')
     args = parser.parse_args()
-    data = load(args.artifacts, (ROOT / 'VERSION').read_text().strip(),
+    data = load(args.artifacts, (ROOT / 'VERSION').read_text(encoding='utf-8').strip(),
                 args.commit, args.run_id, args.date, args.bench_root)
-    (ROOT / 'www/benchmarks.json').write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n')
+    (ROOT / 'www/benchmarks.json').write_text(json.dumps(data, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     print(f'Imported {data["metadata"]["total_benches"]} workloads × {len(TARGETS)} verified platforms')
 
 

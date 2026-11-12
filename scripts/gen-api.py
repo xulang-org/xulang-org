@@ -3196,15 +3196,11 @@ def main(argv: list[str] | None = None) -> int:
         refresh_examples(site, args.examples, args.examples_ref, xu_version, args.examples_project)
     write_packages(site, packages, xu_version)
     ensure_css(site)
-    # The user requires the website release to match Xu main's final SDK.
-    # The internal runtime module retains its independent version:.
-    for relative in ('xu.xun', 'playground/runtime/xu.xun'):
-        manifest = Path(site, relative)
-        if manifest.is_file():
-            text = manifest.read_text(encoding='utf-8')
-            if relative == 'xu.xun':
-                text = re.sub(r'(?m)^version:.*$', 'version: !ver ' + xu_version, text)
-            manifest.write_text(re.sub(r'(?m)^xu:.*$', 'xu: !ver ' + xu_version, text), encoding='utf-8')
+    manifest = Path(site, 'xu.xun')
+    if manifest.is_file():
+        text = manifest.read_text(encoding='utf-8')
+        text = re.sub(r'(?m)^version:.*$', 'version: !ver ' + xu_version, text)
+        manifest.write_text(re.sub(r'(?m)^xu:.*$', 'xu: !ver ' + xu_version, text), encoding='utf-8')
     if Path(site, 'VERSION').is_file():
         Path(site, 'VERSION').write_text(xu_version + '\n', encoding='utf-8')
     print(f"  wrote content/{{zh,en}}/api for {len(packages)} packages")

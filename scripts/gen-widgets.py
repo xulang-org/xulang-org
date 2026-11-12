@@ -70,7 +70,6 @@ def generate(root: Path = ROOT, check: bool = False) -> list[Path]:
     components, groups = catalog['components'], catalog['groups']
     outputs = {}
     projects = json.loads((root / 'www/xu-play-examples.json').read_text(encoding='utf-8'))['projects']
-    version = (root / 'VERSION').read_text(encoding='utf-8').strip()
     for component in components:
         key = 'widget-' + component['slug']
         component['project'] = key if key in projects else None
@@ -81,6 +80,10 @@ def generate(root: Path = ROOT, check: bool = False) -> list[Path]:
         base = prefix + '/api/ui/widgets'
         source = root / f'content/{lang}/api/ui/widgets.html'
         original = source.read_text(encoding='utf-8')
+        version_stamp = re.search(r'<!--xu-api-version: (\d+\.\d+\.\d+)-->', original)
+        if not version_stamp:
+            raise ValueError(f'{source}: missing released Widgets API version')
+        version = version_stamp[1]
         original = re.sub('\n' + re.escape(START) + r'.*?' + re.escape(END) + '\n', '', original, flags=re.S)
         articles = dict(re.findall(r'(<article class="api-item" id="([^"]+)">.*?</article>)', original, re.S))
         # Keep exact released declarations, parameter documentation and anchors.

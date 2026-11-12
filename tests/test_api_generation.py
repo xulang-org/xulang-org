@@ -436,7 +436,7 @@ fn private_helper() {}
             self.assertEqual(css.read_text(), styles)
             self.assertIn('version: !ver 0.8.4\nxu: !ver 0.8.4', (site / 'xu.xun').read_text())
             self.assertEqual((site / 'VERSION').read_text().strip(), '0.8.4')
-            self.assertIn('version: !ver 0.1.1\nxu: !ver 0.8.4', runtime.read_text())
+            self.assertIn('version: !ver 0.1.1\nxu: !ver 0.8.3', runtime.read_text())
             parsed = api.load_package(str(source), 'io')
             self.assertEqual((parsed.n_fn, parsed.n_type, parsed.n_iface), (1, 2, 1))
 

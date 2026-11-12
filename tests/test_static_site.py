@@ -30,6 +30,9 @@ class StaticSiteTests(unittest.TestCase):
             shutil.copytree(ROOT / directory, cls.source / directory,
                             ignore=shutil.ignore_patterns('releases', 'xu-play.wasm', '.DS_Store'))
         shutil.copyfile(ROOT / 'xu.xun', cls.source / 'xu.xun')
+        runtime = Path('playground/runtime/xu.xun')
+        (cls.source / runtime).parent.mkdir(parents=True)
+        shutil.copyfile(ROOT / runtime, cls.source / runtime)
 
     @classmethod
     def tearDownClass(cls):
@@ -298,7 +301,7 @@ class StaticSiteTests(unittest.TestCase):
         # A minimal valid module verifies packaging; actual Xu ABI is exercised
         # by the production-runtime tests in test_playground.mjs.
         wasm.write_bytes(b'\x00asm\x01\x00\x00\x00')
-        version = re.search(r'(?m)^xu: !ver (\S+)', (source / 'xu.xun').read_text())[1]
+        version = re.search(r'(?m)^xu: !ver (\S+)', (source / 'playground/runtime/xu.xun').read_text())[1]
         record = wasm.parent / 'build.json'
         stamp = {'xu_version': version, 'wasm_sha256': hashlib.sha256(wasm.read_bytes()).hexdigest()}
         record.write_text(json.dumps(stamp))
@@ -309,7 +312,9 @@ class StaticSiteTests(unittest.TestCase):
             self.assertIn('src="/repo/xu-play.js?', home)
             self.assertIn('data-wasm-available="true"', home)
             self.assertNotIn('xu-play.wasm', home)
-        self.assertIn('data-wasm-available="true"', (output / 'playground/index.html').read_text())
+        playground = (output / 'playground/index.html').read_text()
+        self.assertIn('data-wasm-available="true"', playground)
+        self.assertIn(f'data-xu-version="{version}"', playground)
         for page in ('zh/api/fmt/index.html', 'zh/docs/start/index.html', 'playground/index.html'):
             self.assertNotIn('rel="preload" href="/repo/xu-play.wasm', (output / page).read_text(), page)
         for asset in ('xu-play-worker.js', 'xu-play-runtime.mjs', 'xu-play-examples.json', 'xu-play.wasm'):

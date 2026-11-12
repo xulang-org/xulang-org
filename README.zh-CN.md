@@ -177,7 +177,7 @@ make api XU_ROOT=/path/to/selected-sdk XU_PACKAGES_ROOT=/path/to/selected-sdk/pa
 
 ```sh
 npm ci --ignore-scripts # 安装固定版本的 WASM 优化器
-make wasm              # 编译 build/playground/xu-play.wasm
+make wasm XU_ROOT=/path/to/browser-sdk
 make check-playground  # 在 Node.js 中检查真实 WASM 与示例执行
 make check-chan        # 使用 XU 检查原生信道示例
 make build             # 将运行器打包到 dist/
@@ -198,7 +198,7 @@ python3 scripts/gen-benchmarks.py
 
 导入会验证编译器身份、源闭包、自举定点、完整负载与 stdout。未测项保留空缺，C、Rust 行取 O1/O2/O3 中位数最小值。
 
-`.github/workflows/pages.yml` 在推送到 `main` 时检查发布版本对齐、校验已发布 SDK 的 SHA-256 摘要、编译演练场、构建站点并部署到 GitHub Pages。
+`VERSION` 中的原生 SDK 版本用于下载页和 API 文档。浏览器运行时使用 `playground/runtime/xu.xun` 固定的 SDK 构建。Pages 工作流校验两套已发布 SDK 的 SHA-256，验证构建产物，并在推送到 `main` 后部署。
 
 </details>
 

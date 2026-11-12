@@ -190,7 +190,7 @@ The lockfile pins the build-time Binaryen optimizer; static-only builds still ne
 
 ```sh
 npm ci --ignore-scripts # Install the pinned WASM optimizer
-make wasm              # Compile build/playground/xu-play.wasm
+make wasm XU_ROOT=/path/to/browser-sdk
 make check-playground  # Check real WASM execution and examples in Node.js
 make check-chan        # Check native channel examples with XU
 make build             # Bundle the runtime into dist/
@@ -212,7 +212,7 @@ python3 scripts/gen-benchmarks.py
 
 Pin the bench checkout to the artifact identity's `bench_commit`. Import verifies compiler identities, source closure, fixed point, the full registered workload inventory, and stdout. Source export preserves every canonical workload ID and the original source text; it never filters, aliases, or rewrites measured rows. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
 
-`.github/workflows/pages.yml` checks release alignment, verifies published SDK SHA-256 digests, compiles the playground, builds the site, and deploys to GitHub Pages on pushes to `main`.
+The native SDK version in `VERSION` drives downloads and the API reference. Build the browser runtime with the SDK pinned in `playground/runtime/xu.xun`. The Pages workflow verifies the SHA-256 digests of both published SDKs, checks their outputs, and deploys to GitHub Pages on pushes to `main`.
 
 </details>
 
