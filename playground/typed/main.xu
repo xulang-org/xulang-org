@@ -17,7 +17,8 @@ const USER_ARCH = 0
 
 struct Program {
     body mir.Mir
-    functions types.StrMap
+    plans []FunctionPlan
+    entry int
 }
 
 fn parse_source(source string, name string) parser.Parser {
@@ -97,7 +98,13 @@ pub fn playground_prepare(program $&Program) int {
         f := &program.body.fns[i]
         if !f.is_extern { functions.put(f.label + "", i) }
     }
-    program.functions = functions
+    $plans := []FunctionPlan{}
+    for i in 0:program.body.fns.len {
+        plans.push(plan_function(&program.body.fns[i], &functions))
+    }
+    program.plans = plans
+    entry := "_xu_main"
+    program.entry = functions.lookup(&entry)
     << 0
 }
 
@@ -146,7 +153,7 @@ pub fn playground_preview(program &Program, replay &Replay) int {
 }
 
 fn main() int {
-    $program := Program{body: mir.mir_new(), functions: types.new_strmap()}
+    $program := Program{body: mir.mir_new(), plans: []FunctionPlan{}, entry: -1}
     status := playground_prepare($&program)
     if status != 0 { << status }
     // Keep the named WASI entry points reachable in the SDK linker.
