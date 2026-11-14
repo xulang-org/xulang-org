@@ -1,0 +1,386 @@
+<!--title: #window-->
+<p class="crumb">API</p>
+<h1><code>#window</code></h1>
+<!--xu-api-version: 0.12.3-->
+<p class="banner">Xu {{xu_version}} API</p>
+<p class="meta">导入方式: <code>#window</code></p>
+<p class="meta">公开 API: 3 函数, 21 方法, 3 类型, 0 常量, 0 方法集</p>
+<h2 id="quickstart">窗口生命周期与事件循环</h2>
+<p><code>#window</code> 提供轻量化窗口创建、生命周期管理与输入事件轮询（键盘、指针、滚轮、文本/IME）。跨平台事件结构体与常量定义在纯 Xu 包 <a href="/zh/api/window/events"><code>window/events</code></a> 中。</p>
+<p>每个主循环帧调用 <code>window.pump()</code> 抽取系统事件，并对各窗口调用 <code>target.poll()</code> 消耗事件直至 <code>EVENT_NONE</code>。窗口关闭请求通过 <code>state().close_requested</code> 捕获。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#window
+#window/events
+
+fn main() {
+    options := window.Options{
+        title: "Hello Window",
+        width: 640,
+        height: 360,
+        resizable: true,
+        high_pixel_density: true,
+        hidden: false,
+    }
+    $target := window.open(&amp;options) or {
+        println("Failed to open window")
+        return
+    }
+    println("Window opened: id=", target.id())
+    window.pump() or >>
+    state := target.state() or >>
+    println("Window size:", state.logical_width, "x", state.logical_height)
+    target.close() or >>
+}</code></pre></div>
+<p>预期输出包含窗口 ID 与初始逻辑分辨率尺寸。</p>
+<article class="api-item" id="struct-Options">
+<h2><code>struct Options</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Options {
+    <span class="syn-kw">pub</span> title <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> width <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> height <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> resizable <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> high_pixel_density <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> hidden <span class="syn-type">bool</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>Window 配置参数与选项集合。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>title</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>resizable</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>high_pixel_density</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>hidden</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-Window">
+<h2><code>struct Window</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Window {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Window</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-State">
+<h2><code>struct State</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> State {
+    <span class="syn-kw">pub</span> width <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> height <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> pixel_width <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> pixel_height <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> close_requested <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> minimized <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> visible <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> focused <span class="syn-type">bool</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 width、height、pixel_width、pixel_height、close_requested 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>width</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>pixel_width</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>pixel_height</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>close_requested</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>minimized</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>visible</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+</dl>
+</article>
+<article class="api-item" id="open">
+<h2><code>open</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(options &amp;Options) Window</code></pre></div>
+<h3>用途</h3>
+<p>打开资源或建立网络连接。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>options</code> <span class="type">&amp;Options</span></dt><dd>options（只读借用，调用方仍持有原值；类型 &amp;Options）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Window — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-id">
+<h2><code>(&amp;Window) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) id() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>返回当前控件、元素或节点的唯一标识 ID。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="pump">
+<h2><code>pump</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> pump() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 pump 处理。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<p class="api-none">无需传入参数。</p>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="live_count">
+<h2><code>live_count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> live_count() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>执行 live count 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<p class="api-none">无需传入参数。</p>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-state">
+<h2><code>(&amp;Window) state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) state() State</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Window</code> 上执行 <code>state</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>State — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-resize">
+<h2><code>(&amp;Window) resize</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) resize(width <span class="syn-type">int</span>, height <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Window</code> 上执行 <code>resize</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>width（int）</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>height（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-show">
+<h2><code>(&amp;Window) show</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) show() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Window</code> 上执行 <code>show</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-hide">
+<h2><code>(&amp;Window) hide</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) hide() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Window</code> 上执行 <code>hide</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-minimize">
+<h2><code>(&amp;Window) minimize</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) minimize() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Window</code> 上执行 <code>minimize</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-restore">
+<h2><code>(&amp;Window) restore</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) restore() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Window</code> 上执行 <code>restore</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Window-close">
+<h2><code>($&amp;Window) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window <span class="syn-borrow">$&amp;</span>Window) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Window</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">$&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-poll">
+<h2><code>(&amp;Window) poll</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) poll() events.Event</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Window</code> 上执行 <code>poll</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>events.Event — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-pending_events">
+<h2><code>(&amp;Window) pending_events</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) pending_events() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 pending events 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-key_down">
+<h2><code>(&amp;Window) key_down</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) key_down(physical_key <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 key down 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>physical_key</code> <span class="type">int</span></dt><dd>physical_key（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Window-pointer_state">
+<h2><code>(&amp;Window) pointer_state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) pointer_state() events.PointerState</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 pointer state 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>events.PointerState — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-start_text_input">
+<h2><code>(&amp;Window) start_text_input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) start_text_input() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 start text input 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-stop_text_input">
+<h2><code>(&amp;Window) stop_text_input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) stop_text_input() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 stop text input 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-text_input_active">
+<h2><code>(&amp;Window) text_input_active</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) text_input_active() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 text input active 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Window-text_input_area">
+<h2><code>(&amp;Window) text_input_area</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) text_input_area(x <span class="syn-type">int</span>, y <span class="syn-type">int</span>, width <span class="syn-type">int</span>, height <span class="syn-type">int</span>, cursor <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 text input area 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>x</code> <span class="type">int</span></dt><dd>值（int）</dd>
+<dt><code>y</code> <span class="type">int</span></dt><dd>值（int）</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>width（int）</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>height（int）</dd>
+<dt><code>cursor</code> <span class="type">int</span></dt><dd>cursor（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-clear_text_input_area">
+<h2><code>(&amp;Window) clear_text_input_area</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) clear_text_input_area() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 clear text input area 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-set_relative_pointer">
+<h2><code>(&amp;Window) set_relative_pointer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) set_relative_pointer(enabled <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：设置 relative pointer。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-relative_pointer">
+<h2><code>(&amp;Window) relative_pointer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) relative_pointer() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 relative pointer 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Window-set_pointer_grab">
+<h2><code>(&amp;Window) set_pointer_grab</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) set_pointer_grab(enabled <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：设置 pointer grab。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled（bool）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Window-pointer_grab">
+<h2><code>(&amp;Window) pointer_grab</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) pointer_grab() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Window</code> 上的操作：执行 pointer grab 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>本次调用使用的 <code>Window</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>

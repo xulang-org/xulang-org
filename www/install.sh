@@ -83,7 +83,7 @@ INSTALL_DIR="${XU_INSTALL_DIR:-$DEFAULT_INSTALL_DIR}"
 PREFIX_EXPLICIT=0
 if [[ -n "${XU_INSTALL_DIR:-}" ]]; then PREFIX_EXPLICIT=1; fi
 DOWNLOAD_BASE_URL="${XU_DOWNLOAD_URL:-https://github.com/xulang-org/xu/releases/download}"
-FALLBACK_VERSION="0.12.2"
+FALLBACK_VERSION="0.12.3"
 TARGET_VERSION="${XU_VERSION:-}"
 MODIFY_PATH=1
 AUTO_YES=0
@@ -311,7 +311,7 @@ mkdir -p "$INSTALL_DIR/bin"
 if [[ -d "$SOURCE_DIR/bin/platform/$PLATFORM" ]]; then
     cp -Rf "$SOURCE_DIR/bin/platform/$PLATFORM/." "$INSTALL_DIR/bin/"
 elif [[ -d "$SOURCE_DIR/bin" ]]; then
-    for b in xu xu-doctor xu-fmt xu-doc xu-map xu-desktop xu-setup xu-update xu-lsp xu-native; do
+    for b in xu xu-doctor xu-fmt xu-doc xu-map xu-desktop xu-setup xu-update xu-lsp xu-native xu-xacp; do
         if [[ -f "$SOURCE_DIR/bin/$b" ]]; then
             cp -f "$SOURCE_DIR/bin/$b" "$INSTALL_DIR/bin/"
         fi
@@ -604,7 +604,7 @@ fi
 printf "\n${GREEN}${BOLD}Xu development environment installed successfully!${NC}\n\n"
 cat << EOF
 Installed components:
-  - Core compiler & toolchain: $INSTALL_DIR/bin (xu, xu-setup, xu-doctor, xu-fmt, xu-doc, xu-map, xu-desktop, xu-update, xu-lsp, xu-native)
+  - Core compiler & toolchain: $INSTALL_DIR/bin (xu, xu-setup, xu-doctor, xu-fmt, xu-doc, xu-map, xu-desktop, xu-update, xu-lsp, xu-native, xu-xacp)
   - Standard library (src):    $INSTALL_DIR/src
   - External driver modules:   $INSTALL_DIR/packages (redis, mysql, postgres, sqlite, etcd, etc.)
   - Native C headers:          $INSTALL_DIR/include
