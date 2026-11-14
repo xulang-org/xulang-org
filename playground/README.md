@@ -21,9 +21,7 @@ The parent validates the styles once; its private sliders reuse the same geometr
 calculation without repeating the full Styles validation for every RGBA row.
 The color values, slider input and painting still execute in Xu; the browser does
 not approximate the controls or redraw their values independently.
-Opaque ColorPicker swatches skip the fully covered transparency grid. Pure text
-option scaling, copying and comparison also have AOT equivalents, checked against
-the original MIR paths; widget state and pointer input remain in Xu.
+Opaque ColorPicker swatches skip the fully covered transparency grid.
 The browser focus adaptation treats a zero focus inset as one emphasized
 boundary. Shared control boxes, Slider thumbs, joined ButtonGroup segments, and RangeSlider
 thumbs replace their regular border instead of adding another outline. Styles
@@ -196,52 +194,26 @@ accessibility remain outside the Canvas host's current scope.
 
 ## Floating-point VM support
 
-Widget geometry uses real IEEE binary64 values. The selected SDK supports typed
-f64 arithmetic, while the interpreter stores user values as integer bit patterns.
-The MIR interpreter represents VM values as
-integer bit patterns. Its `vm_fp_*` functions are still trap stubs: numeric
-`f64(int)` / `int(f64)` casts convert values and cannot reinterpret those bits.
-The build therefore retains thirteen fixed scalar helpers linked by
-`scripts/link-playground-float.py`. Each helper keeps the compiler's existing
-`(args i32, result i32) -> void` frame ABI and performs only a native WASM
-arithmetic, comparison, sign, or conversion instruction. No imports or JS
-callbacks are added. Unlinked Xu helper stubs trap rather than silently compute
-a wrong result. A `xu.playground.float` custom section identifies the link step.
-This bridge needs no additional compiler changes.
-
-The same link step supplies one bounded `wasm_rt_reserve` helper using
-`memory.size` and `memory.grow`. Allocation remains in Xu. The helper doubles
-linear memory only when necessary, from 32 MiB initially to at most 256 MiB,
-and reports engine allocation failure to the Xu allocator. Host views are
-refreshed after every WASM entry point because growth detaches old buffers.
-
-The Xu interpreter handles typed float operations, including comparisons with
-boolean destinations, casts, and field/index updates. Float-to-int conversion
-uses explicit WASM saturation (NaN -> 0, out-of-range -> signed i64 bound).
-Canvas decimal transport and float stdout currently use six fractional digits
-and magnitudes at most 1e9; state calculations retain binary64 precision.
-This does not claim general native floating-point formatting compatibility.
+The interpreter stores IEEE binary64 values as integer bits and reinterprets
+them before typed floating-point operations. WebAssembly executes the arithmetic,
+comparisons, and conversions. Canvas coordinates are serialized to six decimal
+places, while widget geometry and state retain binary64 precision.
 
 ## Interaction and resource limits
 
-Identical source reuses its checked MIR, slot-offset tables, decoded instructions,
-and resolved call targets in one WASM instance. Single-task programs pause before
-an exhausted input read. The host retains an execution-arena snapshot and resumes
-it for appended input; it runs the exhaustion/painting tail on a temporary branch.
-History rewrites replay from zero. Spawned tasks/channels use complete replay to
-preserve scheduler behavior. Snapshots are capped at 8 MiB of execution memory
-plus the three bounded output buffers; larger programs use complete replay too.
-Edits and traps discard the instance. Execution allocations are rewound to the
-compile boundary or restored checkpoint, so repeated replays do not leak arenas.
-State, measurement, hit testing, focus, activation, and painting all execute in
-Xu. Draw color/text byte formatting runs in the AOT Xu host adapter. Only the
-final committed frame is displayed. The gallery paints
+Identical source reuses checked MIR in one WASM instance. Single-task programs
+pause before an exhausted input read. Appended input resumes the checkpoint,
+and a copy of the paused state runs the exhaustion and painting tail. Changes
+to previous input replay from zero. Programs that use tasks or channels, or
+exceed the 8 MiB checkpoint budget, use full replay. Edits and traps discard
+the cached instance. State, measurement, hit testing, focus, activation, and
+painting execute in Xu. The browser displays the final committed frame. The gallery paints
 once after consuming history, which bounds draw output independently of event
 count. Run Code, source edits, and example changes reset the session.
 
 - Fixed 640 × 360 logical canvas, responsive display and pointer coordinates.
-- At most 64 records: a widget pointer/key down and up each use one record;
-  legacy counter clicks use one record each. Drag motion also uses records.
+- At most 100,000 input records. A widget press and release each use one
+  record. Counter clicks and drag motion also use one record each.
 - Tab / Shift+Tab cycle controls in the gallery. Enter/Space activate the
   focused Button/Checkbox/Switch. Arrows, Home/End, and PageUp/PageDown adjust
   Slider. Esc is handled by the focused Xu control, allowing dialogs to restore
@@ -249,7 +221,7 @@ count. Run Code, source edits, and example changes reset the session.
   gestures, keys and drag releases are queued during replay; consecutive pending
   motion is coalesced. Interactive updates preserve the previous output while
   the worker redraws. Stopping/editing discards pending input.
-- 10-second worker timeout for ordinary programs; 30 seconds for programs importing `#ui/widgets`. The VM step limit and 256 MiB maximum linear memory still bound execution; initial memory is 32 MiB.
+- The worker allows 10 seconds for ordinary programs and 30 seconds for widget programs. The VM step limit and 256 MiB maximum linear memory bound execution.
 
 Reading a documentation page does not preload WASM. Running an example starts
 the shared worker on demand; explicit playground example links still run when
@@ -272,45 +244,27 @@ module examples retain the existing browser library subset.
 
 ## Build and preview
 
-Use a complete SDK whose compiler banner and source VERSION match the site's
-selected final VERSION. By default, the build rejects development/mismatched
-SDKs; vendored widget source provenance is recorded independently of the
-compiler version. No release version is relabeled.
-
-For local development, set `XU_ALLOW_DEV=1` to accept a semver prerelease SDK
-and a site VERSION mismatch. The compiler banner and `XU_RELEASE_VERSION` (if
-set) must still match the SDK VERSION. This prints a dev-build warning and
-marks `build/playground/build.json` with `dev_build: true`; these builds are
-not for release.
+Use a published SDK whose compiler banner and source VERSION match the site's
+VERSION. The build records the provenance of the vendored widget sources separately.
+Set `XU_ALLOW_DEV=1` for a local development build. The SDK and compiler banner
+must agree, and the resulting metadata marks the build as development-only.
 
 ```sh
-XU_ROOT=/path/to/matching-sdk ./scripts/build-playground.sh
+npm ci --ignore-scripts
+XU_ROOT=/path/to/released-sdk ./scripts/build-playground.sh
 make check-playground
 make check
 python3 scripts/build-static.py --require-playground
 python3 -m http.server 18110 --bind 127.0.0.1 --directory dist
 ```
 
-The WASM build requires Node.js 22+ and `npm ci --ignore-scripts`. It compiles with
-the selected SDK's `-O1`, links the scalar helpers, then runs the lockfile-pinned
-Binaryen 132.0.0 `wasm-opt -O1 --shrink-level=1`. This balances code size with
-predictable build cost. Debug names are removed; the Xu build provenance
-and scalar-link custom sections remain. The optimizer runs only during builds
-and adds no browser dependency. Its feature flags match the existing bulk-memory
-and saturating float conversion instructions; no fast-math mode is enabled.
-
-The link step adjusts the SDK memory section to 32 MiB initially and a 256 MiB
-maximum. The disposable arena starts at
-16 MiB and retains parser/checker/MIR/UI allocations until evaluation ends.
-Styled tables and charts exceed the original 128 MiB budget even after loading
-only their dependencies. The allocator, linker, build metadata and memory test
-share the 256 MiB contract; programs cannot grow beyond it. The source size,
-VM step count, input history and worker deadlines remain bounded.
-Native SDK methods can emit conservative division warnings; warnings remain
-visible, and a later WASM trap is appended rather than hidden by those warnings.
-The VM supports the scalar maps needed by these controls (int/string keys,
-int/bool values, at most 4096 entries); other map value/operation forms report an
-explicit unsupported error. Input timestamps use a deterministic replay clock.
+The SDK compiles the interpreter to `wasm32-wasi`. The link step exposes the
+worker entry points, caps linear memory at 256 MiB, and adds Xu build provenance.
+The build runs the lockfile-pinned Binaryen optimizer using Node.js 22+.
+The browser's WASI adapter provides two read-only virtual files for source and
+input events and bounded streams for console output and Canvas commands.
+The SDK handles type checking, typed MIR lowering, and native map semantics.
+Input timestamps use a deterministic replay clock.
 The build records the compiler version, optimizer version/flags, initial and
 maximum memory, pre/post-optimization size, gzip size, WASM digest and widget-source manifest digest in
 `build/playground/build.json`. Generated WASM and site output remain ignored.
@@ -357,38 +311,21 @@ Canvas uses a counting mock; GPU rasterization, browser event dispatch, download
 over a real network, and screen presentation are outside this measurement.
 `tests/test_playground_cache.mjs` compares snapshots against complete replay and
 checks edits, history resets, compiler diagnostics, wasm traps and arena reuse.
-For a comparison with a pre-change revision, `scripts/build-playground-baseline.py`
-extracts that revision into a new directory and adds only the compile/execute
-timing entry points. Build it with the candidate's SDK, then benchmark its WASM
-with `--cache=false --checkpoints=false`; the old interpreter stays intact.
+Run older WebAssembly artifacts with the benchmark driver and worker from
+a checkout that uses their ABI. `scripts/build-playground-baseline.py` adds
+compile and execute timing entry points to pre-split legacy runtimes.
 
 ## Linear-memory ABI
 
-Controls are little-endian i64. Existing source/stdout/stderr buffers and the
-16 MiB arena start are unchanged. Input and draw buffers cannot overlap them.
-
-| Address | Meaning |
-| --- | --- |
-| 1056 | Command byte length, at most 262144 |
-| 1064 | Input record batch count |
-| 1072 | Next input index |
-| 1080 | An input driver was called (interactive) |
-| 1088 | `next_input` was called (typed input mode) |
-| 1104 | Immutable interpreter plan table pointer (with numeric call-target caches) |
-| 1112 | Deliver input exhaustion instead of pausing (1 = finish branch) |
-| 1120 | Interpreter paused before an exhausted input read |
-| 1128 | Equivalent scalar intrinsics enabled (0 = original MIR reference path) |
-| 140000 | Checked MIR descriptor, descending frame slots |
-| 145904–146007 | Eval checkpoint descriptor: three slices and four scalars |
-| 720000–982143 | UTF-8 newline-delimited drawing commands |
-| 1000000–1005119 | Streaming input batch records of 80 bytes each |
+The worker calls `playground_prepare` to compile source and
+`playground_execute` for complete replay. `playground_drive` processes an input
+batch and can pause before an exhausted read. `playground_checkpoint` reports
+the size of that state, and `playground_preview` runs a copy to finish the frame.
+The worker preserves output produced before the checkpoint.
 
 Each input record has eight i64 slots: kind, x, y, key, modifiers, repeat, button,
 buttons, followed by two f64 slots for dx and dy. Pointer coordinates become f64 slots in `ui.InputEvent`; the browser
 canvas identity is `(window_id:1, canvas_id:1, generation:1)`. Legacy
 `next_click()` consumes x/y from the same record and returns `(x,y,ok)`.
-Failures return no UI frame. ABI or intrinsic changes must be updated in both
-the Xu interpreter and JS bridge and exercised with the actual built WASM.
-The legacy `xu_eval_frame` entry point remains a complete compile/run operation.
-The host splits it into `xu_prepare_frame`, `xu_start_frame`, and `xu_drive_frame`;
-`xu_execute_frame` performs complete replay of prepared MIR.
+Failures return no UI frame. The worker and Xu interpreter share the input
+record layout and use little-endian WebAssembly values.

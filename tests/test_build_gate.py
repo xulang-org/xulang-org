@@ -26,6 +26,9 @@ class BuildGateTests(unittest.TestCase):
             directory.mkdir()
         (self.root / 'VERSION').write_text('0.10.10\n')
         (self.xu / 'VERSION').write_text('0.10.10-dev.1\n')
+        runtime = self.root / 'playground/runtime'
+        runtime.mkdir(parents=True)
+        (runtime / 'xu.xun').write_text('xu: !ver 0.10.10\n')
         self.env = patch.dict(os.environ, {}, clear=True)
         self.env.start()
         self.addCleanup(self.env.stop)
@@ -34,9 +37,6 @@ class BuildGateTests(unittest.TestCase):
         play.build(self.root, self.xu, self.xu / 'bin/xu')
 
     def prepare_sources(self):
-        runtime = self.root / 'playground/runtime'
-        runtime.mkdir(parents=True)
-        (runtime / 'xu.xun').write_text('xu: !ver 0.10.10\n')
         stdlib = self.root / 'playground/stdlib'
         stdlib.mkdir()
         for source in (ROOT / 'playground/stdlib').glob('*.xu'):

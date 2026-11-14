@@ -100,7 +100,7 @@ fn main() int {
   });
 }
 
-test('ColorPicker drag and release match full replay through the optimized typed paint path', async () => {
+test('ColorPicker drag and release match full replay through the typed paint path', async () => {
   const fast = await createRuntime(module);
   const reference = await createRuntime(module,{checkpoints:false});
   const source = projects['widget-color-picker'].files['main.xu'];
@@ -119,7 +119,7 @@ test('ColorPicker drag and release match full replay through the optimized typed
   assert.equal(fast.run(source,{events}).stdout,'Color: #B4B132FF\n');
 });
 
-test('scalar and UTF-8 intrinsics match MIR for zero, subnormal, finite and invalid values', async () => {
+test('scalar and UTF-8 decoding handle zero, subnormal, finite and invalid values', async () => {
   const source = `@main
 #ui/widgets
 #ui/internal/codec
@@ -162,7 +162,7 @@ fn main() int { << probe() or (err) { eprintln(err.msg())
     << 1 } }
 `;
   const fast = await createRuntime(module);
-  const reference = await createRuntime(module,{fastIntrinsics:false});
+  const reference = await createRuntime(module,{checkpoints:false});
   const result = fast.run(source);
   assert.equal(result.exit,0,result.stderr);
   assert.match(result.stdout,/scalar decoding passed\n$/);

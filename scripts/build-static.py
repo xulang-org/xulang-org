@@ -247,8 +247,10 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         if not record.is_file():
             raise ValueError('WASM build version is missing; run make wasm')
         built = json.loads(record.read_text(encoding='utf-8'))
-        if built.get('xu_version') != xu_version:
-            raise ValueError(f'WASM version does not match Xu {xu_version}; run make wasm with the matching SDK')
+        if built.get('xu_version') != xu_version or built.get('dev_build'):
+            raise ValueError(f'WASM version does not match the released Xu {xu_version} SDK')
+        if built.get('target') != 'wasm32-wasi':
+            raise ValueError('WASM target does not match the playground worker')
         if built.get('wasm_sha256') != hashlib.sha256(wasm.read_bytes()).hexdigest():
             raise ValueError('WASM build checksum does not match; run make wasm')
     for source in pages.values():
@@ -302,7 +304,8 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     playground = (output / 'xu-play.wasm').is_file()
     for route, source in pages.items():
         lang = source.relative_to(root / 'content').parts[0]
-        raw = source.read_text(encoding='utf-8').replace('{{xu_version}}', xu_version)
+        raw = (source.read_text(encoding='utf-8').replace('{{xu_version}}', xu_version)
+               .replace('{{playground_version}}', xu_version))
         for key, value in shared[lang].items():
             raw = raw.replace('{{' + key + '}}', value)
         title = TITLE.match(raw)

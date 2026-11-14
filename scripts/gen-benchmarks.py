@@ -1112,16 +1112,21 @@ def render_transparency_charter_section(meta: dict, en: bool) -> str:
 
 
 def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> str:
-    sec_title = "Audited Methodology & Execution Environment" if en else "评测准则与环境环境审计公示"
+    sec_title = "Benchmark Methodology & Execution Environment" if en else "评测方法与运行环境"
     rss_note = rss_method_note(platforms, en)
+    fixed_point = {'gen2_gen3': 'Gen2 = Gen3', 'gen3_gen4': 'Gen3 = Gen4'}.get(meta.get('fixed_point_pair'))
+    fixed_point_note = ''
+    if fixed_point:
+        fixed_point_note = (f' Bootstrap fixed point: {fixed_point}.' if en
+                            else f'自举定点为 {fixed_point}。')
     desc = (
         f"Seven whole-program executions per implementation; reported wall time is the median including process launch. "
-        f"C and Rust select the lowest measured median among O1/O2/O3. {rss_note} "
-        f"Only successful, output-verified runs carry metrics. Failures retain their status and diagnostics, without ratios or rankings. Compiler identities, source closures and Gen2=Gen3 bootstrap verified."
+        f"The rankings use default Xu optimization. C and Rust select the lowest measured median among O1/O2/O3. {rss_note} "
+        f"Only successful, output-verified runs carry metrics. Failures retain their status and diagnostics. Compiler identities and source closures were verified.{fixed_point_note}"
         if en else
         f"每项实现独立运行七次整进程，展示包含进程冷启动的 Wall 耗时中位数。"
-        f"C 与 Rust 自动选取该负载同平台 O1/O2/O3 中位数的最小值；Go、Swift 展示官方实测。{rss_note}"
-        f"仅成功且通过输出校验的运行记录实测指标；失败项保留状态和诊断，不计算倍率、不参与排名。六份编译器身份的提交 SHA、版本、源闭包和 Gen2=Gen3 自举自验已核验。"
+        f"排行使用 Xu 默认优化，C 与 Rust 取同平台 O1/O2/O3 中位数的最小值。{rss_note}"
+        f"仅成功且通过输出校验的运行记录实测指标，失败项保留状态和诊断。已核验编译器身份与源码闭包。{fixed_point_note}"
     )
 
     t1_title = "Audited Platform & Telemetry Matrix" if en else "6 大目标测试机环境与遥测机制"
@@ -1132,17 +1137,17 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
     platforms_rows = [
         ("macOS ARM64", "Apple Silicon (M-series)", "wait4 · 整进程峰值物理 RSS 与 CPU 耗时"),
         ("Linux ARM64", "ARM64 (Ubuntu Cloud)", "exec 后独立地址空间峰值 RSS (排除跟踪开销)"),
-        ("Windows ARM64", "ARM64 (Windows Server)", "系统 Job 统计 · 物理工作集峰值 (Peak Working Set)"),
+        ("Windows ARM64", "ARM64 (Windows)", "目标进程工作集峰值 (Peak Working Set)"),
         ("macOS x86_64", "Intel Core x86_64", "wait4 · 整进程峰值物理 RSS 与 CPU 耗时"),
         ("Linux x86_64", "AMD64 / x86_64 (Ubuntu Cloud)", "exec 后独立地址空间峰值 RSS (排除跟踪开销)"),
-        ("Windows x86_64", "AMD64 / x86_64 (Windows Server)", "系统 Job 统计 · 物理工作集峰值 (Peak Working Set)"),
+        ("Windows x86_64", "AMD64 / x86_64 (Windows)", "目标进程工作集峰值 (Peak Working Set)"),
     ] if not en else [
         ("macOS ARM64", "Apple Silicon (M-series)", "wait4: whole-process peak RSS & CPU time"),
         ("Linux ARM64", "ARM64 (Ubuntu Cloud)", "post-exec address space peak RSS (tracing excluded)"),
-        ("Windows ARM64", "ARM64 (Windows Server)", "OS Job Object: Peak Working Set memory"),
+        ("Windows ARM64", "ARM64 (Windows)", "Target process peak working set"),
         ("macOS x86_64", "Intel Core x86_64", "wait4: whole-process peak RSS & CPU time"),
         ("Linux x86_64", "AMD64 / x86_64 (Ubuntu Cloud)", "post-exec address space peak RSS (tracing excluded)"),
-        ("Windows x86_64", "AMD64 / x86_64 (Windows Server)", "OS Job Object: Peak Working Set memory"),
+        ("Windows x86_64", "AMD64 / x86_64 (Windows)", "Target process peak working set"),
     ]
 
     p_trs = []
@@ -1444,9 +1449,9 @@ def render_page(data: dict, lang: str) -> str:
     modal_title = "Source Code" if en else "算法实现源码"
     modal_copy_text = "Copy Code" if en else "复制代码"
     modal_footer_desc = (
-        "Strict isomorphic implementations across all 6 target platforms"
+        "Workload implementations and available language ports"
         if en
-        else "严谨同构算法实现 · 运行于全部 6 架构目标测试机"
+        else "负载实现与可用的语言对照"
     )
     modal_repo_link_text = (
         "View Full Suite on GitHub" if en else "在 GitHub 仓库查看完整工程"
