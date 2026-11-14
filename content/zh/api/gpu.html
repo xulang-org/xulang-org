@@ -1,0 +1,2143 @@
+<!--title: #gpu-->
+<p class="crumb">API</p>
+<h1><code>#gpu</code></h1>
+<!--xu-api-version: 0.12.3-->
+<p class="banner">Xu {{xu_version}} API</p>
+<p class="meta">导入方式: <code>#gpu</code></p>
+<p class="meta">公开 API: 6 函数, 86 方法, 33 类型, 74 常量, 0 方法集</p>
+<h2 id="quickstart">GPU 设备与缓冲区传输</h2>
+<p><code>#gpu</code> 是 Xu 标准库提供的底层 GPU 设备与资源抽象层。支持无窗口设备创建、缓冲区、2D 纹理与 Mipmap、采样器、着色器、图形与计算管线、命令录制（CommandEncoder）、栅栏同步以及精确字节回读（Readback）。</p>
+<p>所有 GPU 资源支持通过 <code>close</code> 显式释放或析构时自动 <code>drop</code>。设备及资源操作应保持在主线程；纹理格式定义见 <a href="/zh/api/gpu/layout"><code>gpu/layout</code></a>。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#gpu
+
+fn main() {
+    $device := gpu.open(gpu.DeviceOptions{backend: gpu.AUTO, debug: false, shader_formats: 0}) or {
+        println("GPU backend unavailable")
+        return
+    }
+    $buffer := device.buffer(4, gpu.BUFFER_VERTEX) or >>
+    input := [u8(0), u8(127), u8(128), u8(255)]
+    device.upload(&amp;buffer, 0, &amp;input) or >>
+    $result := device.download(&amp;buffer, 0, 4) or >>
+    result.wait() or >>
+    $output := [u8(0), u8(0), u8(0), u8(0)]
+    result.read($&amp;output) or >>
+    println("downloaded byte:", output[3])
+}</code></pre></div>
+<p>预期输出：<code>downloaded byte: 255</code>。</p>
+<article class="api-item" id="const-AUTO">
+<h2><code>const AUTO</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> AUTO = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>AUTO</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-METAL">
+<h2><code>const METAL</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> METAL = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>METAL</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-VULKAN">
+<h2><code>const VULKAN</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> VULKAN = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>VULKAN</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-D3D12">
+<h2><code>const D3D12</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> D3D12 = 3</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>D3D12</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-SHADER_SPIRV">
+<h2><code>const SHADER_SPIRV</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> SHADER_SPIRV = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>SHADER_SPIRV</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-SHADER_DXBC">
+<h2><code>const SHADER_DXBC</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> SHADER_DXBC = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>SHADER_DXBC</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-SHADER_DXIL">
+<h2><code>const SHADER_DXIL</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> SHADER_DXIL = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>SHADER_DXIL</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-SHADER_MSL">
+<h2><code>const SHADER_MSL</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> SHADER_MSL = 8</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>SHADER_MSL</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-SHADER_METALLIB">
+<h2><code>const SHADER_METALLIB</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> SHADER_METALLIB = 16</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>SHADER_METALLIB</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BUFFER_VERTEX">
+<h2><code>const BUFFER_VERTEX</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BUFFER_VERTEX = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BUFFER_VERTEX</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BUFFER_INDEX">
+<h2><code>const BUFFER_INDEX</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BUFFER_INDEX = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BUFFER_INDEX</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BUFFER_INDIRECT">
+<h2><code>const BUFFER_INDIRECT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BUFFER_INDIRECT = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BUFFER_INDIRECT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BUFFER_GRAPHICS_STORAGE_READ">
+<h2><code>const BUFFER_GRAPHICS_STORAGE_READ</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BUFFER_GRAPHICS_STORAGE_READ = 8</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BUFFER_GRAPHICS_STORAGE_READ</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BUFFER_COMPUTE_STORAGE_READ">
+<h2><code>const BUFFER_COMPUTE_STORAGE_READ</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BUFFER_COMPUTE_STORAGE_READ = 16</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BUFFER_COMPUTE_STORAGE_READ</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BUFFER_COMPUTE_STORAGE_WRITE">
+<h2><code>const BUFFER_COMPUTE_STORAGE_WRITE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BUFFER_COMPUTE_STORAGE_WRITE = 32</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BUFFER_COMPUTE_STORAGE_WRITE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-TRANSFER_ALIGNMENT">
+<h2><code>const TRANSFER_ALIGNMENT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> TRANSFER_ALIGNMENT = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>TRANSFER_ALIGNMENT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="struct-DeviceOptions">
+<h2><code>struct DeviceOptions</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> DeviceOptions {
+    <span class="syn-kw">pub</span> backend <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> debug <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> shader_formats <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>Gpu 配置参数与选项集合。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>backend</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>debug</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>shader_formats</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-Device">
+<h2><code>struct Device</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Device {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Device</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-Buffer">
+<h2><code>struct Buffer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Buffer {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Buffer</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-Fence">
+<h2><code>struct Fence</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Fence {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Fence</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-Readback">
+<h2><code>struct Readback</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Readback {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Readback</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-Stats">
+<h2><code>struct Stats</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Stats {
+    <span class="syn-kw">pub</span> buffer_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> buffer_bytes <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> submission_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> staging_bytes <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> texture_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> texture_bytes <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> sampler_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> shader_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> pipeline_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> encoder_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> render_pass_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> compute_pipeline_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> compute_pass_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> surface_count <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> frame_count <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 buffer_count、buffer_bytes、submission_count、staging_bytes、texture_count 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>buffer_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>buffer_bytes</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>submission_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>staging_bytes</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>texture_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>texture_bytes</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>sampler_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>shader_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>pipeline_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>encoder_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>render_pass_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>compute_pipeline_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>compute_pass_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>surface_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>frame_count</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+</dl>
+</article>
+<article class="api-item" id="open">
+<h2><code>open</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(options DeviceOptions) Device</code></pre></div>
+<h3>用途</h3>
+<p>打开资源或建立网络连接。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>options</code> <span class="type">DeviceOptions</span></dt><dd>options（DeviceOptions）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Device — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-backend">
+<h2><code>(&amp;Device) backend</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) backend() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Device</code> 上执行 <code>backend</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-shader_formats">
+<h2><code>(&amp;Device) shader_formats</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) shader_formats() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 shader formats 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-stats">
+<h2><code>(&amp;Device) stats</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) stats() Stats</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Device</code> 上执行 <code>stats</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>Stats — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-buffer">
+<h2><code>(&amp;Device) buffer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) buffer(size_bytes <span class="syn-type">int</span>, usage <span class="syn-type">int</span>) Buffer</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：缓冲。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>size_bytes</code> <span class="type">int</span></dt><dd>size_bytes（int）</dd>
+<dt><code>usage</code> <span class="type">int</span></dt><dd>用法说明（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Buffer — 该类型的值</p>
+</article>
+<article class="api-item" id="-Buffer-size_bytes">
+<h2><code>(&amp;Buffer) size_bytes</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (buffer &amp;Buffer) size_bytes() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Buffer</code> 上的操作：尺寸字节。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>buffer</code> <span class="type">&amp;Buffer</span></dt><dd>本次调用使用的 <code>Buffer</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-upload">
+<h2><code>(&amp;Device) upload</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) upload(buffer &amp;Buffer, offset <span class="syn-type">int</span>, bytes &amp;[]<span class="syn-type">u8</span>) Fence</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Device</code> 上执行 <code>upload</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>buffer</code> <span class="type">&amp;Buffer</span></dt><dd>buffer（只读借用，调用方仍持有原值；类型 &amp;Buffer）</dd>
+<dt><code>offset</code> <span class="type">int</span></dt><dd>偏移（int）</dd>
+<dt><code>bytes</code> <span class="type">&amp;[]u8</span></dt><dd>bytes（只读借用，调用方仍持有原值；类型 &amp;[]u8）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Fence — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-copy">
+<h2><code>(&amp;Device) copy</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) copy(source &amp;Buffer, source_offset <span class="syn-type">int</span>, destination &amp;Buffer, destination_offset <span class="syn-type">int</span>, size_bytes <span class="syn-type">int</span>) Fence</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：拷贝。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>source</code> <span class="type">&amp;Buffer</span></dt><dd>source（只读借用，调用方仍持有原值；类型 &amp;Buffer）</dd>
+<dt><code>source_offset</code> <span class="type">int</span></dt><dd>source_offset（int）</dd>
+<dt><code>destination</code> <span class="type">&amp;Buffer</span></dt><dd>destination（只读借用，调用方仍持有原值；类型 &amp;Buffer）</dd>
+<dt><code>destination_offset</code> <span class="type">int</span></dt><dd>destination_offset（int）</dd>
+<dt><code>size_bytes</code> <span class="type">int</span></dt><dd>size_bytes（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Fence — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-download">
+<h2><code>(&amp;Device) download</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) download(buffer &amp;Buffer, offset <span class="syn-type">int</span>, size_bytes <span class="syn-type">int</span>) Readback</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Device</code> 上执行 <code>download</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>buffer</code> <span class="type">&amp;Buffer</span></dt><dd>buffer（只读借用，调用方仍持有原值；类型 &amp;Buffer）</dd>
+<dt><code>offset</code> <span class="type">int</span></dt><dd>偏移（int）</dd>
+<dt><code>size_bytes</code> <span class="type">int</span></dt><dd>size_bytes（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Readback — 该类型的值</p>
+</article>
+<article class="api-item" id="-Fence-ready">
+<h2><code>(&amp;Fence) ready</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (fence &amp;Fence) ready() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Fence</code> 上执行 <code>ready</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>fence</code> <span class="type">&amp;Fence</span></dt><dd>本次调用使用的 <code>Fence</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Fence-wait">
+<h2><code>(&amp;Fence) wait</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (fence &amp;Fence) wait() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Fence</code> 上的操作：等待。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>fence</code> <span class="type">&amp;Fence</span></dt><dd>本次调用使用的 <code>Fence</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Readback-ready">
+<h2><code>(&amp;Readback) ready</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (readback &amp;Readback) ready() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Readback</code> 上执行 <code>ready</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>readback</code> <span class="type">&amp;Readback</span></dt><dd>本次调用使用的 <code>Readback</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Readback-wait">
+<h2><code>(&amp;Readback) wait</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (readback &amp;Readback) wait() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Readback</code> 上的操作：等待。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>readback</code> <span class="type">&amp;Readback</span></dt><dd>本次调用使用的 <code>Readback</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Readback-size_bytes">
+<h2><code>(&amp;Readback) size_bytes</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (readback &amp;Readback) size_bytes() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Readback</code> 上的操作：尺寸字节。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>readback</code> <span class="type">&amp;Readback</span></dt><dd>本次调用使用的 <code>Readback</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Readback-read">
+<h2><code>(&amp;Readback) read</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (readback &amp;Readback) read(output <span class="syn-borrow">$&amp;</span>[]<span class="syn-type">u8</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Readback</code> 上的操作：读出最多 max 字节。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>readback</code> <span class="type">&amp;Readback</span></dt><dd>本次调用使用的 <code>Readback</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>output</code> <span class="type">$&amp;[]u8</span></dt><dd>output（独占借用，可修改原值；类型 $&amp;[]u8）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Device-close">
+<h2><code>($&amp;Device) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device <span class="syn-borrow">$&amp;</span>Device) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Device</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">$&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Buffer-close">
+<h2><code>($&amp;Buffer) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (buffer <span class="syn-borrow">$&amp;</span>Buffer) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Buffer</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>buffer</code> <span class="type">$&amp;Buffer</span></dt><dd>本次调用使用的 <code>Buffer</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Fence-close">
+<h2><code>($&amp;Fence) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (fence <span class="syn-borrow">$&amp;</span>Fence) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Fence</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>fence</code> <span class="type">$&amp;Fence</span></dt><dd>本次调用使用的 <code>Fence</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Readback-close">
+<h2><code>($&amp;Readback) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (readback <span class="syn-borrow">$&amp;</span>Readback) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Readback</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>readback</code> <span class="type">$&amp;Readback</span></dt><dd>本次调用使用的 <code>Readback</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="const-LOAD">
+<h2><code>const LOAD</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LOAD = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>LOAD</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-CLEAR">
+<h2><code>const CLEAR</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> CLEAR = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>CLEAR</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-DISCARD">
+<h2><code>const DISCARD</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DISCARD = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>DISCARD</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-STORE">
+<h2><code>const STORE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> STORE = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>STORE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-DONT_STORE">
+<h2><code>const DONT_STORE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DONT_STORE = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>DONT_STORE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-INDEX16">
+<h2><code>const INDEX16</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> INDEX16 = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>INDEX16</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-INDEX32">
+<h2><code>const INDEX32</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> INDEX32 = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>INDEX32</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="struct-Color">
+<h2><code>struct Color</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Color {
+    <span class="syn-kw">pub</span> r <span class="syn-type">f64</span>
+    <span class="syn-kw">pub</span> g <span class="syn-type">f64</span>
+    <span class="syn-kw">pub</span> b <span class="syn-type">f64</span>
+    <span class="syn-kw">pub</span> a <span class="syn-type">f64</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 r、g、b、a 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>r</code> <span class="type">f64</span></dt><dd>rune（Unicode 码点）</dd>
+<dt><code>g</code> <span class="type">f64</span></dt><dd>字段（f64）</dd>
+<dt><code>b</code> <span class="type">f64</span></dt><dd>字段（f64）</dd>
+<dt><code>a</code> <span class="type">f64</span></dt><dd>字段（f64）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-ColorAttachment">
+<h2><code>struct ColorAttachment</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> ColorAttachment {
+    <span class="syn-kw">pub</span> view TextureSlice
+    <span class="syn-kw">pub</span> load <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> store <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> clear Color
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 view、load、store、clear 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>view</code> <span class="type">TextureSlice</span></dt><dd>字段（TextureSlice）</dd>
+<dt><code>load</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>store</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>clear</code> <span class="type">Color</span></dt><dd>字段（Color）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-DepthAttachment">
+<h2><code>struct DepthAttachment</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> DepthAttachment {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>DepthAttachment</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="no_depth">
+<h2><code>no_depth</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> no_depth() DepthAttachment</code></pre></div>
+<h3>用途</h3>
+<p>执行 no depth 操作。</p>
+<h3>参数</h3>
+<p class="api-none">无需传入参数。</p>
+<h3>返回值</h3>
+<p>DepthAttachment — 该类型的值</p>
+</article>
+<article class="api-item" id="depth_attachment">
+<h2><code>depth_attachment</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> depth_attachment(texture &amp;Texture, load <span class="syn-type">int</span>, store <span class="syn-type">int</span>, clear <span class="syn-type">f64</span>) DepthAttachment</code></pre></div>
+<h3>用途</h3>
+<p>执行 depth attachment 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>texture（只读借用，调用方仍持有原值；类型 &amp;Texture）</dd>
+<dt><code>load</code> <span class="type">int</span></dt><dd>load（int）</dd>
+<dt><code>store</code> <span class="type">int</span></dt><dd>store（int）</dd>
+<dt><code>clear</code> <span class="type">f64</span></dt><dd>clear（f64）</dd>
+</dl>
+<h3>返回值</h3>
+<p>DepthAttachment — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-CommandEncoder">
+<h2><code>struct CommandEncoder</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> CommandEncoder {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>CommandEncoder</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-RenderPass">
+<h2><code>struct RenderPass</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> RenderPass {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>RenderPass</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="-Device-command_encoder">
+<h2><code>(&amp;Device) command_encoder</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) command_encoder() CommandEncoder</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 command encoder 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>CommandEncoder — 该类型的值</p>
+</article>
+<article class="api-item" id="-CommandEncoder-begin_render">
+<h2><code>(&amp;CommandEncoder) begin_render</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (encoder &amp;CommandEncoder) begin_render(color ColorAttachment, depth DepthAttachment) RenderPass</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;CommandEncoder</code> 上的操作：执行 begin render 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>encoder</code> <span class="type">&amp;CommandEncoder</span></dt><dd>本次调用使用的 <code>CommandEncoder</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>color</code> <span class="type">ColorAttachment</span></dt><dd>color（ColorAttachment）</dd>
+<dt><code>depth</code> <span class="type">DepthAttachment</span></dt><dd>depth（DepthAttachment）</dd>
+</dl>
+<h3>返回值</h3>
+<p>RenderPass — 该类型的值</p>
+</article>
+<article class="api-item" id="--CommandEncoder-submit">
+<h2><code>($&amp;CommandEncoder) submit</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (encoder <span class="syn-borrow">$&amp;</span>CommandEncoder) submit() Fence</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>$&amp;CommandEncoder</code> 上执行 <code>submit</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>encoder</code> <span class="type">$&amp;CommandEncoder</span></dt><dd>本次调用使用的 <code>CommandEncoder</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>Fence — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-pipeline">
+<h2><code>(&amp;RenderPass) pipeline</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) pipeline(pipeline &amp;GraphicsPipeline) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;RenderPass</code> 上执行 <code>pipeline</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>pipeline</code> <span class="type">&amp;GraphicsPipeline</span></dt><dd>pipeline（只读借用，调用方仍持有原值；类型 &amp;GraphicsPipeline）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-vertex_buffer">
+<h2><code>(&amp;RenderPass) vertex_buffer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) vertex_buffer(slot <span class="syn-type">int</span>, buffer &amp;Buffer, offset <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;RenderPass</code> 上的操作：执行 vertex buffer 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>slot</code> <span class="type">int</span></dt><dd>slot（int）</dd>
+<dt><code>buffer</code> <span class="type">&amp;Buffer</span></dt><dd>buffer（只读借用，调用方仍持有原值；类型 &amp;Buffer）</dd>
+<dt><code>offset</code> <span class="type">int</span></dt><dd>偏移（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-index_buffer">
+<h2><code>(&amp;RenderPass) index_buffer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) index_buffer(buffer &amp;Buffer, offset <span class="syn-type">int</span>, element_size <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;RenderPass</code> 上的操作：下标缓冲。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>buffer</code> <span class="type">&amp;Buffer</span></dt><dd>buffer（只读借用，调用方仍持有原值；类型 &amp;Buffer）</dd>
+<dt><code>offset</code> <span class="type">int</span></dt><dd>偏移（int）</dd>
+<dt><code>element_size</code> <span class="type">int</span></dt><dd>element_size（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 索引值；有效范围和特殊值见用途说明</p>
+</article>
+<article class="api-item" id="-RenderPass-sampler">
+<h2><code>(&amp;RenderPass) sampler</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) sampler(stage <span class="syn-type">int</span>, slot <span class="syn-type">int</span>, texture &amp;Texture, sampler &amp;Sampler) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;RenderPass</code> 上执行 <code>sampler</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>stage</code> <span class="type">int</span></dt><dd>stage（int）</dd>
+<dt><code>slot</code> <span class="type">int</span></dt><dd>slot（int）</dd>
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>texture（只读借用，调用方仍持有原值；类型 &amp;Texture）</dd>
+<dt><code>sampler</code> <span class="type">&amp;Sampler</span></dt><dd>sampler（只读借用，调用方仍持有原值；类型 &amp;Sampler）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-uniform">
+<h2><code>(&amp;RenderPass) uniform</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) uniform(stage <span class="syn-type">int</span>, slot <span class="syn-type">int</span>, bytes &amp;[]<span class="syn-type">u8</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;RenderPass</code> 上执行 <code>uniform</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>stage</code> <span class="type">int</span></dt><dd>stage（int）</dd>
+<dt><code>slot</code> <span class="type">int</span></dt><dd>slot（int）</dd>
+<dt><code>bytes</code> <span class="type">&amp;[]u8</span></dt><dd>bytes（只读借用，调用方仍持有原值；类型 &amp;[]u8）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-viewport">
+<h2><code>(&amp;RenderPass) viewport</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) viewport(x <span class="syn-type">int</span>, y <span class="syn-type">int</span>, width <span class="syn-type">int</span>, height <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;RenderPass</code> 上执行 <code>viewport</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>x</code> <span class="type">int</span></dt><dd>值（int）</dd>
+<dt><code>y</code> <span class="type">int</span></dt><dd>值（int）</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>width（int）</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>height（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-scissor">
+<h2><code>(&amp;RenderPass) scissor</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) scissor(x <span class="syn-type">int</span>, y <span class="syn-type">int</span>, width <span class="syn-type">int</span>, height <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;RenderPass</code> 上执行 <code>scissor</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>x</code> <span class="type">int</span></dt><dd>值（int）</dd>
+<dt><code>y</code> <span class="type">int</span></dt><dd>值（int）</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>width（int）</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>height（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-draw">
+<h2><code>(&amp;RenderPass) draw</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) draw(vertex_count <span class="syn-type">int</span>, first_vertex <span class="syn-type">int</span>, instance_count <span class="syn-type">int</span>, first_instance <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;RenderPass</code> 上执行 <code>draw</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>vertex_count</code> <span class="type">int</span></dt><dd>vertex_count（int）</dd>
+<dt><code>first_vertex</code> <span class="type">int</span></dt><dd>first_vertex（int）</dd>
+<dt><code>instance_count</code> <span class="type">int</span></dt><dd>instance_count（int）</dd>
+<dt><code>first_instance</code> <span class="type">int</span></dt><dd>first_instance（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-draw_indexed">
+<h2><code>(&amp;RenderPass) draw_indexed</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) draw_indexed(index_count <span class="syn-type">int</span>, first_index <span class="syn-type">int</span>, vertex_offset <span class="syn-type">int</span>, instance_count <span class="syn-type">int</span>, first_instance <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;RenderPass</code> 上的操作：执行 draw indexed 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>index_count</code> <span class="type">int</span></dt><dd>index_count（int）</dd>
+<dt><code>first_index</code> <span class="type">int</span></dt><dd>first_index（int）</dd>
+<dt><code>vertex_offset</code> <span class="type">int</span></dt><dd>vertex_offset（int）</dd>
+<dt><code>instance_count</code> <span class="type">int</span></dt><dd>instance_count（int）</dd>
+<dt><code>first_instance</code> <span class="type">int</span></dt><dd>first_instance（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 索引值；有效范围和特殊值见用途说明</p>
+</article>
+<article class="api-item" id="--RenderPass-end">
+<h2><code>($&amp;RenderPass) end</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass <span class="syn-borrow">$&amp;</span>RenderPass) end() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>$&amp;RenderPass</code> 上执行 <code>end</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">$&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--CommandEncoder-close">
+<h2><code>($&amp;CommandEncoder) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (encoder <span class="syn-borrow">$&amp;</span>CommandEncoder) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;CommandEncoder</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>encoder</code> <span class="type">$&amp;CommandEncoder</span></dt><dd>本次调用使用的 <code>CommandEncoder</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="const-MAX_COMPUTE_STORAGE_BUFFERS">
+<h2><code>const MAX_COMPUTE_STORAGE_BUFFERS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_COMPUTE_STORAGE_BUFFERS = 8</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>MAX_COMPUTE_STORAGE_BUFFERS</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-MAX_COMPUTE_THREADS">
+<h2><code>const MAX_COMPUTE_THREADS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_COMPUTE_THREADS = 1024</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>MAX_COMPUTE_THREADS</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-MAX_COMPUTE_THREADS_Z">
+<h2><code>const MAX_COMPUTE_THREADS_Z</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_COMPUTE_THREADS_Z = 64</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>MAX_COMPUTE_THREADS_Z</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-MAX_COMPUTE_GROUPS_PER_DIMENSION">
+<h2><code>const MAX_COMPUTE_GROUPS_PER_DIMENSION</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_COMPUTE_GROUPS_PER_DIMENSION = 65535</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>MAX_COMPUTE_GROUPS_PER_DIMENSION</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="struct-ComputePipelineDesc">
+<h2><code>struct ComputePipelineDesc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> ComputePipelineDesc {
+    <span class="syn-kw">pub</span> format <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> entrypoint <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> read_buffers <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> write_buffers <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> uniform_sizes []<span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> threads_x <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> threads_y <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> threads_z <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 format、entrypoint、read_buffers、write_buffers、uniform_sizes 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>format</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>entrypoint</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>read_buffers</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>write_buffers</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>uniform_sizes</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
+<dt><code>threads_x</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>threads_y</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>threads_z</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-ComputePipeline">
+<h2><code>struct ComputePipeline</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> ComputePipeline {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>ComputePipeline</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-StorageBufferWrite">
+<h2><code>struct StorageBufferWrite</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> StorageBufferWrite {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>StorageBufferWrite</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="write_buffer">
+<h2><code>write_buffer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> write_buffer(buffer &amp;Buffer, cycle <span class="syn-type">bool</span>) StorageBufferWrite</code></pre></div>
+<h3>用途</h3>
+<p>写入缓冲。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>buffer</code> <span class="type">&amp;Buffer</span></dt><dd>buffer（只读借用，调用方仍持有原值；类型 &amp;Buffer）</dd>
+<dt><code>cycle</code> <span class="type">bool</span></dt><dd>cycle（bool）</dd>
+</dl>
+<h3>返回值</h3>
+<p>StorageBufferWrite — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-ComputePass">
+<h2><code>struct ComputePass</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> ComputePass {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>ComputePass</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="-Device-compute_pipeline">
+<h2><code>(&amp;Device) compute_pipeline</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) compute_pipeline(desc &amp;ComputePipelineDesc, code &amp;[]<span class="syn-type">u8</span>) ComputePipeline</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 compute pipeline 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>desc</code> <span class="type">&amp;ComputePipelineDesc</span></dt><dd>desc（只读借用，调用方仍持有原值；类型 &amp;ComputePipelineDesc）</dd>
+<dt><code>code</code> <span class="type">&amp;[]u8</span></dt><dd>码（只读借用，调用方仍持有原值；类型 &amp;[]u8）</dd>
+</dl>
+<h3>返回值</h3>
+<p>ComputePipeline — 该类型的值</p>
+</article>
+<article class="api-item" id="-CommandEncoder-begin_compute">
+<h2><code>(&amp;CommandEncoder) begin_compute</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (encoder &amp;CommandEncoder) begin_compute(writes &amp;[]StorageBufferWrite) ComputePass</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;CommandEncoder</code> 上的操作：执行 begin compute 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>encoder</code> <span class="type">&amp;CommandEncoder</span></dt><dd>本次调用使用的 <code>CommandEncoder</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>writes</code> <span class="type">&amp;[]StorageBufferWrite</span></dt><dd>writes（只读借用，调用方仍持有原值；类型 &amp;[]StorageBufferWrite）</dd>
+</dl>
+<h3>返回值</h3>
+<p>ComputePass — 该类型的值</p>
+</article>
+<article class="api-item" id="-ComputePass-pipeline">
+<h2><code>(&amp;ComputePass) pipeline</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;ComputePass) pipeline(pipeline &amp;ComputePipeline) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;ComputePass</code> 上执行 <code>pipeline</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;ComputePass</span></dt><dd>本次调用使用的 <code>ComputePass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>pipeline</code> <span class="type">&amp;ComputePipeline</span></dt><dd>pipeline（只读借用，调用方仍持有原值；类型 &amp;ComputePipeline）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-ComputePass-read_buffer">
+<h2><code>(&amp;ComputePass) read_buffer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;ComputePass) read_buffer(slot <span class="syn-type">int</span>, buffer &amp;Buffer) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;ComputePass</code> 上的操作：读取缓冲。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;ComputePass</span></dt><dd>本次调用使用的 <code>ComputePass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>slot</code> <span class="type">int</span></dt><dd>slot（int）</dd>
+<dt><code>buffer</code> <span class="type">&amp;Buffer</span></dt><dd>buffer（只读借用，调用方仍持有原值；类型 &amp;Buffer）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-ComputePass-uniform">
+<h2><code>(&amp;ComputePass) uniform</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;ComputePass) uniform(slot <span class="syn-type">int</span>, bytes &amp;[]<span class="syn-type">u8</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;ComputePass</code> 上执行 <code>uniform</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;ComputePass</span></dt><dd>本次调用使用的 <code>ComputePass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>slot</code> <span class="type">int</span></dt><dd>slot（int）</dd>
+<dt><code>bytes</code> <span class="type">&amp;[]u8</span></dt><dd>bytes（只读借用，调用方仍持有原值；类型 &amp;[]u8）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-ComputePass-dispatch">
+<h2><code>(&amp;ComputePass) dispatch</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;ComputePass) dispatch(groups_x <span class="syn-type">int</span>, groups_y <span class="syn-type">int</span>, groups_z <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;ComputePass</code> 上执行 <code>dispatch</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;ComputePass</span></dt><dd>本次调用使用的 <code>ComputePass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>groups_x</code> <span class="type">int</span></dt><dd>groups_x（int）</dd>
+<dt><code>groups_y</code> <span class="type">int</span></dt><dd>groups_y（int）</dd>
+<dt><code>groups_z</code> <span class="type">int</span></dt><dd>groups_z（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--ComputePass-end">
+<h2><code>($&amp;ComputePass) end</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass <span class="syn-borrow">$&amp;</span>ComputePass) end() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>$&amp;ComputePass</code> 上执行 <code>end</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">$&amp;ComputePass</span></dt><dd>本次调用使用的 <code>ComputePass</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--ComputePipeline-close">
+<h2><code>($&amp;ComputePipeline) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pipeline <span class="syn-borrow">$&amp;</span>ComputePipeline) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;ComputePipeline</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pipeline</code> <span class="type">$&amp;ComputePipeline</span></dt><dd>本次调用使用的 <code>ComputePipeline</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="const-VERTEX">
+<h2><code>const VERTEX</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> VERTEX = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>VERTEX</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-FRAGMENT">
+<h2><code>const FRAGMENT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> FRAGMENT = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>FRAGMENT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-NEAREST">
+<h2><code>const NEAREST</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> NEAREST = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>NEAREST</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-LINEAR">
+<h2><code>const LINEAR</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LINEAR = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>LINEAR</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-REPEAT">
+<h2><code>const REPEAT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> REPEAT = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>REPEAT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-MIRRORED_REPEAT">
+<h2><code>const MIRRORED_REPEAT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MIRRORED_REPEAT = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>MIRRORED_REPEAT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-CLAMP_TO_EDGE">
+<h2><code>const CLAMP_TO_EDGE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> CLAMP_TO_EDGE = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>CLAMP_TO_EDGE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-TRIANGLES">
+<h2><code>const TRIANGLES</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> TRIANGLES = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>TRIANGLES</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-TRIANGLE_STRIP">
+<h2><code>const TRIANGLE_STRIP</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> TRIANGLE_STRIP = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>TRIANGLE_STRIP</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-LINES">
+<h2><code>const LINES</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LINES = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>LINES</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-LINE_STRIP">
+<h2><code>const LINE_STRIP</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LINE_STRIP = 3</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>LINE_STRIP</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-POINTS">
+<h2><code>const POINTS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> POINTS = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>POINTS</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-CULL_NONE">
+<h2><code>const CULL_NONE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> CULL_NONE = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>CULL_NONE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-CULL_FRONT">
+<h2><code>const CULL_FRONT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> CULL_FRONT = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>CULL_FRONT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-CULL_BACK">
+<h2><code>const CULL_BACK</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> CULL_BACK = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>CULL_BACK</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-COUNTER_CLOCKWISE">
+<h2><code>const COUNTER_CLOCKWISE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> COUNTER_CLOCKWISE = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>COUNTER_CLOCKWISE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-CLOCKWISE">
+<h2><code>const CLOCKWISE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> CLOCKWISE = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>CLOCKWISE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-DEPTH_DISABLED">
+<h2><code>const DEPTH_DISABLED</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> DEPTH_DISABLED = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>DEPTH_DISABLED</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-NEVER">
+<h2><code>const NEVER</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> NEVER = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>NEVER</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-LESS">
+<h2><code>const LESS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LESS = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>LESS</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-EQUAL">
+<h2><code>const EQUAL</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> EQUAL = 3</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>EQUAL</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-LESS_EQUAL">
+<h2><code>const LESS_EQUAL</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> LESS_EQUAL = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>LESS_EQUAL</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-GREATER">
+<h2><code>const GREATER</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> GREATER = 5</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>GREATER</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-NOT_EQUAL">
+<h2><code>const NOT_EQUAL</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> NOT_EQUAL = 6</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>NOT_EQUAL</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-GREATER_EQUAL">
+<h2><code>const GREATER_EQUAL</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> GREATER_EQUAL = 7</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>GREATER_EQUAL</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-ALWAYS">
+<h2><code>const ALWAYS</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> ALWAYS = 8</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>ALWAYS</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BLEND_DISABLED">
+<h2><code>const BLEND_DISABLED</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BLEND_DISABLED = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BLEND_DISABLED</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BLEND_ALPHA">
+<h2><code>const BLEND_ALPHA</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BLEND_ALPHA = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BLEND_ALPHA</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-BLEND_PREMULTIPLIED">
+<h2><code>const BLEND_PREMULTIPLIED</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> BLEND_PREMULTIPLIED = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>BLEND_PREMULTIPLIED</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-PER_VERTEX">
+<h2><code>const PER_VERTEX</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PER_VERTEX = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>PER_VERTEX</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-PER_INSTANCE">
+<h2><code>const PER_INSTANCE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PER_INSTANCE = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>PER_INSTANCE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-FLOAT">
+<h2><code>const FLOAT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> FLOAT = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>FLOAT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-FLOAT2">
+<h2><code>const FLOAT2</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> FLOAT2 = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>FLOAT2</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-FLOAT3">
+<h2><code>const FLOAT3</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> FLOAT3 = 3</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>FLOAT3</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-FLOAT4">
+<h2><code>const FLOAT4</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> FLOAT4 = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>FLOAT4</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-UNORM8X4">
+<h2><code>const UNORM8X4</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> UNORM8X4 = 5</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>UNORM8X4</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-UINT">
+<h2><code>const UINT</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> UINT = 6</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>UINT</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-UINT2">
+<h2><code>const UINT2</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> UINT2 = 7</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>UINT2</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-UINT3">
+<h2><code>const UINT3</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> UINT3 = 8</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>UINT3</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-UINT4">
+<h2><code>const UINT4</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> UINT4 = 9</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>UINT4</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="struct-SamplerDesc">
+<h2><code>struct SamplerDesc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> SamplerDesc {
+    <span class="syn-kw">pub</span> min_filter <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> mag_filter <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> mip_filter <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> address_u <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> address_v <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> address_w <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> min_lod <span class="syn-type">f64</span>
+    <span class="syn-kw">pub</span> max_lod <span class="syn-type">f64</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 min_filter、mag_filter、mip_filter、address_u、address_v 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>min_filter</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>mag_filter</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>mip_filter</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>address_u</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>address_v</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>address_w</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>min_lod</code> <span class="type">f64</span></dt><dd>字段（f64）</dd>
+<dt><code>max_lod</code> <span class="type">f64</span></dt><dd>字段（f64）</dd>
+</dl>
+</article>
+<article class="api-item" id="sampler_defaults">
+<h2><code>sampler_defaults</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> sampler_defaults() SamplerDesc</code></pre></div>
+<h3>用途</h3>
+<p>执行 sampler defaults 操作。</p>
+<h3>参数</h3>
+<p class="api-none">无需传入参数。</p>
+<h3>返回值</h3>
+<p>SamplerDesc — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-ShaderDesc">
+<h2><code>struct ShaderDesc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> ShaderDesc {
+    <span class="syn-kw">pub</span> stage <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> format <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> entrypoint <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> samplers <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> uniform_sizes []<span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 stage、format、entrypoint、samplers、uniform_sizes 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>stage</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>format</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>entrypoint</code> <span class="type">string</span></dt><dd>字段（string）</dd>
+<dt><code>samplers</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>uniform_sizes</code> <span class="type">[]int</span></dt><dd>字段（[]int）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-VertexBufferLayout">
+<h2><code>struct VertexBufferLayout</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> VertexBufferLayout {
+    <span class="syn-kw">pub</span> slot <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> stride <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> rate <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 slot、stride、rate 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>slot</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>stride</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>rate</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-VertexAttribute">
+<h2><code>struct VertexAttribute</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> VertexAttribute {
+    <span class="syn-kw">pub</span> location <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> slot <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> format <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> offset <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 location、slot、format、offset 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>location</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>slot</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>format</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>offset</code> <span class="type">int</span></dt><dd>偏移</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-PipelineDesc">
+<h2><code>struct PipelineDesc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> PipelineDesc {
+    <span class="syn-kw">pub</span> color_format <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> depth_format <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> primitive <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> cull <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> front_face <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> depth_compare <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> depth_write <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> blend <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> vertex_buffers []VertexBufferLayout
+    <span class="syn-kw">pub</span> attributes []VertexAttribute
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 color_format、depth_format、primitive、cull、front_face 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>color_format</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>depth_format</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>primitive</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>cull</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>front_face</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>depth_compare</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>depth_write</code> <span class="type">bool</span></dt><dd>字段（bool）</dd>
+<dt><code>blend</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>vertex_buffers</code> <span class="type">[]VertexBufferLayout</span></dt><dd>字段（[]VertexBufferLayout）</dd>
+<dt><code>attributes</code> <span class="type">[]VertexAttribute</span></dt><dd>字段（[]VertexAttribute）</dd>
+</dl>
+</article>
+<article class="api-item" id="pipeline_defaults">
+<h2><code>pipeline_defaults</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> pipeline_defaults(color_format <span class="syn-type">int</span>) PipelineDesc</code></pre></div>
+<h3>用途</h3>
+<p>执行 pipeline defaults 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>color_format</code> <span class="type">int</span></dt><dd>color_format（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>PipelineDesc — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-Sampler">
+<h2><code>struct Sampler</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Sampler {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Sampler</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-Shader">
+<h2><code>struct Shader</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Shader {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Shader</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-GraphicsPipeline">
+<h2><code>struct GraphicsPipeline</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> GraphicsPipeline {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>GraphicsPipeline</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="-Device-sampler">
+<h2><code>(&amp;Device) sampler</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) sampler(desc SamplerDesc) Sampler</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Device</code> 上执行 <code>sampler</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>desc</code> <span class="type">SamplerDesc</span></dt><dd>desc（SamplerDesc）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Sampler — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-shader">
+<h2><code>(&amp;Device) shader</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) shader(desc &amp;ShaderDesc, code &amp;[]<span class="syn-type">u8</span>) Shader</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Device</code> 上执行 <code>shader</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>desc</code> <span class="type">&amp;ShaderDesc</span></dt><dd>desc（只读借用，调用方仍持有原值；类型 &amp;ShaderDesc）</dd>
+<dt><code>code</code> <span class="type">&amp;[]u8</span></dt><dd>码（只读借用，调用方仍持有原值；类型 &amp;[]u8）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Shader — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-graphics_pipeline">
+<h2><code>(&amp;Device) graphics_pipeline</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) graphics_pipeline(vertex &amp;Shader, fragment &amp;Shader, desc &amp;PipelineDesc) GraphicsPipeline</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 graphics pipeline 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>vertex</code> <span class="type">&amp;Shader</span></dt><dd>vertex（只读借用，调用方仍持有原值；类型 &amp;Shader）</dd>
+<dt><code>fragment</code> <span class="type">&amp;Shader</span></dt><dd>fragment（只读借用，调用方仍持有原值；类型 &amp;Shader）</dd>
+<dt><code>desc</code> <span class="type">&amp;PipelineDesc</span></dt><dd>desc（只读借用，调用方仍持有原值；类型 &amp;PipelineDesc）</dd>
+</dl>
+<h3>返回值</h3>
+<p>GraphicsPipeline — 该类型的值</p>
+</article>
+<article class="api-item" id="--Sampler-close">
+<h2><code>($&amp;Sampler) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sampler <span class="syn-borrow">$&amp;</span>Sampler) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Sampler</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>sampler</code> <span class="type">$&amp;Sampler</span></dt><dd>本次调用使用的 <code>Sampler</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Shader-close">
+<h2><code>($&amp;Shader) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (shader <span class="syn-borrow">$&amp;</span>Shader) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Shader</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>shader</code> <span class="type">$&amp;Shader</span></dt><dd>本次调用使用的 <code>Shader</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--GraphicsPipeline-close">
+<h2><code>($&amp;GraphicsPipeline) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pipeline <span class="syn-borrow">$&amp;</span>GraphicsPipeline) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;GraphicsPipeline</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pipeline</code> <span class="type">$&amp;GraphicsPipeline</span></dt><dd>本次调用使用的 <code>GraphicsPipeline</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="struct-DeviceRef">
+<h2><code>struct DeviceRef</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> DeviceRef {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>DeviceRef</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-BufferRef">
+<h2><code>struct BufferRef</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> BufferRef {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>BufferRef</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-TextureRef">
+<h2><code>struct TextureRef</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> TextureRef {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>TextureRef</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-SamplerRef">
+<h2><code>struct SamplerRef</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> SamplerRef {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>SamplerRef</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="-Device-reference">
+<h2><code>(&amp;Device) reference</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) reference() DeviceRef</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Device</code> 上执行 <code>reference</code> 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>DeviceRef — 该类型的值</p>
+</article>
+<article class="api-item" id="-Buffer-reference">
+<h2><code>(&amp;Buffer) reference</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (buffer &amp;Buffer) reference() BufferRef</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Buffer</code> 上执行 <code>reference</code> 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>buffer</code> <span class="type">&amp;Buffer</span></dt><dd>本次调用使用的 <code>Buffer</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>BufferRef — 该类型的值</p>
+</article>
+<article class="api-item" id="-Texture-reference">
+<h2><code>(&amp;Texture) reference</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (texture &amp;Texture) reference() TextureRef</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Texture</code> 上执行 <code>reference</code> 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>本次调用使用的 <code>Texture</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>TextureRef — 该类型的值</p>
+</article>
+<article class="api-item" id="-Sampler-reference">
+<h2><code>(&amp;Sampler) reference</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (sampler &amp;Sampler) reference() SamplerRef</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Sampler</code> 上执行 <code>reference</code> 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>sampler</code> <span class="type">&amp;Sampler</span></dt><dd>本次调用使用的 <code>Sampler</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>SamplerRef — 该类型的值</p>
+</article>
+<article class="api-item" id="DeviceRef-same">
+<h2><code>(DeviceRef) same</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference DeviceRef) same(other DeviceRef) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>DeviceRef</code> 上执行 <code>same</code> 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">DeviceRef</span></dt><dd>本次调用使用的 <code>DeviceRef</code> 实例；按值接收。</dd>
+<dt><code>other</code> <span class="type">DeviceRef</span></dt><dd>另一侧同类型值（DeviceRef）</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="DeviceRef-validate">
+<h2><code>(DeviceRef) validate</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference DeviceRef) validate() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>DeviceRef</code> 上执行 <code>validate</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">DeviceRef</span></dt><dd>本次调用使用的 <code>DeviceRef</code> 实例；按值接收。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="BufferRef-validate">
+<h2><code>(BufferRef) validate</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference BufferRef) validate() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>BufferRef</code> 上执行 <code>validate</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">BufferRef</span></dt><dd>本次调用使用的 <code>BufferRef</code> 实例；按值接收。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="TextureRef-validate">
+<h2><code>(TextureRef) validate</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference TextureRef) validate() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>TextureRef</code> 上执行 <code>validate</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">TextureRef</span></dt><dd>本次调用使用的 <code>TextureRef</code> 实例；按值接收。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="SamplerRef-validate">
+<h2><code>(SamplerRef) validate</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference SamplerRef) validate() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>SamplerRef</code> 上执行 <code>validate</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">SamplerRef</span></dt><dd>本次调用使用的 <code>SamplerRef</code> 实例；按值接收。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="BufferRef-size_bytes">
+<h2><code>(BufferRef) size_bytes</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference BufferRef) size_bytes() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>BufferRef</code> 上的操作：尺寸字节。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">BufferRef</span></dt><dd>本次调用使用的 <code>BufferRef</code> 实例；按值接收。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="DeviceRef-validate_buffer">
+<h2><code>(DeviceRef) validate_buffer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference DeviceRef) validate_buffer(buffer BufferRef) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>DeviceRef</code> 上的操作：执行 validate buffer 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">DeviceRef</span></dt><dd>本次调用使用的 <code>DeviceRef</code> 实例；按值接收。</dd>
+<dt><code>buffer</code> <span class="type">BufferRef</span></dt><dd>buffer（BufferRef）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="DeviceRef-validate_texture">
+<h2><code>(DeviceRef) validate_texture</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference DeviceRef) validate_texture(texture TextureRef) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>DeviceRef</code> 上的操作：执行 validate texture 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">DeviceRef</span></dt><dd>本次调用使用的 <code>DeviceRef</code> 实例；按值接收。</dd>
+<dt><code>texture</code> <span class="type">TextureRef</span></dt><dd>texture（TextureRef）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="DeviceRef-validate_sampler">
+<h2><code>(DeviceRef) validate_sampler</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (reference DeviceRef) validate_sampler(sampler SamplerRef) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>DeviceRef</code> 上的操作：执行 validate sampler 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>reference</code> <span class="type">DeviceRef</span></dt><dd>本次调用使用的 <code>DeviceRef</code> 实例；按值接收。</dd>
+<dt><code>sampler</code> <span class="type">SamplerRef</span></dt><dd>sampler（SamplerRef）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-vertex_buffer_ref">
+<h2><code>(&amp;RenderPass) vertex_buffer_ref</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) vertex_buffer_ref(slot <span class="syn-type">int</span>, buffer BufferRef, offset <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;RenderPass</code> 上的操作：执行 vertex buffer ref 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>slot</code> <span class="type">int</span></dt><dd>slot（int）</dd>
+<dt><code>buffer</code> <span class="type">BufferRef</span></dt><dd>buffer（BufferRef）</dd>
+<dt><code>offset</code> <span class="type">int</span></dt><dd>偏移（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-RenderPass-index_buffer_ref">
+<h2><code>(&amp;RenderPass) index_buffer_ref</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) index_buffer_ref(buffer BufferRef, offset <span class="syn-type">int</span>, element_size <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;RenderPass</code> 上的操作：执行 index buffer ref 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>buffer</code> <span class="type">BufferRef</span></dt><dd>buffer（BufferRef）</dd>
+<dt><code>offset</code> <span class="type">int</span></dt><dd>偏移（int）</dd>
+<dt><code>element_size</code> <span class="type">int</span></dt><dd>element_size（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 索引值；有效范围和特殊值见用途说明</p>
+</article>
+<article class="api-item" id="-RenderPass-sampler_ref">
+<h2><code>(&amp;RenderPass) sampler_ref</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (pass &amp;RenderPass) sampler_ref(stage <span class="syn-type">int</span>, slot <span class="syn-type">int</span>, texture TextureRef, sampler SamplerRef) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;RenderPass</code> 上的操作：执行 sampler ref 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>pass</code> <span class="type">&amp;RenderPass</span></dt><dd>本次调用使用的 <code>RenderPass</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>stage</code> <span class="type">int</span></dt><dd>stage（int）</dd>
+<dt><code>slot</code> <span class="type">int</span></dt><dd>slot（int）</dd>
+<dt><code>texture</code> <span class="type">TextureRef</span></dt><dd>texture（TextureRef）</dd>
+<dt><code>sampler</code> <span class="type">SamplerRef</span></dt><dd>sampler（SamplerRef）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="const-PRESENT_VSYNC">
+<h2><code>const PRESENT_VSYNC</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PRESENT_VSYNC = 0</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>PRESENT_VSYNC</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-PRESENT_IMMEDIATE">
+<h2><code>const PRESENT_IMMEDIATE</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PRESENT_IMMEDIATE = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>PRESENT_IMMEDIATE</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-PRESENT_MAILBOX">
+<h2><code>const PRESENT_MAILBOX</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> PRESENT_MAILBOX = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>PRESENT_MAILBOX</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="struct-SurfaceOptions">
+<h2><code>struct SurfaceOptions</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> SurfaceOptions {
+    <span class="syn-kw">pub</span> present_mode <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>Gpu 配置参数与选项集合。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>present_mode</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-Surface">
+<h2><code>struct Surface</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Surface {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Surface</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-Frame">
+<h2><code>struct Frame</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Frame {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p>Gpu 协议数据帧结构封装。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="-Device-surface">
+<h2><code>(&amp;Device) surface</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) surface(target &amp;window.Window, options SurfaceOptions) Surface</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Device</code> 上执行 <code>surface</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>target</code> <span class="type">&amp;window.Window</span></dt><dd>target（只读借用，调用方仍持有原值；类型 &amp;window.Window）</dd>
+<dt><code>options</code> <span class="type">SurfaceOptions</span></dt><dd>options（SurfaceOptions）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Surface — 该类型的值</p>
+</article>
+<article class="api-item" id="-Surface-format">
+<h2><code>(&amp;Surface) format</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (surface &amp;Surface) format() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Surface</code> 上的操作：格式化为字符串。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>surface</code> <span class="type">&amp;Surface</span></dt><dd>本次调用使用的 <code>Surface</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Surface-supports_present_mode">
+<h2><code>(&amp;Surface) supports_present_mode</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (surface &amp;Surface) supports_present_mode(mode <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Surface</code> 上的操作：执行 supports present mode 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>surface</code> <span class="type">&amp;Surface</span></dt><dd>本次调用使用的 <code>Surface</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>mode</code> <span class="type">int</span></dt><dd>模式（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Surface-set_present_mode">
+<h2><code>(&amp;Surface) set_present_mode</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (surface &amp;Surface) set_present_mode(mode <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Surface</code> 上的操作：设置 present mode。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>surface</code> <span class="type">&amp;Surface</span></dt><dd>本次调用使用的 <code>Surface</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>mode</code> <span class="type">int</span></dt><dd>模式（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Surface-acquire">
+<h2><code>(&amp;Surface) acquire</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (surface &amp;Surface) acquire() Frame</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Surface</code> 上执行 <code>acquire</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>surface</code> <span class="type">&amp;Surface</span></dt><dd>本次调用使用的 <code>Surface</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>Frame — 该类型的值</p>
+</article>
+<article class="api-item" id="-Frame-has_image">
+<h2><code>(&amp;Frame) has_image</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame &amp;Frame) has_image() <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Frame</code> 上的操作：判断是否具有 image。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;Frame</span></dt><dd>本次调用使用的 <code>Frame</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Frame-width">
+<h2><code>(&amp;Frame) width</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame &amp;Frame) width() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Frame</code> 上执行 <code>width</code> 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;Frame</span></dt><dd>本次调用使用的 <code>Frame</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Frame-height">
+<h2><code>(&amp;Frame) height</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame &amp;Frame) height() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p>在 <code>&amp;Frame</code> 上执行 <code>height</code> 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;Frame</span></dt><dd>本次调用使用的 <code>Frame</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Frame-format">
+<h2><code>(&amp;Frame) format</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame &amp;Frame) format() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Frame</code> 上的操作：格式化为字符串。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;Frame</span></dt><dd>本次调用使用的 <code>Frame</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Frame-begin_render">
+<h2><code>(&amp;Frame) begin_render</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame &amp;Frame) begin_render(load <span class="syn-type">int</span>, clear Color, depth DepthAttachment) RenderPass</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Frame</code> 上的操作：执行 begin render 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;Frame</span></dt><dd>本次调用使用的 <code>Frame</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>load</code> <span class="type">int</span></dt><dd>load（int）</dd>
+<dt><code>clear</code> <span class="type">Color</span></dt><dd>clear（Color）</dd>
+<dt><code>depth</code> <span class="type">DepthAttachment</span></dt><dd>depth（DepthAttachment）</dd>
+</dl>
+<h3>返回值</h3>
+<p>RenderPass — 该类型的值</p>
+</article>
+<article class="api-item" id="-Frame-begin_compute">
+<h2><code>(&amp;Frame) begin_compute</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame &amp;Frame) begin_compute(writes &amp;[]StorageBufferWrite) ComputePass</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Frame</code> 上的操作：执行 begin compute 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">&amp;Frame</span></dt><dd>本次调用使用的 <code>Frame</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>writes</code> <span class="type">&amp;[]StorageBufferWrite</span></dt><dd>writes（只读借用，调用方仍持有原值；类型 &amp;[]StorageBufferWrite）</dd>
+</dl>
+<h3>返回值</h3>
+<p>ComputePass — 该类型的值</p>
+</article>
+<article class="api-item" id="--Frame-present">
+<h2><code>($&amp;Frame) present</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) present() Fence</code></pre></div>
+<h3>用途</h3>
+<p>在 <code>$&amp;Frame</code> 上执行 <code>present</code> 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>本次调用使用的 <code>Frame</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>Fence — 该类型的值</p>
+</article>
+<article class="api-item" id="--Frame-close">
+<h2><code>($&amp;Frame) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (frame <span class="syn-borrow">$&amp;</span>Frame) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Frame</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>frame</code> <span class="type">$&amp;Frame</span></dt><dd>本次调用使用的 <code>Frame</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="--Surface-close">
+<h2><code>($&amp;Surface) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (surface <span class="syn-borrow">$&amp;</span>Surface) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Surface</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>surface</code> <span class="type">$&amp;Surface</span></dt><dd>本次调用使用的 <code>Surface</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="const-TEXTURE_SAMPLED">
+<h2><code>const TEXTURE_SAMPLED</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> TEXTURE_SAMPLED = 1</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>TEXTURE_SAMPLED</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-TEXTURE_COLOR_TARGET">
+<h2><code>const TEXTURE_COLOR_TARGET</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> TEXTURE_COLOR_TARGET = 2</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>TEXTURE_COLOR_TARGET</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-TEXTURE_DEPTH_TARGET">
+<h2><code>const TEXTURE_DEPTH_TARGET</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> TEXTURE_DEPTH_TARGET = 4</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>TEXTURE_DEPTH_TARGET</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="const-MAX_TEXTURE_SIZE_2D">
+<h2><code>const MAX_TEXTURE_SIZE_2D</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">const</span> MAX_TEXTURE_SIZE_2D = 16384</code></pre></div>
+<h3>用途</h3>
+<p>常量 <code>MAX_TEXTURE_SIZE_2D</code>，定义了相关的协议或算法配置参数。</p>
+</article>
+<article class="api-item" id="struct-Texture2DDesc">
+<h2><code>struct Texture2DDesc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Texture2DDesc {
+    <span class="syn-kw">pub</span> format <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> width <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> height <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> levels <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> usage <span class="syn-type">int</span>
+}</code></pre></div>
+<h3>用途</h3>
+<p>承载 format、width、height、levels、usage 等属性的结构体。</p>
+<h3>公开字段</h3>
+<dl class="api-params">
+<dt><code>format</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>levels</code> <span class="type">int</span></dt><dd>字段（int）</dd>
+<dt><code>usage</code> <span class="type">int</span></dt><dd>用法说明</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-Texture">
+<h2><code>struct Texture</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Texture {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>Texture</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="struct-TextureSlice">
+<h2><code>struct TextureSlice</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> TextureSlice {
+
+}</code></pre></div>
+<h3>用途</h3>
+<p><code>TextureSlice</code> 上下文或状态结构体。</p>
+<h3>公开字段</h3>
+<p class="api-none">此类型没有公开字段。</p>
+</article>
+<article class="api-item" id="-Device-supports_texture_2d">
+<h2><code>(&amp;Device) supports_texture_2d</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) supports_texture_2d(format <span class="syn-type">int</span>, usage <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 supports texture 2d 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>format</code> <span class="type">int</span></dt><dd>format（int）</dd>
+<dt><code>usage</code> <span class="type">int</span></dt><dd>用法说明（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>bool — 是否成立</p>
+</article>
+<article class="api-item" id="-Device-texture_2d">
+<h2><code>(&amp;Device) texture_2d</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) texture_2d(desc Texture2DDesc) Texture</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 texture 2d 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>desc</code> <span class="type">Texture2DDesc</span></dt><dd>desc（Texture2DDesc）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Texture — 该类型的值</p>
+</article>
+<article class="api-item" id="-Texture-level_count">
+<h2><code>(&amp;Texture) level_count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (texture &amp;Texture) level_count() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Texture</code> 上的操作：执行 level count 操作。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>本次调用使用的 <code>Texture</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Texture-size_bytes">
+<h2><code>(&amp;Texture) size_bytes</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (texture &amp;Texture) size_bytes() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Texture</code> 上的操作：尺寸字节。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>本次调用使用的 <code>Texture</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>
+<article class="api-item" id="-Texture-level_layout">
+<h2><code>(&amp;Texture) level_layout</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (texture &amp;Texture) level_layout(mip <span class="syn-type">int</span>) layout.Level2D</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Texture</code> 上的操作：执行 level layout 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>本次调用使用的 <code>Texture</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>mip</code> <span class="type">int</span></dt><dd>mip（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>layout.Level2D — 该类型的值</p>
+</article>
+<article class="api-item" id="-Texture-view">
+<h2><code>(&amp;Texture) view</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (texture &amp;Texture) view(mip <span class="syn-type">int</span>) TextureSlice</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Texture</code> 上的操作：视图。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>本次调用使用的 <code>Texture</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>mip</code> <span class="type">int</span></dt><dd>mip（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>TextureSlice — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-upload_texture">
+<h2><code>(&amp;Device) upload_texture</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) upload_texture(texture &amp;Texture, mip <span class="syn-type">int</span>, bytes &amp;[]<span class="syn-type">u8</span>) Fence</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 upload texture 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>texture（只读借用，调用方仍持有原值；类型 &amp;Texture）</dd>
+<dt><code>mip</code> <span class="type">int</span></dt><dd>mip（int）</dd>
+<dt><code>bytes</code> <span class="type">&amp;[]u8</span></dt><dd>bytes（只读借用，调用方仍持有原值；类型 &amp;[]u8）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Fence — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-download_texture">
+<h2><code>(&amp;Device) download_texture</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) download_texture(texture &amp;Texture, mip <span class="syn-type">int</span>) Readback</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 download texture 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>texture（只读借用，调用方仍持有原值；类型 &amp;Texture）</dd>
+<dt><code>mip</code> <span class="type">int</span></dt><dd>mip（int）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Readback — 该类型的值</p>
+</article>
+<article class="api-item" id="-Device-generate_mips">
+<h2><code>(&amp;Device) generate_mips</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (device &amp;Device) generate_mips(texture &amp;Texture) Fence</code></pre></div>
+<h3>用途</h3>
+<p><code>&amp;Device</code> 上的操作：执行 generate mips 操作。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>device</code> <span class="type">&amp;Device</span></dt><dd>本次调用使用的 <code>Device</code> 实例；以只读借用传入，调用方仍持有实例。</dd>
+<dt><code>texture</code> <span class="type">&amp;Texture</span></dt><dd>texture（只读借用，调用方仍持有原值；类型 &amp;Texture）</dd>
+</dl>
+<h3>返回值</h3>
+<p>Fence — 该类型的值</p>
+</article>
+<article class="api-item" id="--Texture-close">
+<h2><code>($&amp;Texture) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (texture <span class="syn-borrow">$&amp;</span>Texture) close() <span class="syn-type">int</span></code></pre></div>
+<h3>用途</h3>
+<p><code>$&amp;Texture</code> 上的操作：关闭资源。失败时抛出错误，调用方需处理或继续传播。</p>
+<h3>参数</h3>
+<dl class="api-params">
+<dt><code>texture</code> <span class="type">$&amp;Texture</span></dt><dd>本次调用使用的 <code>Texture</code> 实例；以独占借用传入，方法可修改它，调用方仍持有实例。</dd>
+</dl>
+<h3>返回值</h3>
+<p>int — 该类型的值</p>
+</article>

@@ -1,0 +1,21 @@
+<h2 id="quickstart">GPU 设备与缓冲区传输</h2>
+<p><code>#gpu</code> 是 Xu 标准库提供的底层 GPU 设备与资源抽象层。支持无窗口设备创建、缓冲区、2D 纹理与 Mipmap、采样器、着色器、图形与计算管线、命令录制（CommandEncoder）、栅栏同步以及精确字节回读（Readback）。</p>
+<p>所有 GPU 资源支持通过 <code>close</code> 显式释放或析构时自动 <code>drop</code>。设备及资源操作应保持在主线程；纹理格式定义见 <a href="/zh/api/gpu/layout"><code>gpu/layout</code></a>。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#gpu
+
+fn main() {
+    $device := gpu.open(gpu.DeviceOptions{backend: gpu.AUTO, debug: false, shader_formats: 0}) or {
+        println("GPU backend unavailable")
+        return
+    }
+    $buffer := device.buffer(4, gpu.BUFFER_VERTEX) or >>
+    input := [u8(0), u8(127), u8(128), u8(255)]
+    device.upload(&amp;buffer, 0, &amp;input) or >>
+    $result := device.download(&amp;buffer, 0, 4) or >>
+    result.wait() or >>
+    $output := [u8(0), u8(0), u8(0), u8(0)]
+    result.read($&amp;output) or >>
+    println("downloaded byte:", output[3])
+}</code></pre></div>
+<p>预期输出：<code>downloaded byte: 255</code>。</p>

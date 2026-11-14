@@ -1,0 +1,386 @@
+<!--title: #window-->
+<p class="crumb">API</p>
+<h1><code>#window</code></h1>
+<!--xu-api-version: 0.12.3-->
+<p class="banner">Xu {{xu_version}} API</p>
+<p class="meta">import: <code>#window</code></p>
+<p class="meta">counts: 3 functions, 21 methods, 3 types, 0 constants, 0 method sets</p>
+<h2 id="quickstart">Window lifecycle and event loop</h2>
+<p><code>#window</code> provides window lifecycle management and per-window input event queues (keyboard, pointer, wheel, and text/IME). Portable event definitions and constants are provided in the pure Xu package <a href="/api/window/events"><code>window/events</code></a>.</p>
+<p>Call <code>window.pump()</code> once per update loop, then drain each window via <code>target.poll()</code> until <code>EVENT_NONE</code>. Close requests latch in <code>state().close_requested</code>.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#window
+#window/events
+
+fn main() {
+    options := window.Options{
+        title: "Hello Window",
+        width: 640,
+        height: 360,
+        resizable: true,
+        high_pixel_density: true,
+        hidden: false,
+    }
+    $target := window.open(&amp;options) or {
+        println("Failed to open window")
+        return
+    }
+    println("Window opened: id=", target.id())
+    window.pump() or >>
+    state := target.state() or >>
+    println("Window size:", state.logical_width, "x", state.logical_height)
+    target.close() or >>
+}</code></pre></div>
+<p>Expected output: prints the window ID and logical dimensions.</p>
+<article class="api-item" id="struct-Options">
+<h2><code>struct Options</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Options {
+    <span class="syn-kw">pub</span> title <span class="syn-type">string</span>
+    <span class="syn-kw">pub</span> width <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> height <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> resizable <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> high_pixel_density <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> hidden <span class="syn-type">bool</span>
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>Window Configuration parameters and options set.</p>
+<h3>Public fields</h3>
+<dl class="api-params">
+<dt><code>title</code> <span class="type">string</span></dt><dd>field (string)</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>resizable</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>high_pixel_density</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>hidden</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+</dl>
+</article>
+<article class="api-item" id="struct-Window">
+<h2><code>struct Window</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Window {
+
+}</code></pre></div>
+<h3>Purpose</h3>
+<p><code>Window</code> context or state structure.</p>
+<h3>Public fields</h3>
+<p class="api-none">This type has no public fields.</p>
+</article>
+<article class="api-item" id="struct-State">
+<h2><code>struct State</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> State {
+    <span class="syn-kw">pub</span> width <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> height <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> pixel_width <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> pixel_height <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> close_requested <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> minimized <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> visible <span class="syn-type">bool</span>
+    <span class="syn-kw">pub</span> focused <span class="syn-type">bool</span>
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>Structure encapsulating width, height, pixel_width, pixel_height, close_requested.</p>
+<h3>Public fields</h3>
+<dl class="api-params">
+<dt><code>width</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>pixel_width</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>pixel_height</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>close_requested</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>minimized</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>visible</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+<dt><code>focused</code> <span class="type">bool</span></dt><dd>field (bool)</dd>
+</dl>
+</article>
+<article class="api-item" id="open">
+<h2><code>open</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> open(options &amp;Options) Window</code></pre></div>
+<h3>Purpose</h3>
+<p>Open resource or establish connection. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>options</code> <span class="type">&amp;Options</span></dt><dd>options (read-only borrow; caller keeps the original; type &amp;Options)</dd>
+</dl>
+<h3>Returns</h3>
+<p>Window — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-id">
+<h2><code>(&amp;Window) id</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) id() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>A process-local, never-reused routing identity; not a native window pointer. Creating presentation targets still requires a typed Window borrow.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="pump">
+<h2><code>pump</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> pump() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute pump. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<p class="api-none">No arguments are required.</p>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="live_count">
+<h2><code>live_count</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> live_count() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Live count. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<p class="api-none">No arguments are required.</p>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-state">
+<h2><code>(&amp;Window) state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) state() State</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>state</code> on <code>&amp;Window</code>. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>State — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-resize">
+<h2><code>(&amp;Window) resize</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) resize(width <span class="syn-type">int</span>, height <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>resize</code> on <code>&amp;Window</code>. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>width (int)</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>height (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-show">
+<h2><code>(&amp;Window) show</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) show() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>show</code> on <code>&amp;Window</code>. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-hide">
+<h2><code>(&amp;Window) hide</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) hide() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>hide</code> on <code>&amp;Window</code>. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-minimize">
+<h2><code>(&amp;Window) minimize</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) minimize() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>minimize</code> on <code>&amp;Window</code>. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-restore">
+<h2><code>(&amp;Window) restore</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window &amp;Window) restore() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>restore</code> on <code>&amp;Window</code>. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="--Window-close">
+<h2><code>($&amp;Window) close</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (window <span class="syn-borrow">$&amp;</span>Window) close() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Closing the window safely invalidates attached presentation objects first. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>window</code> <span class="type">$&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (exclusive borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-poll">
+<h2><code>(&amp;Window) poll</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) poll() events.Event</code></pre></div>
+<h3>Purpose</h3>
+<p>Drain this window&#x27;s copied queue; pumping is explicit and process-wide. A failed Xu allocation before event_read leaves the native event queued. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>events.Event — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-pending_events">
+<h2><code>(&amp;Window) pending_events</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) pending_events() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: pending events. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-key_down">
+<h2><code>(&amp;Window) key_down</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) key_down(physical_key <span class="syn-type">int</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: key down. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+<dt><code>physical_key</code> <span class="type">int</span></dt><dd>physical_key (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Window-pointer_state">
+<h2><code>(&amp;Window) pointer_state</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) pointer_state() events.PointerState</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: pointer state. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>events.PointerState — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-start_text_input">
+<h2><code>(&amp;Window) start_text_input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) start_text_input() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: start text input. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-stop_text_input">
+<h2><code>(&amp;Window) stop_text_input</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) stop_text_input() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: stop text input. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-text_input_active">
+<h2><code>(&amp;Window) text_input_active</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) text_input_active() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: text input active. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Window-text_input_area">
+<h2><code>(&amp;Window) text_input_area</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) text_input_area(x <span class="syn-type">int</span>, y <span class="syn-type">int</span>, width <span class="syn-type">int</span>, height <span class="syn-type">int</span>, cursor <span class="syn-type">int</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Logical window coordinates. Cursor is an offset inside the positive-width area. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+<dt><code>x</code> <span class="type">int</span></dt><dd>value (int)</dd>
+<dt><code>y</code> <span class="type">int</span></dt><dd>value (int)</dd>
+<dt><code>width</code> <span class="type">int</span></dt><dd>width (int)</dd>
+<dt><code>height</code> <span class="type">int</span></dt><dd>height (int)</dd>
+<dt><code>cursor</code> <span class="type">int</span></dt><dd>cursor (int)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-clear_text_input_area">
+<h2><code>(&amp;Window) clear_text_input_area</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) clear_text_input_area() <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: clear text input area. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-set_relative_pointer">
+<h2><code>(&amp;Window) set_relative_pointer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) set_relative_pointer(enabled <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: set relative pointer. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled (bool)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-relative_pointer">
+<h2><code>(&amp;Window) relative_pointer</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) relative_pointer() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: relative pointer. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-Window-set_pointer_grab">
+<h2><code>(&amp;Window) set_pointer_grab</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) set_pointer_grab(enabled <span class="syn-type">bool</span>) <span class="syn-type">int</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: set pointer grab. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+<dt><code>enabled</code> <span class="type">bool</span></dt><dd>enabled (bool)</dd>
+</dl>
+<h3>Returns</h3>
+<p>int — a value of this type</p>
+</article>
+<article class="api-item" id="-Window-pointer_grab">
+<h2><code>(&amp;Window) pointer_grab</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (target &amp;Window) pointer_grab() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;Window</code>: pointer grab. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>target</code> <span class="type">&amp;Window</span></dt><dd>The <code>Window</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>

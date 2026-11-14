@@ -1,0 +1,21 @@
+<h2 id="quickstart">GPU device and buffer transfer</h2>
+<p><code>#gpu</code> provides low-level device, buffer, texture, and command recording abstractions in the Xu standard library. It supports windowless devices, buffers, 2D textures and mips, samplers, shaders, graphics and compute pipelines, command encoders, fence synchronization, and byte readback.</p>
+<p>All GPU resources support explicit idempotent <code>close</code> and automatic <code>drop</code>. Keep devices, resources, and borrows on the main thread; texture formats and layout rules are defined in <a href="/api/gpu/layout"><code>gpu/layout</code></a>.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#gpu
+
+fn main() {
+    $device := gpu.open(gpu.DeviceOptions{backend: gpu.AUTO, debug: false, shader_formats: 0}) or {
+        println("GPU backend unavailable")
+        return
+    }
+    $buffer := device.buffer(4, gpu.BUFFER_VERTEX) or >>
+    input := [u8(0), u8(127), u8(128), u8(255)]
+    device.upload(&amp;buffer, 0, &amp;input) or >>
+    $result := device.download(&amp;buffer, 0, 4) or >>
+    result.wait() or >>
+    $output := [u8(0), u8(0), u8(0), u8(0)]
+    result.read($&amp;output) or >>
+    println("downloaded byte:", output[3])
+}</code></pre></div>
+<p>Expected output: <code>downloaded byte: 255</code>.</p>

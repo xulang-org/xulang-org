@@ -1,0 +1,27 @@
+<h2 id="quickstart">Window lifecycle and event loop</h2>
+<p><code>#window</code> provides window lifecycle management and per-window input event queues (keyboard, pointer, wheel, and text/IME). Portable event definitions and constants are provided in the pure Xu package <a href="/api/window/events"><code>window/events</code></a>.</p>
+<p>Call <code>window.pump()</code> once per update loop, then drain each window via <code>target.poll()</code> until <code>EVENT_NONE</code>. Close requests latch in <code>state().close_requested</code>.</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#window
+#window/events
+
+fn main() {
+    options := window.Options{
+        title: "Hello Window",
+        width: 640,
+        height: 360,
+        resizable: true,
+        high_pixel_density: true,
+        hidden: false,
+    }
+    $target := window.open(&amp;options) or {
+        println("Failed to open window")
+        return
+    }
+    println("Window opened: id=", target.id())
+    window.pump() or >>
+    state := target.state() or >>
+    println("Window size:", state.logical_width, "x", state.logical_height)
+    target.close() or >>
+}</code></pre></div>
+<p>Expected output: prints the window ID and logical dimensions.</p>
