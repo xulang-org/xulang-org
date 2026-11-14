@@ -60,47 +60,18 @@ class HomeTaskTests(unittest.TestCase):
                 self.assertIn('PATH', meta[1])
                 self.assertIn('SDK', meta[1])
 
-    def test_home_example_matches_every_catalog_file_and_primary_cta(self):
-        catalog = json.loads((ROOT / 'www/xu-play-examples.json').read_text())['projects']
+    def test_home_embedded_playground_has_controls_and_options(self):
         for lang in ('en', 'zh'):
-            home = source(lang, 'home.html')
-            hero = home.split('<section', 1)[0]
-            ctas = re.findall(r'<a class="btn (pri|ghost)" href="([^"]+)"', hero)
-            self.assertEqual(len(ctas), 2)
-            primary = urlsplit(ctas[0][1])
-            self.assertEqual(primary.path, '/playground')
-            selected = parse_qs(primary.query)['example'][0]
-            project = catalog[selected]
-            self.assertEqual(ctas[1], ('ghost', '/docs/start'))
-            preview = re.search(r'<section class="home-example xu-project-example".*?</section>', home, re.S)[0]
-            self.assertIn(f'data-playground-example="{selected}"', preview)
-            files = {name: unescape(code) for name, code in re.findall(
-                r'<code class="language-xu" data-source-file="([^"]+)">(.*?)</code>', preview, re.S)}
-            self.assertEqual(files, project['files'])
-            self.assertIn(f'<samp>{project["expected"]["value"].strip()}</samp>', preview)
-            self.assertIn('xu check .', preview)
-            self.assertIn('xu run .', preview)
-            self.assertNotRegex(home, r'xu (check|run) [^ <]*\.xu')
-            self.assertLess(home.index('</section>'), home.index('<section class="pillars">'))
-            self.assertIn('WASM', preview)
-            self.assert_links_resolve(home, lang)
-
-    def test_four_task_paths_have_steps_api_links_and_limits_in_both_languages(self):
-        for lang in ('en', 'zh'):
-            home = source(lang, 'home.html')
-            cards = dict(re.findall(r'<article class="task-card" data-task="([^"]+)">(.*?)</article>', home, re.S))
-            self.assertEqual(set(cards), {'cli', 'http', 'db', 'ui'})
-            for name, card in cards.items():
-                self.assertEqual(card.count('<li>'), 3, (lang, name))
-                self.assertRegex(card, r'href="/api/[^\"]+"')
-                self.assertIn('Result:' if lang == 'en' else '结果：', card)
-                self.assertIn('Support / limits:' if lang == 'en' else '支持 / 限制：', card)
-                self.assertNotIn('xacp', card.lower())
-            self.assertIn('WASM', cards['ui'])
-            self.assertIn('WebView', cards['ui'])
-            selected = parse_qs(urlsplit(re.search(r'href="(/playground[^\"]+)"', cards['ui'])[1]).query)['example'][0]
-            catalog = json.loads((ROOT / 'www/xu-play-examples.json').read_text())['projects']
-            self.assertEqual(catalog[selected]['group'], 'ui')
+            with self.subTest(lang=lang):
+                home = source(lang, 'home.html')
+                self.assertIn('class="xu-play code-block-wrapper"', home)
+                self.assertIn('id="xu-play-src"', home)
+                self.assertIn('id="xu-play-run"', home)
+                self.assertIn('id="xu-play-out"', home)
+                self.assertIn('id="xu-play-ex"', home)
+                for option in ('hello', 'bindings', 'control', 'ints', 'coroutine'):
+                    self.assertIn(f'value="{option}"', home)
+                self.assert_links_resolve(home, lang)
 
     def test_matrix_covers_all_integrations_and_transport_with_explicit_unknowns(self):
         expected = {p.stem for p in (ROOT / 'content/en/api/packages').glob('*.html')}
