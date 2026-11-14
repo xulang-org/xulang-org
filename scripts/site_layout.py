@@ -645,7 +645,8 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         footer_identity='XU' if route in ('/', '/zh') else 'XU v' + escape(xu_version),
         nav=''.join(nav), main=main,
         playground_assets=playground_assets,
-        page_assets=api_assets + ('<link rel="stylesheet" href="/playground-design.css"><link rel="stylesheet" href="/widgets.css">'
+        page_assets=api_assets + ('<script src="/xu-play-canvas.js" defer></script>'
+                     if route in ('/', '/zh') else '') + ('<link rel="stylesheet" href="/playground-design.css"><link rel="stylesheet" href="/widgets.css">'
                      if '/api/ui/widgets' in route else '') + ('<link rel="stylesheet" href="/playground.css">'
                      '<link rel="stylesheet" href="/playground-design.css">'
                      '<link rel="stylesheet" href="/widgets.css">'
