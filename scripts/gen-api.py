@@ -3136,6 +3136,8 @@ def main(argv: list[str] | None = None) -> int:
         module = re.search(r'^module:\s*"?([^"\n]+)"?\s*$', manifest, re.M).group(1)
         module_version = re.search(r'^version:\s*!ver\s+(\S+)', manifest, re.M).group(1)
         for name in list_packages(external_root):
+            if name == "metal":
+                continue
             pkg = load_package(external_root, name)
             pkg.path = "packages/" + name
             pkg.import_path = name.rsplit("/", 1)[-1] + " #" + module + "/" + name

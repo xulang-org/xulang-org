@@ -43,8 +43,9 @@ _CURATED_API_GROUPS = [
     ('xi-shield-check', '密码与国密', 'Crypto', 'crypto/aes crypto/cipher crypto/sm2 crypto/sm3 crypto/sm4 crypto/sm9 crypto/zuc crypto/gmtls crypto/tls crypto/rand crypto/rsa crypto/sha256 crypto/sha512 crypto/sha1 crypto/sha3 crypto/md5 crypto/hmac crypto/x509 crypto/x509/pkix crypto/ecdsa crypto/ed25519 crypto/des crypto/rc4 crypto/subtle crypto/password crypto/jwt'.split()),
     ('xi-package', '压缩 / 图像 / 数学', 'Compress / image / math', 'compress/gzip image math'.split()),
     ('xi-database', '数据库', 'Database', 'database/sql database/sql/driver'.split()),
+    ('xi-package', '图形与窗口', 'Graphics & Window', 'gpu gpu/layout window window/events'.split()),
     ('xi-package', '扩展包', 'Extensions', ['packages/' + name for name in
-        'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite websocket zookeeper'.split()]),
+        'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite transport websocket zookeeper'.split()]),
     ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/chart ui/widgets ui/webview'.split()),
 ]
 

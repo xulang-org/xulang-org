@@ -1,0 +1,27 @@
+<h2 id="quickstart">窗口生命周期与事件循环</h2>
+<p><code>#window</code> 提供轻量化窗口创建、生命周期管理与输入事件轮询（键盘、指针、滚轮、文本/IME）。跨平台事件结构体与常量定义在纯 Xu 包 <a href="/zh/api/window/events"><code>window/events</code></a> 中。</p>
+<p>每个主循环帧调用 <code>window.pump()</code> 抽取系统事件，并对各窗口调用 <code>target.poll()</code> 消耗事件直至 <code>EVENT_NONE</code>。窗口关闭请求通过 <code>state().close_requested</code> 捕获。</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#window
+#window/events
+
+fn main() {
+    options := window.Options{
+        title: "Hello Window",
+        width: 640,
+        height: 360,
+        resizable: true,
+        high_pixel_density: true,
+        hidden: false,
+    }
+    $target := window.open(&amp;options) or {
+        println("Failed to open window")
+        return
+    }
+    println("Window opened: id=", target.id())
+    window.pump() or >>
+    state := target.state() or >>
+    println("Window size:", state.logical_width, "x", state.logical_height)
+    target.close() or >>
+}</code></pre></div>
+<p>预期输出包含窗口 ID 与初始逻辑分辨率尺寸。</p>

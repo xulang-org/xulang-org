@@ -88,7 +88,7 @@ if ($IsLocalScript -and $ScriptDir) {
 }
 
 # Resolve version
-$FallbackVersion = "0.12.2"
+$FallbackVersion = "0.12.3"
 if (-not $Version) {
     if ($SourceDir -and (Test-Path "$SourceDir\VERSION")) {
         $Version = (Get-Content "$SourceDir\VERSION" -Raw).Trim()
@@ -227,7 +227,7 @@ try {
     if (Test-Path "$SourceDir\bin\platform\$Platform") {
         Copy-Item -Path "$SourceDir\bin\platform\$Platform\*" -Destination $BinDest -Recurse -Force
     } elseif (Test-Path "$SourceDir\bin") {
-        $Tools = @("xu", "xu-doctor", "xu-fmt", "xu-doc", "xu-map", "xu-desktop", "xu-setup", "xu-update", "xu-lsp", "xu-native")
+        $Tools = @("xu", "xu-doctor", "xu-fmt", "xu-doc", "xu-map", "xu-desktop", "xu-setup", "xu-update", "xu-lsp", "xu-native", "xu-xacp")
         foreach ($tool in $Tools) {
             if (Test-Path "$SourceDir\bin\$tool.exe") {
                 Copy-Item -Path "$SourceDir\bin\$tool.exe" -Destination $BinDest -Force
