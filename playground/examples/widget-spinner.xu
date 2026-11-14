@@ -20,11 +20,12 @@ fn box(x f64,y f64,w f64,h f64) layout.Rect {
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,210.0,160.0,42.0)
     $btn := widgets.button(&identity,1,&bounds) or >>
     $lbl := widgets.styled_label(&context,&"Stop 停止")
+    spinner_bounds := box(52.0,104.0,36.0,36.0)
+    $spin := widgets.spinner(&spinner_bounds) or >>
     $focus := widgets.focus_group(&identity,[1]) or >>
     $running := true
     while true {
@@ -35,7 +36,10 @@ fn demo() int {
         if nav.consumed { -> }
         act := btn.input(&event)
         if act.request_focus { focus.focus(1) or >> }
-        if act.kind == widgets.ACTION_ACTIVATE { running = !running }
+        if act.kind == widgets.ACTION_ACTIVATE {
+            running = !running
+            spin.set_running(running)
+        }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
@@ -43,16 +47,12 @@ fn demo() int {
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  Spinner") or >>
-    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器减少动效预览；点击按钮停止或恢复反馈。") or >>
-    if running {
-        frame.set_fill(draw.rgba(0,0,0,0)) or >>
-        frame.set_stroke(draw.rgb(190,18,60),3.0) or >>
-        frame.circle(70.0,122.0,18.0) or >>
-    }
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"加载指示器：展示任务进行中的旋转圆点动效。") or >>
+    spin.paint_styled($&frame,&styles) or >>
     if !running { lbl = widgets.styled_label(&context,&"Start 开始") }
     demo_text($&frame,&context,104,114,16,draw.rgb(40,35,41),"Loading assets… 正在加载") or >>
     btn.paint_styled($&frame,$&lbl,&styles) or >>
-    demo_text($&frame,&context,48,172,12,draw.rgb(109,98,110),"静态加载反馈 · 桌面 SDK 提供连续动画") or >>
+    demo_text($&frame,&context,48,172,12,draw.rgb(109,98,110),"标准组件加载指示器 · 遵循 xu-ui-design") or >>
     $message := "Spinner: running (period: 900ms)"
     if !running { message = "Spinner: stopped" }
     demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>

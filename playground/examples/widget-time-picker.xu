@@ -4,6 +4,7 @@
 #ui/layout
 #ui/widgets
 #playground
+#time
 
 fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
@@ -21,7 +22,9 @@ fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
     styles := playground.light_styles()
-    $btn := widgets.button(&identity,1,&box(48.0,110.0,260.0,44.0)) or >>
+    $btn := widgets.time_picker(&context,&identity,1,&box(48.0,110.0,260.0,44.0),time.date(2026,10,25,14,30,0,0)) or >>
+    btn.set_show_seconds(true)
+    btn.apply_styles(&styles) or >>
     $mode := widgets.button(&identity,2,&box(320.0,110.0,120.0,44.0)) or >>
     $minutes := 870
     $twelve := false
@@ -38,11 +41,29 @@ fn demo() int {
         if act.request_focus { focus.focus(1) or >> }
         mode_action := mode.input(&event)
         if mode_action.request_focus { focus.focus(2) or >> }
-        if mode_action.kind == widgets.ACTION_ACTIVATE { twelve = !twelve }
-        if act.kind == widgets.ACTION_ACTIVATE { minutes = (minutes+1)%1440 }
+        if mode_action.kind == widgets.ACTION_ACTIVATE {
+            twelve = !twelve
+            btn.set_12_hour(twelve)
+        }
+        if (event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && btn.bounds().contains(event.x,event.y)) || act.kind == widgets.ACTION_ACTIVATE {
+            minutes = (minutes+1)%1440
+            h := minutes/60
+            m := minutes%60
+            btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
+        }
         if event.kind == ui.EV_KEY_DOWN && focus.current() == 1 {
-            if event.key == ui.KEY_UP { minutes = (minutes+1)%1440 }
-            if event.key == ui.KEY_DOWN { minutes = (minutes+1439)%1440 }
+            if event.key == ui.KEY_UP {
+                minutes = (minutes+1)%1440
+                h := minutes/60
+                m := minutes%60
+                btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
+            }
+            if event.key == ui.KEY_DOWN {
+                minutes = (minutes+1439)%1440
+                h := minutes/60
+                m := minutes%60
+                btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
+            }
         }
     }
     $frame := context.new_frame(16384)
@@ -51,7 +72,7 @@ fn demo() int {
     frame.fill_rect(28.0,70.0,584.0,240.0,styles.input.palette.normal) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  TimePicker") or >>
-    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器时间预览：点击增加一分钟；切换 12/24 小时制。") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"标准时间拾取组件：支持分秒滚轮调整、12/24小时制切换。") or >>
     hour := minutes/60
     minute := minutes%60
     $mm := str(minute)
@@ -67,11 +88,11 @@ fn demo() int {
         if hour >= 12 { suffix = " PM" }
         display = str(h)+":"+mm+":00"+suffix
         mode_text = "12-Hour" }
-    $label := widgets.styled_label(&context,&display)
     $mode_label := widgets.styled_label(&context,&mode_text)
-    btn.paint_styled($&frame,$&label,&styles) or >>
+    btn.paint_styled($&frame,&styles) or >>
     mode.paint_styled($&frame,$&mode_label,&styles) or >>
-    demo_text($&frame,&context,48,180,12,draw.rgb(109,98,110),"点击 / Enter 增加一分钟 · ↑ / ↓ 调整 · 存储为 24 小时") or >>
+    demo_text($&frame,&context,48,180,14,draw.rgb(40,35,41),display) or >>
+    demo_text($&frame,&context,48,202,12,draw.rgb(109,98,110),"点击 / Enter 增加一分钟 · ↑ / ↓ 调整 · 存储为 24 小时") or >>
     message := "Time: "+stored
     demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message+"") or >>
     println(message)

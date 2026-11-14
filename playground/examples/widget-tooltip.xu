@@ -4,6 +4,7 @@
 #ui/layout
 #ui/widgets
 #playground
+#time
 
 fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
@@ -21,7 +22,12 @@ fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
     styles := playground.light_styles()
-    $btn := widgets.button(&identity,1,&box(48.0,132.0,260.0,44.0)) or >>
+    anchor := box(48.0,132.0,260.0,44.0)
+    $btn := widgets.button(&identity,1,&anchor) or >>
+    tip_size := layout.Size{width: 320.0, height: 32.0}
+    viewport := box(0.0,0.0,640.0,360.0)
+    $tip := widgets.tooltip(&identity,2,&anchor,&tip_size,&viewport) or >>
+    $tip_label := widgets.styled_label(&context,&"Focus help · Escape closes this tooltip.")
     $shown := false
     $focus := widgets.focus_group(&identity,[1]) or >>
     while true {
@@ -30,14 +36,30 @@ fn demo() int {
         if event.kind == ui.EV_POINTER_CANCEL { focus.clear() }
         nav := focus.input(&event)
         btn.set_focus(focus.current() == 1)
-        if nav.consumed { shown = focus.current() == 1 }
+        if nav.consumed {
+            shown = focus.current() == 1
+            if shown { tip.set_focus(true, time.zero_instant()) or >> }
+            else { tip.dismiss(time.zero_instant(), true) or >> }
+        }
         if nav.consumed { -> }
         act := btn.input(&event)
         if act.request_focus { focus.focus(1) or >> }
-        if act.request_focus || act.kind == widgets.ACTION_ACTIVATE { shown = true }
-        if event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_ESCAPE { shown = false }
-        if event.kind == ui.EV_POINTER_DOWN && !box(48.0,132.0,260.0,44.0).contains(event.x,event.y) { shown = false }
-        if event.kind == ui.EV_POINTER_CANCEL { shown = false }
+        if act.request_focus || act.kind == widgets.ACTION_ACTIVATE {
+            shown = true
+            tip.set_focus(true, time.zero_instant()) or >>
+        }
+        if event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_ESCAPE {
+            shown = false
+            tip.dismiss(time.zero_instant(), true) or >>
+        }
+        if event.kind == ui.EV_POINTER_DOWN && !box(48.0,132.0,260.0,44.0).contains(event.x,event.y) {
+            shown = false
+            tip.dismiss(time.zero_instant(), true) or >>
+        }
+        if event.kind == ui.EV_POINTER_CANCEL {
+            shown = false
+            tip.dismiss(time.zero_instant(), true) or >>
+        }
     }
     $frame := context.new_frame(16384)
     frame.begin() or >>
@@ -46,13 +68,12 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  Tooltip") or >>
     demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"点击或键盘聚焦显示提示；Escape 关闭。") or >>
-    if shown {
-        frame.fill_rect(48.0,88.0,440.0,32.0,styles.button.palette.foreground) or >>
-        demo_center_text($&frame,&context,60,88.0,32.0,12,draw.rgb(255,253,251),"Focus help · Escape closes this tooltip.") or >>
-    }
     $label := widgets.styled_label(&context,&"Show help 查看提示")
     btn.paint_styled($&frame,$&label,&styles) or >>
-    demo_text($&frame,&context,48,196,12,draw.rgb(109,98,110),"浏览器预览点击与焦点提示；悬停延迟请在桌面 SDK 体验。") or >>
+    if shown {
+        tip.paint_styled($&frame,$&tip_label,&styles) or >>
+    }
+    demo_text($&frame,&context,48,196,12,draw.rgb(109,98,110),"标准气泡提示组件 · 遵循 xu-ui-design") or >>
     $state := "hidden"
     if shown { state = "visible" }
     message := "Tooltip: "+state

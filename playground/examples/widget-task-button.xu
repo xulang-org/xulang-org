@@ -4,6 +4,7 @@
 #ui/layout
 #ui/widgets
 #playground
+#time
 
 fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
@@ -20,10 +21,10 @@ fn box(x f64,y f64,w f64,h f64) layout.Rect {
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,114.0,220.0,44.0)
-    $control := widgets.button(&identity,1,&bounds) or >>
+    label_text := "Build project 构建"
+    $control := widgets.task_button(&context,&identity,1,&bounds,&label_text) or >>
     $running := false
     $focus := widgets.focus_group(&identity,[1]) or >>
     while true {
@@ -34,28 +35,31 @@ fn demo() int {
         if nav.consumed { -> }
         act := control.input(&event)
         if act.request_focus { focus.focus(1) or >> }
-        if act.kind == widgets.ACTION_ACTIVATE { running = !running }
+        if act.kind == widgets.ACTION_ACTIVATE {
+            running = !running
+            if running {
+                control.begin(1,time.zero_instant()) or >>
+                control.set_progress(1,0.45)
+            } else {
+                control.reset() or >>
+            }
+        }
     }
-    $text_val := "Build project 构建"
-    if running {
-        text_val = "Building (45%)…"
-    }
-    $label := widgets.styled_label(&context,&text_val)
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  TaskButton") or >>
-    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"任务状态预览；点击切换空闲与运行状态。") or >>
-    control.paint_styled($&frame,$&label,&styles) or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"任务按钮：支持空闲、运行中进度动画与完成反馈。") or >>
+    control.paint_styled($&frame,&styles) or >>
     $sub_val := "点击预览运行状态，再次点击恢复空闲"
     if running {
-        sub_val = "运行状态示意 · 桌面 SDK 提供异步任务"
+        sub_val = "任务执行中 (45%) · 桌面 SDK 提供异步任务调度"
     }
     demo_text($&frame,&context,48,180,14,draw.rgb(109,98,110),sub_val) or >>
     $message := "Task: idle"
-    if running {
+    if control.is_running() {
         message = "Task: running"
     }
     demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message + "") or >>

@@ -12,15 +12,6 @@
 #unicode/utf8
 #ui/internal/codec
 
-// Upstream: src/ui/widgets/data_scrollbar.xu
-fn (lb &ListBox) paint_data_scrollbar(frame $&draw.Frame,c &ControlStyle) int {
-    if lb.max_scroll() <= 0.0 { << 0 }
-    thumb := lb.scrollbar_thumb()
-    $color := fade_color(c.palette.muted,0.6)
-    if lb.scroll_dragging { color = c.palette.muted }
-    << rounded_fill(frame,&thumb,thumb.width * 0.5,color) or >>
-}
-
 // Upstream: src/ui/widgets/table_sort.xu
 fn (t $&Table) apply_sort(column int,descending bool,reset_scroll bool) int {
     if t.rows.closed || column < -1 || column >= t.column_count() { >> errors.new("widgets: invalid table sort column") }
@@ -214,67 +205,11 @@ fn table_sort_number(value &string) TableSortNumber {
     << TableSortNumber{value: number,valid: !math.is_nan(number) && !math.is_inf(number)}
 }
 
-// Upstream: src/ui/widgets/tree_appearance.xu
-fn tree_chevron(frame $&draw.Frame,x f64,y f64,size f64,angle f64,color draw.Color) int {
-    $path := draw.new_path(80)
-    path.move_to(0.0 - size * 0.22,0.0 - size * 0.36) or >>
-    path.line_to(size * 0.18,0.0) or >>
-    path.line_to(0.0 - size * 0.22,size * 0.36) or >>
-    $stroke := draw.stroke_options(math.max(1.0,size * 0.13))
-    stroke.cap = draw.CAP_ROUND
-    stroke.join = draw.JOIN_ROUND
-    frame.push() or >>
-    frame.translate(x,y) or >>
-    frame.rotate(angle) or >>
-    frame.stroke_path(&path,color,&stroke) or >>
-    frame.pop() or >>
-    << 0
-}
-
-// Upstream: src/ui/widgets/table.xu
-fn validate_table_text(value &string) int {
-    if value.len > 4096 { >> errors.new("widgets: table text exceeds 4096 bytes") }
-    for i in 0:value.len { if value[i] == 10 || value[i] == 13 { >> errors.new("widgets: data labels must be single line") } }
-    << 0
-}
-
 // Upstream: src/ui/widgets/table_sort.xu
 pub const TABLE_SORT_NUMBER = 1
 
 // Upstream: src/ui/widgets/table_sort.xu
 pub const TABLE_SORT_TEXT = 0
-
-// Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &ListBox) has_style() bool { << lb.custom.active }
-
-// Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &ListBox) item_visual_state(index int) int {
-    $state := 0
-    if lb.invalid { state = state | STATE_INVALID }
-    if lb.read_only { state = state | STATE_READ_ONLY }
-    if !lb.is_enabled() { state = state | STATE_DISABLED }
-    if index == lb.selected_val { state = state | STATE_SELECTED }
-    if index == lb.hovered_idx { state = state | STATE_HOVERED }
-    if !lb.read_only && index == lb.armed_idx && index == lb.hovered_idx { state = state | STATE_PRESSED }
-    << state
-}
-
-// Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &ListBox) style_or(styles &Styles) ControlStyle {
-    if lb.custom.active { << unpack_scalar_style(&lb.custom) }
-    << styles.list_box_style()
-}
-
-// Upstream: src/ui/widgets/controls_data.xu
-pub fn (lb &ListBox) visual_state() int {
-    $state := 0
-    if lb.invalid { state = state | STATE_INVALID }
-    if lb.read_only { state = state | STATE_READ_ONLY }
-    if !lb.is_enabled() { state = state | STATE_DISABLED }
-    if lb.hovered { state = state | STATE_HOVERED }
-    if lb.focused { state = state | STATE_FOCUSED }
-    << state
-}
 
 // Upstream: src/ui/widgets/appearance.xu
 pub fn (styles &Styles) table_style() ControlStyle {
@@ -282,31 +217,6 @@ pub fn (styles &Styles) table_style() ControlStyle {
     c.border_width = styles.input.border_width
     c.padding = layout.Insets{left: 8.0,top: 6.0,right: 8.0,bottom: 6.0}
     c.indicator_size = 36.0
-    << c
-}
-
-// Upstream: src/ui/widgets/appearance.xu
-pub fn (styles &Styles) tree_style() ControlStyle {
-    $c := styles.list_box_style()
-    c.border_width = 0.0
-    c.palette.normal = styles.background
-    c.padding = layout.Insets{left: 4.0,top: 4.0,right: 4.0,bottom: 4.0}
-    c.indicator_size = 32.0
-    c.align_x = 0.0
-    c.align_y = 0.5
-    c.radius = 6.0
-    c.states = []StatePaint{}
-    $selected := state_paint(STATE_SELECTED)
-    selected.unless = STATE_DISABLED
-    selected.fields = PAINT_BACKGROUND | PAINT_FOREGROUND
-    selected.background = mix_color(styles.background,c.palette.accent,0.14)
-    selected.foreground = c.palette.foreground
-    // A high-contrast palette already supplies a contrasting selection pair.
-    if c.palette.accent.value() == c.palette.focus.value() && c.palette.border.value() == c.palette.foreground.value() {
-        selected.background = c.palette.accent
-        selected.foreground = c.palette.on_accent
-    }
-    c.states = [selected]
     << c
 }
 

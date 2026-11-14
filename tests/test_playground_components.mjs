@@ -38,7 +38,7 @@ for (const [slug, events, output] of [
   ['split-button', click(100,108), 'Command: 1\n'],
   ['chart', click(300,220), 'Selected point: 2\n'],
   ['field', click(460,130), 'Field: empty (invalid)\n'],
-  ['tree-view', click(100,110), 'Selected node: src/widgets | Expanded: false\n'],
+  ['tree-view', click(45,96), 'Selected node: src/widgets | Expanded: false\n'],
   ['date-picker', [...click(100,110),...click(70,200)], 'Date: 2026-10-25\n'],
   ['time-picker', click(100,132), 'Time: 14:31:00\n'],
   ['tooltip', [...key(257),...key(256)], 'Tooltip: hidden\n'],

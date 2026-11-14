@@ -4,6 +4,7 @@
 #ui/layout
 #ui/widgets
 #playground
+#time
 
 fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
@@ -23,7 +24,12 @@ fn demo() int {
     styles := playground.light_styles()
     $btn := widgets.button(&identity,1,&box(48.0,96.0,200.0,44.0)) or >>
     $clear := widgets.button(&identity,2,&box(48.0,152.0,200.0,44.0)) or >>
-    $messages := ["Workspace saved 已保存","Syncing changes 同步中"]
+    $host := widgets.toast_host()
+    host.set_capacity(3) or >>
+    init1 := widgets.notice(&"Workspace saved 已保存")
+    init2 := widgets.notice(&"Syncing changes 同步中")
+    host.enqueue(&init1)
+    host.enqueue(&init2)
     $serial := 0
     $focus := widgets.focus_group(&identity,[1,2]) or >>
     while true {
@@ -38,11 +44,15 @@ fn demo() int {
         if act.request_focus { focus.focus(1) or >> }
         clear_action := clear.input(&event)
         if clear_action.request_focus { focus.focus(2) or >> }
-        if clear_action.kind == widgets.ACTION_ACTIVATE { messages = []string{} }
-        if act.kind == widgets.ACTION_ACTIVATE { serial += 1
-            value := "Notification 通知 "+str(serial)
-            if messages.len < 3 { messages.push(value) }
-            else { messages = [messages[1],messages[2],value] }
+        if clear_action.kind == widgets.ACTION_ACTIVATE {
+            host = widgets.toast_host()
+            host.set_capacity(3) or >>
+        }
+        if act.kind == widgets.ACTION_ACTIVATE {
+            serial += 1
+            value := "Notification 通知 " + str(serial)
+            n := widgets.notice(&value)
+            host.enqueue(&n)
         }
     }
     $frame := context.new_frame(16384)
@@ -56,14 +66,18 @@ fn demo() int {
     $clear_label := widgets.styled_label(&context,&"Clear all 清空")
     btn.paint_styled($&frame,$&label,&styles) or >>
     clear.paint_styled($&frame,$&clear_label,&styles) or >>
-    for i in 0:messages.len {
-        y := 96.0+f64(i)*56.0
-        frame.fill_rect(280.0,y,300.0,44.0,styles.input.palette.normal) or >>
-        frame.stroke_rect(280.0,y,300.0,44.0,styles.button.palette.border,1.0) or >>
-        demo_center_text($&frame,&context,296,y,44.0,13,styles.button.palette.foreground,messages[i]) or >>
+    count := host.pending_count()
+    for i in 0:count {
+        y := 96.0 + f64(i) * 56.0
+        rec := host.record_at(i)
+        t_bounds := box(280.0, y, 300.0, 44.0)
+        $t := widgets.toast(&identity, 10 + i, &t_bounds) or >>
+        t.show(time.zero_instant(), time.duration(0), true) or >>
+        $t_label := widgets.styled_label(&context, &rec.text)
+        t.paint_styled($&frame, $&t_label, &styles) or >>
     }
-    demo_text($&frame,&context,48,276,12,draw.rgb(109,98,110),"手动状态预览 · 桌面 SDK 提供计时与队列生命周期") or >>
-    message := "Active toasts: "+str(messages.len)
+    demo_text($&frame,&context,48,276,12,draw.rgb(109,98,110),"标准消息通知宿主 · 遵循 xu-ui-design") or >>
+    message := "Active toasts: "+str(host.pending_count())
     demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message+"") or >>
     println(message)
     frame.present() or >>
