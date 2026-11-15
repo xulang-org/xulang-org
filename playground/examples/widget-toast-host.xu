@@ -18,12 +18,31 @@ fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,heigh
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x:x,y:y,width:w,height:h}
 }
+fn remove_toast(host &widgets.ToastHost, index int) widgets.ToastHost {
+    $next_host := widgets.toast_host()
+    next_host.set_capacity(3) or >>
+    count := host.pending_count()
+    for j in 0:count {
+        if j != index {
+            rec := host.record_at(j)
+            n := widgets.notice(&rec.text)
+            next_host.enqueue(&n) or >>
+        }
+    }
+    << next_host
+}
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
     styles := playground.light_styles()
     $btn := widgets.button(&identity,1,&box(48.0,96.0,200.0,44.0)) or >>
     $clear := widgets.button(&identity,2,&box(48.0,152.0,200.0,44.0)) or >>
+    $t0 := widgets.toast(&identity, 10, &box(280.0, 96.0, 300.0, 44.0)) or >>
+    $t1 := widgets.toast(&identity, 11, &box(280.0, 152.0, 300.0, 44.0)) or >>
+    $t2 := widgets.toast(&identity, 12, &box(280.0, 208.0, 300.0, 44.0)) or >>
+    t0.show(time.zero_instant(), time.duration(0), true) or >>
+    t1.show(time.zero_instant(), time.duration(0), true) or >>
+    t2.show(time.zero_instant(), time.duration(0), true) or >>
     $host := widgets.toast_host()
     host.set_capacity(3) or >>
     init1 := widgets.notice(&"Workspace saved 已保存")
@@ -49,10 +68,44 @@ fn demo() int {
             host.set_capacity(3) or >>
         }
         if act.kind == widgets.ACTION_ACTIVATE {
+            if host.pending_count() >= 3 {
+                host = remove_toast(&host, 0)
+            }
             serial += 1
             value := "Notification 通知 " + str(serial)
             n := widgets.notice(&value)
             host.enqueue(&n)
+            t0.show(time.zero_instant(), time.duration(0), true) or >>
+            t1.show(time.zero_instant(), time.duration(0), true) or >>
+            t2.show(time.zero_instant(), time.duration(0), true) or >>
+        }
+        count := host.pending_count()
+        if count > 0 {
+            a0 := t0.input(&event)
+            if a0.kind == widgets.ACTION_CHANGE {
+                host = remove_toast(&host, 0)
+                t0.show(time.zero_instant(), time.duration(0), true) or >>
+                t1.show(time.zero_instant(), time.duration(0), true) or >>
+                t2.show(time.zero_instant(), time.duration(0), true) or >>
+            }
+        }
+        if count > 1 {
+            a1 := t1.input(&event)
+            if a1.kind == widgets.ACTION_CHANGE {
+                host = remove_toast(&host, 1)
+                t0.show(time.zero_instant(), time.duration(0), true) or >>
+                t1.show(time.zero_instant(), time.duration(0), true) or >>
+                t2.show(time.zero_instant(), time.duration(0), true) or >>
+            }
+        }
+        if count > 2 {
+            a2 := t2.input(&event)
+            if a2.kind == widgets.ACTION_CHANGE {
+                host = remove_toast(&host, 2)
+                t0.show(time.zero_instant(), time.duration(0), true) or >>
+                t1.show(time.zero_instant(), time.duration(0), true) or >>
+                t2.show(time.zero_instant(), time.duration(0), true) or >>
+            }
         }
     }
     $frame := context.new_frame(16384)
@@ -67,14 +120,20 @@ fn demo() int {
     btn.paint_styled($&frame,$&label,&styles) or >>
     clear.paint_styled($&frame,$&clear_label,&styles) or >>
     count := host.pending_count()
-    for i in 0:count {
-        y := 96.0 + f64(i) * 56.0
-        rec := host.record_at(i)
-        t_bounds := box(280.0, y, 300.0, 44.0)
-        $t := widgets.toast(&identity, 10 + i, &t_bounds) or >>
-        t.show(time.zero_instant(), time.duration(0), true) or >>
-        $t_label := widgets.styled_label(&context, &rec.text)
-        t.paint_styled($&frame, $&t_label, &styles) or >>
+    if count > 0 {
+        r0 := host.record_at(0)
+        $tl0 := widgets.styled_label(&context, &r0.text)
+        t0.paint_styled($&frame, $&tl0, &styles) or >>
+    }
+    if count > 1 {
+        r1 := host.record_at(1)
+        $tl1 := widgets.styled_label(&context, &r1.text)
+        t1.paint_styled($&frame, $&tl1, &styles) or >>
+    }
+    if count > 2 {
+        r2 := host.record_at(2)
+        $tl2 := widgets.styled_label(&context, &r2.text)
+        t2.paint_styled($&frame, $&tl2, &styles) or >>
     }
     demo_text($&frame,&context,48,276,12,draw.rgb(109,98,110),"标准消息通知宿主 · 遵循 xu-ui-design") or >>
     message := "Active toasts: "+str(host.pending_count())

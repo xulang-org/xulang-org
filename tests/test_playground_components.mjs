@@ -127,3 +127,12 @@ test('clicking the table header sorts the actual Xu rows numerically', async () 
   const labels = Array.from(canvas.XuPlayCanvas.frame(result.ui.commands)).filter(c => c.op === 'layout_text').map(c => c.args.at(-1));
   assert.deepEqual(labels.filter(label => ['Design','Develop','Review'].includes(label)), ['Review','Develop','Design']);
 });
+
+test('closing notification toasts via close button updates active toast count', async () => {
+  const runtime = await createRuntime(module);
+  const toast = projects['widget-toast-host'].files['main.xu'];
+  assert.equal(runtime.run(toast, {}).stdout, 'Active toasts: 2\n');
+  assert.equal(runtime.run(toast, {events: click(564, 118)}).stdout, 'Active toasts: 1\n');
+  assert.equal(runtime.run(toast, {events: [...click(564, 118), ...click(564, 118)]}).stdout, 'Active toasts: 0\n');
+});
+

@@ -18,8 +18,9 @@ fn demo() int {
 '''
 
 
-def experience(name, description, setup, events, paint, message, ids='[1]', navigation=''):
-    return PREFIX + setup + f'''    $focus := widgets.focus_group(&identity,{ids}) or >>
+def experience(name, description, setup, events, paint, message, ids='[1]', navigation='', helpers=''):
+    prefix = PREFIX.replace('fn demo() int {\n', helpers + 'fn demo() int {\n') if helpers else PREFIX
+    return prefix + setup + f'''    $focus := widgets.focus_group(&identity,{ids}) or >>
     while true {{
         event := playground.next_input()
         if event.kind == 0 {{ <- }}
@@ -240,8 +241,29 @@ TOOLTIP = experience('Tooltip', '点击或键盘聚焦显示提示；Escape 关�
 ''')
 
 
-TOAST = experience('ToastHost', '新增通知与清空；最多显示三条，满时替换最早一条。', '''    $btn := widgets.button(&identity,1,&box(48.0,96.0,200.0,44.0)) or >>
+TOAST_HELPERS = '''fn remove_toast(host &widgets.ToastHost, index int) widgets.ToastHost {
+    $next_host := widgets.toast_host()
+    next_host.set_capacity(3) or >>
+    count := host.pending_count()
+    for j in 0:count {
+        if j != index {
+            rec := host.record_at(j)
+            n := widgets.notice(&rec.text)
+            next_host.enqueue(&n) or >>
+        }
+    }
+    << next_host
+}
+'''
+
+TOAST_SETUP = '''    $btn := widgets.button(&identity,1,&box(48.0,96.0,200.0,44.0)) or >>
     $clear := widgets.button(&identity,2,&box(48.0,152.0,200.0,44.0)) or >>
+    $t0 := widgets.toast(&identity, 10, &box(280.0, 96.0, 300.0, 44.0)) or >>
+    $t1 := widgets.toast(&identity, 11, &box(280.0, 152.0, 300.0, 44.0)) or >>
+    $t2 := widgets.toast(&identity, 12, &box(280.0, 208.0, 300.0, 44.0)) or >>
+    t0.show(time.zero_instant(), time.duration(0), true) or >>
+    t1.show(time.zero_instant(), time.duration(0), true) or >>
+    t2.show(time.zero_instant(), time.duration(0), true) or >>
     $host := widgets.toast_host()
     host.set_capacity(3) or >>
     init1 := widgets.notice(&"Workspace saved 已保存")
@@ -249,34 +271,84 @@ TOAST = experience('ToastHost', '新增通知与清空；最多显示三条，�
     host.enqueue(&init1)
     host.enqueue(&init2)
     $serial := 0
-''', '''        clear_action := clear.input(&event)
+'''
+
+TOAST_EVENTS = '''        clear_action := clear.input(&event)
         if clear_action.request_focus { focus.focus(2) or >> }
         if clear_action.kind == widgets.ACTION_ACTIVATE {
             host = widgets.toast_host()
             host.set_capacity(3) or >>
         }
         if act.kind == widgets.ACTION_ACTIVATE {
+            if host.pending_count() >= 3 {
+                host = remove_toast(&host, 0)
+            }
             serial += 1
             value := "Notification 通知 " + str(serial)
             n := widgets.notice(&value)
             host.enqueue(&n)
+            t0.show(time.zero_instant(), time.duration(0), true) or >>
+            t1.show(time.zero_instant(), time.duration(0), true) or >>
+            t2.show(time.zero_instant(), time.duration(0), true) or >>
         }
-''', '''    $label := widgets.styled_label(&context,&"Enqueue notification")
+        count := host.pending_count()
+        if count > 0 {
+            a0 := t0.input(&event)
+            if a0.kind == widgets.ACTION_CHANGE {
+                host = remove_toast(&host, 0)
+                t0.show(time.zero_instant(), time.duration(0), true) or >>
+                t1.show(time.zero_instant(), time.duration(0), true) or >>
+                t2.show(time.zero_instant(), time.duration(0), true) or >>
+            }
+        }
+        if count > 1 {
+            a1 := t1.input(&event)
+            if a1.kind == widgets.ACTION_CHANGE {
+                host = remove_toast(&host, 1)
+                t0.show(time.zero_instant(), time.duration(0), true) or >>
+                t1.show(time.zero_instant(), time.duration(0), true) or >>
+                t2.show(time.zero_instant(), time.duration(0), true) or >>
+            }
+        }
+        if count > 2 {
+            a2 := t2.input(&event)
+            if a2.kind == widgets.ACTION_CHANGE {
+                host = remove_toast(&host, 2)
+                t0.show(time.zero_instant(), time.duration(0), true) or >>
+                t1.show(time.zero_instant(), time.duration(0), true) or >>
+                t2.show(time.zero_instant(), time.duration(0), true) or >>
+            }
+        }
+'''
+
+TOAST_PAINT = '''    $label := widgets.styled_label(&context,&"Enqueue notification")
     $clear_label := widgets.styled_label(&context,&"Clear all 清空")
     btn.paint_styled($&frame,$&label,&styles) or >>
     clear.paint_styled($&frame,$&clear_label,&styles) or >>
     count := host.pending_count()
-    for i in 0:count {
-        y := 96.0 + f64(i) * 56.0
-        rec := host.record_at(i)
-        t_bounds := box(280.0, y, 300.0, 44.0)
-        $t := widgets.toast(&identity, 10 + i, &t_bounds) or >>
-        t.show(time.zero_instant(), time.duration(0), true) or >>
-        $t_label := widgets.styled_label(&context, &rec.text)
-        t.paint_styled($&frame, $&t_label, &styles) or >>
+    if count > 0 {
+        r0 := host.record_at(0)
+        $tl0 := widgets.styled_label(&context, &r0.text)
+        t0.paint_styled($&frame, $&tl0, &styles) or >>
+    }
+    if count > 1 {
+        r1 := host.record_at(1)
+        $tl1 := widgets.styled_label(&context, &r1.text)
+        t1.paint_styled($&frame, $&tl1, &styles) or >>
+    }
+    if count > 2 {
+        r2 := host.record_at(2)
+        $tl2 := widgets.styled_label(&context, &r2.text)
+        t2.paint_styled($&frame, $&tl2, &styles) or >>
     }
     draw.text(48,276,12,"#6d626e","标准消息通知宿主 · 遵循 xu-ui-design")
-''', '"Active toasts: "+str(host.pending_count())', '[1,2]', '        clear.set_focus(focus.current() == 2)\n')
+'''
+
+TOAST = experience('ToastHost', '新增通知与清空；最多显示三条，满时替换最早一条。',
+                   TOAST_SETUP, TOAST_EVENTS, TOAST_PAINT,
+                   '"Active toasts: "+str(host.pending_count())',
+                   '[1,2]', '        clear.set_focus(focus.current() == 2)\n',
+                   helpers=TOAST_HELPERS)
 
 
 WEB = experience('WebView', '静态子视图示意；原生网页加载、导航请在桌面 SDK 运行。', '''    $btn := widgets.button(&identity,1,&box(424.0,88.0,156.0,44.0)) or >>
