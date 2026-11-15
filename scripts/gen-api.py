@@ -2209,6 +2209,7 @@ BLURB_ZH = {
     "testing/fstest": "内存 MapFS 与一致性检查。",
     "ui": "窗口/菜单/托盘。host 未接时 run 会报 host not available。",
     "ui/draw": "立即模式 2D 画布。",
+    "ui/phone": "移动端安全区、触摸、路由、控件和原生输入法交互。",
     "ui/webview": "把 webview 挂到 ui.Window：load_html/url、eval、on/emit。",
 }
 
@@ -2326,6 +2327,7 @@ BLURB_EN = {
     "testing/fstest": "In-memory MapFS and a consistency check.",
     "ui": "Windows, menus, tray. run reports host not available when the host is not wired.",
     "ui/draw": "Immediate-mode 2D canvas.",
+    "ui/phone": "Mobile safe areas, touch, routing, controls, and native IME integration.",
     "ui/webview": "Attach a webview to ui.Window: load_html/url, eval, on/emit.",
 }
 

@@ -1,0 +1,23 @@
+<!--title: 移动应用-->
+<h1>用 Xu 构建移动应用</h1>
+<p>Xu {{xu_version}} 可生成 iOS 真机、iOS 模拟器和 Android 的 ARM64 应用项目。编译器输出原生应用目标文件，生成目录同时包含平台宿主、本地 Canvas 渲染器和构建脚本。</p>
+
+<h2 id="generate">生成项目</h2>
+<p>安装包含 <code>xu-phone</code> 的<a href="/download">完整 SDK</a>。输入目录必须包含 <code>xu.xun</code>。在 <a href="https://github.com/xulang-org/xu/tree/v0.12.4">Xu 0.12.4 源码树</a>根目录运行以下命令，每次选用一个尚不存在的输出目录。</p>
+<pre><code class="language-shell">xu build examples/phone_gallery --phone --target ios-simulator-arm64 --bundle-id org.example.gallery -o build/gallery-sim
+xu build examples/phone_gallery --phone --target ios-arm64 --bundle-id org.example.gallery -o build/gallery-ios
+xu build examples/phone_gallery --phone --target android-arm64 --bundle-id org.example.gallery -o build/gallery-android</code></pre>
+<p>输出包含宿主源码和已编译的目标文件。修改 Xu 源码后，先重新生成项目，再运行平台构建脚本。</p>
+<p>如果同时安装了多个 SDK，请确认 <code>xu --version</code> 显示 0.12.4，并将环境中的 <code>XU_ROOT</code>、<code>XU_STDLIB_ROOT</code> 指向同一套 SDK。</p>
+
+<h2 id="platform-tools">用平台工具链构建</h2>
+<ul>
+  <li><strong>iOS 模拟器。</strong>在装有 Xcode 的 macOS 上运行 <code>bash build/gallery-sim/build.sh</code>。启动 ARM64 模拟器后，运行 <code>xcrun simctl install booted build/gallery-sim/build/XuPhone.app</code>。宿主要求 iOS 16.4 或更新版本。</li>
+  <li><strong>iOS 真机。</strong>使用生成的真机项目，并为构建脚本设置 <code>CODE_SIGN_IDENTITY</code>、<code>PROVISIONING_PROFILE</code> 和 <code>CODE_SIGN_ENTITLEMENTS</code>，分别提供匹配的签名身份、描述文件和权限配置。</li>
+  <li><strong>Android。</strong>设置 <code>ANDROID_HOME</code> 和 <code>JAVA_HOME</code> 后运行 <code>bash build/gallery-android/build.sh</code>。需要 JDK 17 或更新版本，以及 Android SDK 的 <code>platforms;android-35</code>、<code>build-tools;35.0.0</code>、<code>ndk;27.2.12479018</code> 和 <code>cmake;3.22.1</code>。脚本生成 <code>build/gallery-android/build/XuPhone-debug.apk</code>，最低支持 Android API 26。</li>
+</ul>
+
+<h2 id="ui">绘制界面与处理输入</h2>
+<p>创建一个根 <code>ui.Window</code>，挂接 <code>#ui/draw</code>，收到 <code>EV_CANVAS_READY</code> 后录制完整帧。平台宿主在本地系统 WebView Canvas 绘制帧，应用逻辑以原生 ARM64 代码运行。</p>
+<p>读取 <code>phone.host_insets()</code>，并将结果传入 <code>phone.scaffold_with</code>，避免控件被系统安全区和键盘遮挡。移动组件库还提供路由、滚动与下拉刷新、系统输入法文本编辑、触觉反馈及剪贴板集成。详见 <a href="/api/ui/phone"><code>#ui/phone</code> API</a> 和<a href="https://github.com/xulang-org/xu/tree/v0.12.4/examples/phone_gallery">界面示例</a>。</p>
+<p>移动宿主使用单窗口，桌面菜单和对话框、嵌入式 WebView 控件、离屏表面及逐控件无障碍语义超出当前范围。发布验证覆盖项目生成和 ARM64 目标文件格式，真机和应用商店验收需另行测试。<a href="https://github.com/xulang-org/xu/blob/v0.12.4/src/ui/host/phone/README.md">宿主要求与限制</a></p>
