@@ -12,27 +12,6 @@
 #unicode/utf8
 #ui/internal/codec
 
-// Upstream: src/ui/widgets/popover_content.xu
-fn (placement &OverlayPlacement) validate() int {
-    if placement.side < 0 || placement.side > 3 || placement.align < 0 || placement.align > 2 || !finite_metric(placement.gap,128.0) || math.is_nan(placement.offset) || math.is_inf(placement.offset) || math.abs(placement.offset) > 4096.0 { >> errors.new("widgets: invalid overlay placement") }
-    << 0
-}
-
-// Upstream: src/ui/widgets/popover_content.xu
-pub const OVERLAY_CENTER = 1
-
-// Upstream: src/ui/widgets/popover_content.xu
-pub const OVERLAY_END = 2
-
-// Upstream: src/ui/widgets/popover_content.xu
-pub const OVERLAY_LEFT = 2
-
-// Upstream: src/ui/widgets/popover_content.xu
-pub const OVERLAY_RIGHT = 3
-
-// Upstream: src/ui/widgets/popover_content.xu
-pub const OVERLAY_TOP = 1
-
 // Upstream: src/ui/widgets/overlays.xu
 pub fn (p $&Popover) input(event &ui.InputEvent) Action {
     if !belongs(&p.identity,event) || !p.is_open() { << no_action(p.id_val,p.dirty) }
@@ -49,17 +28,6 @@ pub fn (p $&Popover) input(event &ui.InputEvent) Action {
 }
 
 // Upstream: src/ui/widgets/overlays.xu
-pub fn (p $&Popover) set_geometry(anchor &layout.Rect,size &layout.Size,viewport &layout.Rect) int {
-    next := placed_overlay_bounds(anchor,size,viewport,&p.placement) or >>
-    if next.x != p.panel.x || next.y != p.panel.y || next.width != p.panel.width || next.height != p.panel.height { p.dirty = true }
-    p.anchor = copy_rect(anchor)
-    p.extent = layout.Size{width: size.width,height: size.height}
-    p.viewport = copy_rect(viewport)
-    p.panel = next
-    << 0
-}
-
-// Upstream: src/ui/widgets/overlays.xu
 pub fn (p $&Popover) set_style(style &ControlStyle) int {
     style.validate() or >>
     p.custom = pack_scalar_style(style)
@@ -70,49 +38,4 @@ pub fn (p $&Popover) set_style(style &ControlStyle) int {
 // Upstream: src/ui/widgets/popover_content.xu
 pub fn (panel $&Popover) set_dismissal(outside bool,escape bool) { panel.close_outside = outside
     panel.close_escape = escape }
-
-// Upstream: src/ui/widgets/popover_content.xu
-pub fn (panel $&Popover) set_placement(placement &OverlayPlacement) int {
-    placement.validate() or >>
-    panel.placement = OverlayPlacement{side: placement.side,align: placement.align,gap: placement.gap,offset: placement.offset,flip: placement.flip}
-    anchor := panel.anchor
-    size := panel.extent
-    viewport := panel.viewport
-    << panel.set_geometry(&anchor,&size,&viewport) or >>
-}
-
-// Upstream: src/ui/widgets/popover_content.xu
-pub fn placed_overlay_bounds(anchor &layout.Rect,size &layout.Size,viewport &layout.Rect,placement &OverlayPlacement) layout.Rect {
-    placement.validate() or >>
-    validate_bounds(anchor) or >>
-    validate_bounds(viewport) or >>
-    validate_bounds(&layout.Rect{x: 0.0,y: 0.0,width: size.width,height: size.height}) or >>
-    width := math.min(size.width,viewport.width)
-    height := math.min(size.height,viewport.height)
-    $side := placement.side
-    gap := placement.gap
-    below := viewport.y + viewport.height - anchor.y - anchor.height - gap
-    above := anchor.y - gap - viewport.y
-    left := anchor.x - gap - viewport.x
-    right := viewport.x + viewport.width - anchor.x - anchor.width - gap
-    if placement.flip {
-        if side == OVERLAY_BOTTOM && height > below && above > below { side = OVERLAY_TOP }
-        else if side == OVERLAY_TOP && height > above && below > above { side = OVERLAY_BOTTOM }
-        else if side == OVERLAY_LEFT && width > left && right > left { side = OVERLAY_RIGHT }
-        else if side == OVERLAY_RIGHT && width > right && left > right { side = OVERLAY_LEFT }
-    }
-    $align := 0.0
-    if placement.align == OVERLAY_CENTER { align = 0.5 }
-    if placement.align == OVERLAY_END { align = 1.0 }
-    $x := anchor.x + (anchor.width - width) * align + placement.offset
-    $y := anchor.y + anchor.height + gap
-    if side == OVERLAY_TOP { y = anchor.y - height - gap }
-    if side == OVERLAY_LEFT || side == OVERLAY_RIGHT {
-        y = anchor.y + (anchor.height - height) * align + placement.offset
-        x = anchor.x - width - gap
-        if side == OVERLAY_RIGHT { x = anchor.x + anchor.width + gap }
-    }
-    << layout.Rect{x: math.max(viewport.x,math.min(x,viewport.x + viewport.width - width)),
-        y: math.max(viewport.y,math.min(y,viewport.y + viewport.height - height)),width: width,height: height}
-}
 

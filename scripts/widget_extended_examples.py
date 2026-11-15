@@ -699,6 +699,7 @@ fn main() int {
 #ui/layout
 #ui/widgets
 #playground
+#time
 
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
@@ -706,10 +707,10 @@ fn box(x f64,y f64,w f64,h f64) layout.Rect {
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,114.0,220.0,44.0)
-    $control := widgets.button(&identity,1,&bounds) or >>
+    label_text := "Build project 构建"
+    $control := widgets.task_button(&context,&identity,1,&bounds,&label_text) or >>
     $running := false
     $focus := widgets.focus_group(&identity,[1]) or >>
     while true {
@@ -720,28 +721,31 @@ fn demo() int {
         if nav.consumed { -> }
         act := control.input(&event)
         if act.request_focus { focus.focus(1) or >> }
-        if act.kind == widgets.ACTION_ACTIVATE { running = !running }
+        if act.kind == widgets.ACTION_ACTIVATE {
+            running = !running
+            if running {
+                control.begin(1,time.zero_instant()) or >>
+                control.set_progress(1,0.45)
+            } else {
+                control.reset() or >>
+            }
+        }
     }
-    $text_val := "Build project 构建"
-    if running {
-        text_val = "Building (45%)…"
-    }
-    $label := widgets.styled_label(&context,&text_val)
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  TaskButton")
-    draw.text(32,48,12,"#6d626e","任务状态预览；点击切换空闲与运行状态。")
-    control.paint_styled($&frame,$&label,&styles) or >>
+    draw.text(32,48,12,"#6d626e","任务按钮：支持空闲、运行中进度动画与完成反馈。")
+    control.paint_styled($&frame,&styles) or >>
     $sub_val := "点击预览运行状态，再次点击恢复空闲"
     if running {
-        sub_val = "运行状态示意 · 桌面 SDK 提供异步任务"
+        sub_val = "任务执行中 (45%) · 桌面 SDK 提供异步任务调度"
     }
     draw.text(48,180,14,"#6d626e",sub_val)
     $message := "Task: idle"
-    if running {
+    if control.is_running() {
         message = "Task: running"
     }
     draw.text(32,326,13,"#6d626e",message + "")
@@ -774,11 +778,12 @@ fn box(x f64,y f64,w f64,h f64) layout.Rect {
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
-    theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,210.0,160.0,42.0)
     $btn := widgets.button(&identity,1,&bounds) or >>
     $lbl := widgets.styled_label(&context,&"Stop 停止")
+    spinner_bounds := box(52.0,104.0,36.0,36.0)
+    $spin := widgets.spinner(&spinner_bounds) or >>
     $focus := widgets.focus_group(&identity,[1]) or >>
     $running := true
     while true {
@@ -789,7 +794,10 @@ fn demo() int {
         if nav.consumed { -> }
         act := btn.input(&event)
         if act.request_focus { focus.focus(1) or >> }
-        if act.kind == widgets.ACTION_ACTIVATE { running = !running }
+        if act.kind == widgets.ACTION_ACTIVATE {
+            running = !running
+            spin.set_running(running)
+        }
     }
     $frame := context.new_frame(8192)
     frame.begin() or >>
@@ -797,16 +805,12 @@ fn demo() int {
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  Spinner")
-    draw.text(32,48,12,"#6d626e","浏览器减少动效预览；点击按钮停止或恢复反馈。")
-    if running {
-        frame.set_fill(draw.rgba(0,0,0,0)) or >>
-        frame.set_stroke(draw.rgb(190,18,60),3.0) or >>
-        frame.circle(70.0,122.0,18.0) or >>
-    }
+    draw.text(32,48,12,"#6d626e","加载指示器：展示任务进行中的旋转圆点动效。")
+    spin.paint_styled($&frame,&styles) or >>
     if !running { lbl = widgets.styled_label(&context,&"Start 开始") }
     draw.text(104,114,16,"#282329","Loading assets… 正在加载")
     btn.paint_styled($&frame,$&lbl,&styles) or >>
-    draw.text(48,172,12,"#6d626e","静态加载反馈 · 桌面 SDK 提供连续动画")
+    draw.text(48,172,12,"#6d626e","标准组件加载指示器 · 遵循 xu-ui-design")
     $message := "Spinner: running (period: 900ms)"
     if !running { message = "Spinner: stopped" }
     draw.text(32,326,13,"#6d626e",message + "")

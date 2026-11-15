@@ -23,6 +23,13 @@ FAMILIES = {
     'popover': ('Popover popover overlay_placement', ['overlays.xu', 'popover_content.xu'], ('Popover',)),
     'modal': ('Modal modal', ['overlays.xu'], ('Modal',)),
     'chart': ('Chart chart chart_point chart_series chart_domain CHART_BAR', ['chart.xu', 'chart_data.xu', 'chart_input.xu', 'chart_paint.xu'], ()),
+    'tree_view': ('TreeView tree_view tree_appearance TREE_ICON_AUTO TREE_ICON_NONE TREE_ICON_FOLDER TREE_ICON_FILE', ['tree_view.xu', 'tree_appearance.xu', 'text_cache.xu'], ('TreeView',)),
+    'spinner': ('Spinner spinner', ['spinner.xu'], ('Spinner',)),
+    'task_button': ('TaskButton task_button TASK_IDLE TASK_RUNNING TASK_SUCCESS TASK_ERROR TASK_CANCELLED', ['task_button.xu', 'task_feedback.xu', 'spinner.xu'], ('TaskButton',)),
+    'tooltip': ('Tooltip tooltip', ['tooltip.xu', 'tooltip_layers.xu', 'overlays.xu', 'popover_content.xu'], ('Tooltip',)),
+    'toast': ('Toast toast ToastHost toast_host notice NOTICE_NORMAL NOTICE_IMPORTANT', ['toast.xu', 'toast_host.xu', 'notice_appearance.xu'], ('Toast', 'ToastHost')),
+    'date_picker': ('DatePicker date_picker', ['date_picker.xu', 'text_cache.xu'], ('DatePicker',)),
+    'time_picker': ('TimePicker time_picker', ['time_picker.xu', 'text_cache.xu'], ('TimePicker',)),
 }
 
 
@@ -40,7 +47,8 @@ def identity(sig):
 
 def portable(sig):
     if sig.startswith('fn screen_controls_pop('): return True
-    return not any(x in sig for x in ('Screen', 'Host)', 'NativeView', ') event(', 'screen_', 'ui.Event'))
+    if re.search(r'\bHost\)', sig): return False
+    return not any(x in sig for x in ('Screen', 'NativeView', ') event(', 'screen_', 'ui.Event'))
 
 
 def extensions(xu, base, declarations):
@@ -93,6 +101,13 @@ def extensions(xu, base, declarations):
             if family == 'popover': roots.update(('set_placement','set_geometry','set_style','bounds','set_dismissal'))
             if family == 'modal': roots.update(('set_focus_order','set_content_focus','focused_id','take_restore_focus','allows_content','blocks_input','bounds','set_dismiss_on_outside'))
             if family == 'multi_select': roots.add('paint_popup_styled')
+            if family == 'tree_view': roots.update(('add', 'set_expanded', 'is_expanded', 'set_selected', 'set_appearance', 'text', 'count', 'visible_count', 'clear', 'set_metadata', 'set_icon', 'set_action', 'set_filter', 'is_animating', 'item_bounds', 'node_at', 'visible_index', 'rebuild', 'style_or', 'motion_style'))
+            if family == 'spinner': roots.update(('set_running', 'set_enabled', 'is_running', 'tick', 'next_tick', 'style_or', 'measure_styled'))
+            if family == 'task_button': roots.update(('begin', 'complete', 'reset', 'set_state', 'set_progress', 'set_determinate', 'set_cancellable', 'task_id', 'state', 'is_running', 'is_determinate', 'progress', 'cancel', 'tick', 'next_tick', 'style_or'))
+            if family == 'tooltip': roots.update(('set_delay', 'set_geometry', 'set_placement', 'set_focus', 'dismiss', 'is_open', 'is_visible', 'opacity', 'tick', 'next_tick', 'set_motion'))
+            if family == 'toast': roots.update(('enqueue', 'pending_count', 'set_capacity', 'pop_record', 'record_at', 'take', 'show', 'dismiss', 'is_open', 'is_visible', 'opacity', 'tick', 'next_tick', 'close_bounds', 'set_opened', 'open', 'close', 'notice', 'notice_record'))
+            if family == 'date_picker': roots.update(('apply_styles', 'set_value', 'set_range', 'set_open', 'set_popup_above', 'clear', 'set_clearable', 'set_today', 'has_value', 'paint_popup_styled', 'calendar_date', 'calendar_cell', 'popup_bounds'))
+            if family == 'time_picker': roots.update(('apply_styles', 'set_value', 'set_show_seconds', 'set_12_hour', 'part_bounds', 'period_bounds', 'selected_part'))
             if kind != 'fn' or name not in roots: continue
             chosen.add(key)
         while True:
@@ -159,7 +174,7 @@ def extensions(xu, base, declarations):
                 # A fluent call has no identifier receiver for resolve(), e.g.
                 # p.style_or(styles).with_opacity(...). Retain matching methods
                 # on the types already present in this family's dependency graph.
-                for name in re.findall(r'\)\s*\.\s*(\w+)\s*\(', body):
+                for name in re.findall(r'[)\]]\s*\.\s*(\w+)\s*\(', body):
                     for owner in (module, 'ui/widgets', 'time'):
                         chosen.update(k for k in methods.get((owner, name), []) if pool[k][3] in types[owner] and k not in base_keys)
             if len(chosen) == before: break
