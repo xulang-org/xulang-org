@@ -30,6 +30,7 @@ DOC_GROUPS = [
     ]),
     ('xi-terminal', '工具', 'Tools', [
         ('cli', '命令行', 'CLI'), ('ui', 'UI / WebView', 'UI / WebView'),
+        ('phone', '移动应用', 'Mobile apps'),
         ('vscode', 'VS Code', 'VS Code'), ('status', '限制与现状', 'Limitations'),
     ]),
 ]
@@ -46,7 +47,7 @@ _CURATED_API_GROUPS = [
     ('xi-package', '图形与窗口', 'Graphics & Window', 'gpu gpu/layout window window/events'.split()),
     ('xi-package', '扩展包', 'Extensions', ['packages/' + name for name in
         'cassandra chroma clickhouse consul dns elasticsearch etcd grpc influxdb kafka meilisearch memcached milvus mongodb mqtt mysql nacos nats neo4j postgres prometheus qdrant rabbitmq redis s3 smtp sqlite transport websocket zookeeper'.split()]),
-    ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/chart ui/widgets ui/webview'.split()),
+    ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/chart ui/phone ui/widgets ui/webview'.split()),
 ]
 
 
