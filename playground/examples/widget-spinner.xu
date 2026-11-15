@@ -4,6 +4,7 @@
 #ui/layout
 #ui/widgets
 #playground
+#time
 
 fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
@@ -28,6 +29,7 @@ fn demo() int {
     $spin := widgets.spinner(&spinner_bounds) or >>
     $focus := widgets.focus_group(&identity,[1]) or >>
     $running := true
+    $ticks := 0
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -39,6 +41,10 @@ fn demo() int {
         if act.kind == widgets.ACTION_ACTIVATE {
             running = !running
             spin.set_running(running)
+            ticks += 1
+            if running {
+                spin.tick(time.instant_from_ns(ticks * 112500000) or >>, false)
+            }
         }
     }
     $frame := context.new_frame(8192)

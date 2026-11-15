@@ -26,7 +26,6 @@ fn demo() int {
     btn.set_show_seconds(true)
     btn.apply_styles(&styles) or >>
     $mode := widgets.button(&identity,2,&box(320.0,110.0,120.0,44.0)) or >>
-    $minutes := 870
     $twelve := false
     $focus := widgets.focus_group(&identity,[1,2]) or >>
     while true {
@@ -45,26 +44,6 @@ fn demo() int {
             twelve = !twelve
             btn.set_12_hour(twelve)
         }
-        if (event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && btn.bounds().contains(event.x,event.y)) || act.kind == widgets.ACTION_ACTIVATE {
-            minutes = (minutes+1)%1440
-            h := minutes/60
-            m := minutes%60
-            btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
-        }
-        if event.kind == ui.EV_KEY_DOWN && focus.current() == 1 {
-            if event.key == ui.KEY_UP {
-                minutes = (minutes+1)%1440
-                h := minutes/60
-                m := minutes%60
-                btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
-            }
-            if event.key == ui.KEY_DOWN {
-                minutes = (minutes+1439)%1440
-                h := minutes/60
-                m := minutes%60
-                btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
-            }
-        }
     }
     $frame := context.new_frame(16384)
     frame.begin() or >>
@@ -73,26 +52,32 @@ fn demo() int {
     frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  TimePicker") or >>
     demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"标准时间拾取组件：支持分秒滚轮调整、12/24小时制切换。") or >>
-    hour := minutes/60
-    minute := minutes%60
-    $mm := str(minute)
-    if minute < 10 { mm = "0"+mm }
-    $hh := str(hour)
-    if hour < 10 { hh = "0"+hh }
-    stored := hh+":"+mm+":00"
+    t := btn.value()
+    h := t.hour()
+    m := t.minute()
+    s := t.second()
+    $mm := str(m)
+    if m < 10 { mm = "0"+mm }
+    $hh := str(h)
+    if h < 10 { hh = "0"+hh }
+    $ss := str(s)
+    if s < 10 { ss = "0"+ss }
+    stored := hh+":"+mm+":"+ss
     $display := stored+""
     $mode_text := "24-Hour"
-    if twelve { $h := hour%12
-        if h == 0 { h = 12 }
+    if twelve {
+        $h12 := h%12
+        if h12 == 0 { h12 = 12 }
         $suffix := " AM"
-        if hour >= 12 { suffix = " PM" }
-        display = str(h)+":"+mm+":00"+suffix
-        mode_text = "12-Hour" }
+        if h >= 12 { suffix = " PM" }
+        display = str(h12)+":"+mm+":"+ss+suffix
+        mode_text = "12-Hour"
+    }
     $mode_label := widgets.styled_label(&context,&mode_text)
     btn.paint_styled($&frame,&styles) or >>
     mode.paint_styled($&frame,$&mode_label,&styles) or >>
     demo_text($&frame,&context,48,180,14,draw.rgb(40,35,41),display) or >>
-    demo_text($&frame,&context,48,202,12,draw.rgb(109,98,110),"点击 / Enter 增加一分钟 · ↑ / ↓ 调整 · 存储为 24 小时") or >>
+    demo_text($&frame,&context,48,202,12,draw.rgb(109,98,110),"点击分段聚焦 · ↑ / ↓ 或右侧箭头调整 · 键盘直接输入数字") or >>
     message := "Time: "+stored
     demo_text($&frame,&context,32,326,13,draw.rgb(109,98,110),message+"") or >>
     println(message)

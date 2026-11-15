@@ -771,6 +771,7 @@ fn main() int {
 #ui/layout
 #ui/widgets
 #playground
+#time
 
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
@@ -786,6 +787,7 @@ fn demo() int {
     $spin := widgets.spinner(&spinner_bounds) or >>
     $focus := widgets.focus_group(&identity,[1]) or >>
     $running := true
+    $ticks := 0
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -797,6 +799,10 @@ fn demo() int {
         if act.kind == widgets.ACTION_ACTIVATE {
             running = !running
             spin.set_running(running)
+            ticks += 1
+            if running {
+                spin.tick(time.instant_from_ns(ticks * 112500000) or >>, false)
+            }
         }
     }
     $frame := context.new_frame(8192)

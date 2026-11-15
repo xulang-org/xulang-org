@@ -63,6 +63,38 @@
     });
     return committed;
   }
+  function findSpinner(display) {
+    var circles = [];
+    for (var i = 0; i < display.length; i++) {
+      var cmd = display[i];
+      if (cmd.op === 'circle') {
+        var prev = display[i - 1];
+        var fillColor = (cmd.args.length === 6 ? cmd.args[3] : (prev && prev.op === 'fill' ? prev.args[0] : null));
+        circles.push({x: cmd.args[0], y: cmd.args[1], r: cmd.args[2], fill: fillColor, index: i});
+      }
+    }
+    if (circles.length < 8) return null;
+    for (var j = 0; j <= circles.length - 8; j++) {
+      var group = circles.slice(j, j + 8);
+      var r = group[0].r;
+      var sameR = group.every(function (c) { return Math.abs(c.r - r) < 0.01; });
+      if (!sameR) continue;
+      var cx = group.reduce(function (sum, c) { return sum + c.x; }, 0) / 8;
+      var cy = group.reduce(function (sum, c) { return sum + c.y; }, 0) / 8;
+      var dists = group.map(function (c) { return Math.hypot(c.x - cx, c.y - cy); });
+      var avgDist = dists.reduce(function (sum, d) { return sum + d; }, 0) / 8;
+      var isCircle = avgDist > 5 && dists.every(function (d) { return Math.abs(d - avgDist) < 1.0; });
+      if (!isCircle) continue;
+      var fills = group.map(function (c) { return c.fill; });
+      var allSame = fills.every(function (f) { return f === fills[0]; });
+      return {
+        cx: cx, cy: cy, radius: avgDist, dotR: r,
+        colors: fills, running: !allSame,
+        firstIndex: group[0].index
+      };
+    }
+    return null;
+  }
   function render(canvas, commands) {
     var display = frame(commands);
     return draw(canvas, display);
@@ -70,6 +102,11 @@
   // Kept separate so the benchmark can time validation and Canvas calls.
   function draw(canvas, display) {
     if (!display) return false; // cancel or an unfinished frame never commits.
+    if (canvas && canvas.__xu_spinner_raf) {
+      var caf = (canvas.ownerDocument?.defaultView?.cancelAnimationFrame) || (typeof cancelAnimationFrame === 'function' ? cancelAnimationFrame : null);
+      if (caf) caf(canvas.__xu_spinner_raf);
+      canvas.__xu_spinner_raf = null;
+    }
     var ratio = Number(canvas.ownerDocument.defaultView?.devicePixelRatio) || 1;
     ratio = Math.max(1, Math.min(3, ratio));
     var staging = canvas.ownerDocument.createElement('canvas');
@@ -88,7 +125,16 @@
       if (fill !== '-') { ctx.fillStyle = fill; ctx.fill(); }
       if (stroke !== '-') { ctx.strokeStyle = stroke; ctx.lineWidth = width; ctx.stroke(); }
     }
-    display.forEach(function (command) {
+    var spin = findSpinner(display);
+    var bgData = null, sx = 0, sy = 0;
+    display.forEach(function (command, cmdIndex) {
+      if (spin && spin.running && !bgData && cmdIndex === spin.firstIndex) {
+        sx = Math.max(0, Math.floor((spin.cx - spin.radius - spin.dotR - 2) * ratio));
+        sy = Math.max(0, Math.floor((spin.cy - spin.radius - spin.dotR - 2) * ratio));
+        var sw = Math.ceil((spin.radius + spin.dotR + 2) * 2 * ratio);
+        var sh = sw;
+        try { bgData = ctx.getImageData(sx, sy, sw, sh); } catch (e) {}
+      }
       var a = command.args, op = command.op;
       if (op === 'bgcolor') {
         ctx.save(); origin(); ctx.fillStyle = a[0] === '-' ? '#ffffff' : a[0]; ctx.fillRect(0, 0, WIDTH, HEIGHT); ctx.restore();
@@ -173,6 +219,31 @@
     target.imageSmoothingEnabled = true;
     target.imageSmoothingQuality = 'high';
     target.drawImage(staging, 0, 0);
+    var raf = (canvas.ownerDocument?.defaultView?.requestAnimationFrame) || (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null);
+    if (spin && spin.running && bgData && raf) {
+      var perf = (canvas.ownerDocument?.defaultView?.performance) || (typeof performance !== 'undefined' ? performance : null);
+      var getTime = perf && perf.now ? perf.now.bind(perf) : Date.now;
+      var t0 = getTime();
+      function loop(now) {
+        var elapsed = (typeof now === 'number' ? now : getTime()) - t0;
+        var angle = ((elapsed % 900) / 900) * 2 * Math.PI;
+        try { target.putImageData(bgData, sx, sy); } catch (e) {}
+        target.save();
+        target.setTransform(ratio, 0, 0, ratio, 0, 0);
+        for (var k = 0; k < 8; k++) {
+          var a = (k / 8.0) * 2 * Math.PI + angle;
+          var x = spin.cx + Math.cos(a) * spin.radius;
+          var y = spin.cy + Math.sin(a) * spin.radius;
+          target.beginPath();
+          target.arc(x, y, spin.dotR, 0, 2 * Math.PI);
+          target.fillStyle = spin.colors[k];
+          target.fill();
+        }
+        target.restore();
+        canvas.__xu_spinner_raf = raf(loop);
+      }
+      canvas.__xu_spinner_raf = raf(loop);
+    }
     return true;
   }
   function measureText(text, size, font) {

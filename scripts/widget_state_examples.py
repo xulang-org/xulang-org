@@ -111,130 +111,94 @@ fn main() int {
 DATE_SETUP = '''    $btn := widgets.date_picker(&context,&identity,1,&box(48.0,88.0,220.0,44.0),time.date(2026,10,31,0,0,0,0)) or >>
     btn.set_clearable(true)
     btn.apply_styles(&styles) or >>
-    $reset := widgets.button(&identity,9,&box(48.0,240.0,120.0,44.0)) or >>
-    $clear := widgets.button(&identity,10,&box(180.0,240.0,120.0,44.0)) or >>
-    $days := []widgets.Button{}
-    for i in 0:7 { days.push(widgets.button(&identity,i+2,&box(48.0+f64(i)*56.0,180.0,48.0,44.0)) or >>) }
+    $reset := widgets.button(&identity,2,&box(288.0,88.0,120.0,44.0)) or >>
+    $clear := widgets.button(&identity,3,&box(424.0,88.0,120.0,44.0)) or >>
     $opened := false
-    $day := 31
 '''
 DATE_EVENTS = '''        if act.kind == widgets.ACTION_ACTIVATE {
             opened = !opened
             btn.set_open(opened)
-            if opened { focus = widgets.focus_group(&identity,[1,2,3,4,5,6,7,8,9,10]) or >> }
-            else { focus = widgets.focus_group(&identity,[1,9,10]) or >> }
-            focus.focus(1) or >>
+        }
+        if act.kind == widgets.ACTION_CHANGE {
+            opened = btn.is_open()
         }
         reset_action := reset.input(&event)
         clear_action := clear.input(&event)
-        if reset_action.request_focus { focus.focus(9) or >> }
-        if clear_action.request_focus { focus.focus(10) or >> }
+        if reset_action.request_focus { focus.focus(2) or >> }
+        if clear_action.request_focus { focus.focus(3) or >> }
         if reset_action.kind == widgets.ACTION_ACTIVATE {
-            day = 31
             btn.set_value(time.date(2026,10,31,0,0,0,0)) or >>
         }
         if clear_action.kind == widgets.ACTION_ACTIVATE {
-            day = 0
             btn.clear() or >>
         }
-        if opened {
-            for i in 0:7 {
-                item := $&days[i]
-                item.set_focus(focus.current() == i+2)
-                choice := item.input(&event)
-                if choice.request_focus { focus.focus(i+2) or >> }
-                if choice.kind == widgets.ACTION_ACTIVATE {
-                    day = 25+i
-                    btn.set_value(time.date(2026,10,day,0,0,0,0)) or >>
-                }
-            }
-            if event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_ESCAPE {
-                opened = false
-                btn.set_open(false)
-                focus = widgets.focus_group(&identity,[1,9,10]) or >>
-                focus.focus(1) or >>
-            }
+        if opened && event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_ESCAPE {
+            opened = false
+            btn.set_open(false)
+            focus.focus(1) or >>
         }
 '''
 DATE_PAINT = '''    $value := "Choose date 选择日期"
-    if day > 0 { value = "2026-10-"+str(day) }
+    if btn.has_value() { value = btn.display_text() or >> }
     btn.paint_styled($&frame,&styles) or >>
-    if opened {
-        btn.paint_popup_styled($&frame,&styles) or >>
-        draw.text(48,148,14,"#6d626e","October 2026 · 25–31")
-        for i in 0:7 {
-            item := $&days[i]
-            $label_day := widgets.styled_label(&context,&str(25+i))
-            item.paint_styled($&frame,$&label_day,&styles) or >>
-            if day == 25+i { frame.fill_rect(60.0+f64(i)*56.0,216.0,24.0,3.0,styles.button.palette.accent) or >> }
-        }
-    }
     $reset_label := widgets.styled_label(&context,&"Reset 重置")
     $clear_label := widgets.styled_label(&context,&"Clear 清空")
     reset.paint_styled($&frame,$&reset_label,&styles) or >>
     clear.paint_styled($&frame,$&clear_label,&styles) or >>
+    draw.text(48,150,14,"#282329","选择日期：点击展开日历网格 · 支持月份切换与日期点选")
+    draw.text(48,172,12,"#6d626e","顶部操作：Reset 恢复 2026-10-31 · Clear 清空选择 · Escape 关闭")
+    if opened {
+        btn.paint_popup_styled($&frame,&styles) or >>
+    }
 '''
 DATE = experience('DatePicker', '标准日期拾取组件：支持日期展示、弹出日历网格选择与清空重置。', DATE_SETUP, DATE_EVENTS, DATE_PAINT,
-                  '"Date: "+value', '[1,9,10]', '''        reset.set_focus(focus.current() == 9)
-        clear.set_focus(focus.current() == 10)
-        for i in 0:7 { item := $&days[i]
-            item.set_focus(opened && focus.current() == i+2) }
+                  '"Date: "+value', '[1,2,3]', '''        reset.set_focus(focus.current() == 2)
+        clear.set_focus(focus.current() == 3)
 ''')
 
 
-TIME = experience('TimePicker', '标准时间拾取组件：支持分秒滚轮调整、12/24小时制切换。', '''    $btn := widgets.time_picker(&context,&identity,1,&box(48.0,110.0,260.0,44.0),time.date(2026,10,25,14,30,0,0)) or >>
+TIME_SETUP = '''    $btn := widgets.time_picker(&context,&identity,1,&box(48.0,110.0,260.0,44.0),time.date(2026,10,25,14,30,0,0)) or >>
     btn.set_show_seconds(true)
     btn.apply_styles(&styles) or >>
     $mode := widgets.button(&identity,2,&box(320.0,110.0,120.0,44.0)) or >>
-    $minutes := 870
     $twelve := false
-''', '''        mode_action := mode.input(&event)
+'''
+TIME_EVENTS = '''        mode_action := mode.input(&event)
         if mode_action.request_focus { focus.focus(2) or >> }
         if mode_action.kind == widgets.ACTION_ACTIVATE {
             twelve = !twelve
             btn.set_12_hour(twelve)
         }
-        if (event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && btn.bounds().contains(event.x,event.y)) || act.kind == widgets.ACTION_ACTIVATE {
-            minutes = (minutes+1)%1440
-            h := minutes/60
-            m := minutes%60
-            btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
-        }
-        if event.kind == ui.EV_KEY_DOWN && focus.current() == 1 {
-            if event.key == ui.KEY_UP {
-                minutes = (minutes+1)%1440
-                h := minutes/60
-                m := minutes%60
-                btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
-            }
-            if event.key == ui.KEY_DOWN {
-                minutes = (minutes+1439)%1440
-                h := minutes/60
-                m := minutes%60
-                btn.set_value(time.date(2026,10,25,h,m,0,0)) or >>
-            }
-        }
-''', '''    hour := minutes/60
-    minute := minutes%60
-    $mm := str(minute)
-    if minute < 10 { mm = "0"+mm }
-    $hh := str(hour)
-    if hour < 10 { hh = "0"+hh }
-    stored := hh+":"+mm+":00"
+'''
+TIME_PAINT = '''    t := btn.value()
+    h := t.hour()
+    m := t.minute()
+    s := t.second()
+    $mm := str(m)
+    if m < 10 { mm = "0"+mm }
+    $hh := str(h)
+    if h < 10 { hh = "0"+hh }
+    $ss := str(s)
+    if s < 10 { ss = "0"+ss }
+    stored := hh+":"+mm+":"+ss
     $display := stored+""
     $mode_text := "24-Hour"
-    if twelve { $h := hour%12
-        if h == 0 { h = 12 }
+    if twelve {
+        $h12 := h%12
+        if h12 == 0 { h12 = 12 }
         $suffix := " AM"
-        if hour >= 12 { suffix = " PM" }
-        display = str(h)+":"+mm+":00"+suffix
-        mode_text = "12-Hour" }
+        if h >= 12 { suffix = " PM" }
+        display = str(h12)+":"+mm+":"+ss+suffix
+        mode_text = "12-Hour"
+    }
     $mode_label := widgets.styled_label(&context,&mode_text)
     btn.paint_styled($&frame,&styles) or >>
     mode.paint_styled($&frame,$&mode_label,&styles) or >>
     draw.text(48,180,14,"#282329",display)
-    draw.text(48,202,12,"#6d626e","点击 / Enter 增加一分钟 · ↑ / ↓ 调整 · 存储为 24 小时")
-''', '"Time: "+stored', '[1,2]', '        mode.set_focus(focus.current() == 2)\n')
+    draw.text(48,202,12,"#6d626e","点击分段聚焦 · ↑ / ↓ 或右侧箭头调整 · 键盘直接输入数字")
+'''
+TIME = experience('TimePicker', '标准时间拾取组件：支持分秒滚轮调整、12/24小时制切换。', TIME_SETUP, TIME_EVENTS, TIME_PAINT,
+                  '"Time: "+stored', '[1,2]', '        mode.set_focus(focus.current() == 2)\n')
 
 
 TOOLTIP = experience('Tooltip', '点击或键盘聚焦显示提示；Escape 关闭。', '''    anchor := box(48.0,132.0,260.0,44.0)
