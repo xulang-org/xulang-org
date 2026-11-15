@@ -39,8 +39,8 @@ for (const [slug, events, output] of [
   ['chart', click(300,220), 'Selected point: 2\n'],
   ['field', click(460,130), 'Field: empty (invalid)\n'],
   ['tree-view', click(45,96), 'Selected node: src/widgets | Expanded: false\n'],
-  ['date-picker', [...click(100,110),...click(70,200)], 'Date: 2026-10-25\n'],
-  ['time-picker', click(100,132), 'Time: 14:31:00\n'],
+  ['date-picker', [...click(100,110),...click(264,320)], 'Date: 2026-10-25\n'],
+  ['time-picker', [...click(160,132),...click(295,120)], 'Time: 14:31:00\n'],
   ['tooltip', [...key(257),...key(256)], 'Tooltip: hidden\n'],
   ['toast-host', click(100,118), 'Active toasts: 3\n'],
   ['web-view', click(500,110), 'WebView preview refreshes: 1\n'],
@@ -95,13 +95,21 @@ test('button group reports checked selection separately from keyboard focus', as
 test('date clear/reset and time format switch change visible state', async () => {
   const runtime = await createRuntime(module);
   const date = projects['widget-date-picker'].files['main.xu'];
-  assert.equal(runtime.run(date,{events:click(220,262)}).stdout,'Date: Choose date 选择日期\n');
-  assert.equal(runtime.run(date,{events:[...click(220,262),...click(100,262)]}).stdout,'Date: 2026-10-31\n');
+  assert.equal(runtime.run(date,{events:click(484,110)}).stdout,'Date: Choose date 选择日期\n');
+  assert.equal(runtime.run(date,{events:[...click(484,110),...click(348,110)]}).stdout,'Date: 2026-10-31\n');
   const time = runtime.run(projects['widget-time-picker'].files['main.xu'],{events:click(370,132)});
   assert.equal(time.stdout,'Time: 14:30:00\n');
   const labels = Array.from(canvas.XuPlayCanvas.frame(time.ui.commands)).filter(c => c.op === 'layout_text').map(c => c.args.at(-1));
   assert.ok(labels.includes('2:30:00 PM'));
   assert.ok(labels.includes('12-Hour'));
+});
+
+test('spinner toggle button switches running state', async () => {
+  const runtime = await createRuntime(module);
+  const spin = projects['widget-spinner'].files['main.xu'];
+  assert.equal(runtime.run(spin,{}).stdout,'Spinner: running (period: 900ms)\n');
+  assert.equal(runtime.run(spin,{events:click(100,230)}).stdout,'Spinner: stopped\n');
+  assert.equal(runtime.run(spin,{events:[...click(100,230),...click(100,230)]}).stdout,'Spinner: running (period: 900ms)\n');
 });
 
 test('opening a real Xu menu paints its popup items into the frame', async () => {
