@@ -1,7 +1,14 @@
 import {createRequire} from 'node:module';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-const {normalize, prepare, search, isSearchKey, isCloseKey} = createRequire(import.meta.url)('../www/api-browser.js');
+const {normalize, prepare, search, isSearchKey, isCloseKey, declarationKind} = createRequire(import.meta.url)('../www/api-browser.js');
+
+test('declaration filters distinguish functions, receivers, types and constants', () => {
+  for (const title of ['split', 'constant_time_compare']) assert.equal(declarationKind(title), 'function');
+  for (const title of ['($&Button) input', '(Reader) read']) assert.equal(declarationKind(title), 'method');
+  for (const title of ['struct Builder', 'struct@ Reader', 'enum Mode']) assert.equal(declarationKind(title), 'type');
+  assert.equal(declarationKind('const MAX_SIZE'), 'constant');
+});
 
 test('namespace punctuation and Unicode normalize without discarding identifiers', () => {
   assert.equal(normalize(' ＃UI/Widgets.Button::apply_styles() '), 'ui widgets button apply_styles');
