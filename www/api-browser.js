@@ -37,7 +37,12 @@
   function isCloseKey(event) {
     return event.key === 'Escape' && !event.isComposing && event.keyCode !== 229;
   }
-  if (typeof module === 'object' && module.exports) module.exports = {normalize: normalize, prepare: prepare, search: search, isSearchKey: isSearchKey, isCloseKey: isCloseKey};
+  function declarationKind(title) {
+    if (/^const\s/.test(title)) return 'constant';
+    if (/^(?:struct@?|enum)\s/.test(title)) return 'type';
+    return /^\(/.test(title) ? 'method' : 'function';
+  }
+  if (typeof module === 'object' && module.exports) module.exports = {normalize: normalize, prepare: prepare, search: search, isSearchKey: isSearchKey, isCloseKey: isCloseKey, declarationKind: declarationKind};
   if (typeof document === 'undefined') return;
 
   var opener = document.querySelector('[data-api-search]');
@@ -67,14 +72,14 @@
   var symbols;
   var articles = Array.from(main.querySelectorAll('.api-item[id]'));
   var packageName = main.querySelector('h1').textContent.trim();
-  // Preparing the large declarations index is deferred until search is requested.
+  // Share one prepared index between the inline explorer and global search.
   function pageSymbols() {
     if (symbols) return symbols;
     symbols = prepare(articles.map(function (article) {
       var heading = article.querySelector('h2');
       var signature = article.querySelector('pre code');
       var purpose = article.querySelector('h3 + p');
-      return {title: heading.textContent.trim(), detail: signature ? signature.textContent.trim().split('\n')[0] : '',
+      return {title: heading.textContent.trim(), kind: declarationKind(heading.textContent.trim()), detail: signature ? signature.textContent.trim().split('\n')[0] : '',
         namespace: packageName, context: purpose ? purpose.textContent : '', href: '#' + encodeURIComponent(article.id), target: article};
     }));
     return symbols;
@@ -91,6 +96,196 @@
     heading.appendChild(link);
     article.tabIndex = -1;
   });
+
+  // Inline discovery complements the global search. Native package links and
+  // declaration anchors remain usable when scripts are unavailable.
+  var catalog = main.querySelector('.api-catalog');
+  if (catalog) {
+    var catalogQuery = catalog.querySelector('#api-catalog-query');
+    var catalogClear = catalog.querySelector('[data-api-catalog-clear]');
+    var catalogStatus = catalog.querySelector('[data-api-catalog-status]');
+    var catalogEmpty = catalog.querySelector('[data-api-catalog-empty]');
+    var categoryLinks = Array.from(catalog.querySelectorAll('.api-section-nav a'));
+    var category = 'all';
+    var catalogSections = Array.from(catalog.querySelectorAll('.api-section')).map(function (section) {
+      var topics = Array.from(section.querySelectorAll('.api-topic')).map(function (topic) {
+        var label = topic.querySelector('summary').textContent;
+        var rows = Array.from(topic.querySelectorAll('.api-package-list > li')).map(function (row) {
+          return {node: row, search: normalize(row.querySelector('a').textContent + ' ' + label)};
+        });
+        var more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'api-topic-more';
+        var model = {node: topic, rows: rows, more: more, expanded: false, open: topic.open};
+        more.addEventListener('click', function () { model.expanded = !model.expanded; renderCatalog(); });
+        topic.appendChild(more);
+        return model;
+      });
+      return {node: section, topics: topics};
+    });
+    var wasSearching = false;
+    function renderCatalog() {
+      var terms = normalize(catalogQuery.value).split(' ').filter(Boolean);
+      var searching = !!terms.length;
+      var total = 0;
+      catalogSections.forEach(function (section) {
+        var selected = category === 'all' || category === section.node.id;
+        var sectionCount = 0;
+        section.topics.forEach(function (topic) {
+          if (searching && !wasSearching) topic.open = topic.node.open;
+          if (searching) topic.node.open = true;
+          else if (wasSearching) topic.node.open = topic.open;
+          var count = 0;
+          topic.rows.forEach(function (row) {
+            var matches = terms.every(function (term) { return row.search.includes(term); });
+            row.node.hidden = !matches || (!searching && !topic.expanded && count >= 4);
+            if (matches) count++;
+          });
+          topic.node.hidden = !count;
+          topic.more.hidden = searching || topic.rows.length <= 4;
+          topic.more.textContent = topic.expanded ? (en ? 'Show fewer' : '收起列表') :
+            (en ? 'View all ' + topic.rows.length + ' packages' : '查看全部 ' + topic.rows.length + ' 个包');
+          topic.more.setAttribute('aria-expanded', String(topic.expanded));
+          sectionCount += count;
+        });
+        section.node.hidden = !selected || !sectionCount;
+        // Supporting UI imagery and widget links are not package search results.
+        Array.from(section.node.children).forEach(function (child) {
+          if (child.matches('h3, .api-widget-topics, .api-ui-capture')) child.hidden = searching;
+        });
+        if (selected) total += sectionCount;
+      });
+      categoryLinks.forEach(function (link) {
+        var current = (link.hasAttribute('data-api-all') ? 'all' : link.hash.slice(1)) === category;
+        if (current) link.setAttribute('aria-current', 'true');
+        else link.removeAttribute('aria-current');
+      });
+      wasSearching = searching;
+      catalogEmpty.hidden = total > 0;
+      catalogClear.disabled = !catalogQuery.value;
+      catalogStatus.textContent = en ? total + ' packages' + (searching ? ' found' : ' · Browse by topic below') :
+        (searching ? '找到 ' + total + ' 个包' : total + ' 个包 · 按下方主题浏览');
+    }
+    categoryLinks.forEach(function (link) {
+      link.addEventListener('click', function (event) {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        category = link.hasAttribute('data-api-all') ? 'all' : link.hash.slice(1);
+        history.replaceState(null, '', link.hash);
+        renderCatalog();
+      });
+    });
+    function catalogHash() {
+      category = catalogSections.some(function (section) { return '#' + section.node.id === location.hash; }) ? location.hash.slice(1) : 'all';
+      renderCatalog();
+    }
+    catalogQuery.addEventListener('input', function (event) { if (!event.isComposing) renderCatalog(); });
+    catalogQuery.addEventListener('compositionend', renderCatalog);
+    catalogClear.addEventListener('click', function () { catalogQuery.value = ''; renderCatalog(); catalogQuery.focus(); });
+    window.addEventListener('hashchange', catalogHash);
+    catalog.querySelector('[data-api-catalog-search]').hidden = false;
+    catalogHash();
+  }
+
+  if (articles.length) {
+    var overview = document.createElement('section');
+    overview.className = 'api-overview';
+    overview.id = 'api-overview';
+    overview.setAttribute('aria-labelledby', 'api-overview-title');
+    overview.innerHTML = '<div class="api-overview-heading"><div><h2 id="api-overview-title">' +
+      (en ? 'Explore declarations' : '声明速览') + '</h2><p>' +
+      (en ? 'Find a name, then open its signature, parameters and usage.' : '先找到名称，再查看签名、参数与用法。') +
+      '</p></div><a class="api-overview-guide"></a></div>' +
+      '<label class="api-overview-label" for="api-symbol-query">' + (en ? 'Filter declarations' : '筛选本包声明') + '</label>' +
+      '<div class="api-catalog-input"><i class="xi xi-search" aria-hidden="true"></i>' +
+      '<input id="api-symbol-query" type="search" autocomplete="off" spellcheck="false" placeholder="' +
+      (en ? 'Name or purpose, e.g. split' : '输入名称或用途，例如 split') + '"><button type="button" data-symbol-clear>' +
+      (en ? 'Clear' : '清空') + '</button></div><div class="api-kind-filters" role="group" aria-label="' +
+      (en ? 'Declaration kind' : '声明类型') + '"></div><p class="api-symbol-count" role="status" aria-live="polite"></p>' +
+      '<ul class="api-symbol-list" aria-label="' + (en ? 'Declarations' : '声明列表') + '"></ul>' +
+      '<button type="button" class="api-symbol-more">' + (en ? 'Show more declarations' : '显示更多声明') + '</button>';
+    var guide = overview.querySelector('.api-overview-guide');
+    var guideTarget = main.querySelector('#quickstart, #examples');
+    if (guideTarget) {
+      guide.href = '#' + guideTarget.id;
+      guide.textContent = en ? 'Usage examples →' : '用法示例 →';
+    } else guide.remove();
+    var meta = main.querySelectorAll(':scope > .meta');
+    (meta.length ? meta[meta.length - 1] : main.querySelector('h1')).after(overview);
+    var symbolQuery = overview.querySelector('input');
+    var symbolClear = overview.querySelector('[data-symbol-clear]');
+    var symbolList = overview.querySelector('ul');
+    var symbolCount = overview.querySelector('[role="status"]');
+    var symbolMore = overview.querySelector('.api-symbol-more');
+    var kindFilters = overview.querySelector('.api-kind-filters');
+    var selectedKind = 'all';
+    var symbolLimit = 60;
+    var kindLabels = en ? {all: 'All', function: 'Functions', method: 'Methods', type: 'Types', constant: 'Constants'} :
+      {all: '全部', function: '函数', method: '方法', type: '类型', constant: '常量'};
+    Object.keys(kindLabels).forEach(function (kind) {
+      var count = pageSymbols().filter(function (entry) { return kind === 'all' || entry.kind === kind; }).length;
+      if (!count) return;
+      var button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.kind = kind;
+      button.textContent = kindLabels[kind] + ' ' + count;
+      button.addEventListener('click', function () { selectedKind = kind; symbolLimit = 60; renderSymbols(); });
+      kindFilters.appendChild(button);
+    });
+    function renderSymbols() {
+      var entries = pageSymbols().filter(function (entry) { return selectedKind === 'all' || entry.kind === selectedKind; });
+      var found = search(entries, symbolQuery.value, symbolLimit);
+      symbolList.replaceChildren();
+      found.items.forEach(function (entry) {
+        var item = document.createElement('li');
+        var link = document.createElement('a');
+        link.href = entry.href;
+        var badge = document.createElement('span');
+        badge.className = 'api-kind';
+        badge.dataset.kind = entry.kind;
+        badge.textContent = kindLabels[entry.kind];
+        var name = document.createElement('code');
+        name.textContent = entry.title;
+        var purpose = document.createElement('span');
+        purpose.className = 'api-symbol-purpose';
+        purpose.textContent = entry.context || entry.detail;
+        link.append(badge, name, purpose);
+        link.addEventListener('click', function () { entry.target.focus({preventScroll: true}); });
+        item.appendChild(link);
+        symbolList.appendChild(item);
+      });
+      kindFilters.querySelectorAll('button').forEach(function (button) {
+        button.setAttribute('aria-pressed', String(button.dataset.kind === selectedKind));
+      });
+      symbolClear.disabled = !symbolQuery.value;
+      symbolMore.hidden = found.total <= symbolLimit;
+      symbolCount.textContent = found.total ? (en ? found.total + ' declarations' : found.total + ' 项声明') +
+        (found.total > symbolLimit ? (en ? ' · Showing ' + symbolLimit : ' · 当前显示 ' + symbolLimit + ' 项') : '') :
+        (en ? 'No matches. Try another keyword or select All.' : '没有匹配的声明。试试其他关键词，或选择「全部」。');
+    }
+    symbolQuery.addEventListener('input', function (event) { if (!event.isComposing) { symbolLimit = 60; renderSymbols(); } });
+    symbolQuery.addEventListener('compositionend', function () { symbolLimit = 60; renderSymbols(); });
+    symbolClear.addEventListener('click', function () { symbolQuery.value = ''; symbolLimit = 60; renderSymbols(); symbolQuery.focus(); });
+    symbolMore.addEventListener('click', function () {
+      var next = symbolLimit;
+      symbolLimit += 60;
+      renderSymbols();
+      var nextLink = symbolList.children[next] && symbolList.children[next].querySelector('a');
+      if (nextLink) nextLink.focus();
+    });
+    renderSymbols();
+    main.querySelectorAll('.api-examples .api-example[open]').forEach(function (example) { example.open = false; });
+    function revealExample() {
+      var target;
+      try { target = document.getElementById(decodeURIComponent(location.hash.slice(1))); } catch (error) { return; }
+      if (!target) return;
+      for (var parent = target; parent && parent !== main; parent = parent.parentElement) {
+        if (parent.matches('details')) parent.open = true;
+      }
+    }
+    revealExample();
+    window.addEventListener('hashchange', revealExample);
+  }
 
   var dialog = document.createElement('dialog');
   dialog.className = 'api-search-dialog';

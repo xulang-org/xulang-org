@@ -161,6 +161,23 @@ class APISidebarTests(unittest.TestCase):
         self.assertNotIn('class="widget-crumb"', component)
         self.assertIn('class="api-breadcrumbs"', component)
 
+    def test_catalog_preserves_inventory_and_preview_boundaries(self):
+        for lang, en in (('en', True), ('zh', False)):
+            source = (ROOT / f'content/{lang}/api/index.html').read_text(encoding='utf-8')
+            rendered = site_layout.api_index_presentation(source, en)
+            self.assertEqual(site_layout.PackageInventory(source).packages,
+                             site_layout.PackageInventory(rendered).packages)
+            original = SidebarLinks(source)
+            presented = SidebarLinks(rendered)
+            self.assertTrue(set(original.hrefs).issubset(presented.hrefs))
+            self.assertIn('id="api-catalog-query"', rendered)
+            self.assertIn('按用途找到包' if not en else 'Find the right package', rendered)
+            preview = source.replace('/api/', '/api/preview/')
+            rendered_preview = site_layout.api_index_presentation(preview, en)
+            for href in SidebarLinks(rendered_preview).hrefs:
+                if '/api/' in href:
+                    self.assertIn('/api/preview/', href)
+
     @unittest.skipUnless(shutil.which('node'), 'Node is optional for static builds')
     def test_search_matches_packages_receivers_and_localized_descriptions(self):
         result = subprocess.run(['node', '--test', str(ROOT / 'tests/test_api_browser.mjs')], capture_output=True, text=True)
