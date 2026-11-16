@@ -1,6 +1,6 @@
 """Shared navigation and page shell for the static official site."""
 
-from html import escape
+from html import escape, unescape
 from html.parser import HTMLParser
 from collections.abc import Iterable
 import hashlib
@@ -364,6 +364,68 @@ def api_tools(route: str, en: bool, root: Path) -> str:
             '</div><span class="api-feedback" role="status" data-api-feedback></span></div>')
 
 
+def api_index_presentation(body: str, en: bool) -> str:
+    """Present the generated inventory without changing its release data or links."""
+    if 'class="api-section-nav"' not in body:
+        return body
+    descriptions = {
+        '核心': ('错误处理、集合、时间与并发', 'Errors, collections, time and concurrency'),
+        '文本': ('查找、拆分、转换与匹配文本', 'Find, split, convert and match text'),
+        'IO / OS': ('读写文件、路径与系统进程', 'Files, paths and system processes'),
+        '网络': ('HTTP 服务、连接与网络协议', 'HTTP services, connections and protocols'),
+        '编码': ('JSON、二进制与数据格式转换', 'JSON, binary and data formats'),
+        '密码与国密': ('加密、签名、摘要与安全连接', 'Encryption, signatures, hashes and TLS'),
+        '压缩 / 图像 / 数学': ('压缩数据、处理图像与数值计算', 'Compression, images and numeric operations'),
+        '数据库': ('数据库连接、查询与驱动接口', 'Database connections, queries and drivers'),
+        '图形与窗口': ('GPU 渲染、窗口与输入事件', 'GPU rendering, windows and input events'),
+        '其他': ('容器、嵌入式与更多工具', 'Containers, embedded systems and more'),
+        '包': ('构建界面、布局、图表与 WebView', 'Interfaces, layouts, charts and WebView'),
+        '集成': ('连接数据库、消息队列与外部服务', 'Connect databases, messaging and services'),
+    }
+    english = {zh: english for _icon, zh, english, _members in _CURATED_API_GROUPS}
+    english.update({'其他': 'Other', '包': 'Packages', '集成': 'Integrations'})
+    topic_descriptions = {english.get(key, key) if en else key: values[en] for key, values in descriptions.items()}
+
+    def topic(match):
+        label, count, packages = match.groups()
+        text = topic_descriptions.get(unescape(label), '')
+        description = f'<span class="api-topic-description">{escape(text)}</span>' if text else ''
+        return ('<details class="api-topic" open><summary><span class="api-topic-title">'
+                + label + f'<span class="api-topic-count">{count}</span></span>' + description
+                + '</summary>' + packages + '</details>')
+
+    body = re.sub(r'<details class="api-topic"[^>]*><summary>(.*?) <span class="api-topic-count">(\d+)</span></summary>\s*(<ul class="api-package-list">.*?</ul>)</details>',
+                  topic, body, flags=re.DOTALL)
+    quick = []
+    for path, zh, english in [
+        ('strings', '处理文本', 'Work with text'),
+        ('net/http', '构建 HTTP 服务', 'Build HTTP services'),
+        ('ui/widgets', '构建用户界面', 'Build interfaces'),
+        ('database/sql', '访问数据库', 'Query databases'),
+    ]:
+        link = re.search(r'href="([^"#]*/api/(?:preview/)?' + re.escape(path) + r')"', body)
+        if link:
+            quick.append(f'<a href="{link[1]}"><span>{english if en else zh}</span><code>#{path}</code>'
+                         '<i class="xi xi-arrow-right" aria-hidden="true"></i></a>')
+    quick_html = ('<nav class="api-quick-links" aria-label="' + ('Common tasks' if en else '常用任务')
+                  + '">' + ''.join(quick) + '</nav>') if quick else ''
+    controls = ('<div class="api-catalog-search" data-api-catalog-search hidden>'
+                '<label for="api-catalog-query">' + ('Find a package' if en else '查找包') + '</label>'
+                '<div class="api-catalog-input"><i class="xi xi-search" aria-hidden="true"></i>'
+                '<input id="api-catalog-query" type="search" autocomplete="off" spellcheck="false" placeholder="'
+                + ('Search names or topics, e.g. strings, HTTP, database' if en else '输入包名或用途，例如 strings、HTTP、数据库')
+                + '"><button type="button" data-api-catalog-clear>' + ('Clear' if en else '清空') + '</button></div>'
+                '<p data-api-catalog-status role="status" aria-live="polite"></p></div>')
+    intro = ('Find the right package. Jump straight to its API.' if en else '按用途找到包，直达你需要的 API。')
+    body = re.sub(r'(<h1>.*?</h1>)', '<p class="api-eyebrow">XU / API REFERENCE</p>\\1'
+                  + f'<p class="api-intro">{intro}</p>', body, count=1)
+    body = body.replace('<nav class="api-section-nav"', quick_html + controls + '<nav id="api-catalog" class="api-section-nav"', 1)
+    body = body.replace('aria-label="API 分类">', 'aria-label="API 分类"><a href="#api-catalog" data-api-all>全部包</a>', 1) if not en else body.replace(
+        'aria-label="API sections">', 'aria-label="API sections"><a href="#api-catalog" data-api-all>All packages</a>', 1)
+    return '<div class="api-catalog">' + body + '<p class="api-empty" data-api-catalog-empty hidden>' + (
+        'No matching packages. Try another keyword or select All packages.' if en else '没有找到匹配的包。试试其他关键词，或切换到「全部包」。') + '</p></div>'
+
+
 class FAQParser(HTMLParser):
     """Keep FAQ structured data in sync with the questions shown on each page."""
 
@@ -600,7 +662,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
                       f'<script src="/api-browser.js?v={version}" defer></script>')
         body = re.sub(r'<p class="crumb">.*?</p>\s*', '', body, count=1, flags=re.DOTALL)
         body = re.sub(r'<nav class="widget-crumb"[^>]*>.*?</nav>\s*', '', body, count=1, flags=re.DOTALL)
-        body = api_tools(route, en, root) + body
+        body = api_tools(route, en, root) + api_index_presentation(body, en)
     nav = []
     for href, icon, zh, english in [
         ('/docs/start', 'book', '文档', 'Docs'),

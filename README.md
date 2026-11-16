@@ -86,6 +86,8 @@ XU is actively evolving in the **0.x series**. See [Releases](https://github.com
 
 Use [Search API](https://xulang.org/api/) to find a package or jump to a declaration on the current page. Press `/` outside an input to open search; arrows and Enter navigate results, and Escape closes it. The API directory collapses on phones so content stays within reach. Declaration headings are permanent links, and Copy link shares the current page or declaration.
 
+The API index offers common-task shortcuts, topic descriptions, and inline package search across the standard library, UI, and extensions. Package pages start with a declaration explorer: filter by name, purpose, or kind, then jump to the full signature and documentation. Related source examples stay collapsed until opened.
+
 ## Explore the ecosystem
 
 | Project | Where to go |
