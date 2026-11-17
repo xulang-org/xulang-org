@@ -165,11 +165,14 @@ pub fn (picker $&ColorPicker) input(event &ui.InputEvent) Action {
 
 // Upstream: src/ui/widgets/color_picker.xu
 pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) int {
-    picker.apply_styles(styles) or >>
+    d := styles.density
+    if !picker.labels.ready || picker.row_h <= 0.0 || picker.pad != 10.0 * d {
+        picker.apply_styles(styles) or >>
+    }
     $c := picker.style_or(styles)
     b := picker.bounds()
     state := picker.control.visual_state()
-    style_box(frame,&b,&c,styles.density,state) or >>
+    style_box(frame,&b,&c,d,state) or >>
     p := picker.preview_bounds()
     // An opaque swatch fully covers the transparency grid.
     if (picker.value().value() & 255) < 255 {
@@ -185,34 +188,61 @@ pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) in
     c.align_x = 0.0
     c.align_y = 0.5
     names := [picker.locale.text(TEXT_RED) or >>,picker.locale.text(TEXT_GREEN) or >>,picker.locale.text(TEXT_BLUE) or >>,picker.locale.text(TEXT_ALPHA) or >>]
-    // Keep per-channel styles typed; byte serialization is unnecessary for this private paint path.
-    $channel_styles := styles.clone()
-    channel_styles.progress = styles.slider_style()
-    base_accent := channel_styles.progress.palette.accent
-    channel_styles.progress.palette.invalid = c.palette.invalid
+    $slider_style := styles.slider_style()
+    slider_style.palette.invalid = c.palette.invalid
+    base_accent := slider_style.palette.accent
+    s_left := slider_style.padding.left * d
+    s_top := slider_style.padding.top * d
+    s_border_w := slider_style.border_width * d
+    s_focus_w := slider_style.focus_width * d
+    s_focus_inset := slider_style.focus_inset * d
+
+    ch_x := b.x + picker.pad + picker.label_w
+    ch_w := math.max(0.0,b.width - picker.pad * 2.0 - picker.label_w - picker.value_w)
+    first_y := b.y + picker.pad * 2.0 + picker.preview_h
+    row_h := picker.row_h
+    s_inner_w := math.max(0.0,ch_w - s_left - slider_style.padding.right * d)
+    s_inner_h := math.max(0.0,row_h - s_top - slider_style.padding.bottom * d)
+    thumb := math.max(4.0,math.min(slider_style.indicator_size * d,math.min(s_inner_w,s_inner_h)))
+    track_h := math.max(2.0,math.min(slider_style.mark_width * d,s_inner_h))
+    track_r := math.min(slider_style.radius * d,track_h * 0.5)
+    usable := math.max(0.0,s_inner_w - thumb)
+    knob_r := thumb * 0.5
+    label_x := b.x + picker.pad
+    value_x := ch_x + ch_w
+
     for i in 0:4 {
-        channel_styles.progress.palette.accent = base_accent
-        if i == 0 { channel_styles.progress.palette.accent = draw.rgb(224,73,86) }
-        else if i == 1 { channel_styles.progress.palette.accent = draw.rgb(42,151,93) }
-        else if i == 2 { channel_styles.progress.palette.accent = draw.rgb(60,117,224) }
-        value := picker.locale.integer(picker.channel(i) or >>)
-        channel_b := picker.channel_bounds(i) or >>
         $channel := picker.channels[i]
-        channel.custom.active = false
-        // The parent already validated these styles. Apply the unchanged
-        // Slider geometry directly instead of validating all six controls again.
-        slider_style := &channel_styles.progress
-        d := channel_styles.density
-        channel.inset_left = slider_style.padding.left * d
-        channel.inset_right = slider_style.padding.right * d
-        width := math.max(0.0,channel.bounds.width - channel.inset_left - channel.inset_right)
-        height := math.max(0.0,channel.bounds.height - channel.value_height(&channel_styles) - (slider_style.padding.top + slider_style.padding.bottom) * d)
-        channel.thumb_extent = math.max(4.0,math.min(slider_style.indicator_size * d,math.min(width,height)))
-        channel.paint_styled(frame,&channel_styles) or >>
+        ch_y := first_y + f64(i) * row_h
+        track_y := ch_y + s_top + (s_inner_h - track_h) * 0.5
+        track := layout.Rect{x: ch_x + s_left,y: track_y,width: s_inner_w,height: track_h}
+        ch_state := channel.visual_state()
+        resolved := slider_style.resolve(ch_state)
+        rounded_fill(frame,&track,track_r,resolved.background) or >>
+        rounded_stroke(frame,&track,track_r,resolved.border,s_border_w) or >>
+        cx := track.x + thumb * 0.5 + usable * channel.ratio()
+        $accent := base_accent
+        if i == 0 { accent = draw.rgb(224,73,86) }
+        else if i == 1 { accent = draw.rgb(42,151,93) }
+        else if i == 2 { accent = draw.rgb(60,117,224) }
+        if channel.invalid { accent = slider_style.palette.invalid }
+        if !channel.is_enabled() { accent = slider_style.palette.muted }
+        active := layout.Rect{x: track.x,y: track_y,width: math.max(0.0,cx - track.x),height: track_h}
+        rounded_fill(frame,&active,track_r,accent) or >>
+        knob := layout.Rect{x: cx - thumb * 0.5,y: ch_y + s_top + (s_inner_h - thumb) * 0.5,width: thumb,height: thumb}
+        rounded_fill(frame,&knob,knob_r,slider_style.palette.on_accent) or >>
+        single_focus := (ch_state & STATE_FOCUSED) != 0 && (ch_state & STATE_DISABLED) == 0 && slider_style.focus_inset == 0.0 && slider_style.focus_width > 0.0 && (resolved.focus.value() & 255) > 0
+        if !single_focus { rounded_stroke(frame,&knob,knob_r,resolved.border,s_border_w) or >> }
+        else { rounded_stroke(frame,&knob,knob_r,resolved.focus,s_focus_w) or >> }
+        if (ch_state & STATE_FOCUSED) != 0 && (ch_state & STATE_DISABLED) == 0 && !single_focus {
+            focus_rect := layout.Rect{x: knob.x - s_focus_inset,y: knob.y - s_focus_inset,width: thumb + s_focus_inset * 2.0,height: thumb + s_focus_inset * 2.0}
+            rounded_stroke(frame,&focus_rect,knob_r + s_focus_inset,resolved.focus,s_focus_w) or >>
+        }
         channel.painted()
         picker.channels[i] = channel
-        label_b := layout.Rect{x: b.x + picker.pad,y: channel_b.y,width: picker.label_w,height: channel_b.height}
-        value_b := layout.Rect{x: channel_b.x + channel_b.width,y: channel_b.y,width: picker.value_w,height: channel_b.height}
+        value := picker.locale.integer(picker.channel(i) or >>)
+        label_b := layout.Rect{x: label_x,y: ch_y,width: picker.label_w,height: row_h}
+        value_b := layout.Rect{x: value_x,y: ch_y,width: picker.value_w,height: row_h}
         text := names[i]
         index := i * 2
         labels := $&picker.labels
