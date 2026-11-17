@@ -345,7 +345,7 @@
       panel.hidden = !committed;
       if (committed && workspace) {
         var previewTab = document.getElementById('xu-play-preview-tab');
-        if (previewTab) previewTab.click();
+        if (previewTab && (!previewTab.getAttribute || previewTab.getAttribute('aria-selected') !== 'true')) previewTab.click();
       }
       interactive = committed && result.ui.interactive && activeSource === currentSource();
       canvas.setAttribute('aria-disabled', String(!interactive));
@@ -402,7 +402,7 @@
           } else maybeAutoRun();
         } else if (result.type === 'result') {
           running = false;
-          label(false);
+          if (!pointerActive && !queuedInputs.length) label(false);
           var value = result.stderr + result.stdout;
           if (result.truncated) value += text('\n…输出过长，已截断。', '\n…Output truncated.');
           show(value || text('（无输出）', '(no output)'), result.exit !== 0);
@@ -567,7 +567,7 @@
     function execute(interaction) {
       running = true;
       if (canvas && !interaction) canvas.setAttribute('aria-disabled', 'true');
-      label(true);
+      if (!interaction) label(true);
       if (!interaction) {
         show(text('正在运行…', 'Running…'), false);
         status(text('运行中', 'Running'));
@@ -649,7 +649,7 @@
       });
       canvas.addEventListener('pointermove', function (event) {
         if (inputMode && pointerActive) {
-          if (queuedInputs.length && queuedInputs.at(-1).kind === 74) queuedInputs.pop();
+          if (queuedInputs.length && queuedInputs[queuedInputs.length - 1].kind === 74) queuedInputs.pop();
           pointerInput(74, event);
         }
       });
