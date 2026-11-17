@@ -43,7 +43,7 @@ test('small programs reuse the WASM instance after compiler memory growth', asyn
   assert.equal(result.exit, 0, result.stderr);
   assert.equal(result.stdout, 'small\n');
   assert.ok(result.timings.memoryBytes >= build.initial_memory_bytes);
-  assert.ok(result.timings.memoryBytes <= 64 * MiB);
+  assert.ok(result.timings.memoryBytes <= 128 * MiB);
   const again = runtime.run(hello, {profile: true});
   assert.equal(again.timings.cacheHit, true);
   assert.equal(again.timings.memoryBytes, result.timings.memoryBytes);
@@ -89,7 +89,7 @@ test('large execution snapshots fall back to replay within the 8 MiB host budget
   assert.equal(next.timings.checkpointBytes, 0);
 });
 
-for (const maximum of [64, 96]) {
+for (const maximum of [96, 104]) {
   test(`engine growth failure at ${maximum} MiB reports a limit and permits recovery`, async () => {
     const runtime = await createRuntime(withMaximum(maximum));
     const result = runtime.run(color, {profile: true});

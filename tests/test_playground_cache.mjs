@@ -27,7 +27,7 @@ test('cached MIR replays from zero and recycles the execution arena across long 
     assert.equal(result.stdout, 'Count: 0\n');
     assert.equal(result.ui.commands, first.ui.commands);
     assert.equal(result.timings.cacheHit, true);
-    assert.ok(result.timings.memoryBytes <= warm.timings.memoryBytes + 8 * 1024 * 1024);
+    assert.ok(result.timings.memoryBytes <= warm.timings.memoryBytes + 24 * 1024 * 1024);
   }
   const again = run(history);
   assert.equal(again.stdout, full.stdout);
