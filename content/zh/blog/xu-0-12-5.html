@@ -1,0 +1,22 @@
+<!--title: Xu 0.12.5 发布：纯 Xu SDL 后端、无宿主字体栈与 SoftBlob 内存安全模型-->
+<!--summary: 引入纯 Xu 编写的 #internal/sdl 动态 FFI 后端与 #ui/font 字体栈，新增 #gpu SoftBlob、XDF1 帧导出无头回放、多点触控与零 GC 引用所有权强化。-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.12.5 发布：纯 Xu SDL 后端、无宿主字体栈与 SoftBlob 内存安全模型</h1>
+<p class="meta">2026-11-17 · <a href="https://github.com/xulang-org/xu/releases/tag/v0.12.5">Xu v0.12.5</a></p>
+<p>Xu 0.12.5 带来针对图形渲染、游戏引擎集成与无头回放测试的重磅架构升级，移除外部 C 驱动垫片，实现纯 Xu 编写的 SDL 后端与动态 FFI，构建无宿主独立字体解析与字形图集，并全面强化零 GC 内存安全保证。</p>
+
+<h2>纯 Xu SDL 后端与原生 FFI</h2>
+<p>标准库 <code>#internal/sdl</code> 全面转向纯 Xu 编写，配合重构的 <code>ffi</code> 原生调用框架，动态绑定 SDL 动态库，彻底废弃了以往的外部 C 胶水驱动代码。新增 Windows Win64 调用约定支持、<code>c_callback</code> 回调机制以及平台标量映射（Windows LLP64 <code>c_long</code>/<code>c_ulong</code> 宽度对齐），显著简化跨平台桌面与游戏运行时的打包与依赖链。</p>
+
+<h2>无宿主字体栈与无头渲染回放</h2>
+<p>新增官方独立包 <a href="/api/ui/font"><code>#ui/font</code></a>，提供纯 Xu 实现的 TTF 解析器、字形度量、字形图集（Glyph Atlas）与文本排版引擎，摆脱对系统字体服务或原生宿主字形 API 的依赖。配合 <code>Frame.export_xdf()</code> 与 <code>phone.Canvas.export_xdf()</code>，可将全部 UI 与渲染指令序列化为封印的 XDF1 二进制缓冲区，支持无头模拟器与跨进程回放，大幅加速游戏引擎与 XACP 协议的自动化验证。</p>
+
+<h2>SoftBlob 内存安全模型与图形增强</h2>
+<p>在 <code>#gpu</code> 模块中引入 <code>SoftBlob</code> 与 <code>SoftBlobRef</code> 结构，为 CPU 网格（mesh）与纹理数据提供带边界检查的内存切片视图，从根本上杜绝动态 FFI 与跨层通信时的指针越界与悬垂引用。同时，<code>Window.present_rgba</code> 提供了软件位图呈现接口，<code>Event.touch_id</code> 和多点触控输入队列使跨平台游戏与触控交互更加精准。</p>
+
+<h2>零 GC 编译器与生命周期强化</h2>
+<p>编译器全面完善了引用所有权模型：严格追踪闭包环境、接口盒子（interface boxes）、临时通道与通道元素的所有者；数组明确作为推入引用的持有者；针对条件分支移动的局部变量引入运行时 drop flags，避免双重释放或泄漏；Map 统一赋予安全深拷贝语义，确保在零垃圾回收器前提下拥有稳健的运行时一致性。</p>
+
+<h2>升级完整 SDK</h2>
+<p>六个主流平台（Linux x64/arm64、macOS arm64/x64、Windows x64/arm64）的原生产品级 SDK 与安装程序均已完成多层严格验证并正式发布。</p>
+<p><a href="/download">下载 SDK</a> · <a href="https://github.com/xulang-org/xu/releases/download/v0.12.5/SHA256SUMS">SHA-256 校验摘要</a> · <a href="https://github.com/xulang-org/xu/blob/v0.12.5/RELEASES.zh-CN.md#xu-0125">完整发布说明</a></p>
