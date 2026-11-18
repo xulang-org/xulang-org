@@ -1,0 +1,256 @@
+@main
+#ui
+#ui/draw
+#ui/layout
+#ui/widgets
+#playground
+
+fn box(x f64, y f64, w f64, h f64) layout.Rect {
+    << layout.Rect{x: x, y: y, width: w, height: h}
+}
+
+fn measure_prefix(context &draw.Context, options &draw.TextOptions, line &string, col int) f64 {
+    if col <= 0 { << 0.0 }
+    $n := col
+    if n > line.len { n = line.len }
+    sub := line[0:n]
+    shaped := context.layout_text(&sub, options) or >>
+    << shaped.metrics.width
+}
+
+fn hit_col(context &draw.Context, options &draw.TextOptions, line &string, rel_x f64) int {
+    if rel_x <= 0.0 || line.len == 0 { << 0 }
+    $prev_w := 0.0
+    for i in 1:(line.len + 1) {
+        w := measure_prefix(context, options, line, i) or >>
+        if rel_x < (prev_w + w) * 0.5 { << i - 1 }
+        prev_w = w
+    }
+    << line.len
+}
+
+fn flat_index(lines &[]string, row int, col int) int {
+    $pos := 0
+    for i in 0:row {
+        pos += lines[i].len + 1
+    }
+    << pos + col
+}
+
+fn total_len(lines &[]string) int {
+    $n := 0
+    for i in 0:lines.len {
+        n += lines[i].len
+        if i + 1 < lines.len { n += 1 }
+    }
+    << n
+}
+
+fn extract_range(lines &[]string, lo int, hi int) string {
+    if hi <= lo { << "" }
+    $out := ""
+    $base := 0
+    for i in 0:lines.len {
+        line := lines[i]
+        line_end := base + line.len
+        if hi > base && lo < line_end {
+            $s := lo - base
+            if s < 0 { s = 0 }
+            $e := hi - base
+            if e > line.len { e = line.len }
+            if e > s {
+                if out.len > 0 { out = out + " " }
+                out = out + line[s:e]
+            }
+        }
+        base = line_end + 1
+    }
+    << out
+}
+
+fn demo() int {
+    identity := playground.canvas_identity()
+    context := draw.default_context()
+    styles := playground.light_styles()
+    text_opts := draw.text_options(15.0)
+    lines := ["Xu compiles natively to ARM64, x64, and WASM.", "Zero GC ownership with deterministic RAII drop.", "Drag or press Shift+Arrows, then Ctrl+C to copy."]
+    max_pos := total_len(&lines)
+
+    text_box := box(44.0, 92.0, 552.0, 108.0)
+    text_x := 60.0
+    text_y := 106.0
+    line_h := 28.0
+
+    $btn_all := widgets.button(&identity, 1, &box(44.0, 214.0, 112.0, 36.0)) or >>
+    $btn_copy := widgets.button(&identity, 2, &box(168.0, 214.0, 100.0, 36.0)) or >>
+    $btn_clear := widgets.button(&identity, 3, &box(280.0, 214.0, 96.0, 36.0)) or >>
+    $lbl_all := widgets.styled_label(&context, &"Select All")
+    $lbl_copy := widgets.styled_label(&context, &"Copy")
+    $lbl_clear := widgets.styled_label(&context, &"Clear")
+
+    // Default highlighted span: "Zero GC ownership" on line 1.
+    $anchor := flat_index(&lines, 1, 0)
+    $head := flat_index(&lines, 1, 17)
+    $dragging := false
+    $focused := true
+    $clipboard := ""
+
+    while true {
+        event := playground.next_input()
+        if event.kind == 0 { <- }
+
+        a_all := btn_all.input(&event)
+        a_copy := btn_copy.input(&event)
+        a_clear := btn_clear.input(&event)
+        if a_all.kind == widgets.ACTION_ACTIVATE {
+            anchor = 0
+            head = max_pos
+            focused = true
+            ->
+        }
+        if a_copy.kind == widgets.ACTION_ACTIVATE {
+            $lo := anchor
+            $hi := head
+            if lo > hi {
+                tmp := lo
+                lo = hi
+                hi = tmp
+            }
+            if hi > lo { clipboard = extract_range(&lines, lo, hi) }
+            ->
+        }
+        if a_clear.kind == widgets.ACTION_ACTIVATE {
+            anchor = head
+            ->
+        }
+
+        if event.kind == ui.EV_POINTER_DOWN {
+            if text_box.contains(event.x, event.y) {
+                $row := int((event.y - text_y) / line_h)
+                if row < 0 { row = 0 }
+                if row >= lines.len { row = lines.len - 1 }
+                col := hit_col(&context, &text_opts, &lines[row], event.x - text_x) or >>
+                pos := flat_index(&lines, row, col)
+                if (event.modifiers & ui.MOD_SHIFT) != 0 {
+                    head = pos
+                } else {
+                    anchor = pos
+                    head = pos
+                }
+                dragging = true
+                focused = true
+            } else {
+                dragging = false
+            }
+        } else if event.kind == ui.EV_POINTER_MOVE && dragging {
+            $row := int((event.y - text_y) / line_h)
+            if row < 0 { row = 0 }
+            if row >= lines.len { row = lines.len - 1 }
+            col := hit_col(&context, &text_opts, &lines[row], event.x - text_x) or >>
+            head = flat_index(&lines, row, col)
+        } else if event.kind == ui.EV_POINTER_UP || event.kind == ui.EV_POINTER_CANCEL {
+            dragging = false
+        } else if event.kind == ui.EV_KEY_DOWN && focused {
+            mod_cmd := (event.modifiers & (ui.MOD_CONTROL | ui.MOD_META)) != 0
+            mod_shift := (event.modifiers & ui.MOD_SHIFT) != 0
+            if mod_cmd && event.key == 65 {
+                anchor = 0
+                head = max_pos
+            } else if mod_cmd && event.key == 67 {
+                $lo := anchor
+                $hi := head
+                if lo > hi {
+                    tmp := lo
+                    lo = hi
+                    hi = tmp
+                }
+                if hi > lo { clipboard = extract_range(&lines, lo, hi) }
+            } else if event.key == ui.KEY_ESCAPE {
+                anchor = head
+            } else if event.key == ui.KEY_LEFT {
+                if head > 0 { head -= 1 }
+                if !mod_shift { anchor = head }
+            } else if event.key == ui.KEY_RIGHT {
+                if head < max_pos { head += 1 }
+                if !mod_shift { anchor = head }
+            } else if event.key == ui.KEY_HOME {
+                head = 0
+                if !mod_shift { anchor = head }
+            } else if event.key == ui.KEY_END {
+                head = max_pos
+                if !mod_shift { anchor = head }
+            }
+        }
+    }
+
+    $lo := anchor
+    $hi := head
+    if lo > hi {
+        tmp := lo
+        lo = hi
+        hi = tmp
+    }
+    selected := extract_range(&lines, lo, hi)
+
+    $frame := context.new_frame(8192)
+    frame.begin() or >>
+    frame.clear(styles.background) or >>
+    frame.fill_rect(28.0, 74.0, 584.0, 232.0, draw.rgb(255, 253, 251)) or >>
+    frame.stroke_rect(28.0, 74.0, 584.0, 232.0, draw.rgb(217, 208, 217), 1.0) or >>
+    draw.text(32, 20, 20, "#282329", "XUUI  /  Text Selection")
+    draw.text(32, 46, 12, "#6d626e", "Drag, Shift+Arrows, Ctrl+A / Ctrl+C, Esc")
+
+    $border := draw.rgb(217, 208, 217)
+    if focused { border = draw.rgb(225, 29, 72) }
+    frame.fill_rect(text_box.x, text_box.y, text_box.width, text_box.height, draw.rgb(255, 255, 255)) or >>
+    frame.stroke_rect(text_box.x, text_box.y, text_box.width, text_box.height, border, 1.5) or >>
+
+    $base := 0
+    for i in 0:lines.len {
+        line := lines[i]
+        ly := text_y + f64(i) * line_h
+        line_end := base + line.len
+        if hi > base && lo < line_end {
+            $s := lo - base
+            if s < 0 { s = 0 }
+            $e := hi - base
+            if e > line.len { e = line.len }
+            if e > s {
+                x0 := text_x + (measure_prefix(&context, &text_opts, &line, s) or >>)
+                x1 := text_x + (measure_prefix(&context, &text_opts, &line, e) or >>)
+                frame.fill_rect(x0, ly - 2.0, x1 - x0, 22.0, draw.rgba(225, 29, 72, 56)) or >>
+            }
+        }
+        shaped := context.layout_text(&line, &text_opts) or >>
+        frame.text_layout(&shaped, text_x, ly, draw.rgb(40, 35, 41)) or >>
+        if focused && head >= base && head <= line_end {
+            cx := text_x + (measure_prefix(&context, &text_opts, &line, head - base) or >>)
+            frame.line(cx, ly - 2.0, cx, ly + 19.0, draw.rgb(225, 29, 72), 1.5) or >>
+        }
+        base = line_end + 1
+    }
+
+    btn_all.paint_styled($&frame, $&lbl_all, &styles) or >>
+    btn_copy.paint_styled($&frame, $&lbl_copy, &styles) or >>
+    btn_clear.paint_styled($&frame, $&lbl_clear, &styles) or >>
+
+    $sel_show := "(none)"
+    if selected.len > 0 { sel_show = selected }
+    $clip_show := "(empty)"
+    if clipboard.len > 0 { clip_show = clipboard }
+    draw.text(44, 268, 13, "#282329", "Selected [" + str(lo) + ":" + str(hi) + "]: " + sel_show)
+    draw.text(32, 326, 13, "#6d626e", "Clipboard: " + clip_show)
+    frame.present() or >>
+    btn_all.painted()
+    btn_copy.painted()
+    btn_clear.painted()
+    println("Selected: " + sel_show + " | Clipboard: " + clip_show)
+    << 0
+}
+
+fn main() int {
+    << demo() or (err) {
+        eprintln(err.msg())
+        << 1
+    }
+}

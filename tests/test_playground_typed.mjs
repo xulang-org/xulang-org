@@ -49,6 +49,17 @@ test('Canvas receives replayed click, keyboard, pointer, and scroll input', () =
   assert.equal(widget.ui.input, true);
   assert.ok(canvas.XuPlayCanvas.frame(widget.ui.commands));
 
+  const sel = runtime.run(sourceFor('ui-text-selection'), {events: [
+    {kind: 78, key: 67, modifiers: 2},
+    {kind: 72, x: 60, y: 112, button: 1, buttons: 1},
+    {kind: 74, x: 180, y: 112, button: 1, buttons: 1},
+    {kind: 73, x: 180, y: 112, button: 1, buttons: 0},
+  ]});
+  assert.equal(sel.exit, 0, sel.stderr);
+  assert.equal(sel.stdout, 'Selected: Xu compiles n | Clipboard: Zero GC ownership\n');
+  assert.equal(sel.ui.input, true);
+  assert.ok(canvas.XuPlayCanvas.frame(sel.ui.commands));
+
   const scroll = runtime.run(`@main
 #playground
 fn main() int {
