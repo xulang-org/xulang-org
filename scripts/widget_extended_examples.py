@@ -313,36 +313,120 @@ fn char_from_key(key int, shift bool) string {
     if key == 64 { << "@" }
     << ""
 }
+fn hit_pos(text &string, rel_x f64) int {
+    if rel_x <= 0.0 || text.len == 0 { << 0 }
+    cell := 15.0 * 0.6
+    idx := int((rel_x + cell * 0.5) / cell)
+    if idx < 0 { << 0 }
+    if idx > text.len { << text.len }
+    << idx
+}
 fn demo() int {
     context := draw.default_context()
     styles := playground.light_styles()
     bounds := box(48.0,114.0,500.0,44.0)
     $text := "developer@xulang.org"
     $focused := false
+    $anchor := 0
+    $head := 0
+    $dragging := false
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
-        if event.kind == 77 { focused = false }
+        if event.kind == 77 {
+            focused = false
+            dragging = false
+        }
         if event.kind == 72 {
             px := event.x
             py := event.y
             if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
                 focused = true
+                dragging = true
+                pos := hit_pos(&text, px - (bounds.x + 14.0))
+                if (event.modifiers & ui.MOD_SHIFT) != 0 {
+                    head = pos
+                } else {
+                    anchor = pos
+                    head = pos
+                }
             } else {
                 focused = false
+                dragging = false
             }
+        } else if event.kind == 74 && dragging {
+            head = hit_pos(&text, event.x - (bounds.x + 14.0))
+        } else if event.kind == 73 {
+            dragging = false
         }
         if event.kind == 78 {
-            if event.key == 257 { focused = !focused }
+            if event.key == 257 {
+                focused = !focused
+                if focused {
+                    anchor = 0
+                    head = text.len
+                }
+            }
             if focused {
-                if event.key == 259 {
-                    if text.len > 0 { text = remove_last(&text) }
+                mod_cmd := (event.modifiers & (ui.MOD_CONTROL | ui.MOD_META)) != 0
+                $lo := anchor
+                $hi := head
+                if lo > hi {
+                    tmp := lo
+                    lo = hi
+                    hi = tmp
+                }
+                if mod_cmd && (event.key == 65 || event.key == 97) {
+                    anchor = 0
+                    head = text.len
+                } else if event.key == 259 {
+                    if hi > lo {
+                        text = text[0:lo] + text[hi:text.len]
+                        anchor = lo
+                        head = lo
+                    } else if head > 0 && text.len > 0 {
+                        text = text[0:head - 1] + text[head:text.len]
+                        head -= 1
+                        anchor = head
+                    }
+                } else if event.key == 260 {
+                    if hi > lo {
+                        text = text[0:lo] + text[hi:text.len]
+                        anchor = lo
+                        head = lo
+                    } else if head < text.len {
+                        text = text[0:head] + text[head + 1:text.len]
+                        anchor = head
+                    }
                 } else if event.key == 256 {
                     focused = false
-                } else if text.len < 64 {
+                    anchor = head
+                } else if event.key == ui.KEY_LEFT {
+                    if head > 0 { head -= 1 }
+                    if (event.modifiers & ui.MOD_SHIFT) == 0 { anchor = head }
+                } else if event.key == ui.KEY_RIGHT {
+                    if head < text.len { head += 1 }
+                    if (event.modifiers & ui.MOD_SHIFT) == 0 { anchor = head }
+                } else if event.key == ui.KEY_HOME {
+                    head = 0
+                    if (event.modifiers & ui.MOD_SHIFT) == 0 { anchor = head }
+                } else if event.key == ui.KEY_END {
+                    head = text.len
+                    if (event.modifiers & ui.MOD_SHIFT) == 0 { anchor = head }
+                } else if !mod_cmd && text.len < 64 {
                     shift := (event.modifiers & 1) != 0
                     ch := char_from_key(event.key, shift)
-                    if ch.len > 0 { text = text + ch }
+                    if ch.len > 0 {
+                        if hi > lo {
+                            text = text[0:lo] + ch + text[hi:text.len]
+                            anchor = lo + ch.len
+                            head = lo + ch.len
+                        } else {
+                            text = text[0:head] + ch + text[head:text.len]
+                            head += ch.len
+                            anchor = head
+                        }
+                    }
                 }
             }
         }
@@ -355,7 +439,7 @@ fn demo() int {
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     draw.text(32,22,20,"#282329","XUUI  /  Input")
-    draw.text(32,48,12,"#6d626e","浏览器输入预览：末尾输入、退格删除；Escape 离开。")
+    draw.text(32,48,12,"#6d626e","浏览器输入预览：支持选区拖拽、Ctrl+A 全选、退格删除。")
 
     bx := int(bounds.x)
     by := int(bounds.y)
@@ -368,11 +452,33 @@ fn demo() int {
         frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
     }
 
+    $lo := anchor
+    $hi := head
+    if lo > hi {
+        tmp := lo
+        lo = hi
+        hi = tmp
+    }
+
+    text_x := f64(bx + 14)
+    if focused && hi > lo {
+        x0 := text_x + f64(lo) * 15.0 * 0.6
+        x1 := text_x + f64(hi) * 15.0 * 0.6
+        frame.fill_rect(x0, bounds.y + 8.0, x1 - x0, bounds.height - 16.0, draw.rgba(225, 29, 72, 56)) or >>
+    }
+
     if text.len > 0 {
-        draw.text(bx + 14,by + 13,15,"#282329",text + caret)
+        draw.text(bx + 14,by + 13,15,"#282329",text + "")
+        if focused {
+            cx := text_x + f64(head) * 15.0 * 0.6
+            frame.line(cx, bounds.y + 10.0, cx, bounds.y + bounds.height - 10.0, draw.rgb(225, 29, 72), 1.5) or >>
+        }
     } else {
-        if focused { draw.text(bx + 14,by + 13,15,"#be123c",caret) }
-        else { draw.text(bx + 14,by + 13,15,"#857987","you@domain.com") }
+        if focused {
+            frame.line(text_x, bounds.y + 10.0, text_x, bounds.y + bounds.height - 10.0, draw.rgb(225, 29, 72), 1.5) or >>
+        } else {
+            draw.text(bx + 14,by + 13,15,"#857987","you@domain.com")
+        }
     }
 
     draw.text(bx,by + int(bounds.height) + 8,12,"#6d626e","Basic key input · Native IME requires the desktop SDK")

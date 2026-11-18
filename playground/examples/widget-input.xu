@@ -5,12 +5,6 @@
 #ui/widgets
 #playground
 
-fn remove_last(value &string) string {
-    if value.len == 0 { << "" }
-    $end := value.len-1
-    while end > 0 && (value[end] & 192) == 128 { end -= 1 }
-    << value[0:end]
-}
 fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
     label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
     << frame.text_layout(&label,f64(x),f64(y),ink) or >>
@@ -34,7 +28,7 @@ fn char_from_key(key int, shift bool) string {
     }
     if key >= 48 && key <= 57 {
         digits := "0123456789"
-        symbols := ")!@#\\$%^&*("
+        symbols := ")!@#\$%^&*("
         idx := key - 48
         if shift { << symbols[idx:idx + 1] }
         << digits[idx:idx + 1]
@@ -48,7 +42,6 @@ fn char_from_key(key int, shift bool) string {
     if key == 64 { << "@" }
     << ""
 }
-
 fn hit_pos(text &string, rel_x f64) int {
     if rel_x <= 0.0 || text.len == 0 { << 0 }
     cell := 15.0 * 0.6
@@ -57,7 +50,6 @@ fn hit_pos(text &string, rel_x f64) int {
     if idx > text.len { << text.len }
     << idx
 }
-
 fn demo() int {
     context := draw.default_context()
     styles := playground.light_styles()
@@ -67,11 +59,13 @@ fn demo() int {
     $anchor := 0
     $head := 0
     $dragging := false
-
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
-        if event.kind == 77 { focused = false; dragging = false }
+        if event.kind == 77 {
+            focused = false
+            dragging = false
+        }
         if event.kind == 72 {
             px := event.x
             py := event.y
@@ -97,7 +91,10 @@ fn demo() int {
         if event.kind == 78 {
             if event.key == 257 {
                 focused = !focused
-                if focused { anchor = 0; head = text.len }
+                if focused {
+                    anchor = 0
+                    head = text.len
+                }
             }
             if focused {
                 mod_cmd := (event.modifiers & (ui.MOD_CONTROL | ui.MOD_META)) != 0
