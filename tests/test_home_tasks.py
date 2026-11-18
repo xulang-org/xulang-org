@@ -72,7 +72,7 @@ class HomeTaskTests(unittest.TestCase):
                 self.assertIn('id="xu-play-ui"', home)
                 self.assertIn('id="xu-play-canvas"', home)
                 self.assertIn('id="xu-play-ui-status"', home)
-                for option in ('hello', 'bindings', 'control', 'ints', 'coroutine', 'ui-counter', 'ui-widgets'):
+                for option in ('hello', 'bindings', 'control', 'ints', 'coroutine', 'ui-counter', 'ui-widgets', 'ui-text-selection'):
                     self.assertIn(f'value="{option}"', home)
                 self.assert_links_resolve(home, lang)
 

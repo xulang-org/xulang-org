@@ -1,0 +1,27 @@
+<!--title: Xu 0.12.6 发布：完整 C FFI 与 xu cbind、原生移动端游戏宿主、内存安全门禁与优化器升级-->
+<!--summary: 补全跨架构 C FFI 与 xu cbind 头文件生成，新增原生 SDL GPU 移动端游戏宿主与 #app 模块，接入 67 项内存安全 CI 门禁，并带来多项 MIR 优化、后端代码生成与运行时加速。-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.12.6 发布：完整 C FFI 与 <code>xu cbind</code>、原生移动端游戏宿主、内存安全门禁与优化器升级</h1>
+<p class="meta">2026-11-18 · <a href="https://github.com/xulang-org/xu/releases/tag/v0.12.6">Xu v0.12.6</a></p>
+<p>Xu 0.12.6 补全了跨架构 C FFI 栈与头文件自动生成，新增面向原生 SDL GPU 的移动端游戏打包与 <code>#app</code> 模块，全面加固零 GC 内存安全并接入 67 项自动化回归门禁，同时在类型化 MIR 优化、x64/ARM64 代码生成与运行时热路径上带来多项性能提升。</p>
+
+<h2>完整 C FFI 与 <code>xu cbind</code></h2>
+<p>C 互操作现已覆盖 ARM64、x64、RISC-V 与 LoongArch 后端的完整对象、应用与原生库链接，新增 C union 与位域、<code>extern</code> 全局变量、支持闭包环境分发的 C 回调跳板以及更清晰的 FFI 诊断信息。新增的 <code>xu cbind</code> 子命令可直接从 Xu FFI 接口生成 C 头文件声明及编译期内存布局断言。</p>
+
+<h2>原生移动端游戏宿主与 <code>#app</code></h2>
+<p>移动端项目生成在原有 UI 模式基础上新增 <code>xu build --phone --phone-profile game</code>。配套的 <a href="/api/app"><code>#app</code></a> 标准库模块以及更新后的 <code>xu-phone</code> / <code>xu-native</code> 模板支持原生 SDL GPU 移动游戏资源打包、ARM64 栈切换运行时宿主，以及安全区、返回键和前后台恢复事件。</p>
+
+<h2>内存安全与零 GC 加固</h2>
+<p>静态借用、移动与 <code>unsafe</code> 检查进一步收紧，覆盖容器嵌套可变引用、泛型调用、闭包捕获、<code>match</code>/<code>select</code>/<code>or</code> 分支以及 <code>xu</code> 协程派生。MIR 降级与运行时新增字符串写时复制（COW）字节写入、零大小结构体装箱静态不朽头、16KB 协程栈保护页、整数溢出检查，并新增包含 67 项用例的 <code>memsafe-gate</code> 回归门禁（在 CI 中启用 <code>XU_DEBUG_FREE=1</code> 执行）。</p>
+
+<h2>MIR 优化器、代码生成与运行时加速</h2>
+<ul>
+  <li><strong>x64 后端</strong>：引入 XMM 寄存器分配与 SSE2 <code>f64</code> 直接降级、<code>cmp+cmovcc</code> 条件选择融合，以及 <code>mul 3/5/9</code> 和加减法向 <code>lea</code> 的降级。</li>
+  <li><strong>ARM64 与公共代码生成</strong>：简化 2 的幂奇偶/除法守卫、支持 <code>mul 2^k+1</code> 与 <code>cmp+csel</code> 融合，以及复合 <code>||</code>/<code>&amp;&amp;</code> 快速入口守卫。</li>
+  <li><strong>类型化 MIR 优化通道</strong>：<code>opt_gvn</code> 增加支配树区间边界传播与除/比较折叠，<code>opt_bce</code> 支持闭区间 <code>&lt;=</code> 循环版本化，<code>opt_ifconv</code> 支持小常量循环完全展开，并加入本地开关查找表与零环境函数值去虚化。</li>
+  <li><strong>运行时热路径</strong>：加速 <code>runtime/core</code> 中的 Base64 编解码、字符串常用路径以及 MD5 块压缩与十六进制格式化。</li>
+</ul>
+
+<h2>升级完整 SDK</h2>
+<p>六个主流平台（Linux x64/arm64、macOS arm64/x64、Windows x64/arm64）的原生产品级 SDK 均已通过完整自举不动点校验、运行时/扩展包协议测试与 67 项内存安全门禁，现已正式发布。</p>
+<p><a href="/download">下载 SDK</a> · <a href="https://github.com/xulang-org/xu/releases/download/v0.12.6/SHA256SUMS">SHA-256 校验摘要</a> · <a href="https://github.com/xulang-org/xu/blob/v0.12.6/RELEASES.zh-CN.md#xu-0126">完整发布说明</a></p>

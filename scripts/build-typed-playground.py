@@ -34,6 +34,7 @@ def embed_sources(src: Path, out: Path) -> None:
         *(src / "runtime/core").glob("*.xu"),
         *(src / "internal/uiabi").glob("*.xu"),
         *(src / "errors").glob("*.xu"),
+        *(src / "math/bits").glob("*.xu"),
         src / "runtime/str_algo.xu",
         src / "runtime/map_algo.xu",
     ]
