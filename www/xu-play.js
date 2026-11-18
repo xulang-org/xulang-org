@@ -350,6 +350,8 @@
       interactive = committed && result.ui.interactive && activeSource === currentSource();
       canvas.setAttribute('aria-disabled', String(!interactive));
       canvas.dataset.widgetInput = String(inputMode && interactive);
+      if (select) canvas.dataset.example = select.value;
+      if (workspace && workspace.currentExample) canvas.dataset.example = workspace.currentExample;
       if (uiStatus) uiStatus.textContent = result.ui.interactive
         ? (inputMode ? text('真实控件 · 点击 / Tab 聚焦 · Enter/空格激活 · 方向键调节 · Esc 离开。', 'Real widgets · Click / Tab to focus · Enter/Space to activate · Arrows to adjust · Esc to leave.') : text('点击画布，或聚焦画布后按 Enter 点击中心。', 'Click the canvas, or focus it and press Enter to click its center.'))
         : text('静态画面 · 修改代码后重新运行。', 'Static drawing · Edit the source and run again.');

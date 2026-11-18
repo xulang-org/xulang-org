@@ -68,25 +68,90 @@ fn extract_range(lines &[]string, lo int, hi int) string {
     << out
 }
 
+fn delete_range(lines $&[]string, lo int, hi int) int {
+    if hi <= lo { << 0 }
+    $base := 0
+    for i in 0:lines.len {
+        line := lines[i]
+        line_end := base + line.len
+        if hi > base && lo < line_end {
+            $s := lo - base
+            if s < 0 { s = 0 }
+            $e := hi - base
+            if e > line.len { e = line.len }
+            lines[i] = line[0:s] + line[e:line.len]
+        }
+        base = line_end + 1
+    }
+    << 0
+}
+
+fn insert_char(lines $&[]string, pos int, ch &string) int {
+    $base := 0
+    for i in 0:lines.len {
+        line := lines[i]
+        line_end := base + line.len
+        if pos >= base && pos <= line_end {
+            $col := pos - base
+            lines[i] = line[0:col] + ch + line[col:line.len]
+            << 0
+        }
+        base = line_end + 1
+    }
+    if lines.len > 0 {
+        last := lines.len - 1
+        lines[last] = lines[last] + ch
+    }
+    << 0
+}
+
+fn char_from_key(key int, shift bool) string {
+    if key == 32 { << " " }
+    if key >= 65 && key <= 90 {
+        lower := "abcdefghijklmnopqrstuvwxyz"
+        upper := "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        idx := key - 65
+        if !shift { << lower[idx:idx + 1] }
+        << upper[idx:idx + 1]
+    }
+    if key >= 48 && key <= 57 {
+        digits := "0123456789"
+        symbols := ")!@#\$%^&*("
+        idx := key - 48
+        if shift { << symbols[idx:idx + 1] }
+        << digits[idx:idx + 1]
+    }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 46 { if shift { << ">" } << "." }
+    if key == 44 { if shift { << "<" } << "," }
+    if key == 47 { if shift { << "?" } << "/" }
+    if key == 58 || key == 59 { if shift { << ":" } << ";" }
+    if key == 64 { << "@" }
+    << ""
+}
+
 fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
     styles := playground.light_styles()
     text_opts := draw.text_options(15.0)
-    lines := ["Xu compiles natively to ARM64, x64, and WASM.", "Zero GC ownership with deterministic RAII drop.", "Drag or press Shift+Arrows, then Ctrl+C to copy."]
-    max_pos := total_len(&lines)
+    $lines := ["Xu compiles natively to ARM64, x64, and WASM.", "Zero GC ownership with deterministic RAII drop.", "Drag or press Shift+Arrows, then Ctrl+C to copy."]
+    $max_pos := total_len(&lines)
 
     text_box := box(44.0, 92.0, 552.0, 108.0)
     text_x := 60.0
     text_y := 106.0
     line_h := 28.0
 
-    $btn_all := widgets.button(&identity, 1, &box(44.0, 214.0, 112.0, 36.0)) or >>
-    $btn_copy := widgets.button(&identity, 2, &box(168.0, 214.0, 100.0, 36.0)) or >>
-    $btn_clear := widgets.button(&identity, 3, &box(280.0, 214.0, 96.0, 36.0)) or >>
+    $btn_all := widgets.button(&identity, 1, &box(44.0, 214.0, 108.0, 36.0)) or >>
+    $btn_copy := widgets.button(&identity, 2, &box(160.0, 214.0, 96.0, 36.0)) or >>
+    $btn_clear := widgets.button(&identity, 3, &box(264.0, 214.0, 92.0, 36.0)) or >>
+    $btn_del := widgets.button(&identity, 4, &box(364.0, 214.0, 108.0, 36.0)) or >>
     $lbl_all := widgets.styled_label(&context, &"Select All")
     $lbl_copy := widgets.styled_label(&context, &"Copy")
     $lbl_clear := widgets.styled_label(&context, &"Clear")
+    $lbl_del := widgets.styled_label(&context, &"Backspace")
 
     // Default highlighted span: "Zero GC ownership" on line 1.
     $anchor := flat_index(&lines, 1, 0)
@@ -102,6 +167,7 @@ fn demo() int {
         a_all := btn_all.input(&event)
         a_copy := btn_copy.input(&event)
         a_clear := btn_clear.input(&event)
+        a_del := btn_del.input(&event)
         if a_all.kind == widgets.ACTION_ACTIVATE {
             anchor = 0
             head = max_pos
@@ -121,6 +187,28 @@ fn demo() int {
         }
         if a_clear.kind == widgets.ACTION_ACTIVATE {
             anchor = head
+            ->
+        }
+        if a_del.kind == widgets.ACTION_ACTIVATE {
+            $lo := anchor
+            $hi := head
+            if lo > hi {
+                tmp := lo
+                lo = hi
+                hi = tmp
+            }
+            if hi > lo {
+                delete_range($&lines, lo, hi)
+                max_pos = total_len(&lines)
+                anchor = lo
+                head = lo
+            } else if head > 0 {
+                delete_range($&lines, head - 1, head)
+                max_pos = total_len(&lines)
+                head -= 1
+                anchor = head
+            }
+            focused = true
             ->
         }
 
@@ -165,6 +253,43 @@ fn demo() int {
                     hi = tmp
                 }
                 if hi > lo { clipboard = extract_range(&lines, lo, hi) }
+            } else if event.key == ui.KEY_BACKSPACE {
+                $lo := anchor
+                $hi := head
+                if lo > hi {
+                    tmp := lo
+                    lo = hi
+                    hi = tmp
+                }
+                if hi > lo {
+                    delete_range($&lines, lo, hi)
+                    max_pos = total_len(&lines)
+                    anchor = lo
+                    head = lo
+                } else if head > 0 {
+                    delete_range($&lines, head - 1, head)
+                    max_pos = total_len(&lines)
+                    head -= 1
+                    anchor = head
+                }
+            } else if event.key == ui.KEY_DELETE {
+                $lo := anchor
+                $hi := head
+                if lo > hi {
+                    tmp := lo
+                    lo = hi
+                    hi = tmp
+                }
+                if hi > lo {
+                    delete_range($&lines, lo, hi)
+                    max_pos = total_len(&lines)
+                    anchor = lo
+                    head = lo
+                } else if head < max_pos {
+                    delete_range($&lines, head, head + 1)
+                    max_pos = total_len(&lines)
+                    anchor = head
+                }
             } else if event.key == ui.KEY_ESCAPE {
                 anchor = head
             } else if event.key == ui.KEY_LEFT {
@@ -179,6 +304,27 @@ fn demo() int {
             } else if event.key == ui.KEY_END {
                 head = max_pos
                 if !mod_shift { anchor = head }
+            } else if !mod_cmd && event.key >= 32 && event.key <= 126 {
+                ch := char_from_key(event.key, mod_shift)
+                if ch.len > 0 {
+                    $lo := anchor
+                    $hi := head
+                    if lo > hi {
+                        tmp := lo
+                        lo = hi
+                        hi = tmp
+                    }
+                    if hi > lo {
+                        delete_range($&lines, lo, hi)
+                        max_pos = total_len(&lines)
+                        anchor = lo
+                        head = lo
+                    }
+                    insert_char($&lines, head, &ch)
+                    max_pos = total_len(&lines)
+                    head += 1
+                    anchor = head
+                }
             }
         }
     }
@@ -198,7 +344,7 @@ fn demo() int {
     frame.fill_rect(28.0, 74.0, 584.0, 232.0, draw.rgb(255, 253, 251)) or >>
     frame.stroke_rect(28.0, 74.0, 584.0, 232.0, draw.rgb(217, 208, 217), 1.0) or >>
     draw.text(32, 20, 20, "#282329", "XUUI  /  Text Selection")
-    draw.text(32, 46, 12, "#6d626e", "Drag, Shift+Arrows, Ctrl+A / Ctrl+C, Esc")
+    draw.text(32, 46, 12, "#6d626e", "Drag / Shift+Arrows · Backspace delete · Ctrl+A / Ctrl+C")
 
     $border := draw.rgb(217, 208, 217)
     if focused { border = draw.rgb(225, 29, 72) }
@@ -233,6 +379,7 @@ fn demo() int {
     btn_all.paint_styled($&frame, $&lbl_all, &styles) or >>
     btn_copy.paint_styled($&frame, $&lbl_copy, &styles) or >>
     btn_clear.paint_styled($&frame, $&lbl_clear, &styles) or >>
+    btn_del.paint_styled($&frame, $&lbl_del, &styles) or >>
 
     $sel_show := "(none)"
     if selected.len > 0 { sel_show = selected }
@@ -244,6 +391,7 @@ fn demo() int {
     btn_all.painted()
     btn_copy.painted()
     btn_clear.painted()
+    btn_del.painted()
     println("Selected: " + sel_show + " | Clipboard: " + clip_show)
     << 0
 }
