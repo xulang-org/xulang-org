@@ -10,9 +10,10 @@
 fn scalar(value f64) string { <<< 1 }
 fn color_text(color Color) string {
     digits := "0123456789abcdef"
-    $out := "#"
+    $out := make_string(9)
+    out[0] = 35
     packed := color.value()
-    for i in 0:8 { out = out + string_from_byte(digits[(packed >> ((7 - i) * 4)) & 15]) }
+    for i in 0:8 { out[i + 1] = digits[(packed >> ((7 - i) * 4)) & 15] }
     << out
 }
 pub struct Context { canvas_id int
@@ -107,18 +108,23 @@ pub const FILL_NONZERO = 0
 pub struct Path { commands string }
 pub fn new_path(capacity int) Path { << Path{commands: ""} }
 pub fn (path $&Path) move_to(x f64,y f64) int {
-    path.commands = path.commands + "path_move\t" + scalar(x) + "\t" + scalar(y) + "\n"
+    commands := $&path.commands
+    commands.push_str("path_move\t" + scalar(x) + "\t" + scalar(y) + "\n")
     << 0
 }
 pub fn (path $&Path) line_to(x f64,y f64) int {
-    path.commands = path.commands + "path_line\t" + scalar(x) + "\t" + scalar(y) + "\n"
+    commands := $&path.commands
+    commands.push_str("path_line\t" + scalar(x) + "\t" + scalar(y) + "\n")
     << 0
 }
 pub fn (path $&Path) cubic_to(x1 f64,y1 f64,x2 f64,y2 f64,x f64,y f64) int {
-    path.commands = path.commands + "path_cubic\t" + scalar(x1) + "\t" + scalar(y1) + "\t" + scalar(x2) + "\t" + scalar(y2) + "\t" + scalar(x) + "\t" + scalar(y) + "\n"
+    commands := $&path.commands
+    commands.push_str("path_cubic\t" + scalar(x1) + "\t" + scalar(y1) + "\t" + scalar(x2) + "\t" + scalar(y2) + "\t" + scalar(x) + "\t" + scalar(y) + "\n")
     << 0
 }
-pub fn (path $&Path) close() int { path.commands = path.commands + "path_close\n"
+pub fn (path $&Path) close() int {
+    commands := $&path.commands
+    commands.push_str("path_close\n")
     << 0 }
 pub fn (frame $&Frame) fill_path(path &Path,color Color,rule int) int {
     frame.writable() or >>

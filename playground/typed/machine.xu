@@ -1,6 +1,7 @@
 @main
 
 #xu/mir
+#xu/types
 #runtime/core
 
 const MAX_MEMORY = 67108864
@@ -11,6 +12,51 @@ const INITIAL_USED = 4096
 const PAGE_WORDS = 8192
 const EVENT_BYTES = 80
 const MAX_CHECKPOINT_BYTES = 8388608
+const CALL_SYSCALL = -2
+const CALL_GLOBALS = -3
+const CALL_DRAW = -4
+const CALL_CLICK = -5
+const CALL_INPUT = -6
+const CALL_CLOCK = -7
+const CALL_SCALAR = -8
+const CALL_RETAIN = -9
+const CALL_LOOKUP = -10
+
+struct FunctionPlan {
+    local_offsets []int
+    // Function indices are nonnegative. Negative values describe host calls.
+    call_targets []int
+}
+
+fn call_target(functions &types.StrMap, label &string) int {
+    if *label == "__xu_syscall" { << CALL_SYSCALL }
+    if *label == "__xu_globals" { << CALL_GLOBALS }
+    if *label == "_xu_ui_draw_emit" { << CALL_DRAW }
+    if *label == "_xu_playground_next_click" { << CALL_CLICK }
+    if *label == "_xu_playground_next_input" { << CALL_INPUT }
+    if *label == "_xu_time_now_ns" { << CALL_CLOCK }
+    if *label == "_xu_ui_draw_scalar" { << CALL_SCALAR }
+    if *label == "_xu_ui_draw_retain" { << CALL_RETAIN }
+    if *label == "_xu_ui_draw_lookup" { << CALL_LOOKUP }
+    << functions.lookup(label)
+}
+
+fn plan_function(f &mir.MFn, functions &types.StrMap) FunctionPlan {
+    $offsets := []int{}
+    $offset := 0
+    for nslots in f.locals_nslots {
+        offsets.push(offset)
+        offset += nslots * 8
+    }
+    offsets.push(offset)
+    $targets := make_ints(f.instrs.len)
+    for i in 0:f.instrs.len {
+        ins := &f.instrs[i]
+        if ins.kind == mir.MI_CALL { targets[i] = call_target(functions, &ins.sval) }
+        if ins.kind == mir.MI_LOAD_FN_ADDR { targets[i] = functions.lookup(&ins.sval) }
+    }
+    << FunctionPlan{local_offsets: offsets, call_targets: targets}
+}
 
 struct Page {
     words []int
@@ -52,6 +98,7 @@ struct Machine {
     stopped bool
     failed bool
     status int
+    call_args []int // Scratch storage reused between calls, including task entry.
 }
 
 fn machine_empty() Machine {
@@ -74,7 +121,8 @@ fn machine_empty() Machine {
         waiting: false,
         stopped: false,
         failed: false,
-        status: 0
+        status: 0,
+        call_args: []int{}
     }
 }
 
@@ -84,10 +132,7 @@ fn machine_start(program &Program) Machine {
     // so unused task stacks and allocator reserves consume little WASM heap.
     for i in 0:MAX_MEMORY / 8 / PAGE_WORDS { machine.pages.push(Page{words: []int{}}) }
     for i in 0:program.body.fns.len { machine.literal_ptrs.push([]int{}) }
-    entry := "_xu_main"
-    args := []int{}
-    start := program.functions.lookup(&entry)
-    machine.current = machine.enter(&program.body, start, -1, -1, &args)
+    machine.current = machine.enter(program, program.entry, -1, -1, 0)
     << machine
 }
 
@@ -119,7 +164,8 @@ fn (s &Machine) preview() Machine {
         waiting: false,
         stopped: false,
         failed: false,
-        status: s.status
+        status: s.status,
+        call_args: []int{}
     }
 }
 
@@ -163,7 +209,15 @@ fn (s $&Machine) load(address int, width int) int {
         s.fail("invalid playground memory read")
         << 0
     }
-    if count == 8 && address % 8 == 0 { << s.load_word(address / 8) }
+    index := address / 8
+    byte_offset := address % 8
+    if count == 8 && byte_offset == 0 { << s.load_word(index) }
+    if byte_offset + count <= 8 {
+        mask := (1 << (count * 8)) - 1
+        value := (s.load_word(index) >> (byte_offset * 8)) & mask
+        if width == -4 && (value & 2147483648) != 0 { << value - 4294967296 }
+        << value
+    }
     $value := 0
     for i in 0:count {
         byte_address := address + i
@@ -181,8 +235,17 @@ fn (s $&Machine) store(address int, width int, value int) {
         s.fail("invalid playground memory write")
         <<
     }
-    if count == 8 && address % 8 == 0 {
-        s.store_word(address / 8, value)
+    index := address / 8
+    byte_offset := address % 8
+    if count == 8 && byte_offset == 0 {
+        s.store_word(index, value)
+        <<
+    }
+    if byte_offset + count <= 8 {
+        shift := byte_offset * 8
+        mask := ((1 << (count * 8)) - 1) << shift
+        word := s.load_word(index)
+        s.store_word(index, (word & (mask ^ -1)) | ((value << shift) & mask))
         <<
     }
     for i in 0:count {
@@ -194,32 +257,28 @@ fn (s $&Machine) store(address int, width int, value int) {
 }
 
 fn (s $&Machine) operand(f &mir.MFn, frame int, value int) int {
-    if value >= 0 { << s.load(s.frames[frame].temps + value * 8, 8) }
+    if value >= 0 { << s.load_word(s.frames[frame].temps / 8 + value) }
     if value <= -2 { << f.consts[-value - 2] }
     << 0
 }
 
 fn (s $&Machine) set_temp(frame int, index int, value int) {
-    if index >= 0 { s.store(s.frames[frame].temps + index * 8, 8, value) }
+    if index >= 0 { s.store_word(s.frames[frame].temps / 8 + index, value) }
 }
 
-fn local_offset(f &mir.MFn, index int) int {
-    $offset := 0
-    for i in 0:index { offset += f.locals_nslots[i] * 8 }
-    << offset
-}
-
-fn (s $&Machine) enter(m &mir.Mir, fn_index int, parent int, dest int, args &[]int) int {
+fn (s $&Machine) enter(program &Program, fn_index int, parent int, dest int, count int) int {
+    m := &program.body
     if fn_index < 0 || fn_index >= m.fns.len {
         s.fail("invalid playground function address")
         << -1
     }
     f := &m.fns[fn_index]
-    if f.nparams != args.len || f.blocks.len == 0 {
+    if f.nparams != count || f.blocks.len == 0 {
         s.fail("invalid playground function call: " + f.label)
         << -1
     }
-    locals := local_offset(f, f.locals.len)
+    offsets := &program.plans[fn_index].local_offsets
+    locals := offsets[f.locals.len]
     bytes := locals + f.temps.len * 8
     $base := 0
     $frame := -1
@@ -237,7 +296,7 @@ fn (s $&Machine) enter(m &mir.Mir, fn_index int, parent int, dest int, args &[]i
     if frame < 0 { base = s.alloc(bytes) }
     if s.failed { << -1 }
     for i in 0:bytes / 8 { s.store_word(base / 8 + i, 0) }
-    for i in 0:args.len { s.store(base + local_offset(f, i), 8, args[i]) }
+    for i in 0:count { s.store_word((base + offsets[i]) / 8, s.call_args[i]) }
     new_frame := Frame{
         fn_index: fn_index, block: 0, next: f.blocks[0].head, parent: parent,
         dest: dest, base: base, temps: base + locals, bytes: capacity
@@ -247,6 +306,23 @@ fn (s $&Machine) enter(m &mir.Mir, fn_index int, parent int, dest int, args &[]i
         s.frames.push(new_frame)
     } else { s.frames[frame] = new_frame }
     << frame
+}
+
+fn (s $&Machine) read_call_args(f &mir.MFn, frame int, first int) int {
+    $arg := first
+    $index := 0
+    while arg >= 0 {
+        value := s.operand(f, frame, f.margs[arg].v)
+        s.set_arg(index, value)
+        index += 1
+        arg = f.margs[arg].next
+    }
+    << index
+}
+
+fn (s $&Machine) set_arg(index int, value int) {
+    if index == s.call_args.len { s.call_args.push(value) }
+    else { s.call_args[index] = value }
 }
 
 fn (s $&Machine) release_frame(frame int) {
@@ -259,7 +335,8 @@ fn (s $&Machine) release_frame(frame int) {
     s.unused_frames.push(frame)
 }
 
-fn (s $&Machine) switch_task(m &mir.Mir, frame int, from int, to int) {
+fn (s $&Machine) switch_task(program &Program, frame int, from int, to int) {
+    m := &program.body
     s.concurrent = true
     fn_index := s.frames[frame].fn_index
     if m.fns[fn_index].label == "_xu_runtime_core_task_exit" {
@@ -288,11 +365,15 @@ fn (s $&Machine) switch_task(m &mir.Mir, frame int, from int, to int) {
         s.fail("invalid playground task entry")
         <<
     }
-    $params := []int{}
-    for i in 0:m.fns[fn_addr].nparams { params.push(s.load(block + i * 8, 8)) }
-    exit_args := [to]
-    parent := s.enter(m, exit_addr, -1, -1, &exit_args)
-    if !s.failed { s.current = s.enter(m, fn_addr, parent, -1, &params) }
+    s.set_arg(0, to)
+    parent := s.enter(program, exit_addr, -1, -1, 1)
+    if s.failed { << }
+    count := m.fns[fn_addr].nparams
+    for i in 0:count {
+        value := s.load(block + i * 8, 8)
+        s.set_arg(i, value)
+    }
+    if !s.failed { s.current = s.enter(program, fn_addr, parent, -1, count) }
 }
 
 fn (s $&Machine) mark_interactive(input bool) {
@@ -387,17 +468,17 @@ fn (s $&Machine) draw_command(descriptor int) {
     }
 }
 
-fn (s $&Machine) syscall(m &mir.Mir, frame int, args &[]int) int {
-    if args.len != 7 {
+fn (s $&Machine) syscall(program &Program, frame int, count int) int {
+    if count != 7 {
         s.fail("invalid playground system call")
         << 0
     }
-    nr := args[0]
-    a := args[1]
-    b := args[2]
-    c := args[3]
+    nr := s.call_args[0]
+    a := s.call_args[1]
+    b := s.call_args[2]
+    c := s.call_args[3]
     if nr == -1 {
-        s.switch_task(m, frame, a, b)
+        s.switch_task(program, frame, a, b)
         << 0
     }
     if nr == -2 { << s.frames[frame].base }
@@ -418,14 +499,32 @@ fn (s $&Machine) syscall(m &mir.Mir, frame int, args &[]int) int {
             << 0
         }
         s.steps += units
+        if width == 8 {
+            if nr == -5 {
+                for i in 0:units { s.store_word(a / 8 + i, 0) }
+            } else {
+                $start := 0
+                $stride := 1
+                if a > b && a < b + count {
+                    start = units - 1
+                    stride = -1
+                }
+                for i in 0:units {
+                    offset := start + i * stride
+                    value := s.load_word(b / 8 + offset)
+                    s.store_word(a / 8 + offset, value)
+                }
+            }
+            << 0
+        }
         for i in 0:units {
             $value := 0
-            $offset := i * width
+            $offset := i
             if nr == -4 {
-                if a > b && a < b + count { offset = count - width - i * width }
-                value = s.load(b + offset, width)
+                if a > b && a < b + count { offset = count - 1 - i }
+                value = s.load(b + offset, 1)
             }
-            s.store(a + offset, width, value)
+            s.store(a + offset, 1, value)
         }
         << 0
     }
@@ -511,6 +610,7 @@ fn (s $&Machine) step(program &Program, events &string, batch_start int, checkpo
     base := state.base
     m := &program.body
     f := &m.fns[fn_index]
+    plan := &program.plans[fn_index]
     if next < 0 {
         terminator := &f.blocks[block]
         if terminator.tkind == mir.TKIND_RETURN {
@@ -539,15 +639,15 @@ fn (s $&Machine) step(program &Program, events &string, batch_start int, checkpo
     if k == mir.MI_LOAD_LOCAL {
         $offset := ins.c
         if offset < 0 { offset = 0 }
-        value := s.load(base + local_offset(f, ins.b) + offset * 8, 8)
+        value := s.load_word((base + plan.local_offsets[ins.b]) / 8 + offset)
         s.set_temp(frame, ins.a, value)
     } else if k == mir.MI_STORE_LOCAL {
         $offset := ins.c
         if offset < 0 { offset = 0 }
         value := s.operand(f, frame, ins.b)
-        s.store(base + local_offset(f, ins.a) + offset * 8, 8, value)
+        s.store_word((base + plan.local_offsets[ins.a]) / 8 + offset, value)
     } else if k == mir.MI_ADDR {
-        s.set_temp(frame, ins.a, base + local_offset(f, ins.b))
+        s.set_temp(frame, ins.a, base + plan.local_offsets[ins.b])
     } else if k == mir.MI_LOAD_PTR {
         address := s.operand(f, frame, ins.b) + ins.c
         value := s.load(address, ins.d)
@@ -592,24 +692,26 @@ fn (s $&Machine) step(program &Program, events &string, batch_start int, checkpo
         }
         s.set_temp(frame, ins.a, ptr)
     } else if k == mir.MI_LOAD_FN_ADDR {
-        s.set_temp(frame, ins.a, program.functions.lookup(&ins.sval) + 1)
+        s.set_temp(frame, ins.a, plan.call_targets[next] + 1)
     } else if k == mir.MI_CALL || k == mir.MI_CALL_IND {
-        $args := []int{}
-        $arg := ins.c
-        while arg >= 0 {
-            args.push(s.operand(f, frame, f.margs[arg].v))
-            arg = f.margs[arg].next
+        count := s.read_call_args(f, frame, ins.c)
+        $target := plan.call_targets[next]
+        if k == mir.MI_CALL_IND {
+            target = s.operand(f, frame, ins.b) - 1
+            if target < 0 || target >= m.fns.len {
+                s.fail("invalid playground function address")
+                <<
+            }
         }
-        if k == mir.MI_CALL && ins.sval == "__xu_syscall" {
-            value := s.syscall(m, frame, &args)
+        if target == CALL_SYSCALL {
+            value := s.syscall(program, frame, count)
             if s.current == frame && !s.stopped { s.set_temp(frame, ins.a, value) }
-        } else if k == mir.MI_CALL && ins.sval == "__xu_globals" {
+        } else if target == CALL_GLOBALS {
             s.set_temp(frame, ins.a, GLOBALS)
-        } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_emit" && args.len == 1 {
-            s.draw_command(args[0])
+        } else if target == CALL_DRAW && count == 1 {
+            s.draw_command(s.call_args[0])
             s.set_temp(frame, ins.a, 0)
-        } else if k == mir.MI_CALL && args.len == 1 &&
-            (ins.sval == "_xu_playground_next_click" || ins.sval == "_xu_playground_next_input") {
+        } else if (target == CALL_CLICK || target == CALL_INPUT) && count == 1 {
             offset := s.event_position - batch_start
             if checkpoint && !s.concurrent && offset == events.len && s.checkpoint_bytes() <= MAX_CHECKPOINT_BYTES {
                 // Leave the call unexecuted. Preview consumes the exhausted
@@ -619,32 +721,30 @@ fn (s $&Machine) step(program &Program, events &string, batch_start int, checkpo
                 s.waiting = true
                 <<
             }
-            if ins.sval == "_xu_playground_next_input" { s.next_input(args[0], events, offset) }
-            else { s.next_click(args[0], events, offset) }
-        } else if k == mir.MI_CALL && ins.sval == "_xu_time_now_ns" && args.len == 0 {
+            if target == CALL_INPUT { s.next_input(s.call_args[0], events, offset) }
+            else { s.next_click(s.call_args[0], events, offset) }
+        } else if target == CALL_CLOCK && count == 0 {
             s.set_temp(frame, ins.a, (s.event_position / EVENT_BYTES + 1) * 16000000)
-        } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_scalar" && args.len == 2 {
-            s.string_result(args[0], canvas_scalar(args[1]))
-        } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_retain" && args.len == 1 {
-            s.labels.push(s.load(args[0], 8))
-            s.labels.push(s.load(args[0] + 8, 8))
+        } else if target == CALL_SCALAR && count == 2 {
+            s.string_result(s.call_args[0], canvas_scalar(s.call_args[1]))
+        } else if target == CALL_RETAIN && count == 1 {
+            s.labels.push(s.load(s.call_args[0], 8))
+            s.labels.push(s.load(s.call_args[0] + 8, 8))
             s.set_temp(frame, ins.a, s.labels.len / 2)
-        } else if k == mir.MI_CALL && ins.sval == "_xu_ui_draw_lookup" && args.len == 2 {
-            id := args[1]
+        } else if target == CALL_LOOKUP && count == 2 {
+            id := s.call_args[1]
             if id > 0 && id <= s.labels.len / 2 {
-                s.store(args[0], 8, s.labels[(id - 1) * 2])
-                s.store(args[0] + 8, 8, s.labels[(id - 1) * 2 + 1])
-            } else { s.string_result(args[0], "") }
+                s.store(s.call_args[0], 8, s.labels[(id - 1) * 2])
+                s.store(s.call_args[0] + 8, 8, s.labels[(id - 1) * 2 + 1])
+            } else { s.string_result(s.call_args[0], "") }
         } else {
-            $target := program.functions.lookup(&ins.sval)
-            if k == mir.MI_CALL_IND { target = s.operand(f, frame, ins.b) - 1 }
             if target < 0 {
                 s.fail("unsupported playground function: " + ins.sval)
                 <<
             }
             if m.fns[target].label == "_xu_runtime_core_task_spawn" ||
                 m.fns[target].label == "_xu_runtime_core_chan_new" { s.concurrent = true }
-            s.current = s.enter(m, target, frame, ins.a, &args)
+            s.current = s.enter(program, target, frame, ins.a, count)
         }
     } else if k != mir.MI_NOP {
         s.fail("unsupported playground MIR instruction " + str(k))
