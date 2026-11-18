@@ -120,6 +120,7 @@
     var pen = {fill: '#000000', stroke: '-', width: 1}, stack = [];
     var computed = canvas.ownerDocument.defaultView?.getComputedStyle?.(canvas);
     var family = computed?.getPropertyValue('--xu-font-sans').trim() || fontStack;
+    var monoFamily = computed?.getPropertyValue('--xu-font-mono').trim() || '"JetBrains Mono", "SFMono-Regular", Consolas, monospace';
     ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, WIDTH, HEIGHT);
     function paint(fill, stroke, width) {
       if (fill !== '-') { ctx.fillStyle = fill; ctx.fill(); }
@@ -166,7 +167,11 @@
         var text = a[5], lineHeight = a[2] * LAYOUT_LINE_HEIGHT;
         if (a[3] !== '-' && a[4] > 0 && lineHeight > 0 && text) {
           ctx.save();
-          ctx.font = a[2] + 'px ' + family;
+          var useMono = canvas.dataset?.font === 'mono' ||
+                        (canvas.dataset?.example && /text-selection|input|text-area|field/.test(canvas.dataset.example)) ||
+                        (typeof document !== 'undefined' && document.getElementById('xu-play-src')?.value && /ui-text-selection|measure_prefix|hit_col|TextSelection/.test(document.getElementById('xu-play-src').value));
+          var textFont = useMono ? monoFamily : family;
+          ctx.font = a[2] + 'px ' + textFont;
           ctx.textBaseline = 'alphabetic';
           ctx.fillStyle = a[3];
           var metrics = typeof ctx.measureText === 'function' ? ctx.measureText(text) : null;
@@ -177,9 +182,17 @@
           if (!Number.isFinite(ascent) || !Number.isFinite(descent) || ascent + descent <= 0) {
             ascent = a[2] * 0.8; descent = a[2] * 0.2;
           }
-          // Center the actual glyph ink in Xu's line box. Keep the supplied
-          // horizontal origin and natural advance; enclosing clips own overflow.
-          ctx.fillText(text, a[0], a[1] + (lineHeight + ascent - descent) * 0.5); ctx.restore();
+          var y = a[1] + (lineHeight + ascent - descent) * 0.5;
+          if (useMono) {
+            var chars = Array.from(text);
+            var cellWidth = a[2] * 0.6;
+            for (var ci = 0; ci < chars.length; ci++) {
+              ctx.fillText(chars[ci], a[0] + ci * cellWidth, y);
+            }
+          } else {
+            ctx.fillText(text, a[0], y);
+          }
+          ctx.restore();
         }
       } else if (op === 'text') {
         if (a[3] !== '-') { ctx.font = a[2] + 'px ' + family; ctx.textBaseline = 'top'; ctx.fillStyle = a[3]; ctx.fillText(a[4], a[0], a[1]); }
