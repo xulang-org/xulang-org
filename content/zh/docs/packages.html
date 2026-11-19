@@ -94,7 +94,7 @@ fn main() int {
 
 <p id="matrix-scope">以下状态列来自所选 SDK 随附的 <code>packages/*.xu</code> 源码检查，包括 <code>client.xu</code>、认证文件、<code>tls.xu</code> 辅助接口与 <code>transport/mod.xu</code>。这是源码证据，不是服务互操作或平台验收结果。<strong>未知</strong>表示此处尚未证明该能力。</p>
 <p class="note"><strong>TLS 路径：</strong>HTTPS 业务请求使用共享 TLS 连接路径，旧的手工 fd 池仍为明文。<em>TLS 字节流辅助接口</em>仅提供 <code>tls_connect</code> / <code>tls_connect_config</code> 及原始读写，不能据此认定普通带认证客户端或连接池已接通 TLS；这种集成明确标为未知。SMTP STARTTLS 和 DNS-over-TLS 查询集成未知。默认 TLS 配置校验证书与主机名；此处没有逐服务实测这些源码路径。</p>
-<p><strong>平台：</strong>网络驱动依赖原生套接字，只能沿本机 SDK 路径运行，超出演练场浏览器子集。每行各系统 / 架构的验收均为未知。SQLite 需要匹配的 C 桥接切片，一站式链接仅支持 macOS ARM64 / x64，其他目标需外部链接。参见<a href="/download#platform-boundaries">下载平台边界</a>与<a href="/docs/status">状态说明</a>。</p>
+<p><strong>平台：</strong>网络驱动依赖原生套接字，只能沿本机 SDK 路径运行，超出演练场浏览器子集。每行各系统 / 架构的验收均为未知。SQLite 现升级至纯 Xu <code>sqlite_native</code> 动态加载，无需预编译静态 <code>.xulib</code> 切片。参见<a href="/download#platform-boundaries">下载平台边界</a>与<a href="/docs/status">状态说明</a>。</p>
 
 <div class="doc-table-wrap" role="region" tabindex="0" aria-label="集成支持矩阵">
 <table id="integration-matrix" class="package-matrix">
@@ -114,7 +114,7 @@ fn main() int {
   <tbody>
     <tr data-package="mysql"><td>数据库</td><td><code>mysql</code></td><td>MySQL / MariaDB</td><td><code>mysql #github.com/xulang-org/packages/mysql</code></td><td><a href="/api/packages/mysql">API 文档</a></td><td>MySQL 文本协议</td><td>mysql_native_password；拒绝 caching_sha2_password</td><td>DSN TLS 升级，校验证书与主机名</td><td>原生套接字；验收未知</td></tr>
     <tr data-package="postgres"><td>数据库</td><td><code>postgres</code></td><td>PostgreSQL</td><td><code>postgres #github.com/xulang-org/packages/postgres</code></td><td><a href="/api/packages/postgres">API 文档</a></td><td>PostgreSQL wire 3.0</td><td>Trust / 明文 / MD5 / SCRAM-SHA-256</td><td>SSLRequest 升级；require / verify-ca / verify-full</td><td>原生套接字；验收未知</td></tr>
-    <tr data-package="sqlite"><td>数据库</td><td><code>sqlite</code></td><td>SQLite 嵌入式</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/api/packages/sqlite">API 文档</a></td><td>嵌入式 SQLite C API</td><td>不适用（嵌入式）</td><td>不适用（无网络传输）</td><td>C 桥接；macOS 一站式链接；目标验收未知</td></tr>
+    <tr data-package="sqlite"><td>数据库</td><td><code>sqlite</code></td><td>SQLite 嵌入式</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/api/packages/sqlite">API 文档</a></td><td>嵌入式 SQLite C API</td><td>不适用（嵌入式）</td><td>不适用（无网络传输）</td><td>纯 Xu 动态加载；无需 .xulib；目标验收未知</td></tr>
     <tr data-package="clickhouse"><td>数据库</td><td><code>clickhouse</code></td><td>ClickHouse 列存</td><td><code>clickhouse #github.com/xulang-org/packages/clickhouse</code></td><td><a href="/api/packages/clickhouse">API 文档</a></td><td>HTTP SQL 请求</td><td>X-ClickHouse-User / Key 请求头</td><td>HTTPS 请求路径；fd 池仍为明文</td><td>原生套接字；验收未知</td></tr>
     <tr data-package="mongodb"><td>数据库</td><td><code>mongodb</code></td><td>MongoDB 文档库</td><td><code>mongodb #github.com/xulang-org/packages/mongodb</code></td><td><a href="/api/packages/mongodb">API 文档</a></td><td>OP_MSG 子集；无压缩 / 拓扑发现</td><td>未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
     <tr data-package="cassandra"><td>数据库</td><td><code>cassandra</code></td><td>Apache Cassandra</td><td><code>cassandra #github.com/xulang-org/packages/cassandra</code></td><td><a href="/api/packages/cassandra">API 文档</a></td><td>CQL 二进制 v4；启动 / 查询</td><td>未知</td><td>TLS 字节流辅助接口；业务客户端 TLS 未知</td><td>原生套接字；验收未知</td></tr>
@@ -148,14 +148,13 @@ fn main() int {
 
 <h2>5. 边界与注意事项</h2>
 <ul>
-  <li><strong>SQLite 原生依赖与 .xulib</strong>：SQLite 驱动底层通过 C 语言桥接。官方扩展包采用了便携式的 <code>.xulib</code> 多架构切片容器（内嵌 <code>macos-arm64</code>、<code>macos-x64</code> 等通用 <code>.a</code> 切片与 ABI 校验元数据）。如果在 packages 仓库源码环境中二次开发，需在 packages 根目录执行 <code>make native</code> 生成底层架构切片。详细机制与通用 <code>.a</code> 的差异对比见 <a href="/docs/native">原生模块与 .xulib 规范</a>。</li>
+  <li><strong>SQLite 与 Metal 纯 FFI 架构</strong>：SQLite 驱动现通过纯 Xu 包 <code>sqlite_native</code> 动态加载（<code>dlopen</code>）系统 <code>libsqlite3</code>（Windows 平台自动识别系统内置 <code>winsqlite3.dll</code>，亦可通过 <code>XU_SQLITE_LIBRARY</code> 覆盖路径），无需再通过 <code>make native</code> 编译打包静态 <code>.xulib</code>。Metal GPU 计算包通过 <code>metal_native</code> 动态加载 <code>libxu_metal.dylib</code>（可由 <code>metal/native/build.py</code> 构建，支持 <code>XU_METAL_LIBRARY</code> 覆盖）。</li>
   <li><strong>离线与生产构建（Frozen Builds）</strong>：在生产 CI/CD 流水线中，建议提交生成的 <code>vendor/</code> 和 <code>xu.lock</code>，并使用 <code>xu build main.xu --frozen</code>。编译器将严格禁止任何外部网络请求，保障构建的 100% 确定性与安全。</li>
 </ul>
 
-<p>更多模块图解析细节与原生模块规范，请参考：<a href="/docs/modules">模块与依赖规范 (Modules &amp; Dependencies)</a> 与 <a href="/docs/native">原生模块与 .xulib 规范</a>。</p>
+<p>更多模块图解析细节与原生模块规范，请参考：<a href="/docs/modules">模块与依赖规范 (Modules &amp; Dependencies)</a> 与 <a href="/docs/native">原生模块规范</a>。</p>
 
-<h2 id="sqlite-native">构建 SQLite 原生桥接</h2>
-<p>SQLite 示例须先从内置 C 源码构建原生桥接。以下命令面向 macOS ARM64，请在 SDK 的 packages 目录执行，并安装匹配的 C 工具链。完整的一步构建与运行路径支持 <code>macos-arm64</code> 和 <code>macos-x64</code>。其他目标须准备对应工具链和切片，输出并转换 XUOBJ 后外部链接；详见<a href="/docs/native">原生模块</a>。</p>
-<pre><code class="language-shell">cd xu-v{{xu_version}}/packages
-xu native compile --manifest sqlite/native/native.json --target macos-arm64 -O2 -DSQLITE_THREADSAFE=1 -DSQLITE_OMIT_LOAD_EXTENSION=1 sqlite/native/bridge.c sqlite/vendor/sqlite3.c -o sqlite/native/sqlite-macos-arm64.a
-xu native pack --manifest sqlite/native/native.json --slice macos-arm64=sqlite/native/sqlite-macos-arm64.a -o sqlite/native/sqlite.xulib</code></pre>
+<h2 id="metal-native">构建 Metal 原生动态库（macOS 可选）</h2>
+<p>未导入 <code>metal</code> 的应用无需构建 Metal 资源。在 Apple Silicon macOS 环境使用 Metal GPU 计算前，可先构建动态库：</p>
+<pre><code class="language-shell">cd packages
+python3 metal/native/build.py</code></pre>
