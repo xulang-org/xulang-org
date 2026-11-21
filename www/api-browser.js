@@ -88,10 +88,17 @@
   // Heading links are native bookmarks; no declaration ID or source text changes.
   articles.forEach(function (article) {
     var heading = article.querySelector('h2');
+    var rawText = heading.textContent.trim();
+    var kind = declarationKind(rawText);
+    var badge = document.createElement('span');
+    badge.className = 'api-kind-badge badge-' + kind;
+    badge.textContent = kind === 'function' ? 'fn' : kind === 'method' ? 'method' : kind === 'type' ? 'type' : 'const';
+
     var link = document.createElement('a');
     link.className = 'api-permalink';
     link.href = '#' + encodeURIComponent(article.id);
     link.title = en ? 'Link to this declaration' : '直达此声明';
+    link.appendChild(badge);
     while (heading.firstChild) link.appendChild(heading.firstChild);
     heading.appendChild(link);
     article.tabIndex = -1;
@@ -334,6 +341,10 @@
     results.scrollTop = 0;
   }
   function openSearch(event) {
+    if (typeof window !== 'undefined' && typeof window.openGlobalSearch === 'function') {
+      window.openGlobalSearch();
+      return;
+    }
     if (dialog.open) { input.focus(); return; }
     restoreFocus = event && event.currentTarget === opener ? opener : document.activeElement;
     jumpTarget = null;

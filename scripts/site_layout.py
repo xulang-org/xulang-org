@@ -9,6 +9,8 @@ from pathlib import Path
 import re
 from string import Template
 
+ALL_LANGS = ['en', 'zh', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'pt-br']
+
 DOC_GROUPS = [
     ('xi-bookmark', '起步', 'Start', [
         ('start', '起步', 'Get started'), ('install', '安装', 'Install'),
@@ -34,6 +36,103 @@ DOC_GROUPS = [
         ('vscode', 'VS Code', 'VS Code'), ('status', '限制与现状', 'Limitations'),
     ]),
 ]
+
+DOC_GROUPS_LANGS = {
+    'zh': {'起步': '起步', '教程': '教程', '语言': '语言', '工具': '工具'},
+    'en': {'起步': 'Start', '教程': 'Tutorial', '语言': 'Language', '工具': 'Tools'},
+    'zh-tw': {'起步': '起步', '教程': '教程', '语言': '語言', '工具': '工具'},
+    'ja': {'起步': 'スタート', '教程': 'チュートリアル', '语言': '言語仕様', '工具': 'ツール'},
+    'ko': {'起步': '시작하기', '教程': '튜토리얼', '语言': '언어 사양', '工具': '도구'},
+    'es': {'起步': 'Inicio', '教程': 'Tutorial', '语言': 'Lenguaje', '工具': 'Herramientas'},
+    'fr': {'起步': 'Débuter', '教程': 'Tutoriel', '语言': 'Langage', '工具': 'Outils'},
+    'de': {'起步': 'Start', '教程': 'Tutorial', '语言': 'Sprache', '工具': 'Werkzeuge'},
+    'ru': {'起步': 'Начало работы', '教程': 'Учебник', '语言': 'Язык', '工具': 'Инструменты'},
+    'pt-br': {'起步': 'Início', '教程': 'Tutorial', '语言': 'Linguagem', '工具': 'Ferramentas'},
+}
+
+DOC_LABELS_LANGS = {
+    'zh-tw': {
+        'start': '快速起步', 'install': '編譯器安裝', 'faq': '常見問題 (FAQ)',
+        'modules': '模組與依賴', 'packages': '擴充套件生態', 'native': '原生模組與 .xulib',
+        'lang/goals': '設計目標', 'lang/syntax': '語法定稿', 'lang/lexical': '詞法結構',
+        'lang/structure': '程式結構', 'lang/types': '型別系統', 'lang/functions': '函式與運算式',
+        'lang/memory': '記憶體模型', 'lang/concurrency': '並行規格', 'lang/ebnf': 'EBNF',
+        'lang/stdlib': '標準庫邊界', 'lang/toolchain': '工具鏈', 'lang/status': '規範快照',
+        'cli': 'CLI 命令行工具', 'ui': 'UI / WebView', 'phone': '行動應用開發',
+        'vscode': 'VS Code', 'status': '限制與現狀',
+    },
+    'ja': {
+        'start': 'クイックスタート', 'install': 'インストール', 'faq': 'よくある質問 (FAQ)',
+        'modules': 'モジュールと依存関係', 'packages': '外部パッケージ', 'native': 'ネイティブモジュールと .xulib',
+        'lang/goals': '設計目標', 'lang/syntax': '構文仕様確定', 'lang/lexical': '字句構造',
+        'lang/structure': 'プログラム構造', 'lang/types': '型システム', 'lang/functions': '関数と式',
+        'lang/memory': 'メモリモデル', 'lang/concurrency': '並行処理', 'lang/ebnf': 'EBNF',
+        'lang/stdlib': '標準ライブラリ境界', 'lang/toolchain': 'ツールチェーン', 'lang/status': '仕様スナップショット',
+        'cli': 'CLI コマンドライン', 'ui': 'UI / WebView', 'phone': 'モバイルアプリ',
+        'vscode': 'VS Code', 'status': 'プロジェクト状況と制限',
+    },
+    'ko': {
+        'start': '시작하기', 'install': '설치', 'faq': '자주 묻는 질문 (FAQ)',
+        'modules': '모듈 및 종속성', 'packages': '외부 패키지', 'native': '네이티브 모듈 및 .xulib',
+        'lang/goals': '설계 목표', 'lang/syntax': '구문 사양 확정', 'lang/lexical': '어휘 구조',
+        'lang/structure': '프로그램 구조', 'lang/types': '타입 시스템', 'lang/functions': '함수 및 표현식',
+        'lang/memory': '메모리 모델', 'lang/concurrency': '동시성', 'lang/ebnf': 'EBNF',
+        'lang/stdlib': '표준 라이브러리 경계', 'lang/toolchain': '툴체인', 'lang/status': '사양 스냅샷',
+        'cli': 'CLI 명령줄 도구', 'ui': 'UI / WebView', 'phone': '모바일 앱',
+        'vscode': 'VS Code', 'status': '프로젝트 현황 및 제한',
+    },
+    'es': {
+        'start': 'Primeros pasos', 'install': 'Instalación', 'faq': 'Preguntas frecuentes (FAQ)',
+        'modules': 'Módulos y dependencias', 'packages': 'Paquetes externos', 'native': 'Módulos nativos y .xulib',
+        'lang/goals': 'Objetivos de diseño', 'lang/syntax': 'Sintaxis', 'lang/lexical': 'Estructura léxica',
+        'lang/structure': 'Estructura del programa', 'lang/types': 'Tipos', 'lang/functions': 'Funciones y expresiones',
+        'lang/memory': 'Modelo de memoria', 'lang/concurrency': 'Concurrencia', 'lang/ebnf': 'EBNF',
+        'lang/stdlib': 'Límites de la biblioteca', 'lang/toolchain': 'Herramientas', 'lang/status': 'Instantánea de especificación',
+        'cli': 'Línea de comandos CLI', 'ui': 'UI / WebView', 'phone': 'Aplicaciones móviles',
+        'vscode': 'VS Code', 'status': 'Estado y limitaciones',
+    },
+    'fr': {
+        'start': 'Premiers pas', 'install': 'Installation', 'faq': 'Foire aux questions (FAQ)',
+        'modules': 'Modules et dépendances', 'packages': 'Paquets externes', 'native': 'Modules natifs et .xulib',
+        'lang/goals': 'Objectifs de conception', 'lang/syntax': 'Syntaxe', 'lang/lexical': 'Structure lexicale',
+        'lang/structure': 'Structure du programme', 'lang/types': 'Types', 'lang/functions': 'Fonctions et expressions',
+        'lang/memory': 'Modèle de mémoire', 'lang/concurrency': 'Concurrence', 'lang/ebnf': 'EBNF',
+        'lang/stdlib': 'Périmètre bibliothèque standard', 'lang/toolchain': 'Chaîne d\'outils', 'lang/status': 'Instantané de spécification',
+        'cli': 'Ligne de commande CLI', 'ui': 'UI / WebView', 'phone': 'Applications mobiles',
+        'vscode': 'VS Code', 'status': 'État et limites',
+    },
+    'de': {
+        'start': 'Erste Schritte', 'install': 'Installation', 'faq': 'Häufig gestellte Fragen (FAQ)',
+        'modules': 'Module & Abhängigkeiten', 'packages': 'Externe Pakete', 'native': 'Native Module & .xulib',
+        'lang/goals': 'Entwurfsziele', 'lang/syntax': 'Syntax', 'lang/lexical': 'Lexikalische Struktur',
+        'lang/structure': 'Programmstruktur', 'lang/types': 'Typen', 'lang/functions': 'Funktionen & Ausdrücke',
+        'lang/memory': 'Speichermodell', 'lang/concurrency': 'Nebenläufigkeit', 'lang/ebnf': 'EBNF',
+        'lang/stdlib': 'Grenzen der Standardbibliothek', 'lang/toolchain': 'Toolchain', 'lang/status': 'Spezifikations-Snapshot',
+        'cli': 'CLI-Befehlszeile', 'ui': 'UI / WebView', 'phone': 'Mobile Anwendungen',
+        'vscode': 'VS Code', 'status': 'Status & Einschränkungen',
+    },
+    'ru': {
+        'start': 'Начало работы', 'install': 'Установка', 'faq': 'Часто задаваемые вопросы (FAQ)',
+        'modules': 'Модули и зависимости', 'packages': 'Внешние пакеты', 'native': 'Нативные модули и .xulib',
+        'lang/goals': 'Цели проектирования', 'lang/syntax': 'Синтаксис', 'lang/lexical': 'Лексическая структура',
+        'lang/structure': 'Структура программы', 'lang/types': 'Система типов', 'lang/functions': 'Функции и выражения',
+        'lang/memory': 'Модель памяти', 'lang/concurrency': 'Конкурентность', 'lang/ebnf': 'EBNF',
+        'lang/stdlib': 'Границы стандартной библиотеки', 'lang/toolchain': 'Инструментарий', 'lang/status': 'Снимок спецификации',
+        'cli': 'Командная строка CLI', 'ui': 'UI / WebView', 'phone': 'Мобильные приложения',
+        'vscode': 'VS Code', 'status': 'Статус и ограничения',
+    },
+    'pt-br': {
+        'start': 'Primeiros passos', 'install': 'Instalação', 'faq': 'Perguntas frequentes (FAQ)',
+        'modules': 'Módulos e dependências', 'packages': 'Pacotes externos', 'native': 'Módulos nativos e .xulib',
+        'lang/goals': 'Objetivos de design', 'lang/syntax': 'Sintaxe', 'lang/lexical': 'Estrutura léxica',
+        'lang/structure': 'Estrutura do programa', 'lang/types': 'Tipos', 'lang/functions': 'Funções e expressões',
+        'lang/memory': 'Modelo de memória', 'lang/concurrency': 'Concorrência', 'lang/ebnf': 'EBNF',
+        'lang/stdlib': 'Limites da biblioteca padrão', 'lang/toolchain': 'Cadeia de ferramentas', 'lang/status': 'Instantâneo de especificação',
+        'cli': 'Linha de comando CLI', 'ui': 'UI / WebView', 'phone': 'Aplicativos móveis',
+        'vscode': 'VS Code', 'status': 'Status e limitações',
+    },
+}
+
 _CURATED_API_GROUPS = [
     ('xi-api', 'API', 'API', ['']),
     ('xi-cpu', '核心', 'Core', 'errors fmt flag cmp context sync time runtime maps slices sort testing testing/fstest xacp'.split()),
@@ -52,7 +151,6 @@ _CURATED_API_GROUPS = [
 
 
 def api_pages(root: Path | None = None) -> set[str]:
-    """Discover released pages, including widget details but excluding previews."""
     api_root = (root or Path(__file__).resolve().parents[1]) / 'content/en/api'
     return {
         page.relative_to(api_root).with_suffix('').as_posix()
@@ -62,7 +160,6 @@ def api_pages(root: Path | None = None) -> set[str]:
 
 
 def group_api_packages(packages: Iterable[str]) -> list[tuple[str, str, str, list[str]]]:
-    """Apply the same curated topic order to generated packages and disk pages."""
     on_disk = set(packages)
     groups = [
         (icon, zh, en, [package for package in packages if not package or package in on_disk])
@@ -93,7 +190,6 @@ def widget_catalog(root: Path | None = None) -> dict:
 
 
 def api_sections(packages: Iterable[str], root: Path | None = None) -> list[tuple]:
-    """Three primary buckets shared by the API index and every released sidebar."""
     standard, ui, extensions = [], [], []
     for icon, zh, en, members in group_api_packages(packages):
         if en == 'API':
@@ -127,8 +223,6 @@ API_GROUPS = api_groups()
 
 
 class PackageInventory(HTMLParser):
-    """The generated index lists packages; widget detail pages are not packages."""
-
     def __init__(self, source: str):
         super().__init__()
         self.packages = set()
@@ -142,7 +236,6 @@ class PackageInventory(HTMLParser):
 
 
 def shared_content(root: Path) -> dict[str, dict[str, str]]:
-    """Expand bilingual pages from the generated inventory and release metadata."""
     inventories = {}
     for lang in ('en', 'zh'):
         inventory = PackageInventory((root / f'content/{lang}/api/index.html').read_text(encoding='utf-8')).packages
@@ -155,15 +248,29 @@ def shared_content(root: Path) -> dict[str, dict[str, str]]:
     external = sum(p.startswith('packages/') for p in inventories['en'])
     releases = release_entries(root)
     values = {}
-    for lang in ('en', 'zh'):
-        values[lang] = {
-            'api_standard_count': str(len(inventories[lang]) - external),
+    
+    release_label = {
+        'en': 'release', 'zh': '正式版', 'zh-tw': '正式版',
+        'ja': 'リリース', 'ko': '정식 릴리스', 'es': 'versión',
+        'fr': 'version', 'de': 'Release', 'ru': 'релиз', 'pt-br': 'lançamento'
+    }
+
+    for l in ALL_LANGS:
+        lbl = release_label.get(l, 'release')
+        notes_list = []
+        blog_list = []
+        for item in releases:
+            v_id = item["version"].replace(".", "-")
+            note_content = item['notes'].get(l, item['notes']['en'])
+            blog_content = item['blog_entry'].get(l, item['blog_entry']['en'])
+            notes_list.append(f'<h2 id="v{v_id}">{item["version"]} {lbl}</h2>\n{note_content}')
+            blog_list.append(f'<li>{blog_content}</li>')
+
+        values[l] = {
+            'api_standard_count': str(len(inventories['en']) - external),
             'api_external_count': str(external),
-            'release_notes': '\n'.join(
-                f'<h2 id="v{item["version"].replace(".", "-")}">{item["version"]} '
-                + ('release' if lang == 'en' else '正式版') + '</h2>\n' + item['notes'][lang]
-                for item in releases),
-            'release_blog_entries': '\n'.join('<li>' + item['blog_entry'][lang] + '</li>' for item in releases),
+            'release_notes': '\n'.join(notes_list),
+            'release_blog_entries': '\n'.join(blog_list),
         }
     return values
 
@@ -171,20 +278,32 @@ def shared_content(root: Path) -> dict[str, dict[str, str]]:
 def release_entries(root: Path) -> list[dict]:
     return json.loads((root / 'templates/releases.json').read_text(encoding='utf-8'))
 
-SOCIAL_PROFILES = [
-    ('GitHub', 'xulang-org', 'https://github.com/xulang-org', 'github'),
+HEADER_SOCIAL_PROFILES = [
+    ('GitHub', 'xulang-org/xu', 'https://github.com/xulang-org/xu', 'github'),
     ('X', 'xulang_org', 'https://x.com/xulang_org', 'x'),
 ]
+FOOTER_SOCIAL_PROFILES = [
+    ('GitHub', 'xulang-org', 'https://github.com/xulang-org/xu', 'github'),
+    ('X', 'xulang_org', 'https://x.com/xulang_org', 'x'),
+]
+SOCIAL_PROFILES = FOOTER_SOCIAL_PROFILES
 SOCIAL_ICONS = {
     'github': '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38l-.01-1.49c-2.23.48-2.7-1.08-2.7-1.08-.36-.92-.89-1.17-.89-1.17-.73-.5.06-.49.06-.49.8.06 1.22.82 1.22.82.71 1.22 1.87.87 2.33.67.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.96 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.65 7.65 0 0 1 4 0c1.53-1.03 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.28.82 2.15 0 3.08-1.87 3.75-3.65 3.95.29.25.54.74.54 1.48l-.01 2.34c0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/>',
     'x': '<path d="M12.6 1h2.3L9.9 6.7 15.8 15h-4.6L7.6 10 3.2 15H.9l5.6-6.4L.8 1h4.7l3.3 4.6L12.6 1ZM11.8 13.5h1.3L4.8 2.4H3.4l8.4 11.1Z"/>',
 }
 
 
-def social_links(en: bool, compact: bool = False) -> str:
+def social_links(en: bool | str, compact: bool = False, profiles: list[tuple] | None = None) -> str:
     links = []
-    new_tab = 'opens in a new tab' if en else '在新标签页打开'
-    for platform, handle, href, icon in SOCIAL_PROFILES:
+    lang = en if isinstance(en, str) else ('en' if en else 'zh')
+    new_tab = {
+        'en': 'opens in a new tab', 'zh': '在新标签页打开', 'zh-tw': '在新分頁開啟',
+        'ja': '新しいタブで開く', 'ko': '새 탭에서 열기', 'es': 'se abre en una nueva pestaña',
+        'fr': 's\'ouvre dans un nouvel onglet', 'de': 'öffnet in neuem Tab',
+        'ru': 'открывается в новой вкладке', 'pt-br': 'abre em uma nova aba'
+    }.get(lang, 'opens in a new tab')
+    selected = profiles if profiles is not None else (HEADER_SOCIAL_PROFILES if compact else FOOTER_SOCIAL_PROFILES)
+    for platform, handle, href, icon in selected:
         label = f'{platform} · @{handle} · {new_tab}'
         svg = ('<svg class="social-icon" viewBox="0 0 16 16" width="18" height="18" '
                'fill="currentColor" aria-hidden="true" focusable="false">' + SOCIAL_ICONS[icon] + '</svg>')
@@ -227,32 +346,61 @@ def api_sidebar_sections(route: str, en: bool, tree: list[tuple], root: Path | N
     return sections
 
 
-def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None) -> str:
-    prefix = '' if en else '/zh'
-    rest = route if en else route.removeprefix('/zh')
+def detect_lang(route: str, en: bool | str | None = None) -> str:
+    for l in ('zh-tw', 'pt-br', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'zh'):
+        if route == f'/{l}' or route.startswith(f'/{l}/'):
+            return l
+    if isinstance(en, str) and en in ALL_LANGS:
+        return en
+    if isinstance(en, bool) and not en:
+        return 'zh'
+    return 'en'
+
+
+def sidebar(route: str, en: bool | str | None = None, xu_version: str = '', root: Path | None = None) -> str:
+    lang = detect_lang(route, en)
+    prefix = f'/{lang}' if lang != 'en' else ''
+    rest = route.removeprefix(prefix) if prefix else route
     groups = []
     api_tree = None
+
+    group_labels = DOC_GROUPS_LANGS.get(lang, DOC_GROUPS_LANGS['en'])
+    doc_labels = DOC_LABELS_LANGS.get(lang, {})
+
     if rest.startswith('/docs/'):
         for icon, zh, english, links in DOC_GROUPS:
-            groups.append((icon, english if en else zh, [
-                (prefix + '/docs/' + href, english_label if en else zh_label)
-                for href, zh_label, english_label in links
-            ]))
+            group_title = group_labels.get(zh, english if lang == 'en' else zh)
+            group_links = []
+            for href, zh_label, english_label in links:
+                if lang in ('zh', 'zh-tw'):
+                    fallback = zh_label if lang == 'zh' else doc_labels.get(href, zh_label)
+                elif lang == 'en':
+                    fallback = english_label
+                else:
+                    fallback = english_label
+                link_title = doc_labels.get(href, fallback)
+                group_links.append((prefix + '/docs/' + href, link_title))
+            groups.append((icon, group_title, group_links))
     elif rest == '/api/preview' or rest.startswith('/api/preview/'):
-        groups.append(('xi-xuui', 'Development preview' if en else '开发预览', [
-            (prefix + '/api/preview', 'Index' if en else '索引'),
+        preview_title = 'Development preview' if lang == 'en' else ('开发预览' if lang == 'zh' else 'Preview API')
+        index_label = 'Index' if lang == 'en' else ('索引' if lang == 'zh' else 'Index')
+        sdk_label = 'Released SDK API' if lang == 'en' else ('正式 SDK API' if lang == 'zh' else 'SDK API')
+        groups.append(('xi-xuui', preview_title, [
+            (prefix + '/api/preview', index_label),
             *[(prefix + '/api/preview/' + package, '#' + package)
               for package in ('ui', 'ui/draw', 'ui/layout', 'ui/chart', 'ui/widgets', 'ui/webview')],
-            (prefix + '/api', 'Released SDK API' if en else '正式 SDK API'),
+            (prefix + '/api', sdk_label),
         ]))
     elif rest == '/api' or rest.startswith('/api/'):
         api_tree = api_sections(api_pages(root), root)
     elif rest == '/blog' or rest.startswith('/blog/'):
-        groups.append(('xi-chat', 'Blog', [
-            (prefix + '/blog', 'Index' if en else '博客索引'),
+        blog_index = 'Index' if lang == 'en' else ('博客索引' if lang == 'zh' else 'Blog Index')
+        lsp_label = 'Xu LSP & vscode-xu' if lang != 'zh' else 'Xu LSP 与 vscode-xu'
+        groups.append(('xi-chat', 'Blog' if lang != 'zh' else '博客', [
+            (prefix + '/blog', blog_index),
             *[(prefix + '/blog/xu-' + item['version'].replace('.', '-'), 'Xu ' + item['version'])
               for item in release_entries(root or Path(__file__).resolve().parents[1])],
-            (prefix + '/blog/xu-lsp-and-vscode', 'Xu LSP & vscode-xu' if en else 'Xu LSP 与 vscode-xu'),
+            (prefix + '/blog/xu-lsp-and-vscode', lsp_label),
             (prefix + '/blog/xu-0-8-13', 'Xu 0.8.13'),
             (prefix + '/blog/xu-0-8-12', 'Xu 0.8.12'),
             (prefix + '/blog/xu-0-8-11', 'Xu 0.8.11'),
@@ -264,21 +412,14 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
     if not groups and api_tree is None:
         return ''
 
-    # 判断是否有任何一个组命中当前路由
     matched_idx = -1
     for idx, (_, _, links) in enumerate(groups):
         if any(href == route for href, _ in links):
             matched_idx = idx
             break
 
-    sections = api_sidebar_sections(route, en, api_tree, root) if api_tree is not None else []
+    sections = api_sidebar_sections(route, lang == 'en', api_tree, root) if api_tree is not None else []
     for idx, (icon, label, links) in enumerate(groups):
-        # 激活规则：
-        # 1. 命中当前路由的组必定展开；
-        # 2. 如果未命中任何具体组：
-        #    - 在 docs 下：默认展开前两组（起步与教程）；
-        #    - 在 api 下：默认展开前两组（Index与核心）；
-        #    - 在 blog 下：默认展开；
         if matched_idx >= 0:
             is_open = (idx == matched_idx)
         else:
@@ -288,7 +429,6 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
         expanded_attr = 'true' if is_open else 'false'
         count = len(links)
         count_tag = f'<span class="side-badge">{count}</span>' if count > 1 else ''
-
         links_html = ''.join(side_link(href, text, route) for href, text in links)
 
         sections.append(
@@ -303,12 +443,28 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
             f'</div>'
         )
 
-    toggle_all_title = "Toggle all sections" if en else "折叠/展开全部菜单"
-    scroll_top_title = "Back to top of menu" if en else "回到目录顶部"
+    toggle_all_title = {
+        'en': 'Toggle all sections', 'zh': '折叠/展开全部菜单', 'zh-tw': '折疊/展開全部選單',
+        'ja': 'すべてのセクションを開閉', 'ko': '모든 섹션 접기/펼치기', 'es': 'Alternar todas las secciones',
+        'fr': 'Basculer toutes les sections', 'de': 'Alle Abschnitte umschalten',
+        'ru': 'Свернуть/развернуть все', 'pt-br': 'Alternar todas as seções'
+    }.get(lang, 'Toggle all sections')
+    scroll_top_title = {
+        'en': 'Back to top of menu', 'zh': '回到目录顶部', 'zh-tw': '回到目錄頂部',
+        'ja': 'メニューの一番上へ', 'ko': '메뉴 상단으로', 'es': 'Volver al principio del menú',
+        'fr': 'Haut du menu', 'de': 'Zum Menüanfang',
+        'ru': 'Вверх меню', 'pt-br': 'Voltar ao topo do menu'
+    }.get(lang, 'Back to top of menu')
+    sections_header = {
+        'en': 'Sections', 'zh': '目录导航', 'zh-tw': '目錄導航',
+        'ja': 'セクション', 'ko': '목차 탐색', 'es': 'Secciones',
+        'fr': 'Sections', 'de': 'Abschnitte',
+        'ru': 'Разделы', 'pt-br': 'Seções'
+    }.get(lang, 'Sections')
 
     side_header = (
         f'<div class="side-header">'
-        f'  <span class="side-header-title">{"Sections" if en else "目录导航"}</span>'
+        f'  <span class="side-header-title">{sections_header}</span>'
         f'  <button type="button" class="side-toggle-all-btn" onclick="toggleAllSideGroups(this)" title="{toggle_all_title}" aria-label="{toggle_all_title}">'
         f'    <i class="xi xi-sliders"></i>'
         f'  </button>'
@@ -332,15 +488,14 @@ def sidebar(route: str, en: bool, xu_version: str = '', root: Path | None = None
 
     contents = side_header + f'<div class="side-content">{"".join(sections)}</div>' + side_footer
     if rest == '/api' or rest.startswith('/api/'):
-        label = 'Browse API directory' if en else '浏览 API 目录'
+        browse_label = 'Browse API directory' if lang == 'en' else ('浏览 API 目录' if lang == 'zh' else 'Browse API')
         contents = ('<details class="api-directory" id="api-directory" open>'
-                    f'<summary>{label}<i class="xi xi-chevron-down" aria-hidden="true"></i></summary>'
+                    f'<summary>{browse_label}<i class="xi xi-chevron-down" aria-hidden="true"></i></summary>'
                     '<div class="api-directory-body">' + contents + '</div></details>')
     return '<aside class="side">' + contents + '</aside>'
 
 
 def api_tools(route: str, en: bool, root: Path) -> str:
-    """Use real package parents and keep all declaration/bookmark IDs intact."""
     prefix = '' if en else '/zh'
     relative = route.removeprefix(prefix + '/api').strip('/')
     crumbs = [f'<a href="{prefix}/api">API</a>']
@@ -365,7 +520,6 @@ def api_tools(route: str, en: bool, root: Path) -> str:
 
 
 def api_index_presentation(body: str, en: bool) -> str:
-    """Present the generated inventory without changing its release data or links."""
     if 'class="api-section-nav"' not in body:
         return body
     descriptions = {
@@ -427,8 +581,6 @@ def api_index_presentation(body: str, en: bool) -> str:
 
 
 class FAQParser(HTMLParser):
-    """Keep FAQ structured data in sync with the questions shown on each page."""
-
     def __init__(self):
         super().__init__()
         self.entities = []
@@ -465,96 +617,125 @@ class FAQParser(HTMLParser):
             self.active = False
 
 
-def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = '') -> dict[str, str]:
-    origin = "https://xulang.org"
-    if route in ('/', '/zh'):
-        url_en = f"{origin}/"
-        url_zh = f"{origin}/zh/"
-        canonical_url = url_en if en else url_zh
-    elif route == '/404':
-        url_en = f"{origin}/"
-        url_zh = f"{origin}/zh/"
-        canonical_url = f"{origin}/404.html"
-    else:
-        bare_route = route if en else (route[3:] or '/')
-        url_en = f"{origin}{bare_route.rstrip('/')}/"
-        url_zh = f"{origin}/zh{bare_route.rstrip('/')}/"
-        canonical_url = url_en if en else url_zh
+OG_LOCALES = {
+    'en': 'en_US', 'zh': 'zh_CN', 'zh-tw': 'zh_TW',
+    'ja': 'ja_JP', 'ko': 'ko_KR', 'es': 'es_ES',
+    'fr': 'fr_FR', 'de': 'de_DE', 'ru': 'ru_RU', 'pt-br': 'pt_BR'
+}
 
-    bare_path = route if en else (route[3:] or '/')
-    bare_path = bare_path.strip('/')
+IN_LANGUAGES = {
+    'en': 'en', 'zh': 'zh-CN', 'zh-tw': 'zh-TW',
+    'ja': 'ja', 'ko': 'ko', 'es': 'es',
+    'fr': 'fr', 'de': 'de', 'ru': 'ru', 'pt-br': 'pt-BR'
+}
+
+
+def get_seo_meta(route: str, title: str, en: bool | str, xu_version: str, body: str = '') -> dict[str, str]:
+    origin = "https://xulang.org"
+    lang = detect_lang(route, en)
+
+    # Bare route extraction
+    bare_route = route
+    for l in ('zh-tw', 'pt-br', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'zh'):
+        if bare_route == f'/{l}' or bare_route.startswith(f'/{l}/'):
+            bare_route = bare_route[len(l) + 1:] or '/'
+            break
+
+    url_en = f"{origin}{bare_route.rstrip('/')}/" if bare_route != '/' else f"{origin}/"
+    urls = {'url_en': url_en}
+    for l in ('zh', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'pt-br'):
+        key = f"url_{l.replace('-', '_')}"
+        urls[key] = f"{origin}/{l}{bare_route.rstrip('/')}/" if bare_route != '/' else f"{origin}/{l}/"
+
+    if route == '/404':
+        canonical_url = f"{origin}/404.html"
+    elif lang == 'en':
+        canonical_url = url_en
+    else:
+        canonical_url = urls[f"url_{lang.replace('-', '_')}"]
+
+    bare_path = bare_route.strip('/')
 
     if not bare_path:
-        if en:
-            desc = "Xu systems programming language: zero GC, inferred ownership, borrow checking, deterministic cleanup, built-in coroutines, and custom native/WebAssembly AOT backends."
-        else:
-            desc = "Xu 系统编程语言：零 GC、所有权推断、借用检查、确定性资源释放、内建协程及自研原生 / WebAssembly AOT 后端。"
+        desc = {
+            'zh': "Xu 系统编程语言：零 GC、所有权推断、借用检查、确定性资源释放、内建协程及自研原生 / WebAssembly AOT 后端。",
+            'zh-tw': "Xu 系統程式語言：零 GC、所有權推斷、借用檢查、確定性資源釋放、內建協程及自研原生 / WebAssembly AOT 後端。",
+            'ja': "Xuプログラミング言語：ゼロGC、所有権推論、借用チェッカー、決定論的メモリ解放、組み込みコルーチン、自社開発AOT/WebAssemblyバックエンド。",
+            'ko': "Xu 시스템 프로그래밍 언어: Zero-GC, 소유권 추론, 대여 검사, 결정론적 자원 해제, 내장 코루틴 및 자체 개발 AOT/WebAssembly 백엔드.",
+            'es': "Lenguaje de programación Xu: Zero-GC, propiedad inferida, comprobación de préstamos, liberación determinista, corrutinas y compilador AOT/WASM propio.",
+            'fr': "Langage système Xu : Zero-GC, propriété inférée, vérification d'emprunt, libération déterministe, coroutines intégrées et compilateur AOT/WASM autonome.",
+            'de': "Programmiersprache Xu: Zero-GC, Eigentumsinferenz, Borrow Checking, deterministische Bereinigung, Coroutinen und nativer AOT/WASM-Compiler.",
+            'ru': "Язык системного программирования Xu: zero GC, автоматический вывод владения, проверка заимствований, детерминированное освобождение ресурсов, встроенные корутины и нативный AOT / WebAssembly.",
+            'pt-br': "Linguagem de programação Xu: Zero-GC, propriedade inferida, verificador de empréstimos, desalocação determinística, corrotinas e compilador AOT/WASM próprio."
+        }.get(lang, "Xu systems programming language: zero GC, inferred ownership, borrow checking, deterministic cleanup, built-in coroutines, and custom native/WebAssembly AOT backends.")
     elif bare_path == 'benchmarks':
-        if en:
-            desc = "Cross-language runtime, CPU time, peak memory and binary-size measurements across Linux, macOS and Windows on ARM64 and x86-64. See the measured Xu version and source CI records."
-        else:
-            desc = "Xu 跨语言运行耗时、CPU 时间、峰值内存与二进制体积实测，覆盖 Linux、macOS、Windows 的 ARM64 与 x86-64 平台，标注实际测量版本并提供来源 CI 记录。"
+        desc = (f"{title} — Cross-language runtime, CPU time, peak memory and binary-size measurements across Linux, macOS and Windows."
+                if lang == 'en' else f"{title} — Xu 跨语言运行耗时、CPU 时间、峰值内存与二进制体积实测。")
     elif bare_path == 'playground':
-        if en:
-            desc = f"Interactive in-browser WebAssembly playground for Xu v{xu_version}. Compile, borrow-check, and execute Xu code client-side with zero installation."
-        else:
-            desc = f"Xu 编程语言 (v{xu_version}) 在线 WebAssembly 演练场。纯浏览器端客户端沙盒，即时编译、借用检查与执行 Xu 代码，免本地安装。"
+        desc = (f"Interactive in-browser WebAssembly playground for Xu v{xu_version}. Compile, borrow-check, and execute Xu code client-side."
+                if lang == 'en' else f"Xu 编程语言 (v{xu_version}) 在线 WebAssembly 演练场。")
     elif bare_path == 'download':
-        if en:
-            desc = f"Download official Xu v{xu_version} compiler SDK and toolchain for macOS, Linux, and Windows. One-line automated install scripts and release packages."
-        else:
-            desc = f"下载官方 Xu (v{xu_version}) 编译器 SDK 与工具链（macOS、Linux、Windows）。支持一键自动化安装脚本与原生二进制发行包。"
+        desc = (f"Download official Xu v{xu_version} compiler SDK and toolchain for macOS, Linux, and Windows."
+                if lang == 'en' else f"下载官方 Xu (v{xu_version}) 编译器 SDK 与工具链。")
+    elif bare_path == 'docs/start':
+        desc = (f"Get started with Xu v{xu_version}: language introduction, environment setup, writing and compiling your first zero-GC program."
+                if lang == 'en' else f"Xu (v{xu_version}) 快速起步：语言介绍、环境配置与第一个零 GC 程序。")
     elif bare_path.startswith('docs/faq'):
-        if en:
-            desc = "Xu FAQ: ownership and borrow checking, shared-state synchronization, native/FFI safety boundaries, code generation targets, SDK availability, and runtime verification."
-        else:
-            desc = "Xu 常见问题：所有权与借用检查、共享状态同步、原生 / FFI 安全边界、代码发射目标、SDK 可下载范围与运行实测。"
+        desc = ("Xu FAQ: ownership, borrow checking, shared-state synchronization, native/FFI safety boundaries, and toolchain features."
+                if lang == 'en' else "Xu 常见问题：所有权与借用检查、共享状态同步、原生 / FFI 安全边界与工具链特性。")
     elif bare_path.startswith('docs/tutorial'):
-        if en:
-            desc = f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
-        else:
-            desc = f"{title} — Xu 编程语言实战系列教程，系统讲解语法结构、所有权机制、高并发通道与系统级网络编程。"
+        desc = (f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
+                if lang == 'en' else f"{title} — Xu 编程语言实战系列教程，系统讲解语法结构、所有权机制、高并发通道与系统级网络编程。")
     elif bare_path.startswith('docs/lang'):
-        if en:
-            desc = f"{title} — Official language specification, memory model, concurrency architecture, and formal grammar for Xu."
-        else:
-            desc = f"{title} — Xu 编程语言官方规范：语法定义、内存模型与所有权语义、并发调度架构与 EBNF 文法。"
+        desc = (f"{title} — Official language specification, memory model, concurrency architecture, and formal grammar for Xu."
+                if lang == 'en' else f"{title} — Xu 编程语言官方规范：语法定义、内存模型与所有权语义、并发调度架构与 EBNF 文法。")
     elif bare_path == 'api/preview' or bare_path.startswith('api/preview/'):
         desc = (f'Unreleased Xu development API reference: {title}. Use the SDK version and source digest shown on the page.'
-                if en else f'Xu 开发预览 API：{title}。尚未发布，请使用页面标明的 SDK 版本与源码摘要。')
+                if lang == 'en' else f'Xu 开发预览 API：{title}。尚未发布，请使用页面标明的 SDK 版本与源码摘要。')
     elif bare_path == 'api/xacp':
-        if en:
+        if lang == 'en':
             desc = f"Xu v{xu_version} SDK #xacp safety core: sessions, permissions, XUN checks, and frame limits. Native transport and UI integration remain unverified."
-        else:
+        elif lang in ('zh', 'zh-tw'):
             desc = f"Xu v{xu_version} SDK 的 #xacp 安全核心：会话、权限、XUN 校验与帧上限。原生传输与 UI 集成仍待验。"
+        else:
+            desc = f"Xu v{xu_version} SDK #xacp safety core: sessions, permissions, XUN checks, and frame limits."
     elif bare_path.startswith('api'):
-        if en:
-            desc = f"Official API reference for {title} in the Xu v{xu_version} standard library and extended package ecosystem."
-        else:
-            desc = f"Xu 编程语言 (v{xu_version}) 标准库与扩展包官方 API 参考文档：{title}。"
+        desc = (f"Official API reference for {title} in the Xu v{xu_version} standard library and extended package ecosystem."
+                if lang == 'en' else f"Xu 编程语言 (v{xu_version}) 标准库与扩展包官方 API 参考文档：{title}。")
     elif bare_path.startswith('blog'):
-        if en:
-            desc = f"{title} — Engineering blog post and release updates from the Xu programming language team."
-        else:
-            desc = f"{title} — Xu 编程语言团队官方技术博客与版本发布动态。"
+        desc = (f"{title} — Engineering blog post and release updates from the Xu programming language team."
+                if lang == 'en' else f"{title} — Xu 编程语言团队官方技术博客与版本发布动态。")
     else:
-        if en:
-            desc = f"{title} — Documentation, guides, and tools for the Xu systems programming language."
-        else:
-            desc = f"{title} — Xu 系统级编程语言官方文档、工具与开发者指南。"
+        desc = f"{title} — Xu Programming Language documentation, guides, and tools."
 
     keywords = (
-        "Xu, Xu programming language, xulang, systems programming, AOT compiler, zero GC, memory safety, RAII, coroutines, channels, WebAssembly, WASM, performance benchmarks, LLVM alternative"
-        if en else
-        "Xu, Xu语言, 系统级编程语言, AOT编译器, 零GC, 内存安全, 所有权模型, 协程, 信道, WebAssembly, 性能评测, LLVM"
+        "Xu, Xu programming language, xulang, systems programming, AOT compiler, zero GC, memory safety, RAII, coroutines, channels, WebAssembly"
+        if lang not in ('zh', 'zh-tw') else
+        "Xu, Xu語言, 系統級編程語言, AOT編譯器, 零GC, 內存安全, 所有權模型, 協程, 信道, WebAssembly, 性能評測"
     )
 
     og_type = "website" if bare_path in ('', 'playground', 'benchmarks', 'download', '404') else "article"
-    og_locale = "en_US" if en else "zh_CN"
+    og_locale = OG_LOCALES.get(lang, 'en_US')
 
     faq_parser = FAQParser()
     faq_parser.feed(body)
     faq_entities = faq_parser.entities
+
+    def make_breadcrumbs_schema(origin_url: str, crumbs: list[tuple[str, str]]) -> dict:
+        return {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {
+                    "@type": "ListItem",
+                    "position": i + 1,
+                    "name": name,
+                    "item": f"{origin_url}{path.rstrip('/')}/" if path != '/' else f"{origin_url}/"
+                }
+                for i, (name, path) in enumerate(crumbs)
+            ]
+        }
+
+    in_lang_code = IN_LANGUAGES.get(lang, 'en')
 
     if not bare_path:
         schema = {
@@ -566,7 +747,15 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
                     "url": f"{origin}/",
                     "name": "Xu Programming Language",
                     "description": desc,
-                    "inLanguage": ["en", "zh-CN"]
+                    "inLanguage": ["en", "zh-CN", "zh-TW", "ja", "ko", "es", "fr", "de", "ru", "pt-BR"],
+                    "potentialAction": {
+                        "@type": "SearchAction",
+                        "target": {
+                            "@type": "EntryPoint",
+                            "urlTemplate": f"{origin}/api/?q={{search_term_string}}"
+                        },
+                        "query-input": "required name=search_term_string"
+                    }
                 },
                 {
                     "@type": "Organization",
@@ -596,7 +785,7 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
                 {
                     "@type": "FAQPage",
                     "@id": f"{origin}/#faq",
-                    "name": "Xu Frequently Asked Questions" if en else "Xu 编程语言常见问题解答",
+                    "name": "Xu FAQ",
                     "mainEntity": faq_entities
                 }
             ]
@@ -608,7 +797,7 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
             "headline": title,
             "description": desc,
             "url": canonical_url,
-            "inLanguage": "en" if en else "zh-CN",
+            "inLanguage": in_lang_code,
             "mainEntity": faq_entities,
             "publisher": {
                 "@type": "Organization",
@@ -617,14 +806,73 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
                 "logo": f"{origin}/xu_classic.svg"
             }
         }
+    elif bare_path.startswith('api'):
+        home_lbl = 'Home' if lang == 'en' else ('首页' if lang == 'zh' else 'Home')
+        home_target = f'/{lang}' if lang != 'en' else '/'
+        api_target = f'/{lang}/api' if lang in ('en', 'zh') else '/api'
+        api_crumbs = [(home_lbl, home_target), ('API', api_target)]
+        if bare_path != 'api':
+            api_crumbs.append((title, ((f'/{lang}/' if lang != 'en' else '/') + bare_path)))
+        schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": ["TechArticle", "APIReference"],
+                    "headline": title,
+                    "name": title,
+                    "description": desc,
+                    "url": canonical_url,
+                    "inLanguage": in_lang_code,
+                    "programmingLanguage": "Xu",
+                    "softwareVersion": xu_version,
+                    "targetPlatform": ["Linux", "macOS", "Windows", "WebAssembly"],
+                    "publisher": {
+                        "@type": "Organization",
+                        "name": "Xu Programming Language",
+                        "url": f"{origin}/",
+                        "logo": f"{origin}/xu_classic.svg"
+                    }
+                },
+                make_breadcrumbs_schema(origin, api_crumbs)
+            ]
+        }
+    elif bare_path.startswith('docs'):
+        home_lbl = 'Home' if lang == 'en' else ('首页' if lang == 'zh' else 'Home')
+        docs_lbl = 'Docs' if lang == 'en' else ('文档' if lang == 'zh' else 'Docs')
+        home_target = f'/{lang}' if lang != 'en' else '/'
+        docs_target = f'/{lang}/docs/start' if lang != 'en' else '/docs/start'
+        doc_crumbs = [(home_lbl, home_target), (docs_lbl, docs_target)]
+        if bare_path != 'docs/start':
+            doc_crumbs.append((title, ((f'/{lang}/' if lang != 'en' else '/') + bare_path)))
+        schema = {
+            "@context": "https://schema.org",
+            "@graph": [
+                {
+                    "@type": "TechArticle",
+                    "headline": title,
+                    "description": desc,
+                    "url": canonical_url,
+                    "inLanguage": in_lang_code,
+                    "programmingLanguage": "Xu",
+                    "softwareVersion": xu_version,
+                    "publisher": {
+                        "@type": "Organization",
+                        "name": "Xu Programming Language",
+                        "url": f"{origin}/",
+                        "logo": f"{origin}/xu_classic.svg"
+                    }
+                },
+                make_breadcrumbs_schema(origin, doc_crumbs)
+            ]
+        }
     else:
         schema = {
             "@context": "https://schema.org",
-            "@type": "TechArticle" if bare_path.startswith(('docs', 'api')) else "Article",
+            "@type": "Article" if bare_path.startswith('blog') else "WebPage",
             "headline": title,
             "description": desc,
             "url": canonical_url,
-            "inLanguage": "en" if en else "zh-CN",
+            "inLanguage": in_lang_code,
             "publisher": {
                 "@type": "Organization",
                 "name": "Xu Programming Language",
@@ -639,20 +887,118 @@ def get_seo_meta(route: str, title: str, en: bool, xu_version: str, body: str = 
         'meta_description': escape(desc, quote=True),
         'meta_keywords': escape(keywords, quote=True),
         'canonical_url': canonical_url,
-        'url_en': url_en,
-        'url_zh': url_zh,
         'og_type': og_type,
         'og_locale': og_locale,
         'schema_json_ld': schema_json_ld,
+        **urls
     }
 
 
+def doc_breadcrumbs(route: str, en: bool | str | None = None) -> str:
+    lang = detect_lang(route, en)
+    prefix = f'/{lang}' if lang != 'en' else ''
+    rel = route.removeprefix(prefix + '/docs').strip('/')
+    group_name = ''
+    item_name = ''
+    group_labels = DOC_GROUPS_LANGS.get(lang, DOC_GROUPS_LANGS['en'])
+    doc_labels = DOC_LABELS_LANGS.get(lang, {})
+
+    for _icon, zh_g, en_g, links in DOC_GROUPS:
+        for href, zh, english in links:
+            if href == rel:
+                group_name = group_labels.get(zh_g, english if lang == 'en' else zh_g)
+                item_name = doc_labels.get(href, english if lang == 'en' else zh)
+                break
+        if item_name:
+            break
+    if not item_name:
+        return ''
+    docs_title = "Docs" if lang in ('en', 'es', 'fr', 'de', 'pt-br') else ("文档" if lang == 'zh' else ("文件" if lang == 'zh-tw' else ("ドキュメント" if lang == 'ja' else ("문서" if lang == 'ko' else "Документация"))))
+    aria_label = "Documentation hierarchy" if lang == 'en' else ("文档层级导航" if lang == 'zh' else "Hierarchy")
+    return (
+        f'<nav class="doc-breadcrumbs" aria-label="{aria_label}">'
+        f'<a href="{prefix}/docs/start">{docs_title}</a>'
+        f'<span class="sep" aria-hidden="true">/</span>'
+        f'<span>{escape(group_name)}</span>'
+        f'<span class="sep" aria-hidden="true">/</span>'
+        f'<span aria-current="page">{escape(item_name)}</span>'
+        f'</nav>'
+    )
+
+
+def doc_pagination(route: str, en: bool | str | None = None) -> str:
+    lang = detect_lang(route, en)
+    prefix = f'/{lang}' if lang != 'en' else ''
+    rel = route.removeprefix(prefix + '/docs').strip('/')
+    doc_labels = DOC_LABELS_LANGS.get(lang, {})
+
+    prev_word = {'zh': '← 上一篇', 'zh-tw': '← 上一篇', 'ja': '← 前へ', 'ko': '← 이전', 'es': '← Anterior', 'fr': '← Précédent', 'de': '← Zurück', 'ru': '← Назад', 'pt-br': '← Anterior'}.get(lang, '← Previous')
+    next_word = {'zh': '下一篇 →', 'zh-tw': '下一篇 →', 'ja': '次へ →', 'ko': '다음 →', 'es': 'Siguiente →', 'fr': 'Suivant →', 'de': 'Weiter →', 'ru': 'Далее →', 'pt-br': 'Próximo →'}.get(lang, 'Next →')
+
+    for _icon, _zh_g, _en_g, links in DOC_GROUPS:
+        for i, (href, zh, english) in enumerate(links):
+            if href == rel:
+                prev_link = links[i - 1] if i > 0 else None
+                next_link = links[i + 1] if i + 1 < len(links) else None
+                if not prev_link and not next_link:
+                    return ''
+                prev_html = ''
+                if prev_link:
+                    p_href, p_zh, p_en = prev_link
+                    p_label = doc_labels.get(p_href, p_en if lang == 'en' else p_zh)
+                    prev_html = (
+                        f'<a class="doc-pagination-link prev" href="{prefix}/docs/{escape(p_href)}/">'
+                        f'<span class="doc-pagination-sub">{prev_word}</span>'
+                        f'<span class="doc-pagination-title">{escape(p_label)}</span>'
+                        f'</a>'
+                    )
+                next_html = ''
+                if next_link:
+                    n_href, n_zh, n_en = next_link
+                    n_label = doc_labels.get(n_href, n_en if lang == 'en' else n_zh)
+                    next_html = (
+                        f'<a class="doc-pagination-link next" href="{prefix}/docs/{escape(n_href)}/">'
+                        f'<span class="doc-pagination-sub">{next_word}</span>'
+                        f'<span class="doc-pagination-title">{escape(n_label)}</span>'
+                        f'</a>'
+                    )
+                return f'<nav class="doc-pagination" aria-label="Pagination">{prev_html}{next_html}</nav>'
+    return ''
+
+
+NAV_TAB_LABELS = {
+    'en': ('Docs', 'API', 'Playground', 'Benchmarks', 'Download', 'Blog'),
+    'zh': ('文档', 'API', '演练场', '横测', '下载', '博客'),
+    'zh-tw': ('文件', 'API', '演練場', '效能評測', '下載', '部落格'),
+    'ja': ('ドキュメント', 'API', 'プレイグラウンド', 'ベンチマーク', 'ダウンロード', 'ブログ'),
+    'ko': ('문서', 'API', '플레이그라운드', '벤치마크', '다운로드', '블로그'),
+    'es': ('Docs', 'API', 'Playground', 'Benchmarks', 'Descargar', 'Blog'),
+    'fr': ('Docs', 'API', 'Bac à sable', 'Performances', 'Télécharger', 'Blog'),
+    'de': ('Docs', 'API', 'Playground', 'Benchmarks', 'Download', 'Blog'),
+    'ru': ('Документация', 'API', 'Песочница', 'Бенчмарки', 'Скачать', 'Блог'),
+    'pt-br': ('Docs', 'API', 'Playground', 'Benchmarks', 'Baixar', 'Blog'),
+}
+
+
 def render(root: Path, title: str, route: str, body: str, xu_version: str) -> str:
-    en = not (route == '/zh' or route.startswith('/zh/'))
-    prefix = '' if en else '/zh'
+    lang = detect_lang(route)
+    en = lang == 'en'
+    prefix = f'/{lang}' if not en else ''
     home = prefix or '/'
     api_route = route == prefix + '/api' or route.startswith(prefix + '/api/')
     api_assets = ''
+    rest = route.removeprefix(prefix) if prefix else route
+
+    if rest.startswith('/docs/'):
+        doc_crumb_html = doc_breadcrumbs(route, lang)
+        if doc_crumb_html:
+            if re.search(r'<p\s+class=[\'"]crumb[\'"]>.*?</p>\s*', body):
+                body = re.sub(r'<p\s+class=[\'"]crumb[\'"]>.*?</p>\s*', doc_crumb_html, body, count=1)
+            else:
+                body = doc_crumb_html + body
+        pagination = doc_pagination(route, lang)
+        if pagination:
+            body = body + pagination
     if api_route:
         digest = hashlib.sha256()
         for name in ('api-browser.css', 'api-browser.js'):
@@ -663,53 +1009,124 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         body = re.sub(r'<p class="crumb">.*?</p>\s*', '', body, count=1, flags=re.DOTALL)
         body = re.sub(r'<nav class="widget-crumb"[^>]*>.*?</nav>\s*', '', body, count=1, flags=re.DOTALL)
         body = api_tools(route, en, root) + api_index_presentation(body, en)
+
     nav = []
-    for href, icon, zh, english in [
-        ('/docs/start', 'book', '文档', 'Docs'),
-        ('/api', 'api', 'API', 'API'),
-        ('/playground', 'play', '演练场', 'Playground'),
-        ('/benchmarks', 'benchmark', '横测', 'Benchmarks'),
-        ('/download', 'download', '下载', 'Download'),
-        ('/blog', 'chat', '博客', 'Blog'),
-    ]:
-        target = prefix + href
+    tabs = NAV_TAB_LABELS.get(lang, NAV_TAB_LABELS['en'])
+    nav_items = [
+        ('/docs/start', 'book', tabs[0]),
+        ('/api', 'api', tabs[1]),
+        ('/playground', 'play', tabs[2]),
+        ('/benchmarks', 'benchmark', tabs[3]),
+        ('/download', 'download', tabs[4]),
+        ('/blog', 'chat', tabs[5]),
+    ]
+    for href, icon, tab_label in nav_items:
+        if lang not in ('en', 'zh') and href in ('/api', '/blog'):
+            target = href
+        else:
+            target = prefix + href
         if href == '/docs/start':
             active = route == target or route.startswith(prefix + '/docs/')
         elif href == '/api':
-            active = route == target or route.startswith(prefix + '/api/')
+            active = route == target or route.startswith('/api/') or (prefix and route.startswith(prefix + '/api/'))
         elif href == '/blog':
-            active = route == target or route.startswith(prefix + '/blog/')
+            active = route == target or route.startswith('/blog/') or (prefix and route.startswith(prefix + '/blog/'))
         else:
             active = route == target
         cls = 'nav-tab-btn active' if active else 'nav-tab-btn'
         current = ' aria-current="page"' if active else ''
-        nav.append(f'<a class="{cls}"{current} href="{target}"><i class="xi xi-{icon}"></i> {english if en else zh}</a>')
-    if route in ('/', '/zh'):
+        nav.append(f'<a class="{cls}"{current} href="{target}"><i class="xi xi-{icon}"></i> {tab_label}</a>')
+
+    is_home = route in ('/', '/zh', '/ru') or any(route == f'/{l}' for l in ALL_LANGS)
+    is_play = any(route == f'/{l}/playground' for l in ALL_LANGS if l != 'en') or route == '/playground'
+    is_bench = any(route == f'/{l}/benchmarks' for l in ALL_LANGS if l != 'en') or route == '/benchmarks'
+
+    if is_home:
         main = '<main class="home">' + body + '</main>'
-    elif route in ('/playground', '/zh/playground'):
+    elif is_play:
         main = '<main class="home playground-page">' + body + '</main>'
-    elif route in ('/benchmarks', '/zh/benchmarks'):
+    elif is_bench:
         main = '<main class="home bench-page">' + body + '</main>'
     else:
         cls = 'doc download' if route == prefix + '/download' else ('doc api-page' if api_route else 'doc')
-        main = '<div class="page page-with-side">' + sidebar(route, en, xu_version, root) + f'<main class="{cls}">' + body + '</main></div>'
-    other = ('/zh' if route == '/' else '/zh' + route) if en else (route[3:] or '/')
+        main = '<div class="page page-with-side">' + sidebar(route, lang, xu_version, root) + f'<main class="{cls}">' + body + '</main></div>'
+
+    # Relative paths for dropdown
+    bare_route = rest.rstrip('/')
+    dropdown_urls = {}
+    active_flags = {}
+
+    for l in ALL_LANGS:
+        key = f"url_{l.replace('-', '_')}_rel"
+        act_key = f"active_{l.replace('-', '_')}"
+        active_flags[act_key] = ' active' if lang == l else ''
+
+        if route == '/404':
+            dropdown_urls[key] = '/' if l == 'en' else f'/{l}/'
+        else:
+            t_file = bare_route.strip('/') + '.html' if bare_route else 'home.html'
+            exists = (root / f'content/{l}' / t_file).is_file()
+            if exists:
+                dropdown_urls[key] = (bare_route or '') + '/' if l == 'en' else f'/{l}' + (bare_route or '') + '/'
+            else:
+                dropdown_urls[key] = '/' if l == 'en' else f'/{l}/'
+
+    # For the language switch button (maintains test invariants):
+    if lang == 'en':
+        other = ('/zh' if route == '/' else '/zh' + route)
+        other_code = 'zh-CN'
+        lang_title = '中文'
+        lang_label = '中文'
+    else:
+        other = (route.removeprefix(prefix) or '/')
+        other_code = 'en'
+        lang_title = 'English'
+        lang_label = 'EN'
     if route == '/404':
-        other = '/zh'
-    meta = get_seo_meta(route, title, en, xu_version, body)
+        other = '/zh' if lang == 'en' else '/'
+
+    meta = get_seo_meta(route, title, lang, xu_version, body)
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
-    # Reading a page must not download the compiler. The worker fetches WASM
-    # when a runnable example is started; explicit playground links still run.
     playground_assets = '<script src="/xu-play.js" defer></script>'
+
+    home_title = {
+        'en': 'Xu Home', 'zh': 'Xu 官网首页', 'zh-tw': 'Xu 官網首頁',
+        'ja': 'Xu 公式ホーム', 'ko': 'Xu 공식 홈', 'es': 'Xu Inicio',
+        'fr': 'Xu Accueil', 'de': 'Xu Startseite',
+        'ru': 'Xu Главная', 'pt-br': 'Xu Início'
+    }.get(lang, 'Xu Home')
+    search_label = {
+        'en': 'Search', 'zh': '搜索', 'zh-tw': '搜尋',
+        'ja': '検索', 'ko': '검색', 'es': 'Buscar',
+        'fr': 'Rechercher', 'de': 'Suche',
+        'ru': 'Поиск', 'pt-br': 'Buscar'
+    }.get(lang, 'Search')
+    theme_label = {
+        'en': 'Switch theme', 'zh': '切换主题', 'zh-tw': '切換主題',
+        'ja': 'テーマ切替', 'ko': '테마 전환', 'es': 'Cambiar tema',
+        'fr': 'Changer de thème', 'de': 'Thema wechseln',
+        'ru': 'Сменить тему', 'pt-br': 'Alternar tema'
+    }.get(lang, 'Switch theme')
+    social_label = 'Official accounts' if lang != 'zh' else '官方帐号'
+    menu_label = 'Navigation menu' if lang != 'zh' else '导航菜单'
+    nav_label = 'Main navigation' if lang != 'zh' else '主导航'
+    footer_text = (
+        '<a href="/LICENSE">MIT License</a> · Zero GC · Inferred Ownership · Custom AOT'
+        if lang not in ('zh', 'zh-tw') else
+        '<a href="/LICENSE">MIT 開源協議</a> · 零 GC · 所有權推斷 · 自研 AOT'
+    )
+
     return template.substitute(
-        lang='en' if en else 'zh-CN', title=escape(title), home=home,
-        home_title='Xu Home' if en else 'Xu 官网首页',
-        version_badge=('' if route in ('/', '/zh') else f'<span class="badge">v{escape(xu_version)}</span>'),
-        footer_identity='XU' if route in ('/', '/zh') else 'XU v' + escape(xu_version),
+        lang=IN_LANGUAGES.get(lang, 'en'),
+        title=escape(title), home=home,
+        home_title=home_title,
+        version_badge=('' if is_home else f'<span class="badge">v{escape(xu_version)}</span>'),
+        footer_identity='XU' if is_home else 'XU v' + escape(xu_version),
         nav=''.join(nav), main=main,
+        search_label=search_label,
         playground_assets=playground_assets,
         page_assets=api_assets + ('<script src="/xu-play-canvas.js" defer></script>'
-                     if route in ('/', '/zh') else '') + ('<link rel="stylesheet" href="/playground-design.css"><link rel="stylesheet" href="/widgets.css">'
+                     if is_home else '') + ('<link rel="stylesheet" href="/playground-design.css"><link rel="stylesheet" href="/widgets.css">'
                      if '/api/ui/widgets' in route else '') + ('<link rel="stylesheet" href="/playground.css">'
                      '<link rel="stylesheet" href="/playground-design.css">'
                      '<link rel="stylesheet" href="/widgets.css">'
@@ -718,15 +1135,16 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
                      '<script src="/xu-play-workspace.js" defer></script>'
                      '<script src="/xu-play-library.js" defer></script>'
                      '<script src="/widget-experience.js" defer></script>'
-                     if route in ('/playground', '/zh/playground') else ''),
-        other_lang=other, other_lang_code='zh-CN' if en else 'en',
-        lang_title='中文' if en else 'English', lang_label='中文' if en else 'EN',
-        theme_label='Switch theme' if en else '切换主题', ui_href=prefix + '/docs/ui',
-        footer_text=('<a href="/LICENSE">MIT License</a> · Zero GC · Inferred Ownership · Custom AOT' if en
-                     else '<a href="/LICENSE">MIT 开源协议</a> · 零 GC · 所有权推断 · 自研 AOT'),
-        header_social=social_links(en, compact=True), footer_social=social_links(en),
-        social_label='Official accounts' if en else '官方帐号',
-        menu_label='Navigation menu' if en else '导航菜单',
-        nav_label='Main navigation' if en else '主导航',
+                     if is_play else ''),
+        other_lang=other, other_lang_code=other_code,
+        lang_title=lang_title, lang_label=lang_label,
+        theme_label=theme_label, ui_href=prefix + '/docs/ui',
+        footer_text=footer_text,
+        header_social=social_links(lang, compact=True), footer_social=social_links(lang),
+        social_label=social_label,
+        menu_label=menu_label,
+        nav_label=nav_label,
+        **dropdown_urls,
+        **active_flags,
         **meta,
     )

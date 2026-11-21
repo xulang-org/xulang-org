@@ -1,0 +1,144 @@
+<!--title: よくある質問 (FAQ)-->
+
+<p class="crumb"><a href="/docs/start">ドキュメント</a></p>
+<h1>よくある質問 (FAQ)</h1>
+<p class="banner">Xu 言語の設計、メモリモデル、AOTコンパイラ、ネイティブUI、エディタサポート、依存関係管理、C言語連携に関する主要なQ&amp;A</p>
+
+<div class="faq-toolbar" role="search" aria-label="FAQ 検索とフィルター">
+  <div class="faq-search-wrap">
+    <i class="xi xi-search" aria-hidden="true"></i>
+    <input type="search" class="faq-search-input" id="faq-search" placeholder="質問またはキーワードで検索 (例: GC, Rust, UI, LSP, XACP)..." aria-label="よくある質問を検索">
+    <button type="button" class="faq-search-clear" id="faq-search-clear" aria-label="検索をクリア" hidden>&times;</button>
+  </div>
+  <div class="faq-controls">
+    <span class="faq-count-badge" id="faq-count" aria-live="polite">全 19 件の質問</span>
+    <button type="button" class="faq-btn" id="faq-expand-all"><i class="xi xi-sliders"></i> すべて展開</button>
+    <button type="button" class="faq-btn" id="faq-collapse-all"><i class="xi xi-close"></i> すべて折りたたむ</button>
+  </div>
+</div>
+
+<div class="faq-categories" role="tablist" aria-label="FAQ カテゴリフィルター">
+  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> すべて (19)</button>
+  <button type="button" class="faq-cat-btn" data-cat="lang" role="tab" aria-selected="false"><i class="xi xi-cpu"></i> 言語コアとメモリ (8)</button>
+  <button type="button" class="faq-cat-btn" data-cat="ui" role="tab" aria-selected="false"><i class="xi xi-monitor"></i> デスクトップUI (2)</button>
+  <button type="button" class="faq-cat-btn" data-cat="tools" role="tab" aria-selected="false"><i class="xi xi-terminal"></i> ツールチェーンと生態系 (9)</button>
+</div>
+
+<section class="faq-list">
+  <details class="faq-item" id="what-is-xu" data-category="lang">
+    <summary><h3>Xuプログラミング言語とは何ですか？</h3></summary>
+    <div class="faq-answer">
+<p>Xuはコンパイル時メモリ安全性を備えた高性能システムプログラミング言語です。Goの簡潔な並行処理モデル（コルーチンとチャネル）と、C/Rust級の決定論的リソース管理（ゼロGC）を融合しています。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="llvm-backend" data-category="lang">
+    <summary><h3>Xuのコアとなる設計目標は何ですか？</h3></summary>
+    <div class="faq-answer">
+<p>主な目標は、実行時オーバーヘッドの排除、自動所有権推論による簡潔な構文、ライフタイム注釈の不要化、自社開発ネイティブAOTコンパイラ、およびC/C++とのシームレスな相互運用です。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="memory-safety" data-category="lang">
+    <summary><h3>Xuはガベージコレクタ（GC）なしでどのようにメモリ安全性を保証しますか？</h3></summary>
+    <div class="faq-answer">
+<p>単一所有権と借用チェッカーを採用し、コンパイル時にリソースのライフタイムを追跡してスコープ終了時に自動解放（RAII）を行うため、メモリリークや二重解放を防ぎます。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="borrow-checker" data-category="lang">
+    <summary><h3>Xuの借用チェッカーはどのように動作しますか？</h3></summary>
+    <div class="faq-answer">
+<p>不変借用 <code>&amp;T</code> と可変借用 <code>&amp;mut T</code> をサポートします。同一スコープ内では複数の不変借用、または単一の可変借用のいずれかのみが許可されます。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="concurrency-model" data-category="lang">
+    <summary><h3>Xuの並行処理モデルはどのように設計されていますか？</h3></summary>
+    <div class="faq-answer">
+<p>言語組み込みの <code>xu</code> キーワードで軽量コルーチンを起動し、型付き <code>chan&lt;T&gt;</code> チャネルを介して安全な通信と同期を行います。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="data-races" data-category="lang">
+    <summary><h3>Xuでデータレース（競合）は発生しますか？</h3></summary>
+    <div class="faq-answer">
+<p>コルーチン間のデータ送信時には所有権の移動（Move）またはディープコピーが強制され、可変ポインタの共有をコンパイル時に排除してデータレースを防ぎます。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="coroutine-scheduling" data-category="lang">
+    <summary><h3>Xuコルーチンのスケジューリングと実行モデルはどのようになっていますか？</h3></summary>
+    <div class="faq-answer">
+<p>M:NハイブリッドスケジューラとOSネイティブの非同期I/O（epoll/kqueue/IOCP）を統合し、単一プロセスで数百万の並行接続を処理可能です。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="error-handling" data-category="lang">
+    <summary><h3>Xuのエラー処理メカニズムはどのようなものですか？</h3></summary>
+    <div class="faq-answer">
+<p>従来の例外（try/catch）を排除し、記号的制御フロー（<code>&lt;&lt;</code> 成功、<code>&gt;&gt;</code> エラー）と <code>catch</code> 式による明示的なエラー処理を採用しています。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="rust-go-comparison" data-category="lang">
+    <summary><h3>Xuはオブジェクト指向プログラミングをサポートしていますか？</h3></summary>
+    <div class="faq-answer">
+<p>クラス継承ではなく「継承より合成」を重視します。<code>struct</code> でデータを定義し、メソッド拡張と <code>interface</code> でポリモーフィズムを実現します。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="native-c" data-category="tools">
+    <summary><h3>XuはC/C++ネイティブライブラリとどのように相互運用しますか？</h3></summary>
+    <div class="faq-answer">
+<p>ゼロコストのC FFI境界を提供し、Cヘッダーと静的/動的ライブラリ（.a, .so, .dylib, .dll）を直接リンクして利用できます。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="target-platforms" data-category="tools">
+    <summary><h3>XuはどのOSおよびCPUアーキテクチャをサポートしていますか？</h3></summary>
+    <div class="faq-answer">
+<p>macOS（ARM64/x64）、Linux（ARM64/x64/LoongArch/RISC-V）、Windows（x64/ARM64）をネイティブサポートしています。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="wasm" data-category="lang">
+    <summary><h3>XuはWebAssemblyをサポートしていますか？</h3></summary>
+    <div class="faq-answer">
+<p>完全サポート。ネイティブバックエンドから <code>wasm32-wasi</code> バイトコードを直接出力し、ブラウザ内外で実行可能です。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="modules-dependencies" data-category="tools">
+    <summary><h3>Xuはモジュールと依存関係をどのように管理しますか？</h3></summary>
+    <div class="faq-answer">
+<p>プロジェクトルートの <code>xu.xun</code> で依存関係を宣言し、<code>xu.lock</code> でSemVerバージョンとチェックサムを固定して再現可能なビルドを保証します。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="package-repository" data-category="tools">
+    <summary><h3>Xuには中央パッケージリポジトリがありますか？</h3></summary>
+    <div class="faq-answer">
+<p>分散型アーキテクチャとGit直接参照モデルを採用し、エコシステムカタログを通じて検証済みパッケージを提供します。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="xacp-overview" data-category="tools">
+    <summary><h3>.xulib静的配布パッケージとは何ですか？</h3></summary>
+    <div class="faq-answer">
+<p><code>.xulib</code> はXu独自のネイティブモジュール配布形式で、複数アーキテクチャの静的オブジェクトと型シグネチャを統合しています。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="native-ui" data-category="ui">
+    <summary><h3>XuのネイティブデスクトップUI / WebViewアーキテクチャとは何ですか？</h3></summary>
+    <div class="faq-answer">
+<p>ネイティブGPUハードウェアアクセラレーションによるRetained-mode UIフレームワークと、組み込みシステムWebView連携を標準提供します。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="mobile-support" data-category="ui">
+    <summary><h3>XuはiOSおよびAndroidのモバイルアプリ開発をどのようにサポートしますか？</h3></summary>
+    <div class="faq-answer">
+<p><code>xu build --phone</code> により、iOSフレームワークおよびAndroid NDKネイティブライブラリを直接生成可能です。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="editors-lsp" data-category="tools">
+    <summary><h3>Xuにはどのような開発ツールとIDE統合が提供されていますか？</h3></summary>
+    <div class="faq-answer">
+<p>公式のVS CodeおよびCursor拡張機能（<code>xu-lsp</code>統合）により、定義ジャンプ、自動補完、リアルタイム診断、デバッグをサポートします。</p>
+    </div>
+  </details>
+  <details class="faq-item" id="release-status" data-category="tools">
+    <summary><h3>Xuの現在の安定性とリリース状況はどうなっていますか？</h3></summary>
+    <div class="faq-answer">
+<p>現在0.x系列で積極的なリリースを継続しており、コア構文仕様は凍結済みで、6つのネイティブプラットフォームで全CIテストに合格しています。</p>
+    </div>
+  </details>
+</section>
+
+<p class="faq-footer-nav"><a href="/docs/start">クイックスタート</a> · <a href="/docs/ui">UI / WebView</a> · <a href="/docs/modules">モジュールと依存関係</a> · <a href="/docs/native">ネイティブ連携と .xulib</a> · <a href="/docs/vscode">エディタサポート</a> · <a href="/docs/cli">CLI コマンドライン</a></p>

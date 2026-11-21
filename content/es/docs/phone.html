@@ -1,0 +1,27 @@
+<!--title: Guía de desarrollo de aplicaciones móviles para iOS y Android-->
+<h1>Build mobile apps with Xu</h1>
+<p>Xu {{xu_version}} generates ARM64 projects for iOS devices, the iOS Simulator and Android. The compiler emits a native application object. The generated project includes the platform shell, the local Canvas renderer and the build script.</p>
+
+<h2 id="generate">Generate a project</h2>
+<p>Install the <a href="/download">full SDK</a>, including <code>xu-phone</code>. The source directory must contain a <code>xu.xun</code> manifest. Run these commands from the root of the <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}">Xu {{xu_version}} source tree</a>. Choose a fresh output directory for each build.</p>
+<pre><code class="language-shell">xu build examples/phone_gallery --phone --target ios-simulator-arm64 --bundle-id org.example.gallery -o build/gallery-sim
+xu build examples/phone_gallery --phone --target ios-arm64 --bundle-id org.example.gallery -o build/gallery-ios
+xu build examples/phone_gallery --phone --target android-arm64 --bundle-id org.example.gallery -o build/gallery-android
+
+# Native SDL GPU mobile game profile (uses #app resource packaging)
+xu build examples/phone_game --phone --phone-profile game --target ios-simulator-arm64 --bundle-id org.example.game -o build/game-sim
+xu build examples/phone_game --phone --phone-profile game --target android-arm64 --bundle-id org.example.game -o build/game-android</code></pre>
+<p>The generated projects contain the host sources and compiled object. To pick up Xu source changes, generate a fresh project before invoking the platform build.</p>
+<p>If you keep several SDK installations, ensure that <code>xu --version</code> reports {{xu_version}} and that any <code>XU_ROOT</code> and <code>XU_STDLIB_ROOT</code> overrides point to the same SDK.</p>
+
+<h2 id="platform-tools">Build on the target toolchain</h2>
+<ul>
+  <li><strong>iOS Simulator.</strong> On macOS with Xcode, run <code>bash build/gallery-sim/build.sh</code>. With an ARM64 simulator booted, use <code>xcrun simctl install booted build/gallery-sim/build/XuPhone.app</code>. The host targets iOS 16.4 or later.</li>
+  <li><strong>iOS devices.</strong> Use the generated device project with a matching signing identity, provisioning profile and entitlements. Set <code>CODE_SIGN_IDENTITY</code>, <code>PROVISIONING_PROFILE</code> and <code>CODE_SIGN_ENTITLEMENTS</code> for its build script.</li>
+  <li><strong>Android.</strong> Run <code>bash build/gallery-android/build.sh</code> with <code>ANDROID_HOME</code> and <code>JAVA_HOME</code> set. Install JDK 17 or later and Android SDK components <code>platforms;android-35</code>, <code>build-tools;35.0.0</code>, <code>ndk;27.2.12479018</code> and <code>cmake;3.22.1</code>. The script produces <code>build/gallery-android/build/XuPhone-debug.apk</code>. The minimum Android API level is 26.</li>
+</ul>
+
+<h2 id="ui">Draw and handle input</h2>
+<p>Use one root <code>ui.Window</code>, attach <code>#ui/draw</code>, and record complete frames after <code>EV_CANVAS_READY</code>. The host renders frames in a local system WebView Canvas. Application logic runs as native ARM64 code.</p>
+<p>Read <code>phone.host_insets()</code> and pass them to <code>phone.scaffold_with</code> to keep controls clear of safe areas and the keyboard. The mobile kit provides routes, scrolling and pull-to-refresh, native IME text editing, haptics and clipboard integration. See the <a href="/api/ui/phone"><code>#ui/phone</code> API</a>, the <a href="/api/app"><code>#app</code> API</a>, and the <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/examples/phone_gallery">gallery</a> / <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/examples/phone_game">game</a> examples.</p>
+<p>The mobile profile uses one window. It omits desktop menus, dialogs, embedded WebView controls, offscreen surfaces and per-control accessibility semantics. Release checks covered project generation and ARM64 object formats. Device and app-store acceptance remain separate platform tests. <a href="https://github.com/xulang-org/xu/blob/v{{xu_version}}/src/ui/host/phone/README.md">Host requirements and limits</a></p>

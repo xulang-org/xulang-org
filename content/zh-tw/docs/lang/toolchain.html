@@ -1,0 +1,26 @@
+<!--title: 工具鏈-->
+<p class="crumb"><a href="/docs/start">文件</a> / 語言</p>
+<h1>工具鏈</h1>
+<p>Xu {{xu_version}} 提供 <code>build</code>、<code>run</code>、<code>check</code>、<code>test</code>、<code>install</code>、<code>fmt</code>、<code>map</code>、<code>doc</code>、<code>doctor</code>。產品構建由 Xu 編譯器自舉；凍結的 Rust bootstrap 用作初始引導與正確性參照。</p>
+<p>構建、執行和測試預設開啟最佳化，可用 <code>--no-opt</code> 關閉。用 <code>--xacp</code> 或 <code>--xacp-port</code> 顯式啟用 <a href="/docs/cli#xacp">XACP 控制通道</a>。正式版測試覆蓋原生 stdio 與迴環 TCP。</p>
+<p>預設目標為本機；交叉編譯使用 <code>--target linux-arm64</code> 或 XUOS/XUARCH。XUPATH 在 Unix 用 <code>:</code>、Windows 用 <code>;</code>，與目標平臺無關；外部匯入仍須有 xu.xun 對映。</p>
+<p>普通 AOT 構建直接生成原生產物。<code>--emit-obj</code> 輸出 XUOBJ，<code>--target wasm32-wasi</code> 生成 WASI 模組。桌面宿主和 SQLite 等原生擴充套件需要對應平臺工具鏈。</p>
+
+<h2>原生輸入與 .a / .xulib 規範</h2>
+<p>在編譯可執行檔案時，<code>xu build</code> 與 <code>xu run</code> 既支援在命令列直接追加原生靜態庫，也支援透過專案清單 <code>xu.xun</code> 的 <code>native:</code> 欄位宣告模組對映：</p>
+
+<p><strong>1. 命令列直接傳入原生庫進行編譯連結：</strong></p>
+<pre><code class="language-shell">xu build main.xu module.a -o main
+xu build main.xu module.xulib -o main</code></pre>
+
+<p><strong>2. 或在專案工程清單 <code>xu.xun</code> 中宣告原生模組對映：</strong></p>
+<pre><code class="language-xun">native:
+  sqlite_native: file:./native/sqlite.xulib</code></pre>
+<p>工具鏈同時支援標準通用的 <code>.a</code>（Unix 靜態歸檔）與行動式 <code>.xulib</code> 容器：</p>
+<ul>
+  <li><strong>通用 <code>.a</code> 靜態庫</strong>：單平臺原生直連，適合本地開發與臨時除錯；靜態庫內嵌入帶有匯出簽名的目標切片（<code>xu.o</code>），由系統原生連結器完成最後一步連結。</li>
+  <li><strong>行動式 <code>.xulib</code> 容器</strong>：用於跨平臺模組分發。通用的 <code>.a</code> 僅包含單一系統架構且丟失函式引數/返回值型別後設資料；<code>.xulib</code> 容器內嵌強型別 JSON Manifest 與各平臺標準的 <code>.a</code> 架構切片。<code>xu build</code> 在編譯期根據 <code>--target</code> 自動提取匹配切片並驗證 SHA-256，靜態型別檢查期嚴格約束 C 匯出呼叫，執行期保持零中介軟體開銷。</li>
+</ul>
+<p>編譯器內建一級子命令 <code>xu native</code> 提供 <code>compile</code>（單目標 C 編譯並注入後設資料）、<code>archive</code>（原生物件打包）、<code>pack</code>（多切片聚合為 .xulib）、<code>inspect</code>（容器檢視）與 <code>extract</code>（切片提取）命令。執行 <code>xu doctor</code> 可診斷本機 C 連結器與宿主構建環境的就緒狀態。</p>
+
+<p><a href="/docs/cli">命令列選項</a> · <a href="/docs/modules">相依性與凍結構建</a> · <a href="/docs/native">原生模組與 .xulib 規範</a></p>

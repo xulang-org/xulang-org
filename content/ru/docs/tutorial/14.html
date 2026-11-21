@@ -1,0 +1,28 @@
+<!--title: 14 TCP эхо-сервер-->
+<p class="crumb"><a href="/docs/start">Документация</a> / Обучение</p>
+<h1>14 · TCP эхо-сервер</h1>
+<p>Сетевой TCP сервер: прослушивание порта, принятие подключений и обработка в корутинах.</p>
+
+<pre><code>@main
+#net
+#fmt
+
+fn handle_client(conn net.Conn) {
+    $buf := [1024]byte{}
+    for {
+        n := conn.read($&amp;buf) or (err) { &lt;- }
+        if n == 0 { &lt;- }
+        conn.write(buf[0..n]) or (err) { &lt;- }
+    }
+    conn.close()
+}
+
+fn main() int {
+    ln := net.listen("tcp", "127.0.0.1:9000") or (err) { &lt;&lt; 1 }
+    fmt.println("TCP Echo слушает на :9000")
+    for {
+        conn := ln.accept() or (err) { &lt;- }
+        xu handle_client(conn)
+    }
+    &lt;&lt; 0
+}</code></pre>

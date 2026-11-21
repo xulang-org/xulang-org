@@ -1,0 +1,474 @@
+<!--title: Interoperabilidad nativa C/C++ y distribución .xulib-->
+<p class="crumb"><a href="/docs/start">Docs</a></p>
+<h1>Native Modules and .xulib Specification</h1>
+<p class="banner">Xu {{xu_version}} · Native C/C++ Interoperability · Multi-Type ABI Mapping · Universal .a and Portable .xulib Slices</p>
+
+<p>In systems programming, integrating with mature C/C++ native codebases is a core requirement. Xu delivers zero-abstraction-overhead, type-safe native interop. Developers often ask: <strong>"Why does Xu introduce <code>.xulib</code> alongside standard universal <code>.a</code> (static archive) files?"</strong></p>
+
+<p>This technical guide details Xu's native interop architecture, the distinct roles of universal static archives versus <code>.xulib</code> containers, the complete multi-type ABI mapping table, and the end-to-end 7 development actions.</p>
+
+<h2>1. Core Architecture: Universal .a vs .xulib Containers</h2>
+<ul>
+  <li><strong>Standard universal <code>.a</code> (Unix static archives) are first-class peers</strong>: Use <code>xu native compile</code> or <code>xu native archive</code> to include the Xu interface metadata alongside native objects. On <code>macos-arm64</code> and <code>macos-x64</code>, link via <code>xu build main.xu module.a</code> or declare it under <code>native:</code> in <code>xu.xun</code>. It is statically linked by the system linker.</li>
+  <li><strong><code>.xulib</code> is a multi-target slice distribution container</strong>: It is not a proprietary machine-code format. Internally, it bundles <strong>standard platform <code>.a</code> static slices</strong>, augmented by a strongly typed contract (JSON Manifest) and SHA-256 integrity digests.</li>
+</ul>
+<p class="note">One-step native linking currently supports only <code>macos-arm64</code> and <code>macos-x64</code> and requires the macOS C toolchain. Other targets require <code>--emit-obj</code>, conversion of XUOBJ to a platform object, and external system linking. A multi-target container does not extend this linking support. The seven-step example below uses macOS slices.</p>
+
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Dimension</th><th>Universal <code>.a</code> Static Archive</th><th>Portable <code>.xulib</code> Container</th></tr></thead>
+<tbody>
+<tr><td><strong>Primary Scope</strong></td><td>Single-target development, local debugging, private C integrations</td><td>Cross-platform ecosystem packages (e.g. <code>packages/sqlite</code>)</td></tr>
+<tr><td><strong>Target Architecture</strong></td><td>Single OS/Arch slice (e.g. only <code>linux-x64</code> or <code>macos-arm64</code>)</td><td><strong>Multi-target, multi-architecture bundle</strong> in a single file</td></tr>
+<tr><td><strong>Cross-Platform Linking</strong></td><td>Requires custom build scripts to branch per OS/Arch</td><td><strong>Compiler automatically selects and extracts matching slice</strong> based on <code>--target</code></td></tr>
+<tr><td><strong>Type Safety</strong></td><td>Archives built by <code>xu native compile</code>/<code>archive</code> include XUOBJ export signatures</td><td><strong>Embedded JSON Manifest & XUOBJ metadata</strong> for compile-time checking</td></tr>
+<tr><td><strong>Tamper Proofing</strong></td><td>No built-in cryptographic validation</td><td>Every target slice records an embedded SHA-256 digest</td></tr>
+</tbody></table></div>
+
+<h2>2. Multi-Type ABI Mapping Matrix</h2>
+<p>Under the <code>abi: "xu-c-1"</code> protocol, Xu passes scalar values directly through machine general-purpose registers:</p>
+
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Xu Type</th><th>C Mapping</th><th>Semantics & Passing Conventions</th></tr></thead>
+<tbody>
+<tr><td><code>int</code></td><td><code>xu_int</code> (<code>int64_t</code>)</td><td>64-bit signed integer for arithmetic, indices, and offsets</td></tr>
+<tr><td><code>f64</code></td><td>64-bit float (IEEE-754)</td><td>Double-precision float passed via scalar register bit pattern. Converted via inline helpers</td></tr>
+<tr><td><code>bool</code></td><td><code>uint8_t</code> / <code>bool</code></td><td>Boolean flag (<code>1</code> represents <code>true</code>, <code>0</code> represents <code>false</code>)</td></tr>
+<tr><td><code>i32</code></td><td><code>int32_t</code></td><td>32-bit signed integer for OS status codes and clamped ranges</td></tr>
+<tr><td><code>u32</code></td><td><code>uint32_t</code></td><td>32-bit unsigned integer for bitwise shifts, masks, and hashes</td></tr>
+<tr><td><code>u8</code></td><td><code>uint8_t</code></td><td>8-bit unsigned byte for protocol parsing, bytecodes, and pixel channels</td></tr>
+<tr><td><code>void</code></td><td><code>void</code></td><td>Procedures without returns, for state initialization and side-effects</td></tr>
+</tbody></table></div>
+
+<h2>2.1 Synchronous borrowed i64 spans: xu-c-2</h2>
+<p>Xu 0.11.3 adds the opt-in <code>abi: "xu-c-2"</code> contract. A manifest parameter <code>i64_span</code> maps to Xu <code>&amp;[]int</code> and a pointer to <code>xu_i64_span</code>; <code>i64_span_mut</code> maps to <code>$&amp;[]int</code> and a pointer to <code>xu_i64_span_mut</code>. The matching <code>include/xu_native.h</code> defines the C layouts: an eight-byte element count followed by a data pointer.</p>
+<p>Each synchronous call receives a separate temporary descriptor. Native code must not retain the descriptor or data pointer, change descriptor fields, resize the array or take ownership. A writable span permits element writes only. Empty spans may have a null data pointer. Capacity and Xu's private descriptor remain inside the runtime.</p>
+<p>C2 currently supports hosted 64-bit targets, 64-bit <code>int</code> scalar parameters, and <code>int</code>/<code>void</code> results. It does not define floating signatures, general callbacks or borrowed results. Platform argument registers, stack arguments and Win64 shadow space are handled by the adapter; this does not extend the one-step linker support described above. Use a Xu wrapper when a native function must be passed as a function value.</p>
+<p>C2 selects XUOBJ version 2 and <code>xulib-2</code>, with container version 2 at byte offset 7. Older products explicitly reject the new format; C1 libraries remain supported. The following binary diagram describes the C1 container layout. Container selection and slice extraction happen during the build; C2 still performs its call-scoped descriptor and argument staging at runtime.</p>
+
+<h2>3. .xulib Binary Layout</h2>
+<p><code>.xulib</code> is a self-describing multi-architecture static library container (specification <code>xulib-1</code>). It follows a compact linear segment layout consisting of a magic signature, fixed header, manifest contract, slice index table, and multi-architecture payload slices:</p>
+
+<!-- Physical Binary Layout Card (Replacing ASCII text block) -->
+<div class="binary-frame-card" role="region" aria-label=".xulib Physical Binary Layout Diagram">
+  <div class="binary-frame-header">
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <i class="xi xi-cpu" style="color: var(--xu-brand, #E11D48);"></i>
+      <span>.xulib Physical Memory &amp; Disk Binary Layout</span>
+    </div>
+    <span class="frame-tag">SPEC xulib-1</span>
+  </div>
+  <div class="binary-frame-body">
+    <!-- Segment 1: Fixed Header -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell accent-cell" style="flex: 2.2;">
+        <div class="cell-offset"><i class="xi xi-hash"></i> 0x00..0x06 (7B)</div>
+        <div class="cell-title">Magic: "XULIB\x01\x00"</div>
+        <div class="cell-desc">Magic signature and major version check</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.2;">
+        <div class="cell-offset">0x07..0x08 (2B)</div>
+        <div class="cell-title">Version = 1</div>
+        <div class="cell-desc">u16 minor version</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.2;">
+        <div class="cell-offset">0x09..0x0A (2B)</div>
+        <div class="cell-title">Flags = 0</div>
+        <div class="cell-desc">u16 bitmask flags</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1.8;">
+        <div class="cell-offset">0x0B..0x0E (4B)</div>
+        <div class="cell-title">Manifest Len = N</div>
+        <div class="cell-desc">u32 little-endian manifest length</div>
+      </div>
+    </div>
+
+    <!-- Segment 2: Manifest -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell full-width accent-cell">
+        <div class="cell-offset"><i class="xi xi-hash"></i> 0x0F..0x0F+N (N Bytes UTF-8)</div>
+        <div class="cell-title">JSON Manifest (Interface Contract &amp; Hash Manifest)</div>
+        <div class="cell-desc">Contains <code>module</code> identifier, <code>abi: "xu-c-1"</code>, <code>format: "xulib-1"</code>, and <code>slices</code> target SHA-256 digests; export signatures reside in each slice’s XUOBJ metadata</div>
+      </div>
+    </div>
+
+    <!-- Segment 3: Slice Index Table -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell" style="flex: 1.5;">
+        <div class="cell-offset">0x0F+N (4B)</div>
+        <div class="cell-title">Slice Count = M</div>
+        <div class="cell-desc">u32 little-endian slice count</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 4.5;">
+        <div class="cell-offset">Variable Length Entries</div>
+        <div class="cell-title">Slice Index Table (Target Architectures Index Array)</div>
+        <div class="cell-desc">Each entry records: <code>target_name</code>, <code>kind</code> (archive/object), <code>file_offset</code> &amp; <code>file_size</code>, and <code>sha256</code> integrity digest</div>
+      </div>
+    </div>
+
+    <!-- Segment 4: Payload Slices -->
+    <div class="binary-frame-row">
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">macOS Slice Offset</div>
+        <div class="cell-title">macOS Slice (Mach-O)</div>
+        <div class="cell-desc">Standard Unix .a (<code>bridge.o</code> + <code>xu.o</code> <code>__DATA,__xumeta</code>)</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">Linux Slice Offset</div>
+        <div class="cell-title">Linux Slice (ELF)</div>
+        <div class="cell-desc">Standard Unix .a (native <code>.o</code> + <code>xu.o</code> <code>.xumeta</code>)</div>
+      </div>
+      <div class="binary-frame-cell" style="flex: 1;">
+        <div class="cell-offset">Windows Slice Offset</div>
+        <div class="cell-title">Windows Slice (COFF)</div>
+        <div class="cell-desc">Standard .a / .lib (native <code>.obj</code> + <code>xu.o</code> <code>.xumeta</code>)</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<p>Complete <code>.xulib</code> binary container specification table:</p>
+
+<div class="doc-table-wrap">
+  <table class="binary-spec-table">
+    <thead>
+      <tr>
+        <th style="width: 22%;">Offset Range</th>
+        <th style="width: 22%;">Field Name</th>
+        <th style="width: 16%;">Type &amp; Size</th>
+        <th>Specification &amp; Semantic Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-cpu"></i> Segment 1: Fixed Container Header (15 Bytes)</td>
+      </tr>
+      <tr>
+        <td><code>0x00..0x06</code> (7 Bytes)</td>
+        <td><strong>Magic Header</strong></td>
+        <td><code>char[7]</code></td>
+        <td>Fixed <code>"XULIB\x01\x00"</code> identifying a valid container and verifying major format version.</td>
+      </tr>
+      <tr>
+        <td><code>0x07..0x08</code> (2 Bytes)</td>
+        <td><strong>Version</strong></td>
+        <td><code>u16</code> (little-endian)</td>
+        <td>Container format minor version; currently fixed to <code>1</code>.</td>
+      </tr>
+      <tr>
+        <td><code>0x09..0x0A</code> (2 Bytes)</td>
+        <td><strong>Flags</strong></td>
+        <td><code>u16</code> (bitmask)</td>
+        <td>Reserved for future container features (e.g., compression, digital signatures); default <code>0</code>.</td>
+      </tr>
+      <tr>
+        <td><code>0x0B..0x0E</code> (4 Bytes)</td>
+        <td><strong>Manifest Length</strong></td>
+        <td><code>u32</code> (little-endian)</td>
+        <td>Byte length $N$ of trailing JSON contract payload.</td>
+      </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-code"></i> Segment 2: JSON Contract Manifest (N Bytes)</td>
+      </tr>
+      <tr>
+        <td><code>0x0F..0x0F+N</code> ($N$ Bytes)</td>
+        <td><strong>JSON Manifest</strong></td>
+        <td>UTF-8 Compact Text</td>
+        <td>
+          Top-level container metadata written by <code>xu native pack</code>:<br>
+          • <code>module</code>: globally unique module namespace identifier (e.g. <code>"native_add"</code>)<br>
+          • <code>abi</code>: native interface protocol specification (e.g. <code>"xu-c-1"</code>)<br>
+          • <code>format</code>: container format identifier (<code>"xulib-1"</code>)<br>
+          • <code>slices</code>: target platform slice names and corresponding SHA-256 digests
+        </td>
+      </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-list"></i> Segment 3: Slice Index Table</td>
+      </tr>
+      <tr>
+        <td>Trailing <code>0x0F+N</code> (4 Bytes)</td>
+        <td><strong>Slice Count</strong></td>
+        <td><code>u32</code> (little-endian)</td>
+        <td>Count of contiguous target architecture slice entries in the index table ($M$).</td>
+      </tr>
+      <tr>
+        <td>Contiguous Entries</td>
+        <td><strong>Slice Index Table Entries</strong></td>
+        <td>Array of Variable Structs</td>
+        <td>
+          Contiguous slice entries, each containing:<br>
+          • <code>target_len (u16)</code> + <code>target_name</code> (e.g. <code>"macos-arm64"</code>, <code>"linux-x64"</code>)<br>
+          • <code>kind_len (u8)</code> + <code>kind</code> (<code>"archive"</code> or <code>"object"</code>)<br>
+          • <code>file_offset (u64)</code> + <code>file_size (u64)</code> absolute offset &amp; length<br>
+          • <code>sha256 (32 Bytes)</code> binary integrity digest
+        </td>
+      </tr>
+
+      <tr class="section-title-row">
+        <td colspan="4"><i class="xi xi-cube"></i> Segment 4: Multi-Architecture Binary Payloads</td>
+      </tr>
+      <tr>
+        <td>Offset from Index</td>
+        <td><strong>macOS Slice (Mach-O)</strong></td>
+        <td>Standard Unix <code>.a</code></td>
+        <td>Mach-O native object files (e.g. <code>bridge.o</code>) + <code>xu.o</code> (with <code>__DATA,__xumeta</code> section).</td>
+      </tr>
+      <tr>
+        <td>Offset from Index</td>
+        <td><strong>Linux Slice (ELF)</strong></td>
+        <td>Standard Unix <code>.a</code></td>
+        <td>Linux ELF native object files + <code>xu.o</code> (with <code>.xumeta</code> section).</td>
+      </tr>
+      <tr>
+        <td>Offset from Index</td>
+        <td><strong>Windows Slice (COFF)</strong></td>
+        <td>Standard <code>.a</code> / <code>.lib</code></td>
+        <td>Windows COFF native object files + <code>xu.o</code> (with <code>.xumeta</code> section).</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<p class="note"><strong>Clever Dual Compatibility Design</strong>: Each platform slice is fundamentally a standard <code>.a</code> static archive. It bundles <strong>native business logic objects (e.g. <code>sqlite3.o</code>, <code>bridge.o</code>) compiled by external toolchains (such as C, C++, Rust, or assembly)</strong> together with a <strong>fully compliant native metadata object member (<code>xu.o</code>)</strong>. The host platform linker directly links the native machine code symbols, while the Xu compiler inspects the <code>XUOBJ</code> type contract embedded in the dedicated <code>.xumeta</code> section (in Mach-O: <code>__DATA,__xumeta</code>) for compile-time type verification, achieving seamless zero-conflict coexistence.</p>
+
+<p>The input <code>native.json</code> defines <code>exports</code>; their typed interface is embedded in each archive’s <code>xu.o</code> XUOBJ metadata. The product <code>xu native pack</code> does not copy <code>exports</code> into the top-level manifest. The source-tree Python helper <code>scripts/xunative.py</code> copies the input manifest, so its output also retains <code>exports</code>. Consumers must read slice metadata rather than require top-level exports.</p>
+
+<h2>4. The Complete 7 Development Actions</h2>
+
+<div class="doc-process-flow" role="region" aria-label="7 Development Actions Pipeline">
+  <div class="flow-header">
+    <div class="flow-title"><i class="xi xi-flow"></i> Native Module Lifecycle: 7 Development Actions</div>
+    <div class="flow-subtitle">Click any step to jump directly to instructions and sample code</div>
+  </div>
+  <div class="flow-steps-grid">
+    <a href="#action-1" class="flow-step-card">
+      <div class="step-badge">1</div>
+      <div class="step-body">
+        <div class="step-name">Write C Bridge Source</div>
+        <div class="step-meta"><code>bridge.c</code> · Export with <code>xu_native</code> macros</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-2" class="flow-step-card">
+      <div class="step-badge">2</div>
+      <div class="step-body">
+        <div class="step-name">Declare Type Contract Manifest</div>
+        <div class="step-meta"><code>native.json</code> · Function signatures & ABI versions</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-3" class="flow-step-card">
+      <div class="step-badge">3</div>
+      <div class="step-body">
+        <div class="step-name">Compile Target Slices</div>
+        <div class="step-meta"><code>xu native compile</code> · Generate native machine slices</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-4" class="flow-step-card">
+      <div class="step-badge">4</div>
+      <div class="step-body">
+        <div class="step-name">Pack Portable Archive</div>
+        <div class="step-meta"><code>xu native pack</code> → Multi-platform <code>module.xulib</code></div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-5" class="flow-step-card">
+      <div class="step-badge">5</div>
+      <div class="step-body">
+        <div class="step-name">Declare Native Dependency</div>
+        <div class="step-meta"><code>xu.xun</code> · Add <code>native:</code> field dependency</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-6" class="flow-step-card">
+      <div class="step-badge">6</div>
+      <div class="step-body">
+        <div class="step-name">Import & Call from Xu Code</div>
+        <div class="step-meta"><code>main.xu</code> · Strongly-typed safe invocations</div>
+      </div>
+    </a>
+    <div class="flow-step-arrow" aria-hidden="true"><i class="xi xi-arrow-down"></i></div>
+    <a href="#action-7" class="flow-step-card flow-step-highlight">
+      <div class="step-badge">7</div>
+      <div class="step-body">
+        <div class="step-name">Compile & Verify Execution</div>
+        <div class="step-meta"><code>xu build</code> / <code>xu run</code> · Zero-overhead link</div>
+      </div>
+    </a>
+  </div>
+</div>
+
+<h3 id="action-1">Action 1: Write C Bridge Source (<code>bridge.c</code>)</h3>
+<p>Include <code>xu_native.h</code> and wrap export declarations with <code>XU_NATIVE_SYMBOL(...)</code> to reconcile Mach-O leading underscore conventions with ELF/COFF:</p>
+
+<pre><code class="language-c">#include "xu_native.h"
+#include &lt;stdint.h&gt;
+#include &lt;stdbool.h&gt;
+#include &lt;string.h&gt;
+
+// 1. int (64-bit integer)
+xu_int XU_NATIVE_SYMBOL(xu_native_add_add)(xu_int a, xu_int b) {
+    return a + b;
+}
+
+// 2. f64 (64-bit float bitwise mapping)
+static inline double xu_to_double(xu_int bits) {
+    double v; memcpy(&v, &bits, sizeof(double)); return v;
+}
+static inline xu_int double_to_xu(double v) {
+    xu_int b; memcpy(&b, &v, sizeof(xu_int)); return b;
+}
+xu_int XU_NATIVE_SYMBOL(xu_native_add_scale_f64)(xu_int val_bits, xu_int factor_bits) {
+    return double_to_xu(xu_to_double(val_bits) * xu_to_double(factor_bits));
+}
+
+// 3. bool (boolean)
+uint8_t XU_NATIVE_SYMBOL(xu_native_add_is_even)(xu_int n) {
+    return (n % 2 == 0) ? 1 : 0;
+}
+
+// 4. i32 (32-bit signed int clamp)
+int32_t XU_NATIVE_SYMBOL(xu_native_add_clamp_i32)(int32_t val, int32_t min_v, int32_t max_v) {
+    if (val &lt; min_v) return min_v;
+    if (val &gt; max_v) return max_v;
+    return val;
+}
+
+// 5. u32 (32-bit unsigned int bitwise rotate)
+uint32_t XU_NATIVE_SYMBOL(xu_native_add_rotate_left_u32)(uint32_t val, uint32_t shift) {
+    shift &amp;= 31;
+    if (shift == 0) return val;
+    return (val &lt;&lt; shift) | (val &gt;&gt; (32 - shift));
+}
+
+// 6. u8 (8-bit unsigned byte mask)
+uint8_t XU_NATIVE_SYMBOL(xu_native_add_mask_u8)(uint8_t b, uint8_t mask) {
+    return (uint8_t)(b &amp; mask);
+}
+
+// 7. void (stateful procedure with side-effects)
+static xu_int g_counter = 0;
+void XU_NATIVE_SYMBOL(xu_native_add_reset_counter)(void) { g_counter = 0; }
+void XU_NATIVE_SYMBOL(xu_native_add_add_to_counter)(xu_int delta) { g_counter += delta; }
+xu_int XU_NATIVE_SYMBOL(xu_native_add_get_counter)(void) { return g_counter; }</code></pre>
+
+<h3 id="action-2">Action 2: Declare Type Contract Manifest (<code>native.json</code>)</h3>
+<pre><code class="language-json">{
+  "module": "native_add",
+  "abi": "xu-c-1",
+  "exports": [
+    {"name": "add", "params": ["int", "int"], "ret": "int"},
+    {"name": "scale_f64", "params": ["f64", "f64"], "ret": "f64"},
+    {"name": "is_even", "params": ["int"], "ret": "bool"},
+    {"name": "clamp_i32", "params": ["i32", "i32", "i32"], "ret": "i32"},
+    {"name": "rotate_left_u32", "params": ["u32", "u32"], "ret": "u32"},
+    {"name": "mask_u8", "params": ["u8", "u8"], "ret": "u8"},
+    {"name": "reset_counter", "params": [], "ret": "void"},
+    {"name": "add_to_counter", "params": ["int"], "ret": "void"},
+    {"name": "get_counter", "params": [], "ret": "int"}
+  ]
+}</code></pre>
+
+<h3 id="action-3">Action 3: Compile Target Slices (<code>xu native compile</code>)</h3>
+<pre><code class="language-shell">mkdir -p native
+
+# macOS Apple Silicon (ARM64)
+xu native compile \
+  --manifest native.json --target macos-arm64 bridge.c \
+  -o native/native_add-arm64.a
+
+# macOS Intel (x86_64)
+xu native compile \
+  --manifest native.json --target macos-x64 bridge.c \
+  -o native/native_add-x64.a</code></pre>
+
+<h3 id="action-4">Action 4: Pack Multi-Target Archive (<code>xu native pack</code>)</h3>
+<pre><code class="language-shell">xu native pack \
+  --manifest native.json \
+  --slice macos-arm64=native/native_add-arm64.a \
+  --slice macos-x64=native/native_add-x64.a \
+  -o native/native_add.xulib</code></pre>
+
+<p>You can also run <code>xu native inspect native/native_add.xulib</code> to verify container slices and SHA-256 digests, or extract slices with <code>xu native extract</code>.</p>
+
+<h3 id="action-5">Action 5: Declare Native Dependency (<code>xu.xun</code>)</h3>
+<pre><code class="language-xun">module: my_project
+version: !ver 0.1.0
+xu: !ver {{xu_version}}
+
+native:
+  native_add: file:./native/native_add.xulib</code></pre>
+
+<h3 id="action-6">Action 6: Import & Call from Xu Code (<code>main.xu</code>)</h3>
+<pre><code class="language-xu">@main
+
+#native_add
+
+fn main() int {
+    println("=== Xu &lt;-&gt; Native C Multi-Type Interop Demo ===")
+
+    // 1. int
+    sum := native_add.add(20, 22)
+    println("1. int add(20, 22) = " + str(sum))
+
+    // 2. f64
+    scaled := native_add.scale_f64(1.5, 3.0)
+    println("2. f64 scale_f64(1.5, 3.0) * 10 = " + str(int(scaled * 10.0)))
+
+    // 3. bool
+    println("3. bool is_even(42) = " + str(native_add.is_even(42)))
+
+    // 4. i32
+    clamped := native_add.clamp_i32(i32(150), i32(0), i32(100))
+    println("4. i32 clamp_i32(150, 0, 100) = " + str(int(clamped)))
+
+    // 5. u32
+    rotated := native_add.rotate_left_u32(u32(1), u32(4))
+    println("5. u32 rotate_left_u32(1, 4) = " + str(int(rotated)))
+
+    // 6. u8
+    masked := native_add.mask_u8(u8(255), u8(15))
+    println("6. u8 mask_u8(255, 15) = " + str(int(masked)))
+
+    // 7. void
+    native_add.reset_counter()
+    native_add.add_to_counter(100)
+    c := native_add.get_counter()
+    println("7. void state counter = " + str(c))
+
+    println("=== All Native Type Assertions Passed ===")
+    &lt;&lt; 0
+}</code></pre>
+
+<h3 id="action-7">Action 7: Compile & Verify Execution (macOS)</h3>
+<pre><code class="language-shell">xu run .</code></pre>
+
+<p>The console prints the verified results:</p>
+<pre><code class="language-output">=== Xu &lt;-&gt; Native C Multi-Type Interop Demo ===
+1. int add(20, 22) = 42
+2. f64 scale_f64(1.5, 3.0) * 10 = 45
+3. bool is_even(42) = true
+4. i32 clamp_i32(150, 0, 100) = 100
+5. u32 rotate_left_u32(1, 4) = 16
+6. u8 mask_u8(255, 15) = 15
+7. void state counter = 100
+=== All Native Type Assertions Passed ===</code></pre>
+
+<h3>External linking on Linux x64</h3>
+<p>With Clang and an archive tool installed, prepare a <code>linux-x64</code> archive using <code>xu native compile --manifest native.json --target linux-x64 bridge.c -o native_add-linux.a</code>. Using the <code>main.xu</code> above and that archive, emit XUOBJ, convert it with the matching SDK’s internal <code>_elf_o</code> helper, then link externally:</p>
+<pre><code class="language-shell">xu build main.xu native_add-linux.a --target linux-x64 --emit-obj -o main.xuobj
+xu _elf_o main.xuobj main.o
+cc -nostartfiles -no-pie main.o native_add-linux.a -o app
+./app</code></pre>
+<p>Xu supplies its own entry point, so this Linux link omits the C startup files. Windows and other targets need their own object conversion and linker entry-point/runtime options; the Linux command is specific to Linux x64.</p>
+
+<h2>5. Frequently Asked Questions (FAQ)</h2>
+<p><strong>Q: Can I use single-platform <code>.a</code> directly without creating a <code>.xulib</code>?</strong><br>
+A: Yes, on the supported macOS targets. You can point directly to <code>native_add: file:./native/native_add-arm64.a</code> in <code>xu.xun</code> or pass it on the command line: <code>xu build main.xu ./native/native_add-arm64.a</code>. Ensure the archive contains the <code>xu.o</code> metadata member produced by <code>xu native compile</code> or <code>xu native archive</code>.</p>
+
+<p><strong>Q: Does <code>.xulib</code> introduce any runtime overhead?</strong><br>
+A: The container is processed at build time and needs no runtime unpacker. The selected native slice is linked into the application. C2 calls also prepare borrowed descriptors and platform arguments; container extraction does not remove that ABI adapter work.</p>
+
+<p><a href="/docs/modules">Modules and dependencies</a> · <a href="/docs/packages">External packages</a> · <a href="/docs/cli">CLI reference</a></p>

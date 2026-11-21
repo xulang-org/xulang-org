@@ -4,7 +4,8 @@
   var locationURL = new URL(window.location.href);
   var script = document.currentScript;
   var base = script ? new URL(script.src, window.location.href).pathname.replace(/\/theme\.js$/, '') : '';
-  function validLanguage(value) { return value === 'en' || value === 'zh'; }
+  var supportedLangs = ['en', 'zh', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'pt-br'];
+  function validLanguage(value) { return supportedLangs.indexOf(value) !== -1; }
   function saveLanguage(value) {
     try { localStorage.setItem(languageKey, value); } catch (e) {}
     try {
@@ -15,7 +16,7 @@
   try { preference = localStorage.getItem(languageKey); } catch (e) {}
   if (!validLanguage(preference)) {
     var cookie;
-    try { cookie = (document.cookie || '').match(/(?:^|;\s*)xu-lang=(en|zh)(?:;|$)/); } catch (e) {}
+    try { cookie = (document.cookie || '').match(/(?:^|;\s*)xu-lang=(en|zh|zh-tw|ja|ko|es|fr|de|ru|pt-br)(?:;|$)/); } catch (e) {}
     preference = cookie ? cookie[1] : '';
   }
   // Explicit links also work when both persistence mechanisms are blocked.
@@ -25,9 +26,14 @@
     saveLanguage(explicit);
   }
   var homePath = locationURL.pathname.replace(/\/+$/, '') || '/';
-  if (homePath === (base || '/') && preference !== 'en' &&
-      (preference === 'zh' || /^zh(?:-cn|-hans)?$/i.test(navigator.language || ''))) {
-    window.location.replace(base + '/zh/' + locationURL.search + locationURL.hash);
+  if (homePath === (base || '/') && preference !== 'en') {
+    if (preference === 'zh' || (!preference && /^zh(?:-cn|-hans)?$/i.test(navigator.language || ''))) {
+      window.location.replace(base + '/zh/' + locationURL.search + locationURL.hash);
+    } else if (preference === 'ru' || (!preference && /^ru(?:-[a-z]+)?$/i.test(navigator.language || ''))) {
+      window.location.replace(base + '/ru/' + locationURL.search + locationURL.hash);
+    } else if (preference && preference !== 'en' && validLanguage(preference)) {
+      window.location.replace(base + '/' + preference + '/' + locationURL.search + locationURL.hash);
+    }
   }
 
   var key = 'xu-theme';
@@ -44,13 +50,24 @@
     var languageSwitch = document.getElementById('language-switch');
     if (languageSwitch) {
       languageSwitch.addEventListener('click', function () {
-        var choice = languageSwitch.getAttribute('hreflang') === 'en' ? 'en' : 'zh';
+        var h = languageSwitch.getAttribute('hreflang');
+        var choice = h === 'en' ? 'en' : (h === 'ru' ? 'ru' : 'zh');
         saveLanguage(choice);
       });
       var destination = new URL(languageSwitch.href, window.location.href);
-      destination.searchParams.set('lang', languageSwitch.getAttribute('hreflang') === 'en' ? 'en' : 'zh');
+      var h = languageSwitch.getAttribute('hreflang');
+      destination.searchParams.set('lang', h === 'en' ? 'en' : (h === 'ru' ? 'ru' : 'zh'));
       languageSwitch.href = destination.href;
     }
+
+    var langOpts = document.querySelectorAll('.lang-opt');
+    langOpts.forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var h = opt.getAttribute('hreflang') || 'en';
+        var lang = h === 'zh-CN' ? 'zh' : h.toLowerCase();
+        saveLanguage(lang);
+      });
+    });
 
     // Theme toggle
     var themeBtn = document.getElementById('theme-toggle-btn');
@@ -112,8 +129,23 @@
       var hash = window.location.hash || '';
       if (!hash) return;
       var target = document.getElementById(hash.slice(1));
-      if (target && (target.classList.contains('api-example') || target.classList.contains('faq-item'))) {
+      if (target && target.classList && (target.classList.contains('api-example') || target.classList.contains('faq-item'))) {
         target.open = true;
+        if (target.classList.add) target.classList.add('is-target');
+        if (typeof setTimeout === 'function') {
+          setTimeout(function () {
+            if (target.scrollIntoView) {
+              try {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              } catch (_) {
+                target.scrollIntoView(true);
+              }
+            }
+          }, 80);
+          setTimeout(function () {
+            if (target.classList.remove) target.classList.remove('is-target');
+          }, 2500);
+        }
       }
     }
     window.addEventListener('hashchange', revealLinkedDetails);
@@ -121,6 +153,12 @@
 
     // Initialize hero install tab switcher
     initHeroInstallTabs();
+
+    // Initialize FAQ search and category filters
+    initFaq();
+
+    // Initialize global search command palette
+    initGlobalSearch();
   });
 
   // 侧边栏菜单分组折叠/收起与滚动控制
@@ -549,6 +587,475 @@
       });
       if (isWin) {
         switchTab('win');
+      }
+    });
+  }
+
+  function initFaq() {
+    if (typeof document === 'undefined' || typeof document.querySelectorAll !== 'function') return;
+    var faqList = document.querySelector ? document.querySelector('.faq-list') : null;
+    if (!faqList) return;
+    var faqItems = faqList.querySelectorAll ? faqList.querySelectorAll('.faq-item') : null;
+    if (!faqItems || !faqItems.length) return;
+
+    var isZh = document.documentElement && document.documentElement.lang !== 'en';
+    var activeCategory = 'all';
+    var searchQuery = '';
+
+    var catLabels = {
+      lang: isZh ? '语言与内存' : 'Language & Memory',
+      ui: isZh ? '原生桌面 UI' : 'Desktop UI',
+      tools: isZh ? '工具链与生态' : 'Toolchain & Ecosystem',
+      xacp: isZh ? 'XACP 协议' : 'XACP Protocol'
+    };
+
+    faqItems.forEach(function (item) {
+      var id = item.id;
+      var cat = item.getAttribute ? item.getAttribute('data-category') : '';
+      var answer = item.querySelector ? item.querySelector('.faq-answer') : null;
+      if (!answer) return;
+
+      var existingMeta = answer.querySelector ? answer.querySelector('.faq-item-meta') : null;
+      if (!existingMeta && (cat || id)) {
+        var meta = document.createElement('div');
+        meta.className = 'faq-item-meta';
+
+        if (cat && catLabels[cat]) {
+          var pill = document.createElement('span');
+          pill.className = 'faq-cat-pill';
+          pill.textContent = catLabels[cat];
+          meta.appendChild(pill);
+        }
+
+        if (id) {
+          var copyBtn = document.createElement('button');
+          copyBtn.type = 'button';
+          copyBtn.className = 'faq-copy-anchor';
+          copyBtn.title = isZh ? '复制问题直链' : 'Copy link to question';
+          if (copyBtn.setAttribute) {
+            copyBtn.setAttribute('aria-label', isZh ? '复制问题直链' : 'Copy link to question');
+          }
+          copyBtn.innerHTML = '<i class="xi xi-link"></i> <span>' + (isZh ? '直链' : 'Link') + '</span>';
+          copyBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            var targetHash = '#' + id;
+            var origin = (window.location && window.location.origin) || '';
+            var pathname = (window.location && window.location.pathname) || '';
+            var fullUrl = origin + pathname + targetHash;
+            var copied = false;
+            if (typeof navigator !== 'undefined' && navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(fullUrl).then(function () {
+                if (copyBtn.classList && copyBtn.classList.add) copyBtn.classList.add('is-copied');
+                copyBtn.innerHTML = '<i class="xi xi-check"></i> <span>' + (isZh ? '已复制' : 'Copied') + '</span>';
+                if (typeof setTimeout === 'function') {
+                  setTimeout(function () {
+                    if (copyBtn.classList && copyBtn.classList.remove) copyBtn.classList.remove('is-copied');
+                    copyBtn.innerHTML = '<i class="xi xi-link"></i> <span>' + (isZh ? '直链' : 'Link') + '</span>';
+                  }, 2000);
+                }
+              }).catch(function () {
+                if (window.location) window.location.hash = id;
+              });
+              copied = true;
+            }
+            if (!copied && window.location) {
+              window.location.hash = id;
+            }
+          });
+          meta.appendChild(copyBtn);
+        }
+
+        if (answer.insertBefore && answer.firstChild) {
+          answer.insertBefore(meta, answer.firstChild);
+        } else if (answer.appendChild) {
+          answer.appendChild(meta);
+        }
+      }
+    });
+
+    var searchInput = document.getElementById('faq-search');
+    var clearBtn = document.getElementById('faq-search-clear');
+    var countBadge = document.getElementById('faq-count');
+    var expandAllBtn = document.getElementById('faq-expand-all');
+    var collapseAllBtn = document.getElementById('faq-collapse-all');
+    var catButtons = document.querySelectorAll('.faq-cat-btn');
+
+    function filterFaq() {
+      var visibleCount = 0;
+      var q = searchQuery.trim().toLowerCase();
+
+      faqItems.forEach(function (item) {
+        var cat = (item.getAttribute && item.getAttribute('data-category')) || '';
+        var matchCat = activeCategory === 'all' || cat === activeCategory;
+        var text = (item.textContent || '').toLowerCase();
+        var matchQuery = !q || text.indexOf(q) !== -1;
+
+        if (matchCat && matchQuery) {
+          if (item.style) item.style.display = '';
+          visibleCount++;
+          if (q.length >= 2) {
+            item.open = true;
+          }
+        } else {
+          if (item.style) item.style.display = 'none';
+        }
+      });
+
+      if (countBadge) {
+        if (isZh) {
+          countBadge.textContent = '显示 ' + visibleCount + ' / ' + faqItems.length + ' 个问题';
+        } else {
+          countBadge.textContent = 'Showing ' + visibleCount + ' of ' + faqItems.length + ' questions';
+        }
+      }
+
+      var emptyEl = document.getElementById('faq-empty-state');
+      if (visibleCount === 0) {
+        if (!emptyEl) {
+          emptyEl = document.createElement('div');
+          emptyEl.id = 'faq-empty-state';
+          emptyEl.className = 'faq-empty-state';
+          emptyEl.innerHTML = '<i class="xi xi-search" style="font-size:2rem;margin-bottom:0.75rem;display:block;opacity:0.5;"></i><p>' +
+            (isZh ? '未找到包含 “' + searchQuery + '” 的相关问题，请尝试换用其他关键词。' : 'No questions found matching "' + searchQuery + '". Try another keyword.') + '</p>';
+          if (faqList.appendChild) faqList.appendChild(emptyEl);
+        }
+        if (emptyEl && emptyEl.style) emptyEl.style.display = '';
+      } else if (emptyEl && emptyEl.style) {
+        emptyEl.style.display = 'none';
+      }
+    }
+
+    if (searchInput) {
+      searchInput.addEventListener('input', function () {
+        searchQuery = searchInput.value || '';
+        if (clearBtn) clearBtn.hidden = !searchQuery;
+        filterFaq();
+      });
+      if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+          searchInput.value = '';
+          searchQuery = '';
+          clearBtn.hidden = true;
+          if (searchInput.focus) searchInput.focus();
+          filterFaq();
+        });
+      }
+    }
+
+    if (expandAllBtn) {
+      expandAllBtn.addEventListener('click', function () {
+        faqItems.forEach(function (item) {
+          if (!item.style || item.style.display !== 'none') {
+            item.open = true;
+          }
+        });
+      });
+    }
+
+    if (collapseAllBtn) {
+      collapseAllBtn.addEventListener('click', function () {
+        faqItems.forEach(function (item) {
+          item.open = false;
+        });
+      });
+    }
+
+    if (catButtons && catButtons.length) {
+      catButtons.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          catButtons.forEach(function (b) {
+            if (b.classList && b.classList.remove) b.classList.remove('is-active');
+            if (b.setAttribute) b.setAttribute('aria-selected', 'false');
+          });
+          if (btn.classList && btn.classList.add) btn.classList.add('is-active');
+          if (btn.setAttribute) btn.setAttribute('aria-selected', 'true');
+          activeCategory = (btn.getAttribute && btn.getAttribute('data-cat')) || 'all';
+          filterFaq();
+        });
+      });
+    }
+  }
+
+  function initGlobalSearch() {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function' || !document.body) return;
+    var isEn = document.documentElement.lang === 'en';
+    var prefix = isEn ? '' : '/zh';
+
+    var staticEntries = [
+      { title: isEn ? 'Get Started' : '起步指南', category: 'doc', desc: isEn ? 'Introduction, install, and first program' : '从零开始安装 Xu、编写首个程序与核心概念概览', href: prefix + '/docs/start/' },
+      { title: isEn ? 'Installation' : '安装与工具链', category: 'doc', desc: isEn ? 'Automated scripts and binary downloads' : 'macOS, Linux, Windows 自动化安装脚本与二进制发行包', href: prefix + '/docs/install/' },
+      { title: isEn ? 'FAQ' : '常见问题解答', category: 'doc', desc: isEn ? 'Memory safety, zero-GC, concurrency and FFI' : '所有权与借用检查、并发模型、零GC、原生安全边界等高频疑问', href: prefix + '/docs/faq/' },
+      { title: isEn ? 'CLI Reference' : '命令行工具集', category: 'doc', desc: isEn ? 'xu build, run, check, test, fmt, lsp, native' : 'xu build, run, check, test, fmt, lsp 及 native 模块命令参数详解', href: prefix + '/docs/cli/' },
+      { title: isEn ? 'Modules & Dependencies' : '模块与依赖管理', category: 'doc', desc: isEn ? 'xu.xun manifest, xu.lock, vendor and xu install' : 'xu.xun 清单配置、SemVer 版本管理、xu install 与 xu get', href: prefix + '/docs/modules/' },
+      { title: isEn ? 'External Packages' : '官方扩展包生态', category: 'doc', desc: isEn ? 'Redis, MySQL, SQLite, Postgres, Kafka, Mongo' : 'Redis, MySQL, SQLite, Postgres, Kafka, MongoDB 等扩展库', href: prefix + '/docs/packages/' },
+      { title: isEn ? 'Native Modules & C FFI' : '原生模块与 C 互操作', category: 'doc', desc: isEn ? '.xulib packaging, C FFI boundaries, linking' : '.xulib 打包规范、C FFI 边界、跨架构切片构建', href: prefix + '/docs/native/' },
+      { title: isEn ? 'Desktop UI & WebView' : '原生桌面 UI 与 WebView', category: 'doc', desc: isEn ? 'Retained-mode layout, GPU canvas, components' : '自研保留模式组件架构、GPU 加速画布、WebView 嵌入式集成', href: prefix + '/docs/ui/' },
+      { title: isEn ? 'Mobile Apps' : '移动端应用开发', category: 'doc', desc: isEn ? 'iOS & Android targets, touch interactions' : 'iOS 与 Android 跨平台编译、触控事件与移动端界面开发', href: prefix + '/docs/phone/' },
+      { title: isEn ? 'VS Code & Cursor' : 'IDE 插件支持', category: 'doc', desc: isEn ? 'Official extension, LSP server, syntax highlighting' : '官方 IDE 插件、LSP 语言服务、语法高亮与 LLDB 调试', href: prefix + '/docs/vscode/' },
+
+      { title: isEn ? '01 Program Skeleton' : '01 程序骨架', category: 'tutorial', desc: isEn ? 'hello world, @main entry, println and << return' : 'hello world, @main 入口, println 与 << 返回语句', href: prefix + '/docs/tutorial/01/' },
+      { title: isEn ? '02 Bindings & Constants' : '02 绑定与常量', category: 'tutorial', desc: isEn ? 'name := val binding, $name := reassignment' : 'name := value 声明, $name := value 重新赋值, const 规则', href: prefix + '/docs/tutorial/02/' },
+      { title: isEn ? '03 Control Flow' : '03 控制流', category: 'tutorial', desc: isEn ? 'if/else, for loops, <- break, -> continue' : 'if/else, for 循环, <- break, -> continue', href: prefix + '/docs/tutorial/03/' },
+      { title: isEn ? '04 Functions & Errors' : '04 函数与错误', category: 'tutorial', desc: isEn ? 'Parameter types, << return, >> throw, or(err)' : '函数参数 name Type, 返回值, >> 抛出与 or (err) 错误捕获', href: prefix + '/docs/tutorial/04/' },
+      { title: isEn ? '05 Error Handling' : '05 错误处理模式', category: 'tutorial', desc: isEn ? 'Typed errors, err.msg(), error propagation' : '带负载错误, err.msg(), 错误链与确定性传播', href: prefix + '/docs/tutorial/05/' },
+      { title: isEn ? '06 Ownership & Borrowing' : '06 所有权与借用', category: 'tutorial', desc: isEn ? '&T shared borrow, $&T exclusive borrow, RAII' : '只读借用 &T, 独占借用 $&T, RAII 确定性资源释放, 零GC', href: prefix + '/docs/tutorial/06/' },
+      { title: isEn ? '07 Arrays & Slices' : '07 数组与切片', category: 'tutorial', desc: isEn ? 'Fixed-size arrays, dynamic slices, slicing' : '固定长度数组, 动态切片, 切片操作与遍历', href: prefix + '/docs/tutorial/07/' },
+      { title: isEn ? '08 Enum & Matching' : '08 枚举与匹配', category: 'tutorial', desc: isEn ? 'enum declarations, match pattern matching' : 'enum 声明, match 分支模式匹配', href: prefix + '/docs/tutorial/08/' },
+      { title: isEn ? '09 Generics' : '09 泛型编程', category: 'tutorial', desc: isEn ? 'Generic functions and parameterized structs' : '泛型函数与泛型结构体, 类型参数化设计', href: prefix + '/docs/tutorial/09/' },
+      { title: isEn ? '10 Concurrency Basics' : '10 并发基础', category: 'tutorial', desc: isEn ? 'xu coroutines, chan channel send and receive' : 'xu 协程启动, chan 通道创建与发送接收', href: prefix + '/docs/tutorial/10/' },
+      { title: isEn ? '11 HTTP Server' : '11 HTTP 服务', category: 'tutorial', desc: isEn ? 'High-concurrency HTTP routing and handlers' : 'net/http 搭建高性能 HTTP 路由与请求处理', href: prefix + '/docs/tutorial/11/' },
+      { title: isEn ? '12 File Server' : '12 静态文件服务', category: 'tutorial', desc: isEn ? 'Serving static files and MIME types' : '静态资源文件目录托管与 MIME 类型识别', href: prefix + '/docs/tutorial/12/' },
+      { title: isEn ? '13 Context & Cancellation' : '13 上下文控制', category: 'tutorial', desc: isEn ? 'Timeouts, cascades, and coroutine cancellation' : 'context 超时控制、级联取消与跨协程传递', href: prefix + '/docs/tutorial/13/' },
+      { title: isEn ? '14 TCP Echo' : '14 TCP 网络服务', category: 'tutorial', desc: isEn ? 'net.listen_on, ln.accept, concurrent TCP socket' : 'net.listen_on, ln.accept, 高并发 TCP 套接字', href: prefix + '/docs/tutorial/14/' },
+      { title: isEn ? '15 UDP Echo' : '15 UDP 数据报', category: 'tutorial', desc: isEn ? 'net.listen_packet, read_from, write_to UDP' : 'net.listen_packet, read_from, write_to 无连接数据报', href: prefix + '/docs/tutorial/15/' },
+      { title: isEn ? '16 Desktop UI' : '16 原生桌面 UI', category: 'tutorial', desc: isEn ? 'Windows, buttons, input fields, state updates' : '创建窗口, 绘制按钮与文本输入框, 状态更新', href: prefix + '/docs/tutorial/16/' },
+
+      { title: isEn ? 'Syntax Freeze Spec' : '语法定稿规范', category: 'doc', desc: isEn ? 'Lexical rules, operators, expressions, grammar' : '词法、操作符、语句结构与语法定义', href: prefix + '/docs/lang/syntax/' },
+      { title: isEn ? 'Memory Model' : '内存模型规范', category: 'doc', desc: isEn ? 'Deterministic cleanup, no GC, borrow check' : '确定性释放、无垃圾回收、借用检查与逃逸规则', href: prefix + '/docs/lang/memory/' },
+      { title: isEn ? 'Concurrency Model' : '并发架构规范', category: 'doc', desc: isEn ? 'Coroutines, event multiplexing, channel buffers' : '轻量级协程、信道通信与事件多路复用', href: prefix + '/docs/lang/concurrency/' },
+      { title: isEn ? 'Type System' : '类型系统规范', category: 'doc', desc: isEn ? 'Primitive types, structs, interfaces, aliases' : '基本类型、结构体、接口与类型转换', href: prefix + '/docs/lang/types/' },
+      { title: isEn ? 'EBNF Grammar' : 'EBNF 形式文法', category: 'doc', desc: isEn ? 'Formal Backus-Naur form grammar for Xu' : 'Xu 官方巴科斯范式文法描述', href: prefix + '/docs/lang/ebnf/' },
+
+      { title: '#fmt', category: 'pkg', desc: isEn ? 'Formatted I/O and string interpolation' : '格式化输入输出与字符串拼接', href: prefix + '/api/fmt/' },
+      { title: '#strings', category: 'pkg', desc: isEn ? 'UTF-8 string manipulation, splitting, search' : '高性能字符串处理、拆分、查找与修剪', href: prefix + '/api/strings/' },
+      { title: '#bytes', category: 'pkg', desc: isEn ? 'Byte slice buffer operations and transforms' : '字节切片与动态字节流缓冲区', href: prefix + '/api/bytes/' },
+      { title: '#strconv', category: 'pkg', desc: isEn ? 'Conversions between text and primitive types' : '基础类型与字符串互相转换', href: prefix + '/api/strconv/' },
+      { title: '#net', category: 'pkg', desc: isEn ? 'TCP, UDP, and raw IP socket networking' : 'TCP、UDP 及原始 IP 套接字网络通信', href: prefix + '/api/net/' },
+      { title: '#net/http', category: 'pkg', desc: isEn ? 'High-concurrency HTTP/1.1 & HTTP/2 server' : '高性能高并发 HTTP 服务端与客户端', href: prefix + '/api/net/http/' },
+      { title: '#io', category: 'pkg', desc: isEn ? 'I/O primitives and streaming abstractions' : '基础 I/O 流与读写器接口', href: prefix + '/api/io/' },
+      { title: '#os', category: 'pkg', desc: isEn ? 'Process control, env vars, signals and files' : '系统进程控制、环境变量、信号处理与文件操作', href: prefix + '/api/os/' },
+      { title: '#sync', category: 'pkg', desc: isEn ? 'Mutex, WaitGroup, Once, and atomics' : '互斥锁、并发等待组与原子操作', href: prefix + '/api/sync/' },
+      { title: '#time', category: 'pkg', desc: isEn ? 'Clocks, durations, timers, and sleep' : '高精度时钟、时间段、定时器与休眠', href: prefix + '/api/time/' },
+      { title: '#runtime', category: 'pkg', desc: isEn ? 'Runtime core, memory statistics, scheduler' : '语言运行时核心、内存统计与协程调度', href: prefix + '/api/runtime/' },
+      { title: '#database/sql', category: 'pkg', desc: isEn ? 'SQL database connection pool and driver API' : 'SQL 数据库通用驱动接口与连接池', href: prefix + '/api/database/sql/' },
+      { title: '#encoding/json', category: 'pkg', desc: isEn ? 'Fast JSON serialization and parsing' : '高性能 JSON 序列化与反序列化', href: prefix + '/api/encoding/json/' },
+      { title: '#crypto/aes', category: 'pkg', desc: isEn ? 'AES block cipher and GCM/CBC modes' : 'AES 对称分组加密算法', href: prefix + '/api/crypto/aes/' },
+      { title: '#crypto/sm4', category: 'pkg', desc: isEn ? 'ShangMi SM4 national standard block cipher' : '国密 SM4 128位分组密码算法', href: prefix + '/api/crypto/sm4/' },
+      { title: '#crypto/sm2', category: 'pkg', desc: isEn ? 'ShangMi SM2 elliptic curve public key' : '国密 SM2 椭圆曲线公钥密码算法', href: prefix + '/api/crypto/sm2/' },
+      { title: '#crypto/sm3', category: 'pkg', desc: isEn ? 'ShangMi SM3 cryptographic hash function' : '国密 SM3 密码杂凑算法', href: prefix + '/api/crypto/sm3/' },
+      { title: '#crypto/tls', category: 'pkg', desc: isEn ? 'TLS 1.2 / 1.3 secure network connections' : 'TLS 安全传输层协议与证书校验', href: prefix + '/api/crypto/tls/' },
+      { title: '#ui', category: 'pkg', desc: isEn ? 'Desktop UI window, layout, and renderer' : '原生桌面 UI 窗口、布局与渲染系统', href: prefix + '/api/ui/' },
+      { title: '#ui/widgets', category: 'pkg', desc: isEn ? 'Cross-platform native widget components' : '丰富跨平台组件库（按钮、输入框、表格等）', href: prefix + '/api/ui/widgets/' },
+
+      { title: '#redis', category: 'pkg', desc: isEn ? 'Redis key-value client' : 'Redis 高性能键值缓存客户端', href: prefix + '/api/packages/redis/' },
+      { title: '#mysql', category: 'pkg', desc: isEn ? 'MySQL database driver' : 'MySQL 原生连接驱动', href: prefix + '/api/packages/mysql/' },
+      { title: '#sqlite', category: 'pkg', desc: isEn ? 'SQLite embedded database' : 'SQLite 嵌入式数据库驱动', href: prefix + '/api/packages/sqlite/' },
+      { title: '#postgres', category: 'pkg', desc: isEn ? 'PostgreSQL database driver' : 'PostgreSQL 高性能数据库连接驱动', href: prefix + '/api/packages/postgres/' },
+      { title: '#kafka', category: 'pkg', desc: isEn ? 'Apache Kafka distributed streaming' : 'Kafka 分布式消息流队列客户端', href: prefix + '/api/packages/kafka/' },
+
+      { title: isEn ? 'Playground' : '在线演练场', category: 'tool', desc: isEn ? 'In-browser WebAssembly compiler sandbox' : '纯浏览器 WebAssembly 客户端沙盒，免安装即时运行代码', href: prefix + '/playground/' },
+      { title: isEn ? 'Benchmarks' : '性能实测横测', category: 'tool', desc: isEn ? 'Six-platform cross-language verified benchmarks' : '六大操作系统与架构跨语言实测性能对比图表', href: prefix + '/benchmarks/' },
+      { title: isEn ? 'Download SDK' : '下载编译器 SDK', category: 'tool', desc: isEn ? 'Official toolchain archives and install commands' : '官方 Xu 编译器 SDK 与跨平台二进制压缩包', href: prefix + '/download/' },
+      { title: isEn ? 'API Catalog' : 'API 索引总览', category: 'tool', desc: isEn ? 'Standard library and package directory' : '标准库与扩展包完整目录与主题索引', href: prefix + '/api/' },
+      { title: isEn ? 'Blog' : '技术博客与发布动态', category: 'tool', desc: isEn ? 'Release notes and technical deep dives' : '版本发布说明与核心架构演进技术文章', href: prefix + '/blog/' }
+    ];
+
+    function normalizeText(str) {
+      return String(str || '').toLowerCase().replace(/[#$&/.():]+/g, ' ').replace(/\s+/g, ' ').trim();
+    }
+
+    var dialog = document.createElement('dialog');
+    dialog.className = 'global-search-dialog';
+    dialog.id = 'global-search-dialog';
+    dialog.setAttribute('aria-labelledby', 'global-search-dialog-title');
+    dialog.innerHTML = '<div class="global-search-heading">' +
+      '<div><h2 id="global-search-dialog-title">' + (isEn ? 'Quick Search' : '全站快捷搜索') + '</h2>' +
+      '<p>' + (isEn ? 'Search documentation, tutorials, API packages, specs, and tools' : '输入关键词快速检索文档、教程、API包、核心规范或工具') + '</p></div>' +
+      '<button type="button" class="global-search-close" data-search-close title="' + (isEn ? 'Close' : '关闭') + '">×</button>' +
+      '</div>' +
+      '<div class="global-search-input-box">' +
+      '<i class="xi xi-search" aria-hidden="true"></i>' +
+      '<input type="search" id="global-search-input" placeholder="' + (isEn ? 'Search docs, packages, e.g. strings, http, ownership, cli...' : '输入关键词，例如 strings、http、所有权、并发、cli...') + '" autocomplete="off" spellcheck="false">' +
+      '<kbd class="nav-search-kbd">Esc</kbd>' +
+      '</div>' +
+      '<div class="global-search-filters" role="group" aria-label="' + (isEn ? 'Filter scope' : '筛选范围') + '">' +
+      '<button type="button" class="is-active" data-scope="all">' + (isEn ? 'All' : '全部') + '</button>' +
+      '<button type="button" data-scope="doc">' + (isEn ? 'Docs' : '文档') + '</button>' +
+      '<button type="button" data-scope="tutorial">' + (isEn ? 'Tutorials' : '教程') + '</button>' +
+      '<button type="button" data-scope="pkg">' + (isEn ? 'Packages' : 'API 包') + '</button>' +
+      '<button type="button" data-scope="tool">' + (isEn ? 'Tools' : '工具') + '</button>' +
+      '</div>' +
+      '<p class="global-search-count" role="status" aria-live="polite"></p>' +
+      '<ul class="global-search-results" aria-label="' + (isEn ? 'Search results' : '搜索结果') + '"></ul>' +
+      '<div class="global-search-footer">' +
+      '<span><kbd class="nav-search-kbd">↑</kbd> <kbd class="nav-search-kbd">↓</kbd> ' + (isEn ? 'to navigate' : '导航') + ' · <kbd class="nav-search-kbd">Enter</kbd> ' + (isEn ? 'to select' : '选择') + ' · <kbd class="nav-search-kbd">Esc</kbd> ' + (isEn ? 'to close' : '关闭') + '</span>' +
+      '<span>Xu ' + (document.title.match(/v\d+\.\d+\.\d+/) ? document.title.match(/v\d+\.\d+\.\d+/)[0] : 'SDK') + '</span>' +
+      '</div>';
+    document.body.appendChild(dialog);
+
+    var input = dialog.querySelector('#global-search-input');
+    var resultsList = dialog.querySelector('.global-search-results');
+    var countEl = dialog.querySelector('.global-search-count');
+    var closeBtn = dialog.querySelector('[data-search-close]');
+    var filterBtns = dialog.querySelectorAll('.global-search-filters button');
+    var activeScope = 'all';
+    var selectedIndex = -1;
+
+    // Add local page symbols if on an API page
+    var localSymbols = [];
+    var articles = document.querySelectorAll('.api-item[id]');
+    if (articles && articles.length) {
+      var pkgHeading = document.querySelector('main.api-page h1');
+      var pkgName = pkgHeading ? pkgHeading.textContent.trim() : '';
+      articles.forEach(function (art) {
+        var h2 = art.querySelector('h2');
+        var code = art.querySelector('pre code');
+        var descP = art.querySelector('h3 + p');
+        var title = h2 ? h2.textContent.trim() : art.id;
+        localSymbols.push({
+          title: (pkgName ? pkgName + '.' : '') + title,
+          category: 'sym',
+          desc: descP ? descP.textContent.trim() : (code ? code.textContent.split('\n')[0] : ''),
+          href: '#' + encodeURIComponent(art.id)
+        });
+      });
+    }
+
+    var allEntries = localSymbols.concat(staticEntries);
+
+    function doSearch(query) {
+      var norm = normalizeText(query);
+      var terms = norm.split(' ').filter(Boolean);
+      var filtered = allEntries.filter(function (entry) {
+        if (activeScope !== 'all') {
+          if (activeScope === 'doc' && entry.category !== 'doc') return false;
+          if (activeScope === 'tutorial' && entry.category !== 'tutorial') return false;
+          if (activeScope === 'pkg' && entry.category !== 'pkg' && entry.category !== 'sym') return false;
+          if (activeScope === 'tool' && entry.category !== 'tool') return false;
+        }
+        if (!terms.length) return true;
+        var searchable = normalizeText(entry.title + ' ' + entry.desc + ' ' + entry.category);
+        return terms.every(function (t) { return searchable.indexOf(t) !== -1; });
+      });
+
+      function score(e) {
+        var t = normalizeText(e.title);
+        if (t === norm) return 0;
+        if (t.startsWith(norm)) return 1;
+        if (t.indexOf(norm) !== -1) return 2;
+        return 3;
+      }
+      if (terms.length) {
+        filtered.sort(function (a, b) { return score(a) - score(b); });
+      }
+
+      var items = filtered.slice(0, 30);
+      resultsList.innerHTML = '';
+      selectedIndex = items.length > 0 ? 0 : -1;
+
+      items.forEach(function (entry, idx) {
+        var li = document.createElement('li');
+        if (idx === 0) li.classList.add('is-selected');
+
+        var a = document.createElement('a');
+        a.href = entry.href;
+
+        var badgeClass = 'badge-doc';
+        var badgeText = isEn ? 'Doc' : '文档';
+        if (entry.category === 'tutorial') { badgeClass = 'badge-doc'; badgeText = isEn ? 'Tutorial' : '教程'; }
+        else if (entry.category === 'pkg') { badgeClass = 'badge-pkg'; badgeText = isEn ? 'Package' : '包'; }
+        else if (entry.category === 'tool') { badgeClass = 'badge-tool'; badgeText = isEn ? 'Tool' : '工具'; }
+        else if (entry.category === 'sym') { badgeClass = 'badge-sym'; badgeText = isEn ? 'Symbol' : '声明'; }
+
+        var top = document.createElement('div');
+        top.className = 'global-search-res-top';
+        top.innerHTML = '<span class="global-search-badge ' + badgeClass + '">' + badgeText + '</span>' +
+          '<span class="global-search-title">' + entry.title + '</span>';
+
+        var desc = document.createElement('div');
+        desc.className = 'global-search-desc';
+        desc.textContent = entry.desc;
+
+        a.appendChild(top);
+        a.appendChild(desc);
+        a.addEventListener('click', function () { dialog.close(); });
+        li.appendChild(a);
+        resultsList.appendChild(li);
+      });
+
+      countEl.textContent = filtered.length
+        ? (isEn ? 'Found ' + filtered.length + ' results' : '找到 ' + filtered.length + ' 条结果')
+        : (isEn ? 'No results found. Try another keyword.' : '未找到匹配结果，请尝试其他关键词。');
+    }
+
+    function openDialog() {
+      if (dialog.open) { input.focus(); return; }
+      activeScope = 'all';
+      filterBtns.forEach(function (b) { b.classList.toggle('is-active', b.dataset.scope === 'all'); });
+      input.value = '';
+      doSearch('');
+      dialog.showModal();
+      input.focus();
+    }
+
+    window.openGlobalSearch = openDialog;
+
+    var openBtn = document.getElementById('global-search-btn');
+    if (openBtn) {
+      openBtn.addEventListener('click', openDialog);
+    }
+
+    closeBtn.addEventListener('click', function () { dialog.close(); });
+    dialog.addEventListener('click', function (e) {
+      var rect = dialog.getBoundingClientRect();
+      if (e.target === dialog && (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom)) {
+        dialog.close();
+      }
+    });
+
+    filterBtns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        filterBtns.forEach(function (b) { b.classList.remove('is-active'); });
+        btn.classList.add('is-active');
+        activeScope = btn.dataset.scope;
+        doSearch(input.value);
+        input.focus();
+      });
+    });
+
+    input.addEventListener('input', function () { doSearch(input.value); });
+
+    dialog.addEventListener('keydown', function (e) {
+      var listItems = resultsList.querySelectorAll('li');
+      if (!listItems.length) return;
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex + 1) % listItems.length;
+        updateSelection(listItems);
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        selectedIndex = (selectedIndex - 1 + listItems.length) % listItems.length;
+        updateSelection(listItems);
+      } else if (e.key === 'Enter') {
+        if (selectedIndex >= 0 && selectedIndex < listItems.length) {
+          e.preventDefault();
+          var link = listItems[selectedIndex].querySelector('a');
+          if (link) { link.click(); dialog.close(); }
+        }
+      }
+    });
+
+    function updateSelection(listItems) {
+      listItems.forEach(function (li, idx) {
+        var isSel = idx === selectedIndex;
+        li.classList.toggle('is-selected', isSel);
+        if (isSel) {
+          li.scrollIntoView({ block: 'nearest' });
+        }
+      });
+    }
+
+    // Global keyboard shortcut: Ctrl/Cmd + K or slash
+    document.addEventListener('keydown', function (e) {
+      var tag = (e.target && e.target.tagName ? e.target.tagName.toLowerCase() : '');
+      var isEditing = tag === 'input' || tag === 'textarea' || tag === 'select' || (e.target && e.target.isContentEditable);
+      var isCmdK = (e.key === 'k' || e.key === 'K') && (e.ctrlKey || e.metaKey);
+      var isSlash = e.key === '/' && !isEditing && !e.ctrlKey && !e.metaKey && !e.altKey;
+
+      if ((isCmdK || isSlash) && !dialog.open) {
+        e.preventDefault();
+        openDialog();
       }
     });
   }

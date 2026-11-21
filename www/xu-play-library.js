@@ -4,9 +4,23 @@
   function el(id) { return document.getElementById('xu-play-' + id); }
   var dialog = el('library');
   if (!dialog) return;
-  var en = document.documentElement.lang === 'en';
-  var lang = en ? 'en' : 'zh';
+  var docLang = (document.documentElement.lang || 'en').toLowerCase();
+  var lang = 'en';
+  if (docLang.indexOf('zh-tw') === 0 || docLang.indexOf('zh-hant') === 0) lang = 'zh-tw';
+  else if (docLang.indexOf('zh') === 0) lang = 'zh';
+  else if (docLang.indexOf('ja') === 0) lang = 'ja';
+  else if (docLang.indexOf('ko') === 0) lang = 'ko';
+  else if (docLang.indexOf('es') === 0) lang = 'es';
+  else if (docLang.indexOf('fr') === 0) lang = 'fr';
+  else if (docLang.indexOf('de') === 0) lang = 'de';
+  else if (docLang.indexOf('ru') === 0) lang = 'ru';
+  else if (docLang.indexOf('pt') === 0) lang = 'pt-br';
+  var en = lang === 'en';
   function text(zh, english) { return en ? english : zh; }
+  function getProp(obj, prop) {
+    if (!obj || !obj[prop]) return '';
+    return obj[prop][lang] || obj[prop].en || obj[prop].zh || '';
+  }
   function node(tag, className, value) {
     var result = document.createElement(tag);
     if (className) result.className = className;
@@ -51,8 +65,8 @@
     var detail = el('library-detail');
     detail.textContent = '';
     detail.appendChild(node('p', 'play-template-kicker', (project.draft ? text('会话草稿', 'SESSION DRAFT') : text('项目模板', 'PROJECT TEMPLATE')) + ' / ' + key));
-    detail.appendChild(node('h3', '', project.title[lang]));
-    detail.appendChild(node('p', 'play-template-description', project.description[lang]));
+    detail.appendChild(node('h3', '', getProp(project, 'title')));
+    detail.appendChild(node('p', 'play-template-description', getProp(project, 'description')));
     var heading = node('h4', '', text('项目文件', 'Project files'));
     detail.appendChild(heading);
     var fileList = node('ul', 'play-template-files');
@@ -94,7 +108,7 @@
     var groups = catalog.groups.slice();
     if (Object.keys(drafts).length) groups.push({id: 'drafts', title: {zh: '我的草稿', en: 'My drafts'}});
     [{id: 'all', title: {zh: '全部', en: 'All projects'}}].concat(groups).forEach(function (category) {
-      var button = node('button', '', category.title[lang]);
+      var button = node('button', '', getProp(category, 'title'));
       button.type = 'button';
       button.setAttribute('aria-pressed', String(category.id === group));
       button.addEventListener('click', function () {
@@ -107,7 +121,7 @@
       navigation.appendChild(button);
     });
     var category = catalog.groups.find(function (item) { return item.id === group; });
-    el('library-group-help').textContent = group === 'drafts' ? text('本次会话中打开过的项目，保留你添加的文件与修改。', 'Projects opened in this session, including your added files and edits.') : category ? category.description[lang] : text('从语言入门到多个文件，选择你想完成的目标。', 'Choose a goal, from language basics to a project with several files.');
+    el('library-group-help').textContent = group === 'drafts' ? text('本次会话中打开过的项目，保留你添加的文件与修改。', 'Projects opened in this session, including your added files and edits.') : category ? getProp(category, 'description') : text('从语言入门到多个文件，选择你想完成的目标。', 'Choose a goal, from language basics to a project with several files.');
     el('library-count').textContent = keys.length + text(' 个项目', ' projects');
     var list = el('library-list');
     list.textContent = '';
@@ -124,11 +138,11 @@
       var button = node('button', 'play-template-item');
       button.type = 'button';
       button.setAttribute('aria-current', String(key === selected));
-      var title = node('span', 'play-template-item-title', project.title[lang]);
+      var title = node('span', 'play-template-item-title', getProp(project, 'title'));
       var badge = project.expected && project.expected.kind === 'diagnostic' ? text('诊断练习', 'Diagnostic') : filePaths(project).length + text(' 个文件', ' files');
       title.appendChild(node('small', '', badge));
       button.appendChild(title);
-      button.appendChild(node('span', 'play-template-item-description', project.description[lang]));
+      button.appendChild(node('span', 'play-template-item-description', getProp(project, 'description')));
       button.addEventListener('click', function () {
         selected = key;
         Array.from(list.children).forEach(function (item) { item.setAttribute('aria-current', String(item === button)); });
@@ -179,7 +193,7 @@
       var current = select.value || 'hello';
       select.textContent = '';
       Object.keys(catalog.projects).concat(['custom']).forEach(function (key) {
-        var option = node('option', '', key === 'custom' ? text('自定义项目', 'Custom project') : catalog.projects[key].title[lang]);
+        var option = node('option', '', key === 'custom' ? text('自定义项目', 'Custom project') : getProp(catalog.projects[key], 'title'));
         option.value = key;
         select.appendChild(option);
       });
@@ -192,7 +206,7 @@
       refreshDrafts();
       active = key;
       var project = catalog && catalog.projects[key];
-      el('project-title').textContent = project ? project.title[lang] : text('自定义项目', 'Custom project');
+      el('project-title').textContent = project ? getProp(project, 'title') : text('自定义项目', 'Custom project');
     }
   };
 }());

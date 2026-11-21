@@ -1,0 +1,66 @@
+<!--title: 10 · 協程與 chan-->
+<p class="crumb"><a href="/docs/start">文件</a> / Tutorial</p>
+<h1>10 · 協程與 chan</h1>
+<p>透過協程執行獨立任務，用 <code>chan</code> 傳遞值和彙總結果。這些完整程式使用本機 Xu 編譯器執行。</p><p><code>chan int{cap: 2}</code> 建立緩衝容量為 2 的通道。<code>ch &lt;- value</code> 傳送值，<code>&lt;-ch</code> 接收值；這與單獨使用的 <code>&lt;-</code>（退出迴圈）不同。</p><p><code>xu f(args)</code> 啟動協程。不要把區域性變數的借用傳入協程；本例透過通道傳遞整數值。</p><p>這三個完整程式也已加入<a href="/playground/">線上 Playground</a>，可在 Xu 編寫並編譯的 WASM 執行器中直接執行。</p>
+<h2>1 · 帶緩衝的傳送與接收</h2><pre><code>@main
+
+fn main() int {
+    messages := chan int{cap: 2}
+    messages &lt;- 7
+    messages &lt;- 35
+    first := &lt;-messages
+    second := &lt;-messages
+    println(first + second)
+    &lt;&lt; 0
+}
+</code></pre><p><a href="/examples/chan-buffered/main.xu" download="chan-buffered.xu">下載原始碼</a></p><h3>執行</h3><pre><code class="language-shell">xu run chan-buffered.xu</code></pre><h3>輸出</h3><pre><code class="language-output">42</code></pre><h2>2 · 多個 worker 彙總結果</h2><pre><code>@main
+
+fn worker(id int, results chan int) {
+    results &lt;- id * 10
+}
+
+fn main() int {
+    results := chan int{cap: 3}
+    xu worker(1, results)
+    xu worker(2, results)
+    xu worker(3, results)
+
+    $total := 0
+    for i in 0:3 {
+        value := &lt;-results
+        total += value
+    }
+    println(total)
+    &lt;&lt; 0
+}
+</code></pre><p><a href="/examples/chan-workers/main.xu" download="chan-workers.xu">下載原始碼</a></p><h3>執行</h3><pre><code class="language-shell">xu run chan-workers.xu</code></pre><h3>輸出</h3><pre><code class="language-output">60</code></pre><h2>3 · 生產者與處理流水線</h2><pre><code>@main
+
+fn produce(output chan int) {
+    for value in 1:6 {
+        output &lt;- value
+    }
+}
+
+fn square(input chan int, output chan int) {
+    for i in 0:5 {
+        value := &lt;-input
+        output &lt;- value * value
+    }
+}
+
+fn main() int {
+    numbers := chan int{cap: 2}
+    squares := chan int{cap: 2}
+    xu produce(numbers)
+    xu square(numbers, squares)
+    for i in 0:5 {
+        value := &lt;-squares
+        println(value)
+    }
+    &lt;&lt; 0
+}
+</code></pre><p><a href="/examples/chan-pipeline/main.xu" download="chan-pipeline.xu">下載原始碼</a></p><h3>執行</h3><pre><code class="language-shell">xu run chan-pipeline.xu</code></pre><h3>輸出</h3><pre><code class="language-output">1
+4
+9
+16
+25</code></pre><p>多個 worker 的完成順序不保證固定，因此先接收三個結果再求和；流水線則按生產者的傳送順序處理五個輸入。主函式接收完預定數量的結果後退出，不相依性 sleep 等待協程。</p>

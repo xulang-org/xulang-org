@@ -1,0 +1,154 @@
+<!--title: 併發-->
+<p class="crumb"><a href="/docs/start">文件</a> / 語言</p>
+<h1>併發</h1>
+<p><code>xu f(args)</code> 排程一個協程。排程決定哪個就緒任務可以推進；並行是多個任務同時在不同 CPU 執行緒上執行。啟動協程本身既不保證執行順序，也不承諾 CPU 並行。<code>xu.pkg.f</code> 是包限定呼叫，不是啟動協程。</p>
+<p>下列程式碼塊均使用官方 SDK v0.10.12 檢查。每個塊單獨儲存為一個 <code>.xu</code> 檔案；完整程式用 <code>xu check</code>，僅含函式的示例用 <code>xu check --lib</code>。預期診斷均為實際輸出的子串。完整程式也透過本機 <code>xu run</code>；瀏覽器執行使用下述 WASM 子集。</p>
+
+<h2 id="scheduling">排程與無緩衝會合</h2>
+<p>容量為零的通道要求傳送方與接收方會合。對開放的空通道接收會等待；緩衝區滿時傳送也會等待。這些通道等待會讓排程器推進其他就緒協程。應透過通道等待結果，再讓 <code>main</code> 返回；啟動並不代表任務已完成。</p>
+<pre id="worker-pass"><code class="language-xu">@main
+
+fn worker(id int, ch chan int) {
+    ch &lt;- id * 10
+}
+fn main() int {
+    ch := chan int{cap: 0}
+    xu worker(1, ch)
+    println(&lt;-ch)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>10</code>.</p>
+
+<h2 id="send-receive">傳送與接收：轉移 owned 資料，共享通道控制代碼</h2>
+<p><code>ch &lt;- value</code> 傳送，<code>&lt;-ch</code> 接收。傳送 owning 值會轉移所有權；標量按值複製。通道控制代碼可以傳給工作協程，呼叫方仍可使用它。引用（包括巢狀在容器內的引用）不能跨越 <code>xu</code> 或通道邊界；這並不能保證外部程式碼中任意共享狀態的安全。</p>
+<pre id="send-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan string{cap: 1}
+    text := &quot;owned&quot;
+    ch &lt;- text
+    println(&lt;-ch)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>owned</code>.</p>
+<pre id="send-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    ch := chan string{cap: 1}
+    text := &quot;owned&quot;
+    ch &lt;- text
+    println(text)
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>use of moved value &#x27;text&#x27;</code>.</p>
+<pre id="borrow-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn worker(value &amp;int) {}
+fn bad() {
+    value := 1
+    xu worker(&amp;value)
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>xu argument cannot be a reference type (M17)</code>.</p>
+
+<h2 id="close">Close：先排空緩衝，再接收零值</h2>
+<p><code>close(ch)</code> 將通道標記為關閉，不會丟棄緩衝資料。下例的整數通道先返回排隊的 <code>7</code>，隨後不等待就返回 <code>0</code>。若零是合法資料，不應將它當作唯一結束標記；應定義應用層訊息 / 完成協議。在所有傳送結束後由唯一關閉方關閉，且只關閉一次。</p>
+<pre id="close-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan int{cap: 1}
+    ch &lt;- 7
+    close(ch)
+    println(&lt;-ch)
+    println(&lt;-ch)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>7 / 0</code>.</p>
+<pre id="close-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    close(1)
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>close requires a channel, found int</code>.</p>
+<p>向已關閉通道傳送是執行時錯誤，並非靜態所有權錯誤。此函式能透過檢查；本機測試入口呼叫它時退出碼為 <code>1</code>。瀏覽器直譯器報告 <code>send on closed channel</code>。因此它有意不提供執行按鈕。</p>
+<pre id="closed-send" class="xu-local-only"><code class="language-xu">@main
+
+fn wrong() {
+    ch := chan int{cap: 1}
+    close(ch)
+    ch &lt;- 1
+}</code></pre>
+<p><strong>預期 xu check --lib：透過。</strong></p>
+
+<h2 id="select">Select：等待就緒，或進行非阻塞探測</h2>
+<p>每個分支由傳送或接收操作及其分支體構成。沒有 <code>else</code> 時，select 等待某個操作就緒；帶 <code>else</code> 時，若沒有就緒操作，立即進入該分支：這是非阻塞就緒探測，不是超時。已關閉的空通道可立即接收併產生零值。多個分支同時就緒時，不應相依性分支順序或公平性。</p>
+<pre id="select-pass"><code class="language-xu">@main
+
+fn main() int {
+    ch := chan int{cap: 1}
+    select {
+        ch &lt;- 7 { println(&quot;sent&quot;) }
+        else { println(&quot;full&quot;) }
+    }
+    select {
+        value := &lt;-ch { println(value) }
+        else { println(&quot;empty&quot;) }
+    }
+    select {
+        value := &lt;-ch { println(value) }
+        else { println(&quot;empty&quot;) }
+    }
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>sent / 7 / empty</code>.</p>
+<p>Select 至少要有一個通訊分支；只有 <code>else</code> 是無效的。</p>
+<pre id="select-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    select {
+        else { println(&quot;idle&quot;) }
+    }
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>select requires at least one send/recv case</code>.</p>
+
+<h2 id="cancellation">取消與阻塞是兩件事</h2>
+<p><strong>僅限本機 SDK。</strong> 取消需要任務協作觀察訊號。下例由呼叫方關閉專用 stop 通道；等待工作任務時，工作協程仍能觀察停止訊號，因為兩個操作在同一個 select 中。獨立的確認通道讓呼叫方等待工作協程結束。示例沒有傳送工作任務，因此只有 stop 分支就緒。</p>
+<pre id="cancel-pass" class="xu-local-only"><code class="language-xu">@main
+
+fn worker(jobs chan int, stop chan int, done chan int) {
+    select {
+        signal := &lt;-stop { println(&quot;stopped&quot;) }
+        job := &lt;-jobs { println(job) }
+    }
+    done &lt;- 1
+}
+
+fn main() int {
+    jobs := chan int{cap: 0}
+    stop := chan int{cap: 0}
+    done := chan int{cap: 0}
+    xu worker(jobs, stop, done)
+    close(stop)
+    println(&lt;-done)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>stopped / 1</code>.</p>
+<p>關閉 <code>stop</code> 不會強制中斷另一個通道上的接收，也不會中斷無關的阻塞 OS / FFI 呼叫。應把取消與正在等待的操作放進同一個 select，或使用該 API 明確提供的取消機制。取消退出與其他退出路徑一樣，須釋放 owned 資源並顯式 dispose 原生控制代碼。工作與取消同時就緒時，須允許工作分支勝出；取消沒有優先保證。</p>
+<p>檢查透過不代表一定能推進。下列函式沒有傳送方或關閉方，單獨執行時接收無法完成；僅作為庫片段檢查，不執行。</p>
+<pre id="blocking" class="xu-local-only"><code class="language-xu">@main
+
+fn wait_without_sender() int {
+    ch := chan int{cap: 0}
+    &lt;&lt; &lt;-ch
+}</code></pre>
+<p><strong>預期 xu check --lib：透過。</strong></p>
+<p>在迴圈裡反覆進入 <code>else</code> 不會等待工作。若本意是等待，優先使用帶 stop 分支的阻塞 select。純 CPU 工作與阻塞宿主呼叫也需要明確設計推進與取消方式；<code>xu</code> 不是能把任何操作變成非阻塞的包裝。</p>
+
+<h2 id="platforms">原生與瀏覽器 WASM 的邊界</h2>
+<table>
+<tr><th>關注點</th><th>原生 SDK</th><th>本站瀏覽器 Playground</th></tr>
+<tr><td>執行方式</td><td>自研 AOT 後端；宿主執行時有 OS 工作執行緒，可並行執行協程。</td><td>WASM 中的 MIR 直譯器；在瀏覽器 worker 中協作排程任務，Xu 任務之間沒有 CPU 並行。</td></tr>
+<tr><td>通道等待</td><td>掛起等待協程，在通訊或關閉時喚醒。</td><td>讓出給其他解釋執行的任務；所有任務均阻塞時產生通道死鎖診斷，執行還受步數限制。</td></tr>
+<tr><td>宿主操作</td><td>OS、網路、原生 / FFI API 取決於包與目標支援；OS 呼叫可能阻塞一個工作執行緒。</td><td>瀏覽器沙箱與 canvas UI 子集；原生檔案、socket、C FFI 與桌面 UI 不在此執行時範圍內。</td></tr>
+<tr><td>示例驗證範圍</td><td>Linux x64 上的檢查與所列輸出；沒有效能或排程順序保證。</td><td>簡單傳送 / 接收、close 與非阻塞 select 示例也已在此執行；不能據此推斷任意 WASM 宿主的能力。</td></tr>
+</table>
+<p><strong>已確認的瀏覽器限制：</strong> 取消示例中的多分支阻塞 select 在此直譯器中報告 <code>unsupported playground builtin: 151</code>，因此該程式僅限本機；上面的帶 <code>else</code> 非阻塞 <code>select</code> 可在瀏覽器執行。原生 I/O 取消另須考慮具體 API 與目標支援。</p>
+<p><strong>待驗：</strong> 跨平臺原生執行、CPU 並行吞吐量、真實原生 I/O 的取消不在這些示例的驗證範圍內。原生 API 輔助片段標為僅限本機。沙箱限制見<a href="/playground">演練場</a>；生命週期與 dispose 規則見<a href="/docs/lang/memory">記憶體模型</a>。</p>

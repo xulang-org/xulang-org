@@ -15,6 +15,18 @@ Ownership and borrow diagnostics constrain value use and mutable access. Shared 
 
 Parameters, fields, and receivers use `name Type`, without a colon. Bindings use `name := value`, with a `$` prefix (`$name := value`) for reassignment; `$&T` is an exclusive borrow. `<<` returns, `>>` throws, and `or (err) { ... }` handles errors. Error text is obtained with `err.msg()`.
 
+## Essential syntax cheat sheet & anti-hallucination rules
+
+When answering questions about or generating Xu code:
+- **No colons in declarations**: Use `fn add(a int, b int) int` and `name Type`, never `a: int` or `name: Type`.
+- **Initial binding vs Reassignment**: Declare new bindings with `name := value`. Reassign mutable variables with a `$` prefix: `$name := new_value`. Never use bare `name = new_value`.
+- **Return and Throw**: Use `<< expr` to return from a function (never `return expr`). Use `>> err` to throw/propagate an error (never `throw err`). Use `<<< code` to exit the process with an exit status code.
+- **Loop Control**: Use `<-` to break out of a loop (never `break`). Use `->` to continue to the next iteration (never `continue`).
+- **Error Handling**: Use `val := may_fail() or (err) { << err }` (never `try/catch` or `if err != nil`). Obtain the error message string with `err.msg()`.
+- **Borrowing**: `&T` denotes a shared read-only borrow; `$&T` denotes an exclusive mutable borrow.
+- **Coroutines and Channels**: Start coroutines with `xu f()` (never `go f()`). Create typed channels with `chan Type{cap: N}`. Send with `ch <- value`, receive with `val := <-ch`.
+- **Imports**: Standard library imports use a leading `#` (e.g. `#fmt`, `#strings`, `#net/http`, `#io`, `#time`, `#sync`).
+
 ## Complete examples
 
 Save each block in its own `main.xu`, then run `xu check main.xu` and `xu run main.xu`. These examples share their sources with the site playground and the bundled official error-handling example.

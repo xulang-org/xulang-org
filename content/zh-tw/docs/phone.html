@@ -1,0 +1,27 @@
+<!--title: 移動應用-->
+<h1>用 Xu 構建移動應用</h1>
+<p>Xu {{xu_version}} 可生成 iOS 真機、iOS 模擬器和 Android 的 ARM64 應用專案。編譯器輸出原生應用目標檔案，生成目錄同時包含平臺宿主、本地 Canvas 渲染器和構建指令碼。</p>
+
+<h2 id="generate">生成專案</h2>
+<p>安裝包含 <code>xu-phone</code> 的<a href="/download">完整 SDK</a>。輸入目錄必須包含 <code>xu.xun</code>。在 <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}">Xu {{xu_version}} 原始碼樹</a>根目錄執行以下命令，每次選用一個尚不存在的輸出目錄。</p>
+<pre><code class="language-shell">xu build examples/phone_gallery --phone --target ios-simulator-arm64 --bundle-id org.example.gallery -o build/gallery-sim
+xu build examples/phone_gallery --phone --target ios-arm64 --bundle-id org.example.gallery -o build/gallery-ios
+xu build examples/phone_gallery --phone --target android-arm64 --bundle-id org.example.gallery -o build/gallery-android
+
+# 原生 SDL GPU 移動遊戲宿主模式（配合 #app 資源打包）
+xu build examples/phone_game --phone --phone-profile game --target ios-simulator-arm64 --bundle-id org.example.game -o build/game-sim
+xu build examples/phone_game --phone --phone-profile game --target android-arm64 --bundle-id org.example.game -o build/game-android</code></pre>
+<p>輸出包含宿主原始碼和已編譯的目標檔案。修改 Xu 原始碼後，先重新生成專案，再執行平臺構建指令碼。</p>
+<p>如果同時安裝了多個 SDK，請確認 <code>xu --version</code> 顯示 {{xu_version}}，並將環境中的 <code>XU_ROOT</code>、<code>XU_STDLIB_ROOT</code> 指向同一套 SDK。</p>
+
+<h2 id="platform-tools">用平臺工具鏈構建</h2>
+<ul>
+  <li><strong>iOS 模擬器。</strong>在裝有 Xcode 的 macOS 上執行 <code>bash build/gallery-sim/build.sh</code>。啟動 ARM64 模擬器後，執行 <code>xcrun simctl install booted build/gallery-sim/build/XuPhone.app</code>。宿主要求 iOS 16.4 或更新版本。</li>
+  <li><strong>iOS 真機。</strong>使用生成的真機專案，併為構建指令碼設定 <code>CODE_SIGN_IDENTITY</code>、<code>PROVISIONING_PROFILE</code> 和 <code>CODE_SIGN_ENTITLEMENTS</code>，分別提供匹配的簽名身份、描述檔案和許可權配置。</li>
+  <li><strong>Android。</strong>設定 <code>ANDROID_HOME</code> 和 <code>JAVA_HOME</code> 後執行 <code>bash build/gallery-android/build.sh</code>。需要 JDK 17 或更新版本，以及 Android SDK 的 <code>platforms;android-35</code>、<code>build-tools;35.0.0</code>、<code>ndk;27.2.12479018</code> 和 <code>cmake;3.22.1</code>。指令碼生成 <code>build/gallery-android/build/XuPhone-debug.apk</code>，最低支援 Android API 26。</li>
+</ul>
+
+<h2 id="ui">繪製介面與處理輸入</h2>
+<p>建立一個根 <code>ui.Window</code>，掛接 <code>#ui/draw</code>，收到 <code>EV_CANVAS_READY</code> 後錄製完整幀。平臺宿主在本地系統 WebView Canvas 繪製幀，應用邏輯以原生 ARM64 程式碼執行。</p>
+<p>讀取 <code>phone.host_insets()</code>，並將結果傳入 <code>phone.scaffold_with</code>，避免控制元件被系統安全區和鍵盤遮擋。移動元件庫還提供路由、滾動與下拉重新整理、系統輸入法文字編輯、觸覺反饋及剪貼簿整合。詳見 <a href="/api/ui/phone"><code>#ui/phone</code> API</a>、<a href="/api/app"><code>#app</code> API</a> 以及<a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/examples/phone_gallery">介面示例</a> / <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/examples/phone_game">遊戲示例</a>。</p>
+<p>移動宿主使用單視窗，桌面選單和對話方塊、嵌入式 WebView 控制元件、離屏表面及逐控制元件無障礙語義超出當前範圍。釋出驗證覆蓋專案生成和 ARM64 目標檔案格式，真機和應用商店驗收需另行測試。<a href="https://github.com/xulang-org/xu/blob/v{{xu_version}}/src/ui/host/phone/README.md">宿主要求與限制</a></p>

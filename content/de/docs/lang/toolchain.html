@@ -1,0 +1,26 @@
+<!--title: Toolchain-Befehle und Ausgabeformate-->
+<p class="crumb"><a href="/docs/start">Docs</a> / Language</p>
+<h1>Toolchain</h1>
+<p>Xu {{xu_version}} provides <code>build</code>, <code>run</code>, <code>check</code>, <code>test</code>, <code>install</code>, <code>fmt</code>, <code>map</code>, <code>doc</code>, and <code>doctor</code>. Product builds self-host with the Xu compiler; the frozen Rust bootstrap serves as a primer and correctness oracle.</p>
+<p>Build, run, and test optimize by default. Pass <code>--no-opt</code> to disable optimization. The <a href="/docs/cli#xacp">XACP control channel</a> is enabled explicitly with <code>--xacp</code> or <code>--xacp-port</code>. Native stdio and loopback TCP were exercised in the release tests.</p>
+<p>The default target is the host. Use <code>--target linux-arm64</code> or XUOS/XUARCH for cross-compilation. XUPATH uses <code>:</code> on Unix and <code>;</code> on Windows, independently of the target. External imports still require xu.xun mappings.</p>
+<p>Ordinary AOT builds emit native output directly. Use <code>--emit-obj</code> for XUOBJ files and <code>--target wasm32-wasi</code> for WASI modules. Desktop host code and native extensions such as SQLite require their platform toolchains.</p>
+
+<h2>Native Inputs &amp; .a / .xulib Specification</h2>
+<p>When compiling executables, <code>xu build</code> and <code>xu run</code> support accepting native static archives on the command line or declaring module mappings in the <code>native:</code> section of <code>xu.xun</code>:</p>
+
+<p><strong>1. Command-line native archive linking:</strong></p>
+<pre><code class="language-shell">xu build main.xu module.a -o main
+xu build main.xu module.xulib -o main</code></pre>
+
+<p><strong>2. Or declared in project manifest <code>xu.xun</code>:</strong></p>
+<pre><code class="language-xun">native:
+  sqlite_native: file:./native/sqlite.xulib</code></pre>
+<p>The toolchain natively supports both standard generic <code>.a</code> (Unix static archives) and portable <code>.xulib</code> multi-target slice containers:</p>
+<ul>
+  <li><strong>Generic <code>.a</code> Archives</strong>: Directly linked on a single platform, suitable for local development and debugging. The archive embeds an object slice (<code>xu.o</code>) containing export signatures, linked by the platform host linker.</li>
+  <li><strong>Portable <code>.xulib</code> Containers</strong>: Designed for cross-platform ecosystem distribution. While generic <code>.a</code> archives are tied to a single architecture and lack parameter/return type contracts, <code>.xulib</code> bundles a strongly-typed JSON Manifest alongside standard <code>.a</code> slices for all target platforms. During <code>xu build</code>, the compiler selects the matching slice by <code>--target</code>, verifies its SHA-256 digest, enforces static type constraints, and produces zero-overhead native machine code.</li>
+</ul>
+<p>The top-level compiler command <code>xu native</code> provides <code>compile</code> (C compilation with injected metadata), <code>archive</code> (packaging precompiled objects), <code>pack</code> (bundling slices into .xulib), <code>inspect</code> (container inspection), and <code>extract</code> (slice extraction). Run <code>xu doctor</code> to inspect host linker and C toolchain availability.</p>
+
+<p><a href="/docs/cli">CLI options</a> · <a href="/docs/modules">Dependencies and frozen builds</a> · <a href="/docs/native">Native modules &amp; .xulib</a></p>

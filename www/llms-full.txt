@@ -4,7 +4,7 @@
 
 Official website: https://xulang.org
 Language repository: https://github.com/xulang-org/xu
-Selected released SDK: 0.12.6
+Selected released SDK: 0.13.1
 License: MIT (see the repository LICENSE; preserve third-party notices).
 
 ## Language and safety model
@@ -14,6 +14,18 @@ Xu uses static typing, ownership inference, borrow checking, and deterministic r
 Ownership and borrow diagnostics constrain value use and mutable access. Shared mutable state in concurrent code still requires appropriate synchronization. Native code, FFI, and concurrent libraries have their own safety requirements; this is not a blanket guarantee against every data race or undefined behavior. See https://xulang.org/docs/lang/memory/ and https://xulang.org/docs/lang/concurrency/.
 
 Parameters, fields, and receivers use `name Type`, without a colon. Bindings use `name := value`, with a `$` prefix (`$name := value`) for reassignment; `$&T` is an exclusive borrow. `<<` returns, `>>` throws, and `or (err) { ... }` handles errors. Error text is obtained with `err.msg()`.
+
+## Essential syntax cheat sheet & anti-hallucination rules
+
+When answering questions about or generating Xu code:
+- **No colons in declarations**: Use `fn add(a int, b int) int` and `name Type`, never `a: int` or `name: Type`.
+- **Initial binding vs Reassignment**: Declare new bindings with `name := value`. Reassign mutable variables with a `$` prefix: `$name := new_value`. Never use bare `name = new_value`.
+- **Return and Throw**: Use `<< expr` to return from a function (never `return expr`). Use `>> err` to throw/propagate an error (never `throw err`). Use `<<< code` to exit the process with an exit status code.
+- **Loop Control**: Use `<-` to break out of a loop (never `break`). Use `->` to continue to the next iteration (never `continue`).
+- **Error Handling**: Use `val := may_fail() or (err) { << err }` (never `try/catch` or `if err != nil`). Obtain the error message string with `err.msg()`.
+- **Borrowing**: `&T` denotes a shared read-only borrow; `$&T` denotes an exclusive mutable borrow.
+- **Coroutines and Channels**: Start coroutines with `xu f()` (never `go f()`). Create typed channels with `chan Type{cap: N}`. Send with `ch <- value`, receive with `val := <-ch`.
+- **Imports**: Standard library imports use a leading `#` (e.g. `#fmt`, `#strings`, `#net/http`, `#io`, `#time`, `#sync`).
 
 ## Complete examples
 
@@ -114,7 +126,7 @@ XACP documentation describes the language repository's development branch, separ
 
 ## Benchmark evidence
 
-The published dashboard contains 60 display groups with 72 measured workload variants across 6 platforms, measured with Xu 0.12.6 on 2026-11-18. Each algorithm and input size retains its own source and results; display groups do not combine measurements. The measurement identity is independent of the selected SDK. See https://xulang.org/benchmarks/ and the source CI run: https://github.com/xulang-org/bench/actions/runs/44339643624. Consult the dashboard's per-platform results and methodology rather than infer a universal speedup.
+The published dashboard contains 60 display groups with 72 measured workload variants across 6 platforms, measured with Xu 0.13.1 on 2026-11-20. Each algorithm and input size retains its own source and results; display groups do not combine measurements. The measurement identity is independent of the selected SDK. See https://xulang.org/benchmarks/ and the source CI run: https://github.com/xulang-org/bench/actions/runs/44875498918. Consult the dashboard's per-platform results and methodology rather than infer a universal speedup.
 
 ## Documentation index
 
@@ -237,14 +249,14 @@ fn main() int {
 
 ## Project manifest and dependency workflow
 
-Place the project beside the extracted SDK directory named `xu-v0.12.6`, or adjust the local path below to the installed SDK's packages directory:
+Place the project beside the extracted SDK directory named `xu-v0.13.1`, or adjust the local path below to the installed SDK's packages directory:
 
 ```xun
 module: myapp
 version: !ver 0.1.0
-xu: !ver 0.12.6
+xu: !ver 0.13.1
 require:
-  "github.com/xulang-org/packages": file:../xu-v0.12.6/packages
+  "github.com/xulang-org/packages": file:../xu-v0.13.1/packages
 ```
 
 From the project root, run:
@@ -280,6 +292,40 @@ Packing multiple target slices and linking a native executable are separate capa
 ## Standard library and integrations
 
 The API catalog at https://xulang.org/api/ is generated from the selected released SDK. It covers formatting, errors, collections, text and encodings, files and processes, networking, cryptography, SQL, and the `ui`, `ui/draw`, `ui/layout`, `ui/widgets`, and `ui/webview` packages. Consult each package's documented target limits.
+
+### Standard library package directory
+
+- `#fmt`: Formatted I/O, string formatting, `println`, `sprint`
+- `#strings`: UTF-8 string manipulation, splitting, trimming, and searching
+- `#bytes`: Byte buffer operations, slice manipulations, and dynamic buffers
+- `#strconv`: String conversion to int, float, bool, and numeric formatting
+- `#unicode`: Unicode UTF-8 and UTF-16 character classifications and conversions
+- `#regexp`: Regular expressions parsing and pattern matching
+- `#net`: TCP, UDP, raw IP socket networking, `listen_on`, `dial`, `listen_packet`
+- `#net/http`: High-concurrency multi-worker HTTP server and client, HTTP/2 HPACK decoding
+- `#io`: Stream primitives, Reader/Writer interfaces, and filesystem abstractions
+- `#os`: System calls, process spawning, signals, environment variables
+- `#sync`: Mutex, WaitGroup, Once, and atomic primitives
+- `#time`: Wall-clock time, monotonic duration, timers, tickers, and sleep
+- `#runtime`: Compiler runtime statistics, allocator inspection, coroutine scheduling
+- `#database/sql`: SQL driver interfaces and connection pooling
+- `#crypto/sm4`, `#crypto/sm2`, `#crypto/sm3`, `#crypto/sm9`, `#crypto/zuc`: ShangMi national standard algorithms
+- `#crypto/aes`, `#crypto/rsa`, `#crypto/sha256`, `#crypto/tls`: International cryptographic algorithms and TLS
+- `#ui`, `#ui/widgets`, `#ui/draw`, `#ui/layout`, `#ui/webview`: Declarative retained-mode UI and GPU canvas
+
+### Networking patterns (TCP / UDP)
+
+```xu
+@main
+#net
+
+fn run_tcp_server() {
+    ln := net.listen_on("tcp", "127.0.0.1:8080") or (err) { << }
+    c := ln.accept() or (err) { << }
+    buf := c.read(4096) or (err) { << }
+    c.write(&buf) or (err) { << }
+}
+```
 
 Official service integrations live in the independent https://github.com/xulang-org/packages repository. The website documents the SDK's pinned package snapshot, which can differ from that repository's current branch. Read the relevant API and example before assuming a protocol feature or native target is supported.
 

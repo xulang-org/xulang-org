@@ -1,0 +1,314 @@
+<!--title: 起步-->
+
+<p class="crumb">文件</p>
+<h1>起步</h1>
+<p class="banner">Xu {{xu_version}} 官方起步指南 · 現代化無 GC 系統級語言 · 靜態 AOT 編譯 · 所有權與借用 · 全功能輕薄工具鏈</p>
+
+<p>Xu 是一門無執行時垃圾回收（GC-free）的現代化高效能系統級程式語言。它融合了<strong>輕薄直觀的語法設計</strong>、<strong>確定性編譯期所有權與借用檢查</strong>（Ownership & Borrowing），以及<strong>高效靜態 AOT 原生編譯</strong>。Xu 原始碼檔案均採用標準 UTF-8 編碼，副檔名為 <code>.xu</code>。</p>
+
+<!-- 4 步極速上手流程 -->
+<div class="doc-process-flow">
+  <div class="flow-header">
+    <div class="flow-title">
+      <i class="xi xi-code"></i>
+      <span>端到端 4 步極速上手流水線 (Quickstart Pipeline)</span>
+    </div>
+    <div class="flow-subtitle">從安裝配置到專案初始化、編碼實現與構建測試的標準化工程開發路徑</div>
+  </div>
+
+  <div class="flow-steps-grid">
+    <div class="flow-step-card">
+      <div class="step-badge">1</div>
+      <div class="step-body">
+        <div class="step-name">安裝 SDK 與檢查編譯器環境</div>
+        <div class="step-meta">先<a href="#quick-install">一鍵安裝</a>或<a href="/download">下載編譯器</a>，再執行 <code>xu --version</code> 驗證。也可以開啟 <a href="/playground">WebAssembly 演練場</a>免安裝體驗。</div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card">
+      <div class="step-badge">2</div>
+      <div class="step-body">
+        <div class="step-name">初始化工程清單與專案結構</div>
+        <div class="step-meta">先建立並進入專案目錄，再執行 <code>xu init myapp</code>，在當前目錄生成 <code>xu.xun</code> 與 <code>main.xu</code></div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card">
+      <div class="step-badge">3</div>
+      <div class="step-body">
+        <div class="step-name">編寫入口與核心業務邏輯</div>
+        <div class="step-meta">首行宣告 <code>@main</code>，按需匯入標準庫 <code>#fmt</code> 或外部驅動並編寫函式</div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card flow-step-highlight">
+      <div class="step-badge">4</div>
+      <div class="step-body">
+        <div class="step-name">執行、單測與最佳化構建</div>
+        <div class="step-meta"><code>xu run .</code> 秒級執行 · <code>xu test test.example.xu</code> 自動化單測 · <code>xu build .</code> 生產釋出</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 id="quick-install">1. 安裝與開發環境準備</h2>
+<div class="hero-install">
+  <div class="hero-install-header">
+    <span class="hero-install-title"><i class="xi xi-bolt xi-brand"></i> <strong>終端一鍵安裝</strong></span>
+    <div class="hero-install-tabs" role="tablist" aria-label="選擇作業系統">
+      <button type="button" role="tab" class="hero-install-tab is-active" data-tab="unix" aria-selected="true"><i class="xi xi-terminal"></i> macOS / Linux</button>
+      <button type="button" role="tab" class="hero-install-tab" data-tab="win" aria-selected="false"><i class="xi xi-terminal"></i> Windows (PowerShell)</button>
+    </div>
+  </div>
+  <div class="hero-install-body">
+    <div class="hero-install-pane is-active" data-pane="unix">
+      <pre><code class="language-shell">curl -fsSL https://xulang.org/install.sh | bash -s -- --online --version {{xu_version}} --yes</code></pre>
+    </div>
+    <div class="hero-install-pane" data-pane="win">
+      <pre><code class="language-shell">&amp; ([scriptblock]::Create((irm https://xulang.org/install.ps1))) -Online -Version "{{xu_version}}"</code></pre>
+    </div>
+  </div>
+</div>
+<p>也可以<a href="/download">下載編譯器</a>，選擇適合本機系統和架構的安裝程式或 SDK 壓縮包。詳細的安裝和環境變數配置步驟見<a href="/docs/install">安裝指南</a>。</p>
+<p>安裝完成後，重新開啟終端並執行以下命令驗證：</p>
+
+<pre><code class="language-shell"># 驗證編譯器主版本與底層構建資訊
+xu --version
+
+# 檢視全命令與規範排版幫助手冊
+xu --help</code></pre>
+
+<p class="note"><strong>免安裝體驗：</strong>若暫未準備本地環境，可在瀏覽器中直接開啟 <a href="/playground">WebAssembly 互動演練場</a>，在雲端直接編寫、編譯並執行體驗 Xu 程式碼。</p>
+
+<h2>2. 建立你的第一個專案 (<code>xu init</code>)</h2>
+<p>Xu 推薦以目錄作為模組單元進行工程化組織。先建立並進入目錄，再使用 <code>xu init</code> 初始化模組。該命令在當前目錄寫入 <code>xu.xun</code> 與 <code>main.xu</code>，不會建立子目錄：</p>
+
+<pre><code class="language-shell"># 先建立目錄，再在當前目錄初始化模組
+mkdir myapp && cd myapp
+xu init myapp</code></pre>
+
+<p>初始化生成的標準專案檔案結構如下：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>檔案 / 目錄</th>
+      <th>型別</th>
+      <th>職責與規範說明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>xu.xun</code></td>
+      <td>專案清單</td>
+      <td>宣告模組名稱、模組自身版本、所需編譯器版本以及外部相依性 <code>require:</code></td>
+    </tr>
+    <tr>
+      <td><code>main.xu</code></td>
+      <td>可執行入口</td>
+      <td>程式的頂層主入口原始碼，以 <code>@main</code> 開頭幷包含 <code>fn main()</code> 函式</td>
+    </tr>
+    <tr>
+      <td><code>xu.lock</code></td>
+      <td>確定性校驗鎖</td>
+      <td>執行 <code>xu get</code> 或 <code>xu install</code> 後自動生成，鎖定相依性圖與 SHA-256 完整性摘要</td>
+    </tr>
+    <tr>
+      <td><code>vendor/</code></td>
+      <td>本地相依性快照</td>
+      <td>外部第三方擴充套件包的本地原始碼快照，支援無網路離線構建（<code>--offline</code> / <code>--frozen</code>）</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>3. 編寫程式碼與語法速覽</h2>
+<p>開啟專案中的 <code>main.xu</code>，編寫經典問候程式與基礎錯誤處理：</p>
+
+<pre><code class="language-xu">@main
+#fmt
+#errors
+
+fn calculate_ratio(a int, b int) int {
+    if b == 0 {
+        // 使用 &gt;&gt; 丟擲結構化錯誤
+        &gt;&gt; errors.new("division by zero")
+    }
+    // 使用 &lt;&lt; 返回計算結果
+    &lt;&lt; a / b
+}
+
+fn main() int {
+    fmt.println("Hello, Xu World!")
+
+    // 呼叫可能返回錯誤的函式，使用 or (err) 捕獲降級
+    val := calculate_ratio(10, 2) or (err) {
+        fmt.println("Error:", err.msg())
+        &lt;&lt; 1
+    }
+
+    fmt.println("Result:", val)
+    &lt;&lt; 0
+}</code></pre>
+
+<h2>4. 一眼能認出來的核心記號</h2>
+<p>Xu 捨棄了冗餘樣板關鍵字，採用更加直觀、富有表現力的符號式語句設計：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>記號 / 語法</th>
+      <th>功能分類</th>
+      <th>語義與設計規範</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>&lt;&lt;</code> / <code>&lt;&lt; expr</code></td>
+      <td>控制流</td>
+      <td>函式返回語句（Return）。無運算元時返回空（void），有運算元時返回表示式值。</td>
+    </tr>
+    <tr>
+      <td><code>&gt;&gt; expr</code></td>
+      <td>錯誤處理</td>
+      <td>丟擲 <code>errors.Error</code> 結構化錯誤物件（Throw）。</td>
+    </tr>
+    <tr>
+      <td><code>or (err) { ... }</code></td>
+      <td>錯誤捕獲</td>
+      <td>尾隨錯誤接住塊（Catch），在表示式發生錯誤時執行分支降級或提前中斷。</td>
+    </tr>
+    <tr>
+      <td><code>&lt;&lt;&lt; expr</code></td>
+      <td>程序控制</td>
+      <td>程序立即退出（Process Exit），向作業系統返回指定的整數退出狀態碼。</td>
+    </tr>
+    <tr>
+      <td><code>&lt;-</code></td>
+      <td>迴圈控制</td>
+      <td>迴圈中斷跳出（Break，位於語句開頭且無運算元）。</td>
+    </tr>
+    <tr>
+      <td><code>-&gt;</code></td>
+      <td>迴圈控制</td>
+      <td>迴圈繼續下一次迭代（Continue）。</td>
+    </tr>
+    <tr>
+      <td><code>$name := val</code></td>
+      <td>所有權繫結</td>
+      <td>宣告可變區域性變數（預設變數繫結為不可變常量，修改需顯式標記 <code>$</code>）。</td>
+    </tr>
+    <tr>
+      <td><code>xu f(args)</code></td>
+      <td>輕量併發</td>
+      <td>派生輕量級協程併發執行函式 <code>f</code>，由底層無棧/輕量執行時統一排程。</td>
+    </tr>
+    <tr>
+      <td><code>chan T</code></td>
+      <td>併發通訊</td>
+      <td>強型別通訊通道（如 <code>chan int{cap: N}</code>），配合 <code>ch &lt;- val</code> 傳送與 <code>val := &lt;-ch</code> 接收。</td>
+    </tr>
+    <tr>
+      <td><code>@main</code></td>
+      <td>包身份註解</td>
+      <td>位於檔案第一行，指示當前檔案屬於可執行入口包，編譯器將為其生成頂層 <code>main</code> 符號。</td>
+    </tr>
+    <tr>
+      <td><code>#pkg</code> / <code>alias #pkg</code></td>
+      <td>模組匯入</td>
+      <td><code>#</code> 開頭匯入官方標準庫；外部第三方相依性使用 <code>別名 #完整模組路徑</code> 顯式匯入。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>5. 模組相依性與官方擴充套件包 (<code>xu get</code> / <code>xu install</code>)</h2>
+<p>接入資料庫驅動和服務客戶端時，請在 <code>xu.xun</code> 的 <code>require:</code> 下宣告與 SDK 匹配的原始碼快照：</p>
+
+<pre><code class="language-xun">module: myapp
+version: !ver 0.1.0
+xu: !ver {{xu_version}}
+
+require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@96693e6cce8d51eba45e4f68dc12ce06f7a2336b</code></pre>
+<p>安裝已宣告的原始碼，也可改用<a href="/docs/packages">SDK 內建包</a>作為本地相依性：</p>
+<pre><code class="language-shell">xu install</code></pre>
+
+<p>在原始碼中直接以明確的別名名稱空間引用具體功能模組（如 <code>mysql</code>、<code>redis</code>、<code>s3</code>）：</p>
+
+<pre><code class="language-xu">@main
+#fmt
+mysql #github.com/xulang-org/packages/mysql
+
+fn main() int {
+    _ := mysql.driver()
+    fmt.println("MySQL driver initialized.")
+    &lt;&lt; 0
+}</code></pre>
+
+<h2>6. 日常高頻 CLI 常用工作流</h2>
+<p>Xu 提供了開箱即用的現代化命令列工具鏈，涵蓋從編碼檢查到生產編譯的全部環節：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>命令示例</th>
+      <th>工作階段</th>
+      <th>功能作用說明</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>xu run .</code></td>
+      <td>日常除錯</td>
+      <td>自動分析當前目錄相依性、快速編譯並在記憶體中直接執行，開發體驗極為流暢。</td>
+    </tr>
+    <tr>
+      <td><code>xu check .</code></td>
+      <td>即時檢查</td>
+      <td>只執行語法、所有權生命週期和型別檢查，不生成機器二進位制，毫秒級快速反饋。</td>
+    </tr>
+    <tr>
+      <td><code>xu test test.example.xu</code></td>
+      <td>質量保障</td>
+      <td>遞迴發現並併發執行當前目錄下的所有 <code>test_*</code> 單元測試與基準驗證。</td>
+    </tr>
+    <tr>
+      <td><code>xu fmt .</code></td>
+      <td>團隊規範</td>
+      <td>自動格式化目錄內全部 <code>.xu</code> 原始碼，遵循官方統一程式碼風格與縮排規範。</td>
+    </tr>
+    <tr>
+      <td><code>xu build . -o bin/app</code></td>
+      <td>生產釋出</td>
+      <td>啟用最高階別機器碼最佳化，生成獨立且零相依性的原生靜態可執行二進位制。</td>
+    </tr>
+    <tr>
+      <td><code>xu lsp</code></td>
+      <td>編輯器整合</td>
+      <td>啟動原生語言服務守護程序，為 VS Code / Cursor 等 IDE 提供智慧輔助。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>7. 下一步探索與進階閱讀</h2>
+<p>掌握了基礎概念之後，建議繼續閱讀以下進階主題：</p>
+
+<ul>
+  <li><strong>按主題系統化學習：</strong>跟隨 <a href="/docs/tutorial/01">教程 01–16</a> 從基礎資料結構逐步深入到併發程式設計與借用生命週期。</li>
+  <li><strong>配置高效開發工具：</strong>閱讀 <a href="/docs/vscode">VS Code / Cursor 配置指南</a>，開啟程式碼補全、跳轉（F12）與儲存即格式化。</li>
+  <li><strong>瀏覽外部驅動：</strong>在 <a href="/docs/packages">官方擴充套件包 (Packages)</a> 中檢視 29 個服務整合包、匯入示例及各包的協議和平臺限制。</li>
+  <li><strong>C/C++ 原生混合程式設計：</strong>查閱 <a href="/docs/native">原生模組與 .xulib 規範</a>，學習零成本連結通用 <code>.a</code> 與便攜切片容器。</li>
+  <li><strong>XACP 控制通道：</strong>閱讀<a href="/docs/cli#xacp">命令列參考</a>與 <a href="/api/xacp"><code>#xacp</code> API</a>。<code>xu build --xacp</code> 才會嵌入發現資訊；單獨匯入 <code>#xacp</code> 不會開啟 stdio 或本機迴環 TCP。API 已包含在對應正式 SDK 中；原生控制會話和 UI 執行驗收仍待驗。</li>
+  <li><strong>語言嚴謹語義規範：</strong>深入研讀 <a href="/docs/lang/goals">語言規範</a> 與 <a href="/benchmarks">{{benchmark_group_count}} 個專案組、{{benchmark_count}} 個變體的跨語言效能橫測</a>。</li>
+</ul>

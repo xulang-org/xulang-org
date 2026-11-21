@@ -1,0 +1,112 @@
+<!--title: 模組與相依性-->
+<p class="crumb"><a href="/docs/start">文件</a></p>
+<h1>模組與相依性</h1>
+<p class="banner">Xu {{xu_version}} · 0.8.4 簽名校驗日誌 · 0.8.6 相依性圖快照重構 · 0.8.8 跨架構相依性驗證與構建分發規範</p>
+
+<p>Xu 專案使用根目錄下的 <code>xu.xun</code> 作為模組後設資料清單。其中：<code>module:</code> 標識模組身份名稱空間，<code>version:</code> 標識模組自身版本，<code>xu:</code> 宣告最低相容的 Xu 編譯器版本。外部匯入必須採用顯式別名，並在 <code>require:</code> 中宣告所屬的根模組。</p>
+
+<h2>1. 宣告與自動安裝相依性 (<code>xu get</code> / <code>xu install</code>)</h2>
+<p>使用本站 API 時，請選擇正式 SDK 內建的 packages 或對應的不可變原始碼提交。清單中的模組版本並不代表遠端存在同名 Git 標籤。</p>
+<h3>方式 A：使用 SDK 內建包</h3>
+<p>將專案放在解壓後的 SDK 旁，在 <code>xu.xun</code> 中宣告相依性；安裝位置不同時調整本地路徑：</p>
+<pre><code class="language-xun">module: app
+version: !ver 0.1.0
+xu: !ver {{xu_version}}
+require:
+  "github.com/xulang-org/packages": file:../xu-v{{xu_version}}/packages</code></pre>
+<h3>方式 B：獲取對應原始碼提交</h3>
+<p>將上述本地來源替換為 SDK 使用的固定原始碼快照：</p>
+<pre><code class="language-xun">require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@96693e6cce8d51eba45e4f68dc12ce06f7a2336b</code></pre>
+<p>隨後在專案目錄執行：</p>
+<pre><code class="language-shell">xu install</code></pre>
+<p>對已經確認釋出 SemVer 標籤的模組，可使用 <code>xu get &lt;module&gt;@&lt;version&gt;</code> 新增或更新相依性、安裝原始碼並更新 <code>xu.lock</code>。請將兩個佔位符替換為真實模組標識及釋出標籤。SDK 相容性與原生橋準備見<a href="/docs/packages">官方擴充套件包</a>。</p>
+
+<h3>在原始碼中使用顯式別名引用相依性</h3>
+<p>在 <code>.xu</code> 原始碼中使用顯式別名匯入具體的子包：</p>
+
+<pre><code class="language-xu">@main
+#fmt
+mysql #github.com/xulang-org/packages/mysql
+
+fn main() int {
+    _ := mysql.driver()
+    fmt.println("MySQL driver loaded successfully.")
+    &lt;&lt; 0
+}</code></pre>
+
+<p>在 <code>require:</code> 中宣告的是官方根模組 <code>github.com/xulang-org/packages</code>，程式碼中則透過完整的子路徑匯入具體包（如 <code>mysql</code>、<code>redis</code>、<code>postgres</code>、<code>s3</code> 等）。完整擴充套件包清單請查閱 <a href="/docs/packages">官方擴充套件包 (Packages)</a>。</p>
+
+<h2>2. 版本選擇與來源定位</h2>
+<p>除 SemVer 發行版外，還可以指定已審查的不可變 Git 提交，或在本地協同研發時使用相對路徑：</p>
+
+<pre><code class="language-xun"># 選項 A：鎖定到指定 Git 提交
+require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@&lt;commit&gt;
+
+# 選項 B：本地協同開發（讓 app 與 packages 目錄同級放置）
+require:
+  "github.com/xulang-org/packages": file:../packages</code></pre>
+
+<p>Xu 採用 <strong>MVS（最小版本選擇，Minimal Version Selection）</strong> 演算法讀取全部可達版本的清單，為每個模組選擇圖中最高的最低要求。MVS 不查詢 <code>latest</code>，也不接受不可控的浮動版本範圍。v2 及以上主版本模組使用匹配的 <code>/vN</code> 路徑字尾。顯式 file / Git / tar 來源繼續獲得原生支援，來源衝突時編譯器會明確報錯。</p>
+
+<h2>3. 安裝、鎖定與離線/凍結構建</h2>
+<p>對於工業級軟體與 CI/CD 流程，Xu 提供了確定性鎖機制與純離線構建保障：</p>
+
+<pre><code class="language-shell"># 1. 開發階段安裝相依性
+xu install
+
+# 2. 離線環境型別與所有權檢查（嚴禁聯網下載）
+xu check main.xu --offline
+
+# 3. 生產釋出完全凍結構建（要求相依性 100% 匹配現有鎖，禁止任何網路與改寫）
+xu build main.xu --frozen --output app</code></pre>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>構建模式</th>
+      <th>編譯與網路行為規範</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>預設模式</strong></td>
+      <td>允許聯網下載並建立鎖條目；已鎖定的相依性雜湊不匹配時立即報錯失敗。</td>
+    </tr>
+    <tr>
+      <td><strong><code>--offline</code></strong></td>
+      <td>禁止任何網路下載，僅使用本地來源、已校驗快取或 <code>vendor/</code>；仍可在本地建立鎖條目。</td>
+    </tr>
+    <tr>
+      <td><strong><code>--frozen</code></strong></td>
+      <td>隱含離線模式。要求必須已有完全匹配的鎖條目，嚴禁寫相依性快取或補鎖；本地 <code>file:</code> 相依性須先安裝為 <code>vendor/</code> 快照。</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>推薦團隊審查並提交 <code>xu.lock</code> 至版本控制系統。顯式來源使用 v2 鎖，版本圖使用 v3 鎖。<code>xu install</code> 在 <code>vendor/</code> 中保留全部可達版本快照，支援無網路離線重放 MVS 相依性圖。凍結相依性模式不會凍結主專案自身原始碼或編譯產物。</p>
+
+<h2>4. 代理伺服器與私有模組 (<code>XUPROXY</code> / <code>XUPRIVATE</code>)</h2>
+<pre><code class="language-shell"># 配置映象代理與直接連線回退
+XUPROXY='https://proxy.example.com,direct' xu install
+
+# 配置企業私有模組字首（跳過公共代理與校驗資料庫）
+XUPRIVATE='example.com/private/*' xu install</code></pre>
+
+<p><code>XUPROXY</code> 接受 HTTP(S)、絕對 <code>file://</code>、<code>direct</code> 與 <code>off</code>，預設值為 <code>direct</code>。逗號僅在發生 404/410 時向後回退；豎線允許在任何請求錯誤後回退。模組身份或完整性雜湊不匹配時始終立即中斷失敗。直接版本發現原生支援 GitHub 倉庫，其他程式碼託管主機建議使用顯式來源或配置企業專屬 Xu 代理。</p>
+
+<p><code>XUPRIVATE</code> 是以逗號分隔的私有模組字首 glob 列表；<code>XUNOPROXY</code> 預設沿用其取值並控制代理繞過。Xu 不假定公共代理已上線，Go 模組代理中的清單不能作為 Xu 相依性清單。</p>
+
+<h2>5. 獨立校驗與防篡改日誌 (<code>XUSUMDB</code>)</h2>
+<p>自 0.8.4 起，Xu 引入了透明簽名校驗日誌系統。<code>XUSUMDB</code> 接受可信 Ed25519 verifier 公鑰及可選服務 URL。對 SemVer 模組，客戶端會嚴格驗證簽名樹頭（Signed Tree Head）、模組摘要、包含證明（Inclusion Proof）以及日誌追加一致性後才接受相依性。未設定或設為 <code>off</code> 時沿用首次使用信任（Trust on First Use）原則。<code>XUNOSUMDB</code> 獨立控制校驗繞過，預設繼承 <code>XUPRIVATE</code>。</p>
+
+<h2>6. 原生 C/C++ 模組與 .xulib 支援</h2>
+<p>除了純原始碼相依性，Xu 支援在 <code>xu.xun</code> 的 <code>native:</code> 節宣告 C/C++ 原生模組。編譯器既支援通用的標準 <code>.a</code> 靜態歸檔庫，也支援自帶 ABI 後設資料契約與跨平臺架構切片的行動式 <code>.xulib</code> 容器包。詳細規範與開發指南請參閱 <a href="/docs/native">原生模組與 .xulib 規範</a>。</p>
+
+<h2>7. 舊版本工程平滑遷移</h2>
+<p>舊版本點式包路徑已全面改為現代斜槓（<code>/</code>）路徑規範，僅保留域名、版本號以及原始碼欄位/方法訪問中的點。當模組身份或舊鎖格式發生變化時，請在審查後重新執行 <code>xu install</code> 重新整理鎖檔案。嚴禁為跳過內容不匹配而直接刪除當前鎖檔案。</p>
+
+<p class="note"><strong>關聯閱讀：</strong><a href="/docs/packages">官方擴充套件包 (Packages) 實戰</a> · <a href="/docs/native">原生模組與 .xulib 規範</a> · <a href="/docs/cli">CLI 命令列完整手冊</a></p>

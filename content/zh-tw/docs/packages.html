@@ -1,0 +1,160 @@
+<!--title: 官方擴充套件包 (Packages)-->
+<p class="crumb"><a href="/docs/start">文件</a></p>
+<h1>官方擴充套件包 (Packages)</h1>
+<p class="banner">官方模組：<code>github.com/xulang-org/packages</code> · SDK 內模組版本 1.0.0 · 29 個服務整合包及共享 transport 包</p>
+<p>Xu {{xu_version}} SDK 包含外部驅動及原生原始碼資源，下方矩陣以該安裝包為範圍；API 頁顯示各自的包來源身份（當前為 1.0.2），與 SDK 內 1.0.0 清單不同，不能從較新 API 宣告推斷內建能力。驅動涵蓋資料庫、快取、訊息、物件儲存與服務發現；協議和平臺邊界見各包說明。</p>
+<h2>1. 選擇 SDK 內建包或固定原始碼提交</h2>
+<p>將專案放在解壓後的 SDK 旁，透過本地來源宣告內建 packages；安裝位置不同時調整相對路徑：</p>
+<pre><code class="language-xun">module: my_app
+version: !ver 0.1.0
+xu: !ver {{xu_version}}
+require:
+  "github.com/xulang-org/packages": file:../xu-v{{xu_version}}/packages</code></pre>
+<p>也可以指定該 SDK 使用的完整不可變提交來獲取原始碼：</p>
+<pre><code class="language-xun">require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@96693e6cce8d51eba45e4f68dc12ce06f7a2336b</code></pre>
+<p>在專案目錄中解析並鎖定相依性，再檢查和構建：</p>
+<pre><code class="language-shell">xu install
+xu check main.xu --offline
+xu build main.xu -o my_app</code></pre>
+<p>模組版本與 Git 標籤分別管理：本安裝包宣告模組版本 1.0.0，以上固定原始碼地址直接選擇準確提交。請將 <code>xu.lock</code> 與應用一同維護；凍結構建、vendor 和代理用法見<a href="/docs/modules">模組與相依性</a>。</p>
+<h2>2. 在程式碼中引用擴充套件包</h2>
+<p>Xu 對所有外部擴充套件包採用<strong>明確的名稱空間別名機制</strong>，語法格式為：<code>別名 #完整包路徑</code>。這不僅避免了全域性命名汙染，也保證了所有程式碼相依性關係透明可見。</p>
+
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+
+// 1. 標準庫無需別名，以 # 開頭
+#database/sql
+
+// 2. 外部 packages 擴充套件包宣告別名與完整路徑（別名即程式碼中的呼叫名稱空間）
+mysql    #github.com/xulang-org/packages/mysql
+redis    #github.com/xulang-org/packages/redis
+postgres #github.com/xulang-org/packages/postgres
+
+fn main() int {
+    // 使用別名進行呼叫
+    println("Drivers loaded successfully")
+    << 0
+}</code></pre></div>
+
+<p class="note"><strong>注意：</strong>不能寫 <code>#mysql</code> 或 <code>#redis</code>。外部模組必須使用顯式別名與完整模組路徑。標準庫與本地包（如 <code>#util</code>）各有解析規則。本文所列整合包屬於 <code>github.com/xulang-org/packages</code>，其他外部模組使用各自的模組標識。</p>
+
+<h2>3. 快速上手實戰示例</h2>
+
+<h3>實戰 1：配合 <code>database/sql</code> 使用 MySQL 驅動</h3>
+<p>標準庫 <code>database/sql</code> 提供連線池、事務與結果集抽象，具體的驅動實現由 packages 的 <code>mysql</code> 包提供：</p>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+#database/sql
+mysql #github.com/xulang-org/packages/mysql
+
+fn main() int {
+    dsn := "root:123456@tcp(127.0.0.1:3306)/test_db?tls=false"
+    $db := sql.open(mysql.driver(), dsn)
+    db.ping() or (err) {
+        println("Database ping failed: " + err.msg())
+        << 1
+    }
+    println("Connected to MySQL successfully!")
+    db.close() or (err) { << 1 }
+    << 0
+}</code></pre></div>
+
+<h3>實戰 2：連線與操作 Redis 快取</h3>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+redis #github.com/xulang-org/packages/redis
+
+fn main() int {
+    $client := redis.open("127.0.0.1:6379") or (err) {
+        println("Redis connect error: " + err.msg())
+        << 1
+    }
+    client.set("app_version", "demo") or (err) { << 1 }
+    val := client.get("app_version") or (err) { << 1 }
+    println("Key 'app_version': " + val)
+    client.close()
+    << 0
+}</code></pre></div>
+
+<h3>實戰 3：使用 S3 / MinIO 進行物件儲存</h3>
+<div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
+s3 #github.com/xulang-org/packages/s3
+
+fn main() int {
+    $client := s3.open("http://127.0.0.1:9000", "access_key", "secret_key", "us-east-1")
+    client.put_object("my-bucket", "welcome.txt", "Hello from Xu!", "text/plain") or (err) {
+        println("S3 upload failed: " + err.msg())
+        << 1
+    }
+    println("Object uploaded successfully")
+    << 0
+}</code></pre></div>
+
+<h2>4. 官方服務整合包速查表與匯入程式碼</h2>
+<p>packages 倉庫包含 29 個服務整合包及共享 transport 包。可直接複製下方對應的匯入程式碼行置於原始檔頂部：</p>
+
+<p id="matrix-scope">以下狀態列來自所選 SDK 隨附的 <code>packages/*.xu</code> 原始碼檢查，包括 <code>client.xu</code>、認證檔案、<code>tls.xu</code> 輔助介面與 <code>transport/mod.xu</code>。這是原始碼證據，不是服務互操作或平臺驗收結果。<strong>未知</strong>表示此處尚未證明該能力。</p>
+<p class="note"><strong>TLS 路徑：</strong>HTTPS 業務請求使用共享 TLS 連線路徑，舊的手工 fd 池仍為明文。<em>TLS 位元組流輔助介面</em>僅提供 <code>tls_connect</code> / <code>tls_connect_config</code> 及原始讀寫，不能據此認定普通帶認證客戶端或連線池已接通 TLS；這種整合明確標為未知。SMTP STARTTLS 和 DNS-over-TLS 查詢整合未知。預設 TLS 配置校驗證書與主機名；此處沒有逐服務實測這些原始碼路徑。</p>
+<p><strong>平臺：</strong>網路驅動相依性原生套接字，只能沿本機 SDK 路徑執行，超出演練場瀏覽器子集。每行各系統 / 架構的驗收均為未知。SQLite 現升級至純 Xu <code>sqlite_native</code> 動態載入，無需預編譯靜態 <code>.xulib</code> 切片。參見<a href="/download#platform-boundaries">下載平臺邊界</a>與<a href="/docs/status">狀態說明</a>。</p>
+
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="整合支援矩陣">
+<table id="integration-matrix" class="package-matrix">
+  <thead>
+    <tr>
+      <th>分類</th>
+      <th>包名</th>
+      <th>適用服務</th>
+      <th>原始檔一鍵匯入語句</th>
+      <th>API 參考</th>
+      <th>協議範圍</th>
+      <th>認證</th>
+      <th>TLS 路徑</th>
+      <th>平臺 / 驗收</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr data-package="mysql"><td>資料庫</td><td><code>mysql</code></td><td>MySQL / MariaDB</td><td><code>mysql #github.com/xulang-org/packages/mysql</code></td><td><a href="/api/packages/mysql">API 文件</a></td><td>MySQL 文字協議</td><td>mysql_native_password；拒絕 caching_sha2_password</td><td>DSN TLS 升級，校驗證書與主機名</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="postgres"><td>資料庫</td><td><code>postgres</code></td><td>PostgreSQL</td><td><code>postgres #github.com/xulang-org/packages/postgres</code></td><td><a href="/api/packages/postgres">API 文件</a></td><td>PostgreSQL wire 3.0</td><td>Trust / 明文 / MD5 / SCRAM-SHA-256</td><td>SSLRequest 升級；require / verify-ca / verify-full</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="sqlite"><td>資料庫</td><td><code>sqlite</code></td><td>SQLite 嵌入式</td><td><code>sqlite #github.com/xulang-org/packages/sqlite</code></td><td><a href="/api/packages/sqlite">API 文件</a></td><td>嵌入式 SQLite C API</td><td>不適用（嵌入式）</td><td>不適用（無網路傳輸）</td><td>純 Xu 動態載入；無需 .xulib；目標驗收未知</td></tr>
+    <tr data-package="clickhouse"><td>資料庫</td><td><code>clickhouse</code></td><td>ClickHouse 列存</td><td><code>clickhouse #github.com/xulang-org/packages/clickhouse</code></td><td><a href="/api/packages/clickhouse">API 文件</a></td><td>HTTP SQL 請求</td><td>X-ClickHouse-User / Key 請求頭</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="mongodb"><td>資料庫</td><td><code>mongodb</code></td><td>MongoDB 文件庫</td><td><code>mongodb #github.com/xulang-org/packages/mongodb</code></td><td><a href="/api/packages/mongodb">API 文件</a></td><td>OP_MSG 子集；無壓縮 / 拓撲發現</td><td>未知</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="cassandra"><td>資料庫</td><td><code>cassandra</code></td><td>Apache Cassandra</td><td><code>cassandra #github.com/xulang-org/packages/cassandra</code></td><td><a href="/api/packages/cassandra">API 文件</a></td><td>CQL 二進位制 v4；啟動 / 查詢</td><td>未知</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="neo4j"><td>資料庫</td><td><code>neo4j</code></td><td>Neo4j 圖資料庫</td><td><code>neo4j #github.com/xulang-org/packages/neo4j</code></td><td><a href="/api/packages/neo4j">API 文件</a></td><td>HTTP Cypher 事務；未宣告 Bolt</td><td>HTTP Basic</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="redis"><td>快取</td><td><code>redis</code></td><td>Redis 高效能快取</td><td><code>redis #github.com/xulang-org/packages/redis</code></td><td><a href="/api/packages/redis">API 文件</a></td><td>RESP2 與有界 RESP3 型別</td><td>密碼 AUTH；ACL 使用者名稱支援未知</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="memcached"><td>快取</td><td><code>memcached</code></td><td>Memcached</td><td><code>memcached #github.com/xulang-org/packages/memcached</code></td><td><a href="/api/packages/memcached">API 文件</a></td><td>文字命令</td><td>未知</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="kafka"><td>訊息</td><td><code>kafka</code></td><td>Apache Kafka</td><td><code>kafka #github.com/xulang-org/packages/kafka</code></td><td><a href="/api/packages/kafka">API 文件</a></td><td>Produce v3 / Fetch v4 子集；無壓縮記錄</td><td>未知</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="rabbitmq"><td>訊息</td><td><code>rabbitmq</code></td><td>RabbitMQ / AMQP</td><td><code>rabbitmq #github.com/xulang-org/packages/rabbitmq</code></td><td><a href="/api/packages/rabbitmq">API 文件</a></td><td>AMQP 0-9-1 子集</td><td>SASL PLAIN</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="nats"><td>訊息</td><td><code>nats</code></td><td>NATS 高吞吐訊息</td><td><code>nats #github.com/xulang-org/packages/nats</code></td><td><a href="/api/packages/nats">API 文件</a></td><td>NATS 文字協議</td><td>使用者名稱 / 密碼 CONNECT</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="mqtt"><td>訊息</td><td><code>mqtt</code></td><td>MQTT 物聯網協議</td><td><code>mqtt #github.com/xulang-org/packages/mqtt</code></td><td><a href="/api/packages/mqtt">API 文件</a></td><td>MQTT 3.1.1；QoS 0 / 1</td><td>CONNECT 使用者名稱 / 密碼</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="etcd"><td>服務發現</td><td><code>etcd</code></td><td>etcd v3 分散式鍵值</td><td><code>etcd #github.com/xulang-org/packages/etcd</code></td><td><a href="/api/packages/etcd">API 文件</a></td><td>v3 HTTP/JSON 閘道器；非原生 gRPC</td><td>未知</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="consul"><td>服務發現</td><td><code>consul</code></td><td>HashiCorp Consul</td><td><code>consul #github.com/xulang-org/packages/consul</code></td><td><a href="/api/packages/consul">API 文件</a></td><td>HTTP API</td><td>X-Consul-Token 請求頭</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="zookeeper"><td>服務發現</td><td><code>zookeeper</code></td><td>Apache ZooKeeper</td><td><code>zookeeper #github.com/xulang-org/packages/zookeeper</code></td><td><a href="/api/packages/zookeeper">API 文件</a></td><td>四字管理命令；非會話客戶端</td><td>未知</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="nacos"><td>服務發現</td><td><code>nacos</code></td><td>Alibaba Nacos</td><td><code>nacos #github.com/xulang-org/packages/nacos</code></td><td><a href="/api/packages/nacos">API 文件</a></td><td>HTTP OpenAPI 子集</td><td>未知</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="elasticsearch"><td>檢索</td><td><code>elasticsearch</code></td><td>Elasticsearch / OpenSearch</td><td><code>elasticsearch #github.com/xulang-org/packages/elasticsearch</code></td><td><a href="/api/packages/elasticsearch">API 文件</a></td><td>HTTP/JSON API 子集</td><td>未知</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="meilisearch"><td>檢索</td><td><code>meilisearch</code></td><td>Meilisearch 輕量搜尋</td><td><code>meilisearch #github.com/xulang-org/packages/meilisearch</code></td><td><a href="/api/packages/meilisearch">API 文件</a></td><td>HTTP/JSON；文件 ID 僅整數</td><td>Bearer API 金鑰</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="prometheus"><td>可觀測</td><td><code>prometheus</code></td><td>Prometheus 指標採集</td><td><code>prometheus #github.com/xulang-org/packages/prometheus</code></td><td><a href="/api/packages/prometheus">API 文件</a></td><td>文字指標 / HTTP Pushgateway</td><td>未知</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="influxdb"><td>可觀測</td><td><code>influxdb</code></td><td>InfluxDB 時序資料庫</td><td><code>influxdb #github.com/xulang-org/packages/influxdb</code></td><td><a href="/api/packages/influxdb">API 文件</a></td><td>HTTP API / line protocol</td><td>Authorization: Token</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="milvus"><td>向量 AI</td><td><code>milvus</code></td><td>Milvus 向量檢索</td><td><code>milvus #github.com/xulang-org/packages/milvus</code></td><td><a href="/api/packages/milvus">API 文件</a></td><td>REST v2 檢索；ID 僅整數</td><td>Bearer token 欄位</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="qdrant"><td>向量 AI</td><td><code>qdrant</code></td><td>Qdrant 向量資料庫</td><td><code>qdrant #github.com/xulang-org/packages/qdrant</code></td><td><a href="/api/packages/qdrant">API 文件</a></td><td>HTTP/JSON API 子集</td><td>api-key 請求頭</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="chroma"><td>向量 AI</td><td><code>chroma</code></td><td>Chroma AI 嵌入資料庫</td><td><code>chroma #github.com/xulang-org/packages/chroma</code></td><td><a href="/api/packages/chroma">API 文件</a></td><td>HTTP/JSON API 子集</td><td>未知</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="s3"><td>儲存</td><td><code>s3</code></td><td>AWS S3 / MinIO 協議</td><td><code>s3 #github.com/xulang-org/packages/s3</code></td><td><a href="/api/packages/s3">API 文件</a></td><td>S3 HTTP 物件 API 子集</td><td>AWS SigV4</td><td>HTTPS 請求路徑；fd 池仍為明文</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="grpc"><td>協議</td><td><code>grpc</code></td><td>gRPC / HTTP/2 客戶端</td><td><code>grpc #github.com/xulang-org/packages/grpc</code></td><td><a href="/api/packages/grpc">API 文件</a></td><td>HTTP/2 unary；無流式 / 壓縮</td><td>未知</td><td>HTTPS unary + ALPN h2；fd 池為 h2c</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="websocket"><td>協議</td><td><code>websocket</code></td><td>WebSocket 雙工通訊</td><td><code>websocket #github.com/xulang-org/packages/websocket</code></td><td><a href="/api/packages/websocket">API 文件</a></td><td>HTTP Upgrade / WebSocket 幀</td><td>未知</td><td>wss 使用 connect_secure；須保留 transport.Conn</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="dns"><td>協議</td><td><code>dns</code></td><td>DNS 自定義解析</td><td><code>dns #github.com/xulang-org/packages/dns</code></td><td><a href="/api/packages/dns">API 文件</a></td><td>TCP DNS A 記錄查詢；非 UDP</td><td>未知</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="smtp"><td>協議</td><td><code>smtp</code></td><td>SMTP 郵件傳送</td><td><code>smtp #github.com/xulang-org/packages/smtp</code></td><td><a href="/api/packages/smtp">API 文件</a></td><td>SMTP 郵件投遞</td><td>AUTH LOGIN</td><td>TLS 位元組流輔助介面；業務客戶端 TLS 未知</td><td>原生套接字；驗收未知</td></tr>
+    <tr data-package="transport"><td>共享傳輸</td><td><code>transport</code></td><td>TCP / TLS / HTTP 分幀</td><td><code>transport #github.com/xulang-org/packages/transport</code></td><td><a href="/api/packages/transport">API 參考</a></td><td>TCP / TLS；HTTP/1.x 響應分幀</td><td>應用層認證未知</td><td>dial 使用 crypto/tls；可傳 tls.Config</td><td>原生套接字；驗收未知</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h2>5. 邊界與注意事項</h2>
+<ul>
+  <li><strong>SQLite 與 Metal 純 FFI 架構</strong>：SQLite 驅動現透過純 Xu 包 <code>sqlite_native</code> 動態載入（<code>dlopen</code>）系統 <code>libsqlite3</code>（Windows 平臺自動識別系統內建 <code>winsqlite3.dll</code>，亦可透過 <code>XU_SQLITE_LIBRARY</code> 覆蓋路徑），無需再透過 <code>make native</code> 編譯打包靜態 <code>.xulib</code>。Metal GPU 計算包透過 <code>metal_native</code> 動態載入 <code>libxu_metal.dylib</code>（可由 <code>metal/native/build.py</code> 構建，支援 <code>XU_METAL_LIBRARY</code> 覆蓋）。</li>
+  <li><strong>離線與生產構建（Frozen Builds）</strong>：在生產 CI/CD 流水線中，建議提交生成的 <code>vendor/</code> 和 <code>xu.lock</code>，並使用 <code>xu build main.xu --frozen</code>。編譯器將嚴格禁止任何外部網路請求，保障構建的 100% 確定性與安全。</li>
+</ul>
+
+<p>更多模組圖解析細節與原生模組規範，請參考：<a href="/docs/modules">模組與相依性規範 (Modules &amp; Dependencies)</a> 與 <a href="/docs/native">原生模組規範</a>。</p>
+
+<h2 id="metal-native">構建 Metal 原生動態庫（macOS 可選）</h2>
+<p>未匯入 <code>metal</code> 的應用無需構建 Metal 資源。在 Apple Silicon macOS 環境使用 Metal GPU 計算前，可先構建動態庫：</p>
+<pre><code class="language-shell">cd packages
+python3 metal/native/build.py</code></pre>

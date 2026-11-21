@@ -1,0 +1,314 @@
+<!--title: Guía de inicio rápido-->
+
+<p class="crumb">Docs</p>
+<h1>Get started</h1>
+<p class="banner">Xu {{xu_version}} Official Getting Started Guide · Modern GC-free systems language · Static AOT compilation · Ownership &amp; borrow · Fully integrated lean toolchain</p>
+
+<p>Xu is a modern, high-performance systems programming language without runtime garbage collection (GC-free). It combines a <strong>thin, intuitive syntax</strong>, <strong>deterministic compile-time ownership and borrow checking</strong>, and <strong>fast static AOT native compilation</strong>. Xu source files use standard UTF-8 encoding with the <code>.xu</code> extension.</p>
+
+<!-- 4-step quickstart pipeline -->
+<div class="doc-process-flow">
+  <div class="flow-header">
+    <div class="flow-title">
+      <i class="xi xi-code"></i>
+      <span>End-to-End 4-Step Quickstart Pipeline</span>
+    </div>
+    <div class="flow-subtitle">A standardized engineering workflow from installation and project initialization to coding, testing, and production builds</div>
+  </div>
+
+  <div class="flow-steps-grid">
+    <div class="flow-step-card">
+      <div class="step-badge">1</div>
+      <div class="step-body">
+        <div class="step-name">Install the SDK &amp; verify your compiler</div>
+        <div class="step-meta">Use <a href="#quick-install">Quick Install</a> or <a href="/download">download the compiler</a>, then run <code>xu --version</code> to verify it. You can also try the <a href="/playground">WebAssembly Playground</a> in your browser.</div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card">
+      <div class="step-badge">2</div>
+      <div class="step-body">
+        <div class="step-name">Initialize the project manifest &amp; layout</div>
+        <div class="step-meta">Create and enter the project directory, then run <code>xu init myapp</code> to generate <code>xu.xun</code> and <code>main.xu</code> there</div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card">
+      <div class="step-badge">3</div>
+      <div class="step-body">
+        <div class="step-name">Write entrypoint &amp; business logic</div>
+        <div class="step-meta">Start with <code>@main</code> on line 1, import stdlib <code>#fmt</code> or external drivers, and write your functions</div>
+      </div>
+    </div>
+
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+
+    <div class="flow-step-card flow-step-highlight">
+      <div class="step-badge">4</div>
+      <div class="step-body">
+        <div class="step-name">Run, test &amp; optimize for release</div>
+        <div class="step-meta"><code>xu run .</code> for instant execution · <code>xu test test.example.xu</code> for test suites · <code>xu build .</code> for release binaries</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2 id="quick-install">1. Installation &amp; Environment Setup</h2>
+<div class="hero-install">
+  <div class="hero-install-header">
+    <span class="hero-install-title"><i class="xi xi-bolt xi-brand"></i> <strong>Quick Install via Terminal</strong></span>
+    <div class="hero-install-tabs" role="tablist" aria-label="Choose your operating system">
+      <button type="button" role="tab" class="hero-install-tab is-active" data-tab="unix" aria-selected="true"><i class="xi xi-terminal"></i> macOS / Linux</button>
+      <button type="button" role="tab" class="hero-install-tab" data-tab="win" aria-selected="false"><i class="xi xi-terminal"></i> Windows (PowerShell)</button>
+    </div>
+  </div>
+  <div class="hero-install-body">
+    <div class="hero-install-pane is-active" data-pane="unix">
+      <pre><code class="language-shell">curl -fsSL https://xulang.org/install.sh | bash -s -- --online --version {{xu_version}} --yes</code></pre>
+    </div>
+    <div class="hero-install-pane" data-pane="win">
+      <pre><code class="language-shell">&amp; ([scriptblock]::Create((irm https://xulang.org/install.ps1))) -Online -Version "{{xu_version}}"</code></pre>
+    </div>
+  </div>
+</div>
+<p>You can also <a href="/download">download the compiler</a> and choose a native installer or SDK archive for your platform. See the <a href="/docs/install">Installation Guide</a> for setup and environment variables.</p>
+<p>After installation, open a new terminal and run these commands to verify the toolchain:</p>
+
+<pre><code class="language-shell"># Verify compiler version and target build metadata
+xu --version
+
+# View categorized subcommands and formatted help manual
+xu --help</code></pre>
+
+<p class="note"><strong>Zero-Install Web Trial:</strong> If you prefer to explore Xu before installing locally, try the <a href="/playground">WebAssembly Interactive Playground</a> to write, compile, and run Xu programs right in your browser.</p>
+
+<h2>2. Create Your First Project (<code>xu init</code>)</h2>
+<p>Xu organizes projects using directories as module boundaries. Create and enter a directory, then use <code>xu init</code> to initialize the module there. The command writes <code>xu.xun</code> and <code>main.xu</code> in the current directory; it does not create a subdirectory:</p>
+
+<pre><code class="language-shell"># Create a directory, then initialize the module in the current directory
+mkdir myapp && cd myapp
+xu init myapp</code></pre>
+
+<p>The standard project directory layout created by initialization:</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>File / Directory</th>
+      <th>Type</th>
+      <th>Responsibility &amp; Role</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>xu.xun</code></td>
+      <td>Project Manifest</td>
+      <td>Declares module identity, project version, minimum Xu compiler version, and external dependencies under <code>require:</code></td>
+    </tr>
+    <tr>
+      <td><code>main.xu</code></td>
+      <td>Executable Entrypoint</td>
+      <td>Primary program source code, starting with <code>@main</code> on line 1 and containing the <code>fn main()</code> function</td>
+    </tr>
+    <tr>
+      <td><code>xu.lock</code></td>
+      <td>Deterministic Lockfile</td>
+      <td>Automatically generated after running <code>xu get</code> or <code>xu install</code>; pins the exact dependency graph and SHA-256 digests</td>
+    </tr>
+    <tr>
+      <td><code>vendor/</code></td>
+      <td>Local Dependency Snapshot</td>
+      <td>Local source snapshot cache of external packages, enabling 100% offline reproducible builds (<code>--offline</code> / <code>--frozen</code>)</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>3. Writing Code &amp; Quick Tour</h2>
+<p>Open <code>main.xu</code> in your project and write a greeting program with basic error handling:</p>
+
+<pre><code class="language-xu">@main
+#fmt
+#errors
+
+fn calculate_ratio(a int, b int) int {
+    if b == 0 {
+        // Use &gt;&gt; to throw structured errors
+        &gt;&gt; errors.new("division by zero")
+    }
+    // Use &lt;&lt; to return computed results
+    &lt;&lt; a / b
+}
+
+fn main() int {
+    fmt.println("Hello, Xu World!")
+
+    // Call functions that may error, using or (err) to catch and handle
+    val := calculate_ratio(10, 2) or (err) {
+        fmt.println("Error:", err.msg())
+        &lt;&lt; 1
+    }
+
+    fmt.println("Result:", val)
+    &lt;&lt; 0
+}</code></pre>
+
+<h2>4. Statement Symbols You Will Recognize</h2>
+<p>Xu replaces boilerplate keywords with concise, expressive statement symbols:</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Symbol / Syntax</th>
+      <th>Category</th>
+      <th>Semantics &amp; Design</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>&lt;&lt;</code> / <code>&lt;&lt; expr</code></td>
+      <td>Control Flow</td>
+      <td>Return statement. Returns <code>void</code> when bare, or returns the operand value.</td>
+    </tr>
+    <tr>
+      <td><code>&gt;&gt; expr</code></td>
+      <td>Error Handling</td>
+      <td>Throws an <code>errors.Error</code> structured error object.</td>
+    </tr>
+    <tr>
+      <td><code>or (err) { ... }</code></td>
+      <td>Error Recovery</td>
+      <td>Trailing error handler block (Catch) that executes when an expression yields an error.</td>
+    </tr>
+    <tr>
+      <td><code>&lt;&lt;&lt; expr</code></td>
+      <td>Process Control</td>
+      <td>Immediate process termination (Exit), returning an integer status code to the OS.</td>
+    </tr>
+    <tr>
+      <td><code>&lt;-</code></td>
+      <td>Loop Control</td>
+      <td>Breaks out of the enclosing loop (statement start, no operand).</td>
+    </tr>
+    <tr>
+      <td><code>-&gt;</code></td>
+      <td>Loop Control</td>
+      <td>Continues to the next loop iteration.</td>
+    </tr>
+    <tr>
+      <td><code>$name := val</code></td>
+      <td>Ownership Binding</td>
+      <td>Declares a mutable variable (variable bindings are immutable by default).</td>
+    </tr>
+    <tr>
+      <td><code>xu f(args)</code></td>
+      <td>Lightweight Concurrency</td>
+      <td>Spawns a lightweight coroutine executing <code>f</code>, scheduled by the zero-overhead runtime.</td>
+    </tr>
+    <tr>
+      <td><code>chan T</code></td>
+      <td>Concurrency Channel</td>
+      <td>Typed communication channel (e.g. <code>chan int{cap: N}</code>), paired with <code>ch &lt;- val</code> to send and <code>val := &lt;-ch</code> to receive.</td>
+    </tr>
+    <tr>
+      <td><code>@main</code></td>
+      <td>Package Identity</td>
+      <td>Marks the file as an executable entrypoint on line 1, generating the top-level <code>main</code> symbol.</td>
+    </tr>
+    <tr>
+      <td><code>#pkg</code> / <code>alias #pkg</code></td>
+      <td>Module Imports</td>
+      <td>Prefix with <code>#</code> for official standard libraries; external packages use <code>alias #full/module/path</code>.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>5. Modules &amp; Packages (<code>xu get</code> / <code>xu install</code>)</h2>
+<p>For database drivers and service clients, declare the matching SDK source snapshot under <code>require:</code> in <code>xu.xun</code>:</p>
+
+<pre><code class="language-xun">module: myapp
+version: !ver 0.1.0
+xu: !ver {{xu_version}}
+
+require:
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@96693e6cce8d51eba45e4f68dc12ce06f7a2336b</code></pre>
+<p>Install the declared sources, or use the <a href="/docs/packages">SDK bundle</a> as a local dependency:</p>
+<pre><code class="language-shell">xu install</code></pre>
+
+<p>Import specific sub-packages directly in your source code using explicit aliases (such as <code>mysql</code>, <code>redis</code>, <code>s3</code>):</p>
+
+<pre><code class="language-xu">@main
+#fmt
+mysql #github.com/xulang-org/packages/mysql
+
+fn main() int {
+    _ := mysql.driver()
+    fmt.println("MySQL driver initialized.")
+    &lt;&lt; 0
+}</code></pre>
+
+<h2>6. Common Daily CLI Workflows</h2>
+<p>Xu provides a comprehensive, modern command-line toolchain for every stage of development:</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Command</th>
+      <th>Workflow Stage</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>xu run .</code></td>
+      <td>Development</td>
+      <td>Analyzes dependencies, quickly compiles, and executes in memory for rapid iteration.</td>
+    </tr>
+    <tr>
+      <td><code>xu check .</code></td>
+      <td>Diagnostics</td>
+      <td>Performs syntax, borrow-check, and type analysis without binary emission for millisecond feedback.</td>
+    </tr>
+    <tr>
+      <td><code>xu test test.example.xu</code></td>
+      <td>Quality Assurance</td>
+      <td>Recursively discovers and runs all <code>test_*</code> unit tests and benchmark assertions in parallel.</td>
+    </tr>
+    <tr>
+      <td><code>xu fmt .</code></td>
+      <td>Code Style</td>
+      <td>Automatically formats all <code>.xu</code> sources following official style conventions.</td>
+    </tr>
+    <tr>
+      <td><code>xu build . -o bin/app</code></td>
+      <td>Release Build</td>
+      <td>Enables full machine code optimizations and produces a standalone native binary.</td>
+    </tr>
+    <tr>
+      <td><code>xu lsp</code></td>
+      <td>Editor Integration</td>
+      <td>Launches the self-hosted Language Server daemon to power VS Code, Cursor, and other IDEs.</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>7. Next Steps &amp; Learning Paths</h2>
+<p>Once you are comfortable with the basics, explore the following topics:</p>
+
+<ul>
+  <li><strong>Step-by-step tutorials:</strong> Follow <a href="/docs/tutorial/01">Tutorials 01–16</a> to master data types, ownership, borrow checking, and coroutine channels.</li>
+  <li><strong>Set up your editor:</strong> See the <a href="/docs/vscode">VS Code / Cursor Integration Guide</a> to enable autocompletion, go-to-definition (F12), and format on save.</li>
+  <li><strong>Explore external drivers:</strong> Browse <a href="/docs/packages">Official External Packages</a> for 29 service integrations, import examples, and each package's protocol and platform limits.</li>
+  <li><strong>Native C/C++ interop:</strong> Check the <a href="/docs/native">Native Modules &amp; .xulib Specification</a> to link standard <code>.a</code> archives or portable slices.</li>
+  <li><strong>XACP control channel:</strong> Read the <a href="/docs/cli#xacp">CLI reference</a> and the <a href="/api/xacp"><code>#xacp</code> API</a>. <code>xu build --xacp</code> embeds discovery; importing <code>#xacp</code> alone does not open stdio or loopback TCP. The API is included in the matching published SDK; native control sessions and UI runtime acceptance remain unverified.</li>
+  <li><strong>Formal language rules:</strong> Review the <a href="/docs/lang/goals">Language Specification</a> and the <a href="/benchmarks">{{benchmark_group_count}} Benchmark Groups / {{benchmark_count}} Measured Variants</a>.</li>
+</ul>

@@ -1,0 +1,43 @@
+<!--title: 限制與現狀 — Xu {{xu_version}}-->
+<p class="crumb"><a href="/docs/start">文件</a></p>
+<h1>限制與現狀 — Xu {{xu_version}}</h1>
+<p class="meta">2026-11-18 · 與 Xu {{xu_version}} 正式 SDK 對齊</p>
+<p class="banner">官網與對應 SDK 版本：Xu {{xu_version}}。Xu 仍處於 0.x 階段，已釋出產物以 GitHub Releases 為準。</p>
+<div class="doc-table-wrap"><table><thead><tr><th>子系統</th><th>狀態</th><th>支援範圍與邊界</th></tr></thead><tbody>
+<tr><td><strong>記憶體與資源</strong></td><td>已實現</td><td>單所有者、共享/獨佔借用、move 檢查與確定性 drop；File/Conn 資源在作用域退出時自動關閉。</td></tr>
+<tr><td><strong>安全邊界</strong></td><td>設計約束</td><td>不開放 unsafe、reflect 和使用者可見的裸 runtime 指標；越界索引與除零明確失敗。</td></tr>
+<tr><td><strong>原生 AOT 與 WASM</strong></td><td>按目標驗證</td><td>支援 macOS arm64/x64、Linux arm64/x64/loongarch64/riscv64、Windows x64/arm64、WebAssembly (wasm32-wasi) 及 Thumb/RISC-V 裸機目標；生成支援不代表全部庫均透過目標機執行驗收。</td></tr>
+<tr><td><strong>模組相依性</strong></td><td>已實現，保留邊界</td><td>斜槓路徑身份、顯式 file/Git/tar 來源、SemVer 最低要求與 MVS、XUPROXY/私有路徑繞過、內容鎖、vendor 快照、離線/凍結構建與程序鎖。</td></tr>
+<tr><td><strong>獨立校驗日誌</strong></td><td>客戶端已實現</td><td>0.8.4 新增固定公鑰 XUSUMDB 校驗與 XUNOSUMDB 策略；公共 Xu 服務和獨立見證仍待發布，未配置或 off 時保持首次使用信任。</td></tr>
+<tr><td><strong>網路與 I/O</strong></td><td>平臺差異</td><td>Unix 支援 TCP/UDP IPv4/IPv6 與 Unix 域套接字；原生 epoll/kqueue/IOCP Socket 就緒等待；已提供流式 I/O 和明確進度結果。Windows TCP dial/listen 仍未支援，raw IP 與 TLS 另有平臺邊界。</td></tr>
+<tr><td><strong>SQL 與擴充套件包</strong></td><td>獨立模組</td><td>database/sql 提供連線池、事務和驅動契約；SDK 內 packages 模組 1.0.2 提供 29 個服務整合包及共享 transport，MySQL/PostgreSQL 使用協議驅動，SQLite 使用原生 C 資源。</td></tr>
+<tr><td><strong>密碼學</strong></td><td>按包說明</td><td>包含 SM2/SM3/SM4/SM9/ZUC/GMTLS 的 Xu 實現；API 可用不代表已取得商用密碼認證。</td></tr>
+<tr><td><strong>桌面 GUI</strong></td><td>需宿主工具鏈</td><td>桌面打包已有 macOS .app、Windows .exe、Linux ELF 路徑；提供人體工學 Screen 螢幕上下文抽象與統一樣式控制元件；須有 GTK4/WebKitGTK 或 WebView2 及匹配工具鏈，並在目標機驗證。</td></tr>
+<tr><td><strong>GPU 與視窗系統</strong></td><td>已實現底層抽象</td><td>包含 <code>#gpu</code>、<code>#gpu/layout</code>、<code>#window</code>、<code>#window/events</code>；支援無視窗 GPU 裝置、統一緩衝區/紋理傳輸、命令錄製、計算與渲染通道、柵欄回讀；獨立視窗生命週期與按視窗輸入事件佇列（鍵盤、指標、滾輪與文字/IME），需宿主平臺圖形驅動或 SDL 3.2+ 執行庫支援。</td></tr>
+<tr><td><strong>共享庫匯出</strong></td><td>基礎型別簽名</td><td>--shared 支援 int、bool、string、f64、i32、u32、u8；原生 .a/.xulib 相依性有獨立資源邊界。</td></tr>
+<tr><td><strong>Map 容器</strong></td><td>已實現</td><td>支援 int/string 鍵；缺鍵直接索引明確失敗，需要允許缺鍵時使用存在性檢查或庫 API。</td></tr>
+<tr><td><strong>XACP 控制通道</strong></td><td>API 已釋出；執行待驗</td><td><a href="/api/xacp"><code>#xacp</code></a> 已包含在正式 {{xu_version}} SDK 提取結果中。hosted native 啟動控制使用 <code>--xacp</code> / <code>--xacp-port</code>，stdio 與 <code>127.0.0.1</code> TCP 均採用 <code>XACP/1</code> 長度字首。宿主未設定令牌時 hello 至多授予 INFO；宿主令牌匹配後可請求 <code>PERM_ALL</code> 的子集。<code>proc.status</code> 提供 pid 響應；輸出/UI 操作需要相應許可權和介面卡。啟動控制不註冊 Screen。UI 附著需要註冊和輪詢，並有請求期限；呼叫方仍需程序/I/O 超時。沒有 TLS 或非迴環繫結；Windows 啟動器 <code>record</code> 不可用。原生會話、UI 控制、截圖和各平臺執行驗收仍待驗。匯入包不會安裝控制通道。</td></tr>
+<tr><td><strong>工具與編輯器</strong></td><td>完全實現</td><td>提供開箱即用原生 Setup 離線安裝嚮導（支援 Windows/macOS/Linux 全域性環境變數自動配置）；優先可執行檔案探測標準庫消除全域性環境劫持；build/run/check/test/debug/install/get/fmt/map/doc/doctor/lsp 可用；up/update 支援直接下載官方二進位制 Release 自更新；VS Code 擴充套件提供語法高亮與基於原生 <code>xu-lsp</code> 的完整語言服務（跳轉定義、補全、懸停、實時診斷、大綱、重新命名與引用）。</td></tr>
+</tbody></table></div>
+<h2>近期進展與待完成項</h2>
+<p>Xu 0.13.1 全面達成標準庫核心模組零樁審計：修正 <code>compress/zstd</code> 截斷校驗，重構 <code>sync.Cond</code> 登記佇列單通知與廣播精準喚醒，實現 <code>os/exec</code> 跨平臺雙向管道（<code>stdin_pipe</code>/<code>stdout_pipe</code>/<code>stderr_pipe</code>）與系統訊號捕獲，引入 <code>net/http</code> HTTPS 連線複用、Windows 原生 <code>WSAPoll</code> 零延遲批次就緒檢測、HTTP/2 哈夫曼解碼、real <code>SOCK_RAW</code> 原始套接字，以及透過 <code>$env:ZONEINFO</code> 載入外部 IANA TZif 時區資料。六個平臺的原生 SDK 均透過完整驗收。詳見<a href="/blog/xu-0-13-1">釋出說明</a>。</p>
+<p>Xu 0.12.6 補全跨架構 C FFI（支援 union/位域、extern 全域性變數、C 閉包回撥與 <code>xu cbind</code>），新增原生移動端遊戲宿主（<code>--phone-profile game</code>）與 <a href="/api/app"><code>#app</code></a>，全面加固借用/移動/unsafe/MIR drop 檢查並接入 67 項 <code>memsafe-gate</code> 迴歸門禁，同時帶來 x64 XMM/SSE2、ARM64/x64 條件選擇與 <code>lea</code> 融合、GVN/BCE/ifconv 最佳化以及 Base64/MD5/字串熱路徑加速。六個平臺的原生 SDK 均透過完整驗收。詳見<a href="/blog/xu-0-12-6">釋出說明</a>。</p>
+<p>Xu 0.12.5 帶來純 Xu 編寫的 <code>#internal/sdl</code> 動態 FFI 後端與無宿主 <code>#ui/font</code> 字型棧，新增 <code>#gpu</code> SoftBlob CPU 記憶體安全模型、XDF1 幀匯出無頭回放、多點觸控 <code>touch_id</code> 標識與 Zero-GC 引用所有權增強。六個平臺的原生 SDK 均透過安裝與協議驗收。詳見<a href="/blog/xu-0-12-5">釋出說明</a>。</p>
+<p>Xu 0.12.4 擴充套件型別化 MIR 及 ARM64、x64 最佳化，並新增<a href="/docs/phone">移動專案生成</a>和 <a href="/api/ui/phone"><code>#ui/phone</code></a>。六個平臺的原生 SDK 已透過安裝和執行驗收。移動端驗證覆蓋專案生成和 ARM64 目標檔案格式。詳見<a href="/blog/xu-0-12-4">釋出說明</a>。</p>
+<p>Xu 0.12.3 恢復帶型別 MIR 的內聯、整數尾遞迴與週期迴圈摺疊。字串重複只分配一次輸出緩衝區。支援的平臺使用原生指令加速 AES、ARM64 SHA-256、位運算和十六進位制編解碼。Linux 和 macOS 的多個 I/O 等待者共享每輪空閒輪詢。標準庫增加 GPU 渲染與計算通道、型別化視窗表面及逐視窗輸入事件。詳見<a href="/blog/xu-0-12-3">釋出與遷移說明</a>。</p>
+<p>Xu 0.12.2 使用帶型別的 MIR，預設開啟最佳化，可用 <code>--no-opt</code> 關閉。已驗收 Linux、macOS 和 Windows 的 ARM64 與 x64 原生 SDK。詳見<a href="/blog/xu-0-12-2">釋出與遷移說明</a>。</p>
+<p>Xu 0.11.4 加入符合條件的 ARM64 兄弟尾呼叫、純標量加法遞迴迴圈及有界位元組處理最佳化，修復 XUN duration、巢狀深度、多行與帶型別列表行為。ESP32 Wi-Fi/BLE 共存仍為實驗功能；完整 MTU 外部應答及已說明的網路、安全能力仍有未完成項。詳見<a href="/blog/xu-0-11-4">釋出與遷移說明</a>。</p>
+<p>Xu 0.11.3 新增經過檢查的同步 i64 批次借用和 ESP32 協議基礎元件，修復數值邊界與擁有型字串切片，併為 Windows SDK 安裝器宣告當前使用者執行許可權。ESP32 標準 Wi-Fi 裝置介面仍未接入，詳見<a href="/blog/xu-0-11-3">釋出說明與實現限制</a>。</p>
+<p>0.10.7 修復完整 SDK 覆蓋重灌，並讓安裝器與更新器共用校驗、備份和失敗恢復流程。見<a href="/blog/xu-0-10-7">補丁說明</a>。</p>
+<p>0.10.6 將修正後的官方示例裝入完整 SDK，並在安裝後檢查 UI、WebSocket 與 DNS 示例，修復 0.10.5 的匯入常量遷移遺漏。升級與驗證範圍見<a href="/blog/xu-0-10-6">修正版說明</a>。</p>
+<p>0.10.5 加入 <code>xu debug</code> 原始碼除錯、編譯器與標準庫修復，以及保留文件 URI 的 LSP 診斷；提供原生安裝器和標準庫更新進度。常量遷移為 <code>UPPER_SNAKE_CASE</code>，包括匯入的標準庫常量；函式、變數與欄位保持 snake_case。詳見<a href="/blog/xu-0-10-5">釋出與遷移說明</a>。</p>
+<p>0.10.2 修復編譯器與工具鏈自感知，消除全域性環境劫持；帶來原生非阻塞 Socket 就緒等待（epoll / kqueue / IOCP）、RFC1951 DEFLATE 壓縮與人體工學 UI Screen 抽象。詳見<a href="/blog/xu-0-10-2">釋出說明</a>。</p>
+<p>0.10.1 加入樣式控制元件與統一主題切換、桌面非同步請求及 Thumb-2 暫存器分配，並修復密碼學、HTTP 請求接收、正則工作預算、JSON 數字轉換與 DEFLATE 壓縮。<strong>遷移：</strong>處理正則匹配、查詢、分割和替換呼叫的錯誤；對併發 HTTP 處理器共享的可變狀態進行同步；畫布平移須顯式啟用。詳見<a href="/blog/xu-0-10-1">釋出與遷移說明</a>。</p>
+<p>0.9.4 補齊借用檢查的表示式遍歷與迴圈回邊活躍性，移除泛型宣告最多 4 個型別引數的限制，並加入逐 pass MIR 驗證、MIR 匯出與後端模式命中統計；ARM64 迴圈核心使用 SSA 匹配與迴圈旋轉。診斷用法見<a href="/docs/cli">命令列參考</a>。</p>
+<p><strong>遷移注意</strong>：此前相依性借用檢查遺漏才能編譯的程式，現在會收到診斷。請分離衝突借用，或在取得共享借用前結束可變使用。</p>
+<p>模組相依性繼續支援傳遞相依性、離線/凍結構建、MVS、代理和固定公鑰校驗客戶端；提供原生 Setup 單檔案離線安裝程式與 WebAssembly 演練場。官網 API 從對應正式 SDK 提取，收錄 {{api_standard_count}} 個標準庫/UI 包（包含 <a href="/api/xacp"><code>#xacp</code></a>）與 {{api_external_count}} 個擴充套件包，計數依據<a href="/api">生成清單</a>。{{benchmark_group_count}} 個橫測專案組（{{benchmark_count}} 個變體）的實測版本、日期與六平臺來源見<a href="/benchmarks">基準頁面</a>。</p>
+<p>仍待繼續：公共 Xu 代理/校驗服務、獨立見證、vanity 倉庫發現、目標平臺的完整執行驗收、共享檔案系統鎖與斷電永續性。現有目標生成能力和 API 宣告不替代這些驗收。</p>
+<p><a href="/blog/xu-0-10-5">Xu 0.10.5 釋出公告</a> · <a href="/blog/xu-0-10-2">Xu 0.10.2 釋出公告</a> · <a href="/blog/xu-0-10-1">Xu 0.10.1 釋出公告</a> · <a href="/blog/xu-0-9-4">Xu 0.9.4 釋出公告</a> · <a href="/blog/xu-0-9-3">Xu 0.9.3 釋出公告</a> · <a href="/blog/xu-0-8-13">Xu 0.8.13 釋出公告</a> · <a href="/blog/xu-0-8-12">Xu 0.8.12 釋出公告</a> · <a href="/blog/xu-0-8-11">Xu 0.8.11</a> · <a href="/benchmarks">{{benchmark_group_count}} 個專案組、{{benchmark_count}} 個變體的跨語言效能與資源橫測</a> · <a href="/blog/xu-0-8-4">Xu 0.8.x 進展與遷移</a> · <a href="/blog/packages-0-1-1">packages 0.1.1 進展</a></p>
+<p><a href="/docs/modules">模組與相依性</a> · <a href="/docs/packages">擴充套件包</a> · <a href="/docs/ui">UI / WebView</a> · <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a></p>
+
+<p>程式目前最多包含 100 種不同的結果型別。當前 transport 相依性下，全部驅動連線池綜合示例超過這一上限；請使用單獨的資料庫或服務示例。正式 API 快照僅收錄已透過對應 SDK 檢查的示例。</p>

@@ -1,0 +1,85 @@
+<!--title: コンパイラのインストールと環境設定-->
+<p class='crumb'><a href='/docs/start'>ドキュメント</a></p>
+<h1>Install</h1>
+<p class="banner">These docs target Xu {{xu_version}}. Download availability is determined by the actual assets on <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a>.</p>
+<p>Use a complete SDK with <code>bin/</code>, <code>src/</code>, and the tools. Standard-library sources are required to compile imports; placing a renamed compiler on PATH alone does not provide a complete development environment.</p>
+<h2>Option 1: Instant Browser Sandbox (Zero Install)</h2>
+<p>Try the <a href="/playground/">Online Playground</a> without installing anything. It runs a WebAssembly subset in your browser through scanning, parsing, borrow checking, and MIR interpretation. For the full native AOT toolchain, install the local SDK below.</p>
+
+<h2>Option 2: One-Liner Fast Install (Recommended)</h2>
+<p>The installer scripts detect the host platform and architecture (x86_64 and ARM64), download the complete SDK, and configure persistent environment variables. Install and uninstall scripts output pure 7-bit ASCII English to avoid terminal mojibake across diverse locales and code pages (such as Windows GBK/CP936):</p>
+
+<h3>macOS / Linux (One command in terminal)</h3>
+<pre><code># Detects architecture (ARM64 / x86_64), downloads, and configures environment automatically
+curl -fsSL https://xulang.org/install.sh | bash -s -- --online --version {{xu_version}} --yes</code></pre>
+<p>Or download standalone unprivileged CLI installers (self-contained binaries without third-party dependencies) directly from <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a>:</p>
+<pre><code>chmod +x xu-setup-linux-x64 &amp;&amp; ./xu-setup-linux-x64 -y</code></pre>
+
+<h3>Windows (PowerShell or GUI Wizard)</h3>
+<p><strong>PowerShell One-Liner:</strong></p>
+<pre><code class="language-shell">&amp; ([scriptblock]::Create((irm https://xulang.org/install.ps1))) -Online -Version "{{xu_version}}"</code></pre>
+<p><strong>Native GUI Wizard:</strong><br>
+Download <code>xu-setup-windows-x64.exe</code> or <code>xu-setup-windows-arm64.exe</code> from <a href="https://github.com/xulang-org/xu/releases">GitHub Releases</a> and double-click to run the zero-dependency self-rendered wizard. Automatically configures user <code>Path</code> and <code>XU_ROOT</code>.</p>
+
+<p class="banner"><i class="xi xi-check"></i> Open a <strong>new terminal window</strong> and type <code>xu --version</code> to run from anywhere.</p>
+
+<h2>Option 3: Standalone Native Installers &amp; Offline SDK Archives</h2>
+<p>For air-gapped environments, enterprise distribution, or explicit version pinning, download the native installer packages directly:</p>
+<div class="doc-table-wrap"><table>
+<tr><th>Operating System</th><th>Recommended Package</th><th>Details</th></tr>
+<tr>
+  <td><strong>Windows</strong></td>
+  <td>Download <code>xu-v{{xu_version}}-windows-x64-setup.exe</code><br>or <code>xu-setup-windows-x64.exe</code><br>(Select <code>windows-arm64</code> packages for ARM64 machines)</td>
+  <td>Self-contained offline installer. Double-click to launch the native GUI wizard (no WebView2 required) or execute <code>.\xu-setup-windows-x64.exe -y</code> in terminal. Automatically configures registry user <code>Path</code> and <code>XU_ROOT</code>.</td>
+</tr>
+<tr>
+  <td><strong>macOS</strong></td>
+  <td>Download <code>xu-v{{xu_version}}-macos-arm64.pkg</code><br>or <code>xu-setup-macos-arm64</code></td>
+  <td>Native macOS GUI package installer. Automatically installs to <code>/usr/local/xu</code> and sets up <code>/etc/paths.d/xu</code> for system-wide availability. Standalone unprivileged <code>xu-setup-macos-arm64</code> CLI installer is also available.</td>
+</tr>
+<tr>
+  <td><strong>Linux</strong></td>
+  <td>Download <code>xu-setup-linux-x64</code><br>or <code>xu-setup-linux-arm64</code></td>
+  <td>Native binary installer. Run <code>chmod +x xu-setup-linux-x64 &amp;&amp; ./xu-setup-linux-x64 -y</code> to automatically extract the SDK and configure Shell profile environment paths.</td>
+</tr>
+</table></div>
+<h2>Offline SDK Archive Installation</h2>
+<p>If you downloaded a full SDK archive (<code>.tar.gz</code> on Unix or <code>.zip</code> on Windows) from the <a href="/download">Download page</a> or GitHub Releases, the native installer is bundled directly at the root:</p>
+<pre><code># Windows: Double-click xu-setup.exe in File Explorer, or in terminal:
+.\xu-setup.exe -y
+
+# macOS / Linux: Run xu-setup directly in the extracted directory:
+./xu-setup -y</code></pre>
+<p>The default is the existing SDK selected by PATH, otherwise <code>~/.xu</code> (macOS .pkg defaults to <code>/usr/local/xu</code>). Use <code>--prefix /custom/path</code> to customize the target directory. In automated CI pipelines, use <code>./xu-setup --yes</code> or <code>.\xu-setup.exe --yes</code> to install all tools; for temporary evaluation, run <code>source env.sh</code> (or <code>. .\env.ps1</code> in PowerShell).</p>
+<h2>Verify Global Environment</h2>
+<p>After installation, open a <strong>new terminal window</strong> (CMD, PowerShell, Terminal, or VS Code integrated terminal) and verify that the toolchain is globally active:</p>
+<pre><code>xu --version
+xu env
+xu doctor</code></pre>
+<h2>Targets</h2>
+<div class="doc-table-wrap"><table><tr><th>System</th><th><code>--target</code></th><th>Default artifact</th><th>Details</th></tr>
+<tr><td>macOS</td><td><code>macos-arm64</code>, <code>macos-x64</code></td><td>Mach-O, no suffix</td><td>Apple Silicon and Intel architectures</td></tr>
+<tr><td>Linux</td><td><code>linux-arm64</code>, <code>linux-x64</code>, <code>linux-loongarch64</code>, <code>linux-riscv64</code></td><td>ELF, no suffix</td><td>Mainstream servers, LoongArch, and embedded Linux</td></tr>
+<tr><td>Windows</td><td><code>windows-x64</code>, <code>windows-arm64</code></td><td>PE, <code>.exe</code></td><td>64-bit x86 and ARM64 native executables</td></tr>
+<tr><td>WebAssembly</td><td><code>wasm32-wasi</code></td><td>Wasm binary, <code>.wasm</code></td><td>WASI Preview 1 runtimes</td></tr>
+<tr><td>Bare metal</td><td><code>thumbv7em-none</code>, <code>riscv32imac-none</code></td><td>Bare-metal firmware binary</td><td>OS-less embedded microcontrollers</td></tr></table></div>
+<p>A supported target does not imply a published SDK asset or support for every library and desktop feature. See <a href="/docs/status">Status &amp; Limitations</a>.</p>
+<h2>Upgrade, reinstall and repair</h2>
+<p>Run the installation command above again to upgrade or repair the current SDK, including an old updater's version mismatch or an interrupted installation. Setup stages the complete SDK on the same filesystem, verifies every inventoried file and all ten tools, then replaces the directory. It prints the retained original SDK backup path. User data outside managed SDK components is preserved.</p>
+<p>Choose a destination with Unix <code>--prefix /path/to/xu</code> or PowerShell <code>-Prefix "C:\Tools\Xu"</code>. Its parent must be writable; a system installation may require administrator privileges. To leave terminal configuration untouched, use Unix <code>--no-modify-path</code>, PowerShell <code>-NoModifyPath</code>, or native Setup <code>--no-modify-path</code>.</p>
+<pre><code>xu --version
+xu env
+xu update --check
+# Once 0.10.7 or later is installed:
+xu update
+# Reinstall the current version and repair the full SDK:
+xu update --force</code></pre>
+<p>Setup and <code>xu update</code> share the complete SDK replacement process, including tools, standard library, packages, examples and editor files. Use <code>xu update --version &lt;version&gt;</code> to select a release. See <a href="/releases">release history</a> for version changes.</p>
+<h2>Verify compilation</h2>
+<pre><code>xu check hello.xu
+xu run hello.xu
+xu build hello.xu --output hello</code></pre>
+<p>macOS / Linux executables already have execute permission. In PowerShell, prefer <code>--output</code> for output paths.</p>
+<h2>Environment and source builds</h2>
+<p><code>XU_ROOT</code> selects the SDK or compiler checkout; <code>XU_STDLIB_ROOT</code> explicitly selects its <code>src/</code>. <code>XUPATH</code> adds search roots and does not replace external-module <code>require:</code> declarations. Keep <code>xu-fmt</code>, <code>xu-doc</code>, <code>xu-map</code>, <code>xu-doctor</code>, <code>xu-desktop</code>, and <code>xu-lsp</code> beside <code>xu</code> in bin.</p>
+<p>Sources are in the <a href="https://github.com/xulang-org/xu">xu repository</a>. <code>make xu</code> self-hosts with an existing hosted product seed and rebuilds the tools. A clean checkout requires a product seed and the bootstrap companion repository first. packages, examples, and vscode-xu are maintained separately.</p>

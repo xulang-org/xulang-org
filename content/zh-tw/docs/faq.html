@@ -1,0 +1,181 @@
+<!--title: 常見問題解答 (FAQ)-->
+<p class="crumb"><a href="/docs/start">文件</a></p>
+<h1>常見問題解答 (FAQ)</h1>
+<p class="banner">關於 Xu 語言設計、記憶體模型、編譯架構、桌面 UI、編輯器支援、相依性管理、原生互操作與 XACP 的核心問答</p>
+
+<div class="faq-toolbar" role="search" aria-label="FAQ 搜尋與篩選">
+  <div class="faq-search-wrap">
+    <i class="xi xi-search" aria-hidden="true"></i>
+    <input type="search" class="faq-search-input" id="faq-search" placeholder="搜尋問題或技術關鍵詞 (如 GC、Rust、UI、LSP、XACP)..." aria-label="搜尋常見問題">
+    <button type="button" class="faq-search-clear" id="faq-search-clear" aria-label="清空搜尋" hidden>&times;</button>
+  </div>
+  <div class="faq-controls">
+    <span class="faq-count-badge" id="faq-count" aria-live="polite">共 19 個問題</span>
+    <button type="button" class="faq-btn" id="faq-expand-all"><i class="xi xi-sliders"></i> 展開全部</button>
+    <button type="button" class="faq-btn" id="faq-collapse-all"><i class="xi xi-close"></i> 摺疊全部</button>
+  </div>
+</div>
+
+<div class="faq-categories" role="tablist" aria-label="FAQ 分類篩選">
+  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> 全部 (19)</button>
+  <button type="button" class="faq-cat-btn" data-cat="lang" role="tab" aria-selected="false"><i class="xi xi-cpu"></i> 語言核心與記憶體 (6)</button>
+  <button type="button" class="faq-cat-btn" data-cat="ui" role="tab" aria-selected="false"><i class="xi xi-monitor"></i> 原生桌面 UI (4)</button>
+  <button type="button" class="faq-cat-btn" data-cat="tools" role="tab" aria-selected="false"><i class="xi xi-terminal"></i> 工具鏈與生態 (4)</button>
+  <button type="button" class="faq-cat-btn" data-cat="xacp" role="tab" aria-selected="false"><i class="xi xi-shield-check"></i> XACP 協議與安全 (5)</button>
+</div>
+
+<section class="faq-list">
+  <details class="faq-item" id="what-is-xu" data-category="lang">
+    <summary><h3>什麼是 Xu 程式語言？</h3></summary>
+    <div class="faq-answer">
+      <p>Xu 是一門靜態型別系統程式語言，採用自研原生與 WebAssembly AOT 後端。它結合所有權推斷、借用檢查與確定性資源釋放，無需垃圾回收器，並內建協程（<code>xu f()</code>）與型別安全通道（<code>chan T</code>）。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="llvm-backend" data-category="lang">
+    <summary><h3>Xu 編譯器是否使用了 LLVM？為什麼採用自研後端？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>沒有使用 LLVM</strong>。Xu 編譯器採用自研 MIR（中間表示）、暫存器分配器及面向 Mach-O、ELF、PE 與 WebAssembly 的程式碼發射器。原生模組與桌面構建可能需要宿主庫及匹配的 C 工具鏈；詳見<a href="/docs/native">原生模組</a>與<a href="/docs/ui#build">桌面構建要求</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="memory-safety" data-category="lang">
+    <summary><h3>Xu 語言是否有垃圾回收（GC）？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>沒有</strong>。Xu 透過所有權推斷與 RAII 在作用域退出時確定性釋放資源，不相依性執行時垃圾回收器。所有權檢查及 <code>&amp;T</code> 共享借用 / <code>$&amp;T</code> 獨佔借用檢查，可防止受檢查 Xu 程式碼中的一類生命週期與別名訪問錯誤。</p>
+      <p>併發程式碼中的共享可變狀態仍需適當同步。原生程式碼、FFI 與併發庫各有安全要求；這些檢查不保證所有程式都沒有資料競爭、洩漏或未定義行為。分配、排程與 I/O 仍可能造成延遲波動。詳見<a href="/docs/lang/memory">所有權與借用</a>、<a href="/docs/lang/concurrency">併發</a>和<a href="/docs/native">原生模組邊界</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="rust-go-comparison" data-category="lang">
+    <summary><h3>Xu 相比 Rust 與 Go 有哪些區別？</h3></summary>
+    <div class="faq-answer">
+      <p>Xu 推斷所有權並確定性釋放資源，無需顯式生命週期標註（如 <code>&lt;'a&gt;</code>）。它提供類似 Go 的協程與型別安全通道，以所有權和借用檢查替代垃圾回收器。安全限制見<a href="#memory-safety">上文邊界說明</a>；執行時間與記憶體的實測結果見<a href="/benchmarks">基準看板</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="performance" data-category="lang">
+    <summary><h3>Xu 的編譯速度與實際執行效能如何？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>可復現的效能實測</strong>：{{benchmark_group_count}} 個專案組、{{benchmark_count}} 個負載變體覆蓋 ARM64、x86-64 六個平臺，對照 Xu、C、Rust、Go 和 Swift。<a href="/benchmarks">橫測看板</a>展示各平臺的執行耗時、CPU 時間、峰值記憶體與二進位制體積；C、Rust 按負載選取同平臺 O1–O3 的最小實測中位數。編譯耗時記錄在來源 CI 的原始報告中。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="wasm" data-category="lang">
+    <summary><h3>Xu 是否原生支援 WebAssembly (WASM)？</h3></summary>
+    <div class="faq-answer">
+      <p>Xu {{xu_version}} 支援生成面向 WASI 執行時的 <code>wasm32-wasi</code> 模組。<a href="/playground">瀏覽器演練場</a>使用 Xu {{playground_version}} 構建的直譯器在客戶端執行。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="native-ui" data-category="ui">
+    <summary><h3>Xu 支援原生桌面 UI 嗎？必須使用 WebView 嗎？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>支援，而且 WebView 是可選項。</strong>當前 Xu {{xu_version}} 正式 SDK 提供兩種介面方式：使用 <code>#ui/draw</code>、<code>#ui/layout</code> 和 <code>#ui/widgets</code> 編寫原生繪圖與控制元件介面；或使用 <code>#ui/webview</code> 承載 HTML/CSS/JavaScript，透過請求橋接與 Xu 互動。原生控制元件示例不需要 HTML、CSS 或 JavaScript。</p>
+      <p><code>#ui</code> 提供視窗、事件、選單、托盤、多視窗、剪貼簿和檔案對話方塊等桌面服務。控制元件由 Xu 在原生 Canvas 上繪製，系統選單與對話方塊使用宿主外觀。入口見<a href="/docs/ui">UI / WebView 開發指南</a>和<a href="/api/ui/widgets">控制元件 API 與示例</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="ui-widgets" data-category="ui">
+    <summary><h3>UI 有哪些控制元件？支援中文輸入和主題嗎？</h3></summary>
+    <div class="faq-answer">
+      <p>SDK 包含按鈕、勾選框、開關、單選、滑塊、步進器、標籤頁、列表與選擇器；Input / TextArea 支援原生文字輸入會話、IME、選區及複製貼上。還提供 Table、TreeView、Pagination、ComboBox、MultiSelect、DatePicker、TimePicker、ColorPicker，以及 Popover、Tooltip、Toast、Modal 等元件。</p>
+      <p>控制元件共享深色、淺色和高對比度主題，支援字型與文字縮放、密度、狀態樣式和區域性覆蓋。保留佈局與 <code>Screen</code> 上下文可協助組織控制元件、焦點、事件和重繪。繪圖、編輯與主題的用法見<a href="/docs/ui#styles">樣式指南</a>和<a href="/api/ui/widgets#examples">可執行示例</a>。</p>
+      <p><code>widgets.ActionDispatcher</code> 透過型別化函式表按控制元件 id 和 action kind 分派語義動作；XACP <code>ui.act</code> 操作已註冊的 <code>Screen</code> 後產生的動作可由應用交給同一分派器處理，見<a href="/api/ui/widgets">控制元件 API</a>與<a href="https://github.com/xulang-org/xu/blob/dev/src/ui/widgets/README.md">ActionDispatcher 說明</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="ui-platforms" data-category="ui">
+    <summary><h3>桌面 UI 支援哪些平臺？需要安裝什麼？</h3></summary>
+    <div class="faq-answer">
+      <p>桌面宿主覆蓋 macOS、Windows 和 Linux。macOS 使用 AppKit，網頁使用 WebKit；Windows 使用原生宿主，網頁需要 WebView2；Linux 使用 GTK4，網頁另需 WebKitGTK 6.0。構建與打包需要對應平臺的宿主工具鏈；原生繪圖與控制元件不要求應用嵌入 WebView。</p>
+      <p>先執行 <code>xu doctor --desktop</code> 檢查相依性，使用 WebView 時再加 <code>--webview</code>。應用目錄包含 <code>xu.xun</code>、<code>main.xu</code> 與應用圖示，使用 <code>xu build &lt;AppDir&gt; --desktop</code> 打包；完整命令見<a href="/docs/ui#build">構建指南</a>。編譯器支援某個目標不等於桌面 UI 已在該目標完成執行驗收；瀏覽器 WASM 演練場不執行桌面 UI。範圍見<a href="/docs/status">限制與現狀</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="ui-limits" data-category="ui">
+    <summary><h3>原生 UI 目前有哪些能力邊界？</h3></summary>
+    <div class="faq-answer">
+      <p>現有元件覆蓋常用桌面互動，仍有明確邊界：Input / TextArea 是純文字編輯器；Table 為有界資料表，排序與取數由應用處理；列表與樹不提供按需構建的無界資料虛擬化。富文字、高階表格、拖拽工作區與完整輔助技術橋接仍需進一步開發。</p>
+      <p>平臺文字排版、IME 與系統服務也需要在真實目標系統上驗收，不能以跨平臺編譯透過代替互動驗證。選用元件前請檢視<a href="/api/ui/widgets">對應 API 契約</a>和示例說明。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="editors-lsp" data-category="tools">
+    <summary><h3>Xu 支援哪些編輯器？如何啟用 LSP？</h3></summary>
+    <div class="faq-answer">
+      <p>官方 <a href="/docs/vscode">vscode-xu 擴充套件</a>支援 VS Code 與 Cursor，透過 <code>xu lsp</code> 啟動 SDK 中的 <code>xu-lsp</code> 語言伺服器，提供實時診斷、程式碼補全、跳轉定義、懸停文件、符號大綱、查詢引用、重新命名與格式化。</p>
+      <p>其他支援 LSP 的編輯器也可配置 <code>xu lsp</code> 作為伺服器命令，透過標準輸入輸出（stdin/stdout）交換 JSON-RPC 2.0 訊息。通常由編輯器自動啟動；可用 <code>xu lsp --help</code> 檢視幫助。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="get-vs-install" data-category="tools">
+    <summary><h3>xu get 與 xu install 有什麼區別？</h3></summary>
+    <div class="faq-answer">
+      <p>在已有 <code>xu.xun</code> 的專案根目錄執行 <code>xu get &lt;module&gt;@&lt;version&gt;</code>，即可新增或更新指定相依性：自動修改清單中的 <code>require:</code>、安裝原始碼到 <code>vendor/</code> 並更新 <code>xu.lock</code>。請將佔位符替換為真實模組與已確認釋出的 SemVer 標籤，不接受 <code>@latest</code>。官方擴充套件包請使用 <a href="/docs/packages">SDK 內建包或匹配的固定原始碼提交</a>，再執行 <code>xu install</code>。</p>
+      <p><code>xu install</code> 則安裝清單中已經宣告的相依性。兩者均支援 <code>--offline</code>；需要嚴格按現有鎖檔案構建時，使用 <code>xu build . --frozen</code>。詳見<a href="/docs/modules">模組與相依性</a>；官方 <a href="/docs/packages">packages 倉庫</a>提供 29 個擴充套件包。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="native-c" data-category="tools">
+    <summary><h3>如何用 xu native 整合 C 程式碼？</h3></summary>
+    <div class="faq-answer">
+      <p><code>xu native</code> 提供完整的原生模組流程：<code>xu native compile</code> 將 C 原始碼與介面後設資料編譯為 <code>.a</code>；<code>xu native archive</code> 為已有目標檔案封裝後設資料；<code>xu native pack</code> 將不同目標的切片打包為 <code>.xulib</code>；<code>xu native inspect</code> 與 <code>xu native extract</code> 用於檢查和提取切片。</p>
+      <p><code>.a</code> 用於單目標靜態庫，<code>.xulib</code> 用於攜帶介面契約與多個目標切片的分發。在 <code>macos-arm64</code> 或 <code>macos-x64</code> 上，構建時可直接傳入庫，例如 <code>xu build main.xu native/mylib.xulib -o app</code>。其他目標須輸出並轉換 XUOBJ，再外部連結。編譯 C 原始碼需安裝相應的 C 編譯工具鏈。引數與完整示例見<a href="/docs/native">原生模組與 .xulib 規範</a>，或執行 <code>xu native compile --help</code>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="target-platforms" data-category="tools">
+    <summary><h3>Xu 目前支援哪些作業系統與 CPU 晶片架構？</h3></summary>
+    <div class="faq-answer">
+      <p>程式碼發射目標包括 macOS arm64/x64、Linux arm64/x64/loongarch64/riscv64、Windows x64/arm64 與 WebAssembly（wasm32-wasi）；Thumb 與 RISC-V 裸機目標見<a href="/docs/status">狀態與限制</a>。可下載的 SDK 資產見<a href="/download">下載頁</a>。程式碼可發射、SDK 可下載不代表執行時或 GUI 行為已實測；沒有目標機驗收結果的路徑仍屬待驗。請按所需目標查閱狀態與<a href="/docs/packages">逐包限制</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="xacp-overview" data-category="xacp">
+    <summary><h3>什麼是 XACP？</h3></summary>
+    <div class="faq-answer">
+      <p>XACP（Xu Agent Control Protocol）是用 <code>xu build --xacp</code> 和/或 <code>--xacp-port PORT</code> 構建的 hosted native 程式的幀控制通道。該構建會嵌入發現資訊。<code>./app --xacp-help</code> 印表機器可讀摘要，其中 <code>capabilities</code> 為 <code>stdio</code>，並標明 TCP 是否啟用以及繫結地址。這取代了早先只含 help-only 的發現文字。</p>
+      <p><code>#xacp</code>（<code>src/xacp</code>）是與傳輸無關的安全核心：幀與 XUN 校驗、許可權、會話生命週期。單獨匯入 <code>#xacp</code> 不會裝上啟動期控制入口。stdio 與本機迴環 TCP 是 <code>--xacp</code> 構建插入的執行時鉤子。啟動器是 <code>xu xacp</code>，它轉而執行伴生工具 <code>xu-xacp</code>。模式為 <code>inspect</code>、<code>run</code>、<code>debug</code>、<code>record</code>、<code>control</code>、<code>attach</code>、<code>connect</code>。API 已包含在正式 {{xu_version}} SDK 提取結果中，契約依據對應釋出原始碼。原生會話和平臺/UI 執行驗收仍待驗。見<a href="/docs/cli#xacp">命令列參考</a>、<a href="/api/xacp"><code>#xacp</code> API</a>與<a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">對應釋出原始碼</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="xacp-stdio-tcp" data-category="xacp">
+    <summary><h3>XACP 的 stdio 與本機迴環 TCP 有什麼區別？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>stdio。</strong>用 <code>--xacp-stdio</code> 啟動目標，或執行 <code>xu xacp control &lt;program&gt;</code>。會話獨佔 stdin 與 stdout。幀使用 <code>XACP/1\n&lt;N&gt;\n</code>，後接恰好 <code>N</code> 個 UTF-8 位元組的純 XUN 正文。正文換行計入，字首不計入；沒有結束分隔符。傳輸層去掉字首後才呼叫 <code>parse_frame</code>，見<a href="/api/xacp">精確位元組示例</a>。業務 main 不會執行。</p>
+      <p><strong>本機迴環 TCP。</strong>用 <code>--xacp-port N</code> 構建，<code>N</code> 為 1..65535，然後執行 <code>&lt;app&gt; --xacp-tcp</code>。程序只監聽 <code>127.0.0.1:N</code>。另一個終端執行 <code>xu xacp connect PORT</code>，逐幀中繼同樣的請求與響應。埠 <code>0</code> 關閉 TCP（發現資訊為 <code>tcp: disabled (port 0)</code>），stdio 能力仍然保留。每個已接受的連線是獨立會話。連線按順序處理；失敗的對端只結束自己的會話，監聽繼續。stdio 會話結束時程序退出。<code>--</code> 之前的第一個控制標誌優先。普通啟動不監聽，也不讀取控制 stdin。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="xacp-hello" data-category="xacp">
+    <summary><h3>xacp.hello 會授予什麼許可權？</h3></summary>
+    <div class="faq-answer">
+      <p>控制會話開始時沒有許可權，首個請求必須是 <code>xacp.hello</code>，攜帶 <code>id: !i 1</code>、<code>ver: !ver 1.0.0</code> 和非空 <code>nonce</code>。宿主未設定非空 <code>XU_XACP_TOKEN</code> 時，允許的許可權僅為 <code>PERM_INFO</code>（1），即使客戶端提供 token 或宿主設定了 <code>XU_XACP_ALLOW_RAW=1</code> 也不例外。配置非空 token 後，hello 必須透過 <code>token</code> 提供它，並由 <code>crypto/subtle.constant_time_compare</code> 做常數時間比較；缺失、為空或不匹配均返回 <code>auth_failed</code> 並關閉會話。匹配時預設允許掩碼 15，只有宿主精確設定 <code>XU_XACP_ALLOW_RAW=1</code> 才允許 31。可選的 <code>permissions: !i 0..31</code> 用於請求許可權，實際授予 <code>requested &amp; allowed</code>；省略時請求整個允許掩碼。</p>
+      <p>development 許可權是顯式宿主策略，stdio 與 TCP 傳輸不會自動開啟；進入 <code>OPEN</code> 後許可權不可再更改，schema、幀大小、視窗與生命週期檢查仍然適用。預設啟用的 nonce 重放檢查在認證和許可權校驗後執行；檢測到重放時返回同一請求 id 的 <code>nonce_replay</code>，清除會話並斷開，不進入 <code>OPEN</code>。成功幀含整數 <code>id: !i</code> 和 <code>ok: !b true</code>，其 <code>data</code> 含 <code>state: OPEN</code>、經路徑過濾並加引號的 <code>nonce</code>、實際授予的整數 <code>permissions: !i</code> 與 <code>permission_label</code>：掩碼 0 為 <code>none</code>，1 為 <code>info</code>，31 為 <code>development</code>，其餘為 <code>custom</code>。<code>proc.output</code> 是否可用取決於宿主的輸出捕獲支援，不相依性 Screen；獨佔啟動介面卡沒有註冊 Screen，授權後的 UI 操作返回 <code>not_implemented</code>，應用呼叫 attach API 後註冊並持續 poll Screen，UI 操作便可經 Screen marshal 處理，能力邊界見下文。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="xacp-control-vs-run" data-category="xacp">
+    <summary><h3>xu xacp control 與 xu xacp run 有什麼區別？</h3></summary>
+    <div class="faq-answer">
+      <p><code>xu xacp run &lt;program&gt; -- args...</code> 會啟動程式，業務 main 會執行。工具會再插入一個 <code>--</code>，因此名為 <code>--xacp-help</code> 的業務引數不會觸發發現。<code>debug</code> 先列印 <code>--xacp-help</code>，再按同樣方式執行。它不是斷點偵錯程式。<code>record</code> 在 Unix 上流式輸出最多 1 MiB 的 stdout，stderr 仍留給終端。該輸出不是 XACP UI 錄製，Windows 上的 <code>record</code> 仍不可用。<code>inspect</code> 執行 <code>--xacp-help</code>，不接受業務引數，但同樣會執行目標程式。</p>
+      <p><code>control</code> 啟動 <code>--xacp-stdio</code>，繼承呼叫方的 stdin 與 stdout，跳過業務 main，並且不接受業務引數。<code>connect PORT</code> 不接收程式路徑，只把幀中繼到 <code>127.0.0.1:PORT</code>。<code>run</code>、<code>debug</code>、<code>record</code> 的使用者引數必須寫在工具自己的 <code>--</code> 之後。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="xacp-security" data-category="xacp">
+    <summary><h3>XACP 目前有哪些安全限制？</h3></summary>
+    <div class="faq-answer">
+      <p>啟動器只應指向受信任的本地可執行程式。<code>inspect</code> 也會執行它。沒有 TLS，也不能繫結 <code>127.0.0.1</code> 以外的地址。生成器只允許 hosted native 可執行程式：庫、共享物件、測試腳手架、嵌入式目標和 <code>--desktop</code> 都會被拒絕。未設定非空 <code>XU_XACP_TOKEN</code> 時僅允許 INFO 只讀訪問；需要控制能力時須設定 <code>XU_XACP_TOKEN</code>。</p>
+      <p>獨佔啟動介面卡（<code>--xacp-stdio</code>、<code>--xacp-tcp</code> 或 <code>xu xacp control</code>）跳過業務 main，沒有註冊 <code>Screen</code>，授權後的 UI 操作返回 <code>not_implemented</code>。庫函式 <code>xacp.attach_stdio()</code> / <code>xacp.attach_tcp(port)</code> 讓應用 main 執行，由應用註冊 Screen 並持續呼叫 <code>xacp.poll</code>；<code>ui.tree</code>、<code>ui.screenshot</code>、<code>ui.input</code>、<code>ui.act</code>、<code>ui.record</code> 經 Screen marshal 訪問真實介面。Screen 關閉或登出後，等待中的請求返回 <code>stale_window</code>，後續 UI 請求返回 <code>not_implemented</code>。<code>xu xacp attach &lt;program&gt; -- args...</code> 以安全的 <code>--</code> 引數邊界啟動應用，應用程式碼仍需呼叫 attach API。</p>
+      <p>按 dev 協議，已註冊 Screen 時，<code>ui.record</code> 在單次請求內完成有界 XAR1 取樣，返回 <code>mode</code>、<code>records</code>、<code>bytes</code>、<code>truncated</code> 和 <code>payload</code>。請求需提供正數 <code>win</code> 與 <code>mode: events|frames</code>，可選 <code>max_bytes</code>、<code>max_records</code>、<code>duration_ms</code>。客戶端重複請求拉取後續片段；每次請求只有一個響應，不保留跨請求錄製狀態或續傳遊標。<code>stream_required</code> 僅保留給無 sink/取樣能力的介面卡，內建 Screen 取樣路徑不返回它。</p>
+      <p><code>events</code> 目前是帶 <code>state=true</code> 的當前 <code>window/canvas/generation/open</code> 狀態觀測，沒有真實輸入事件日誌；取樣不注入輸入，也不推進應用事件迴圈。<code>frames</code> 僅返回尺寸且 <code>redacted=true</code>，不含畫素。CLI <code>xu xacp record</code> 錄製的是 stdout，與 <code>ui.record</code> 的 UI 取樣不同。引數邊界、截斷和錯誤語義見 <a href="/api/xacp#ui-record">API 錄製說明</a>。</p>
+      <p><code>proc.output</code> 在啟用 <code>--xacp</code> 插樁的 64 位 POSIX 生成宿主上捕獲 Xu 執行時 <code>print</code> / <code>eprint</code> 與執行時 fd-write 路徑的 fd 1/2 寫入，不捕獲外部原生程式碼或子程序的寫入。Windows 與未插樁構建返回 <code>not_implemented</code>；僅呼叫 attach API 不會增加輸出捕獲能力。</p>
+      <p><code>XU_XACP_WRITE_TIMEOUT_MS</code> 預設 10000 ms，範圍 1..600000；按每個完整出站幀計時，部分寫入進度不續期。超時視為傳輸失敗，不再傳送幀並關閉會話：獨佔 stdio 非零退出，TCP 只斷開該對端並繼續監聽；stderr 列印 <code>xacp: write timed out after W ms</code>，W 為配置值。Windows 管道或控制檯 stdio 的寫超時僅盡力生效，阻塞寫入仍可能無界等待。</p>
+      <p>寫超時與讀側 <code>XU_XACP_HELLO_TIMEOUT_MS</code>（預設 5000 ms）、<code>XU_XACP_IDLE_TIMEOUT_MS</code>（預設 60000 ms，0 關閉）及 attach UI 等待的 <code>XU_XACP_REQUEST_TIMEOUT_MS</code>（預設 5000 ms）相互獨立。<code>xu xacp connect</code> 自身沒有應用級響應截止，整體程序超時仍由呼叫方負責。完整契約見<a href="/api/xacp"><code>#xacp</code> API</a>與<a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/PROTOCOL.md">XACP 協議規格</a>。</p>
+    </div>
+  </details>
+</section>
+
+<p class="faq-footer-nav"><a href="/docs/start">起步教程</a> · <a href="/docs/ui">UI / WebView</a> · <a href="/docs/modules">模組與相依性</a> · <a href="/docs/native">原生模組與 .xulib 規範</a> · <a href="/docs/vscode">編輯器支援</a> · <a href="/docs/cli#xacp">命令列 / XACP</a> · <a href="/api/xacp"><code>#xacp</code> API</a></p>

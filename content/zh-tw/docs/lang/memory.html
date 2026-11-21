@@ -1,0 +1,134 @@
+<!--title: 記憶體模型-->
+<p class="crumb"><a href="/docs/start">文件</a> / 語言</p>
+<h1>記憶體模型</h1>
+<p>Xu 採用所有權推斷與確定性的作用域清理，不使用垃圾收集器。每個 owning 值同一時刻只有一個所有者；借用提供臨時訪問權，不轉移所有權。這些規則不等於證明外部程式碼或原生宿主資源不會洩漏。</p>
+<p>下列示例均使用官方 SDK v0.10.12 檢查。每個程式碼塊單獨儲存為一個 <code>.xu</code> 檔案；完整程式使用 <code>xu check</code>，僅含函式的示例使用 <code>xu check --lib</code>。下列診斷均為實際編譯器輸出的子串。含 <code>fn main</code> 的程式可執行；檔案示例須用本機 SDK。</p>
+<table>
+<tr><th>寫法</th><th>許可權 / 生命週期</th></tr>
+<tr><td>按值傳遞 owning <code>string</code> / <code>[]T</code></td><td>轉移所有權，原繫結不再可用。</td></tr>
+<tr><td><code>&amp;x</code></td><td>共享只讀訪問；多個共享借用可以共存。</td></tr>
+<tr><td>先宣告 <code>$x</code>，再取 <code>$&amp;x</code></td><td>可寫繫結，再取得獨佔可寫訪問權。</td></tr>
+<tr><td><code>*r</code></td><td>透過引用讀取標量；寫入須有獨佔引用。</td></tr>
+</table>
+<p><code>int</code> 等標量按值複製。Channel 值是指向同一個執行時通道的共享控制代碼，傳遞通道不會消耗傳送方的控制代碼。借用與傳送的邊界見<a href="/docs/lang/concurrency">併發</a>。</p>
+
+<h2 id="move">Move：使用新的所有者</h2>
+<p>賦值、按值傳參、返回值、寫入 owning 槽都會轉移 owning 值。Move 後應使用目標繫結；只有 API 明確提供複製操作時才進行克隆。</p>
+<pre id="move-pass"><code class="language-xu">@main
+
+fn main() int {
+    text := &quot;owned&quot;
+    next := text
+    println(next)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>owned</code>.</p>
+<pre id="move-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    text := &quot;owned&quot;
+    next := text
+    println(text)
+    println(next)
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>use of moved value &#x27;text&#x27;</code>.</p>
+
+<h2 id="shared">共享：讀取時不改變所有者</h2>
+<p>共享引用可以共存。共享借用存活期間，不能修改、move 或獨佔借用所有者。借用可以在最後一次使用後結束，不必等到外層作用域結束：下例的賦值位於兩次讀取之後。</p>
+<pre id="shared-pass"><code class="language-xu">@main
+
+fn main() int {
+    $value := 1
+    first := &amp;value
+    second := &amp;value
+    println(*first + *second)
+    value = 2
+    println(value)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>2 / 2</code>.</p>
+<pre id="shared-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    $value := 1
+    view := &amp;value
+    value = 2
+    println(*view)
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>cannot assign to &#x27;value&#x27; because it is borrowed</code>.</p>
+
+<h2 id="exclusive">獨佔：同一時刻只有一個寫者</h2>
+<p>用 <code>$value</code> 宣告可寫所有者，再取 <code>$&amp;value</code>。獨佔借用存活期間排斥對所有者的其他訪問。寫者最後一次使用後可以再共享讀取；兩個重疊的寫者會被拒絕。</p>
+<pre id="exclusive-pass"><code class="language-xu">@main
+
+fn main() int {
+    $value := 1
+    writer := $&amp;value
+    *writer = 2
+    println(*writer)
+    view := &amp;value
+    println(*view)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>2 / 2</code>.</p>
+<pre id="exclusive-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn bad() {
+    $value := 1
+    first := $&amp;value
+    second := $&amp;value
+    println(*first)
+    println(*second)
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>cannot borrow &#x27;value&#x27; as mutable because it is also borrowed</code>.</p>
+
+<h2 id="scope-release">作用域釋放：所有者結束，借用不能逃逸</h2>
+<p>普通 owned 值離開作用域時釋放，正常返回也會清理；move 會轉移清理責任。<code>os.File</code> 等帶編譯器管理 drop 鉤子的資源型別會兜底關閉資源。若需要觀察關閉錯誤，應顯式呼叫 <code>File.close()</code>；兜底清理會忽略關閉錯誤。</p>
+<p><strong>僅限本機 SDK。</strong> 此程式會在當前目錄建立 <code>scope-release.txt</code>。<code>write_once</code> 透過借用寫檔案，本地檔案所有者在函式返回時清理。</p>
+<pre id="scope-pass" class="xu-local-only"><code class="language-xu">@main
+
+#os
+fn write_once() int {
+    file := os.create(&quot;scope-release.txt&quot;) or &gt;&gt;
+    file.write(&quot;scope&quot;) or &gt;&gt;
+    &lt;&lt; 0
+}
+fn main() int {
+    write_once() or (err) {
+        println(err.msg())
+        &lt;&lt; 1
+    }
+    println(&quot;scope ended&quot;)
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>scope ended</code>.</p>
+<p>返回引用必須關聯某個借用輸入，不能指向返回時結束的區域性值；即使函式另有一個引用引數，也不能返回該區域性值的引用。</p>
+<pre id="scope-fail" class="xu-local-only"><code class="language-xu">@main
+
+fn dangling(seed &amp;int) &amp;int {
+    value := 1
+    &lt;&lt; &amp;value
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>cannot return a reference to local data</code>.</p>
+
+<h2 id="native-dispose">原生控制代碼：遵守顯式 dispose 契約</h2>
+<p>Xu 值的作用域清理不能替代所有原生資源 API。例如，呼叫方不再需要 <code>ui/draw.Surface</code> 時必須顯式 dispose，包括錯誤與取消路徑。已接受的幀在 dispose 後仍持有不可變畫素；釋放呼叫方控制代碼不會抹去已接受的幀。</p>
+<p><strong>原生整合片段，無瀏覽器執行按鈕。</strong> 對宿主提供的有效 surface，應傳播 dispose 錯誤。Dispose 會更新控制代碼，因此此輔助函式需要獨佔訪問。</p>
+<pre id="dispose-pass" class="xu-local-only"><code class="language-xu">@main
+
+#ui/draw
+fn retire(surface $&amp;draw.Surface) int {
+    &lt;&lt; surface.dispose() or &gt;&gt;
+}</code></pre>
+<p><strong>預期 xu check --lib：透過。</strong></p>
+<p>共享引用不能呼叫這個可寫方法：</p>
+<pre id="dispose-fail" class="xu-local-only"><code class="language-xu">@main
+
+#ui/draw
+fn retire(surface &amp;draw.Surface) int {
+    &lt;&lt; surface.dispose() or &gt;&gt;
+}</code></pre>
+<p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>through a shared reference</code>.</p>
+<p>漏掉 dispose 不一定編譯失敗：<code>xu check</code> 不是原生洩漏檢測器。<strong>待驗：</strong> 此輔助函式已做型別檢查，但尚未在真實原生渲染器上執行分配與釋放，也未實跑錯誤 / 取消清理路徑。</p>
+<p>宿主排程器的協程棧與通道後設資料另有程序級生命週期策略；離開作用域不代表所有執行時分配立即回收。FFI 呼叫方還須遵守各外部 API 的所有權契約。</p>
+<p><a href="/api/os">OS API</a> · <a href="/api/io">I/O API</a> · <a href="/api/ui/draw">繪圖 API</a> · <a href="/docs/lang/concurrency">併發</a></p>

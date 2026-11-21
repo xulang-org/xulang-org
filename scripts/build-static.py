@@ -56,11 +56,13 @@ def playground_options(root: Path, body: str, lang: str) -> str:
                 raise ValueError(f'Invalid playground project file: {key}/{path}')
     options = []
     for group in groups:
-        options.append('<optgroup label="' + escape(group['title'][lang]) + '">')
+        group_label = group['title'].get(lang, group['title'].get('en', ''))
+        options.append('<optgroup label="' + escape(group_label) + '">')
         for key, example in examples.items():
             if example['group'] == group['id']:
                 selected = ' selected' if key == 'hello' else ''
-                options.append(f'<option value="{escape(key)}"{selected}>{escape(example["title"][lang])}</option>')
+                ex_title = example["title"].get(lang, example["title"].get('en', ''))
+                options.append(f'<option value="{escape(key)}"{selected}>{escape(ex_title)}</option>')
         options.append('</optgroup>')
     return re.sub(r'(<select\b[^>]*\bid="xu-play-ex"[^>]*>).*?(</select>)',
                   lambda match: match[1] + ''.join(options) + match[2], body, flags=re.DOTALL)
@@ -80,7 +82,7 @@ def content_route(relative: Path, lang: str) -> str:
         name = ''
     elif name.endswith('/index'):
         name = name[:-6]
-    prefix = '' if lang == 'en' else '/zh'
+    prefix = '' if lang == 'en' else f'/{lang}'
     return prefix + ('/' + name if name else '') or '/'
 
 
@@ -106,10 +108,10 @@ class RewriteHTML(HTMLParser):
         # Keep shared assets at the root, and respect explicit hreflang links.
         if path == '/en' or path.startswith('/en/'):
             path = path[3:] or '/'
-        elif localized and self.content_lang == 'zh':
-            chinese = '/zh' + path.rstrip('/')
-            if chinese in self.routes:
-                path = chinese
+        elif localized and self.content_lang and self.content_lang != 'en':
+            localized_path = f'/{self.content_lang}' + path.rstrip('/')
+            if localized_path in self.routes:
+                path = localized_path
         if path.rstrip('/') in self.routes or path == '/':
             path = path.rstrip('/') + '/'
         result = self.base + path
@@ -227,7 +229,8 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
     if wasm.is_file() and wasm.read_bytes()[:8] != b'\x00asm\x01\x00\x00\x00':
         raise ValueError('invalid Xu playground WASM file')
     pages = {}
-    for lang in ('zh', 'en'):
+    langs = sorted([d.name for d in (root / 'content').iterdir() if d.is_dir() and not d.name.startswith('.')])
+    for lang in langs:
         directory = root / 'content' / lang
         for source in sorted(directory.rglob('*.html')):
             route = content_route(source.relative_to(directory), lang)
@@ -276,7 +279,8 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
         raise ValueError(f'Benchmark version {measured} is newer than Xu {xu_version}')
     # Published measurements keep their actual compiler identity when the
     # SDK advances. Both visible measurement banners must match the data.
-    for lang in ('en', 'zh'):
+    bench_langs = [d.name for d in (root / 'content').iterdir() if (d / 'benchmarks.html').is_file()]
+    for lang in sorted(bench_langs):
         source = root / 'content' / lang / 'benchmarks.html'
         labels = re.findall(r'(?:Measured|实测) Xu v(\d+\.\d+\.\d+)', source.read_text(encoding='utf-8'))
         if labels != [measured]:
@@ -346,20 +350,37 @@ def build(root: Path, output: Path, base: str = '', require_playground: bool = F
 def generate_sitemap(output: Path, pages: dict[str, Path], base: str = '') -> None:
     origin = "https://xulang.org"
     entries = []
+
+    hreflangs = [
+        ('en', 'en'),
+        ('zh', 'zh-CN'),
+        ('zh-tw', 'zh-TW'),
+        ('ja', 'ja'),
+        ('ko', 'ko'),
+        ('es', 'es'),
+        ('fr', 'fr'),
+        ('de', 'de'),
+        ('ru', 'ru'),
+        ('pt-br', 'pt-BR'),
+    ]
+    prefix_langs = sorted([l for l, _ in hreflangs if l != 'en'], key=len, reverse=True)
+    home_routes = {'/'} | {f'/{l}' for l, _ in hreflangs if l != 'en'}
+
     # Omit lastmod: checkout mtimes and API regeneration are not editorial dates.
     for route in sorted(pages.keys()):
-        en_route = route if not (route == '/zh' or route.startswith('/zh/')) else (route[3:] or '/')
-        zh_route = ('/zh' if route == '/' else '/zh' + route) if en_route == route else route
+        en_route = route
+        for l in prefix_langs:
+            if route == f'/{l}' or route.startswith(f'/{l}/'):
+                en_route = route[len(l) + 1:] or '/'
+                break
 
         path = base + (route.rstrip('/') + '/' if route != '/' else '/')
         en_path = base + (en_route.rstrip('/') + '/' if en_route != '/' else '/')
-        zh_path = base + (zh_route.rstrip('/') + '/' if zh_route != '/' else '/zh/')
 
         loc = f"{origin}{path}"
         en_url = f"{origin}{en_path}"
-        zh_url = f"{origin}{zh_path}"
 
-        if route in ('/', '/zh'):
+        if route in home_routes:
             priority = "1.0"
             changefreq = "daily"
         elif any(route.endswith(x) for x in ('/docs/start', '/download', '/playground', '/benchmarks')):
@@ -375,14 +396,25 @@ def generate_sitemap(output: Path, pages: dict[str, Path], base: str = '') -> No
             priority = "0.6"
             changefreq = "monthly"
 
+        alt_links = []
+        for l, hreflang in hreflangs:
+            if l == 'en':
+                target_route = en_route
+            else:
+                target_route = f'/{l}' if en_route == '/' else f'/{l}' + en_route
+            if target_route in pages or (target_route == '/' or target_route in home_routes):
+                target_path = base + (target_route.rstrip('/') + '/' if target_route != '/' else '/')
+                target_url = f"{origin}{target_path}"
+                alt_links.append(f'    <xhtml:link rel="alternate" hreflang="{hreflang}" href="{target_url}"/>')
+
+        alt_links.append(f'    <xhtml:link rel="alternate" hreflang="x-default" href="{en_url}"/>')
+
         entries.append(
             '  <url>\n'
             f'    <loc>{loc}</loc>\n'
             f'    <changefreq>{changefreq}</changefreq>\n'
             f'    <priority>{priority}</priority>\n'
-            f'    <xhtml:link rel="alternate" hreflang="en" href="{en_url}"/>\n'
-            f'    <xhtml:link rel="alternate" hreflang="zh-CN" href="{zh_url}"/>\n'
-            f'    <xhtml:link rel="alternate" hreflang="x-default" href="{en_url}"/>\n'
+            + '\n'.join(alt_links) + '\n'
             '  </url>'
         )
 

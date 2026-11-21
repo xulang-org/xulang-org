@@ -68,4 +68,38 @@ Packing multiple target slices and linking a native executable are separate capa
 
 The API catalog at https://xulang.org/api/ is generated from the selected released SDK. It covers formatting, errors, collections, text and encodings, files and processes, networking, cryptography, SQL, and the `ui`, `ui/draw`, `ui/layout`, `ui/widgets`, and `ui/webview` packages. Consult each package's documented target limits.
 
+### Standard library package directory
+
+- `#fmt`: Formatted I/O, string formatting, `println`, `sprint`
+- `#strings`: UTF-8 string manipulation, splitting, trimming, and searching
+- `#bytes`: Byte buffer operations, slice manipulations, and dynamic buffers
+- `#strconv`: String conversion to int, float, bool, and numeric formatting
+- `#unicode`: Unicode UTF-8 and UTF-16 character classifications and conversions
+- `#regexp`: Regular expressions parsing and pattern matching
+- `#net`: TCP, UDP, raw IP socket networking, `listen_on`, `dial`, `listen_packet`
+- `#net/http`: High-concurrency multi-worker HTTP server and client, HTTP/2 HPACK decoding
+- `#io`: Stream primitives, Reader/Writer interfaces, and filesystem abstractions
+- `#os`: System calls, process spawning, signals, environment variables
+- `#sync`: Mutex, WaitGroup, Once, and atomic primitives
+- `#time`: Wall-clock time, monotonic duration, timers, tickers, and sleep
+- `#runtime`: Compiler runtime statistics, allocator inspection, coroutine scheduling
+- `#database/sql`: SQL driver interfaces and connection pooling
+- `#crypto/sm4`, `#crypto/sm2`, `#crypto/sm3`, `#crypto/sm9`, `#crypto/zuc`: ShangMi national standard algorithms
+- `#crypto/aes`, `#crypto/rsa`, `#crypto/sha256`, `#crypto/tls`: International cryptographic algorithms and TLS
+- `#ui`, `#ui/widgets`, `#ui/draw`, `#ui/layout`, `#ui/webview`: Declarative retained-mode UI and GPU canvas
+
+### Networking patterns (TCP / UDP)
+
+```xu
+@main
+#net
+
+fn run_tcp_server() {
+    ln := net.listen_on("tcp", "127.0.0.1:8080") or (err) { << }
+    c := ln.accept() or (err) { << }
+    buf := c.read(4096) or (err) { << }
+    c.write(&buf) or (err) { << }
+}
+```
+
 Official service integrations live in the independent https://github.com/xulang-org/packages repository. The website documents the SDK's pinned package snapshot, which can differ from that repository's current branch. Read the relevant API and example before assuming a protocol feature or native target is supported.

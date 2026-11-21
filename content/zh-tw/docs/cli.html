@@ -1,0 +1,340 @@
+<!--title: 命令列與工具鏈參考-->
+<p class="crumb"><a href="/docs/start">文件</a></p>
+<h1>命令列與工具鏈參考</h1>
+<p class="banner">Xu {{xu_version}} · 統一單二進位制驅動 <code>xu &lt;command&gt; [options] [arguments]</code></p>
+
+<p><code>xu</code> 採用統一單二進位制驅動架構，原生整合了 AOT 編譯器、語義檢查器、測試執行器、相依性包管理、程式碼格式化、文件提取、流程圖繪製、LSP 語言服務以及線上熱更新等完整工具鏈。所有命令與子工具均已完整支援官方統一的 <code>--help</code> 與 <code>-h</code> 結構化排版幫助輸出。</p>
+
+<h2>子命令速查表</h2>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>子命令</th><th>語法</th><th>核心作用</th></tr></thead>
+<tbody>
+<tr><td><code>build</code></td><td><code>xu build [options] &lt;input.xu...&gt; [native.a/.xulib...]</code></td><td>AOT 編譯為原生機器碼可執行檔案、中間物件檔案或跨平臺桌面應用</td></tr>
+<tr><td><code>run</code></td><td><code>xu run [options] &lt;input.xu...&gt; [-- args]</code></td><td>編譯並立即在宿主平臺執行；預設自動清理臨時產物，指定 <code>-o</code> 可持久化保留</td></tr>
+<tr><td><code>debug</code></td><td><code>xu debug [options] &lt;input.xu...&gt; [-- args]</code></td><td>構建帶 DWARF 的程式並啟動 LLDB，找不到 LLDB 時嘗試 GDB；需安裝偵錯程式。這是原始碼除錯，<code>xu xacp debug</code> 僅發現並啟動程式。</td></tr>
+<tr><td><code>test</code></td><td><code>xu test [options] &lt;file.xu...&gt;</code></td><td>構建測試腳手架並批次執行 <code>fn test_*</code> 單元測試用例與 <code>fn bench_*</code> 基準測試</td></tr>
+<tr><td><code>check</code></td><td><code>xu check [options] &lt;file.xu...&gt;</code></td><td>執行詞法、語法解析與型別/所有權借用檢查，不發射目標機器碼</td></tr>
+<tr><td><code>cbind</code></td><td><code>xu cbind [-o FILE.h] [--target TARGET] [--guard MACRO] &lt;input...&gt;</code></td><td>從 Xu FFI 介面匯出 C 標頭檔案宣告及編譯期記憶體佈局斷言</td></tr>
+<tr><td><code>init</code></td><td><code>xu init [options] [module]</code></td><td>在當前目錄初始化規範的 <code>xu.xun</code> 清單與標準 <code>main.xu</code> 入口原始碼</td></tr>
+<tr><td><code>get</code></td><td><code>xu get [options] &lt;module&gt;@&lt;version&gt;</code></td><td><strong>(推薦)</strong> 顯式新增或升級相依性，寫入 <code>xu.xun</code>，下載至 <code>vendor/</code> 並更新 <code>xu.lock</code></td></tr>
+<tr><td><code>install</code></td><td><code>xu install [options] [dir]</code></td><td>根據現有 <code>xu.xun</code> 的 <code>require:</code> 規則解析相依性拓撲，批次下載至 <code>vendor/</code> 並校驗鎖</td></tr>
+<tr><td><code>fmt</code></td><td><code>xu fmt [options] &lt;file.xu...&gt;</code></td><td>按官方統一排版規範格式化原始碼；<code>-w</code> 原地寫回，預設輸出到 stdout</td></tr>
+<tr><td><code>doc</code></td><td><code>xu doc [options] [path...]</code></td><td>提取文件註釋生成 Markdown，或 <code>--serve</code> 啟動內建 XUDOCS Web 實時文件服務</td></tr>
+<tr><td><code>map</code></td><td><code>xu map [options] [path...]</code></td><td>分析原始碼分支與呼叫鏈，生成 Mermaid 流程圖或拓撲連線資料</td></tr>
+<tr><td><code>doctor</code></td><td><code>xu doctor [options]</code></td><td>檢查本機宿主工具鏈、C 連結器及桌面打包所需相依性庫的完整性</td></tr>
+<tr><td><code>native</code></td><td><code>xu native &lt;cmd&gt; [options]</code></td><td>原生 C 模組編譯、<code>xu.o</code> 後設資料注入、<code>.xulib</code> 便攜切片多目標聚合打包與檢視提取</td></tr>
+<tr><td><code>xacp</code></td><td><code>xu xacp &lt;inspect|run|debug|record|control|attach|connect&gt; ...</code></td><td>XACP 宿主原生程式的啟動器，轉而執行伴生工具 <code>xu-xacp</code>。見 <a href="#xacp">XACP 控制通道</a>。</td></tr>
+<tr><td><code>setup</code></td><td><code>xu setup [options]</code></td><td>啟動原生自繪圖形嚮導或執行靜默全域性環境變數自動配置</td></tr>
+<tr><td><code>lsp</code></td><td><code>xu lsp [options]</code></td><td>啟動標準 Language Server Protocol (JSON-RPC 2.0) 守護程序，為 VS Code/Cursor 提供程式碼服務</td></tr>
+<tr><td><code>up / update</code></td><td><code>xu update [options]</code> (或 <code>xu up</code>)</td><td>直接從 GitHub Releases 檢測並下載官方最新構建，原子熱更新本地工具鏈</td></tr>
+<tr><td><code>env</code></td><td><code>xu env [options] [var...]</code></td><td>列印當前 Xu 編譯器工具鏈的核心環境變數與有效執行配置</td></tr>
+<tr><td><code>help</code></td><td><code>xu help [command]</code></td><td>檢視總覽幫助或具體子命令的詳細用法（亦可直接加 <code>--help</code> / <code>-h</code>）</td></tr>
+<tr><td><code>--version</code></td><td><code>xu --version</code> (或 <code>--ver</code>)</td><td>顯示當前自舉編譯器的確切版本、Git 標識及本機目標平臺</td></tr>
+</tbody></table></div>
+
+<h2>1. 編譯與執行 (build / run / check)</h2>
+
+<h3>輸入規則</h3>
+<ul>
+  <li><strong>檔案輸入</strong>：<code>xu build main.xu</code>。單個或多個 <code>.xu</code> 檔案直接參與編譯。</li>
+  <li><strong>目錄輸入</strong>：<code>xu build app/</code>。目標目錄<strong>必須包含 <code>xu.xun</code> 清單</strong>，會將該目錄下所有 <code>*.xu</code> 原始碼合併編譯為一個包，不遞迴遍歷子目錄。</li>
+  <li><strong>靜態庫連結</strong>：支援在命令列直接追加 <code>module.a</code> 或 <code>module.xulib</code> 原生靜態庫歸檔參與目標連結。</li>
+</ul>
+
+<h3>全平臺交叉編譯目標 (--target)</h3>
+<p>Xu 編譯器全平臺原生內建全部架構後端，無需安裝額外工具鏈即可直接跨平臺生成：</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>目標平臺 (<code>--target</code>)</th><th>系統與架構</th><th>輸出格式</th></tr></thead>
+<tbody>
+<tr><td><code>macos-arm64</code></td><td>Apple Silicon macOS</td><td>Mach-O arm64</td></tr>
+<tr><td><code>macos-x64</code></td><td>Intel macOS</td><td>Mach-O x86_64</td></tr>
+<tr><td><code>linux-arm64</code></td><td>Linux aarch64</td><td>ELF 64-bit aarch64</td></tr>
+<tr><td><code>linux-x64</code></td><td>Linux x86_64</td><td>ELF 64-bit x86_64</td></tr>
+<tr><td><code>linux-loongarch64</code></td><td>Linux 龍芯 LoongArch64</td><td>ELF 64-bit loongarch64</td></tr>
+<tr><td><code>linux-riscv64</code></td><td>Linux RISC-V 64</td><td>ELF 64-bit riscv64</td></tr>
+<tr><td><code>windows-x64</code></td><td>Windows 64-bit x86_64</td><td>PE32+ x86-64</td></tr>
+<tr><td><code>windows-arm64</code></td><td>Windows 64-bit ARM64</td><td>PE32+ ARM64</td></tr>
+<tr><td><code>wasm32-wasi</code></td><td>支援 WASI Preview 1 的 WebAssembly 執行時</td><td>帶 WASI 匯入的 <code>.wasm</code> 模組</td></tr>
+<tr><td><code>thumbv7em-none</code></td><td>Cortex-M4/M7 微控制器</td><td>Bare-metal 裸機靜態 ELF / 韌體二進位制</td></tr>
+<tr><td><code>riscv32imac-none</code></td><td>32-bit RISC-V 嵌入式晶片</td><td>Bare-metal 裸機韌體二進位制</td></tr>
+</tbody></table></div>
+
+<h3>編譯與最佳化選項</h3>
+<p><code>xu build</code>、<code>xu run</code> 和 <code>xu test</code> 預設開啟最佳化。傳入 <code>--no-opt</code> 關閉最佳化。Xu 0.12.2 已移除 <code>-O0</code> 至 <code>-O3</code>。</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>選項</th><th>說明</th></tr></thead>
+<tbody>
+<tr><td><code>-o, --output &lt;path&gt;</code></td><td>指定輸出檔案路徑。Windows 平臺自動附加 <code>.exe</code> 副檔名。</td></tr>
+<tr><td><code>--no-opt</code></td><td>關閉編譯器最佳化。</td></tr>
+<tr><td><code>--debug-build</code></td><td>無最佳化構建，同時生成標準 DWARF 行號表與除錯資訊。</td></tr>
+<tr><td><code>-g, --debug</code></td><td>按所選最佳化策略構建，並生成 DWARF 除錯資訊。</td></tr>
+<tr><td><code>--offline</code></td><td>離線構建模式：僅從本地 <code>vendor/</code> 或快取目錄讀取相依性，絕不觸發網路請求。</td></tr>
+<tr><td><code>--frozen</code></td><td>凍結構建模式：離線且嚴格匹配現有的 <code>xu.lock</code>；若相依性缺失或摘要不符則強制失敗。</td></tr>
+<tr><td><code>--xacp</code></td><td>嵌入 XACP 啟動發現資訊與 stdio 控制鉤子。<code>./app --xacp-help</code> 印表機器可讀摘要（<code>capabilities: stdio</code>）。僅限 hosted native 可執行程式。</td></tr>
+<tr><td><code>--xacp-port &lt;PORT&gt;</code></td><td>同時啟用 XACP。<code>PORT</code> 為 0 到 65535 的整數（也接受 <code>--xacp-port=PORT</code>）。<code>0</code> 關閉 TCP。正埠是 <code>&lt;app&gt; --xacp-tcp</code> 在 <code>127.0.0.1</code> 上監聽的埠。</td></tr>
+<tr><td><code>--desktop</code></td><td>圖形桌面程式打包模式：呼叫 <code>xu-desktop</code> 打包（生成 macOS <code>.app</code>、Windows <code>.exe</code>、Linux ELF）。不能與 <code>--xacp</code> 一起使用。</td></tr>
+<tr><td><code>--phone</code></td><td>生成<a href="/docs/phone">移動應用專案</a>。輸入為模組目錄，目標為 <code>ios-arm64</code>、<code>ios-simulator-arm64</code> 或 <code>android-arm64</code>。用 <code>-o</code> 指定一個尚不存在的輸出目錄。</td></tr>
+<tr><td><code>--phone-profile &lt;ui|game&gt;</code></td><td>選擇 <code>--phone</code> 的移動宿主模式：<code>ui</code>（預設 Canvas UI 宿主）或 <code>game</code>（原生 SDL GPU 遊戲宿主，支援 <code>#app</code> 資源打包）。</td></tr>
+<tr><td><code>--bundle-id &lt;ID&gt;</code></td><td>為 <code>--phone</code> 設定移動應用標識，例如 <code>org.example.gallery</code>。</td></tr>
+<tr><td><code>--www &lt;dir&gt;</code></td><td>桌面打包時指定嵌入的本地靜態前端資產目錄（覆蓋預設 <code>www/</code>）。</td></tr>
+<tr><td><code>--emit-obj</code></td><td>生成目標平臺的 <code>XUOBJ</code> 中間物件檔案供外部目標連結器使用，而不直接生成可執行檔案。</td></tr>
+</tbody></table></div>
+
+<p>將 <code>XU_DUMP_MIR</code> 設為函式標籤的子串，可在機器碼生成前檢視命中函式最佳化後的型別化 MIR。設為 <code>*</code> 可輸出全部函式。</p>
+
+<h3>常用示例</h3>
+<pre><code># 使用預設最佳化編譯和執行
+xu build main.xu -o myapp
+xu run main.xu -- --port 8080 --verbose
+
+# 關閉最佳化後執行
+xu run main.xu --no-opt -- --port 8080
+
+# 編譯為 WASI 執行時可載入的模組
+xu build src/calc.xu --target wasm32-wasi -o dist/calc.wasm
+
+# 根據現有鎖檔案離線構建
+xu build . --frozen -o release/server</code></pre>
+
+<h2 id="xacp">XACP 控制通道（<code>xu xacp</code> / <code>xu-xacp</code>）</h2>
+<p><a href="/api/xacp"><code>#xacp</code> API</a> 已包含在正式 {{xu_version}} SDK 提取結果中。本節依據對應釋出原始碼。<code>xu xacp</code> 執行伴生工具 <code>xu-xacp</code>，原始碼樹用 <code>make xu-xacp</code> 構建。匯入 <code>#xacp</code> 不會嵌入發現資訊或控制迴圈。契約以<a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">釋出原始碼</a>和冒煙指令碼為準；舊樣例 README/設計說明的分幀、許可權和超時描述可能過時。原生會話和平臺/UI 執行驗收仍為<strong>待驗</strong>。</p>
+<p><code>xu --help</code> 把該工具概括為 “inspect, run, and debug”。<code>xu xacp --help</code> 才是完整模式：<code>inspect</code>、<code>run</code>、<code>debug</code>、<code>record</code>、<code>control</code>、<code>attach</code>，以及 <code>connect PORT</code>。</p>
+
+<h3>構建與發現</h3>
+<pre><code>xu build --xacp examples/xacp/main.xu -o app
+xu build --xacp-port 4321 examples/xacp/main.xu -o app
+./app --xacp-help</code></pre>
+<p><code>--xacp-port</code> 隱含 <code>--xacp</code>。生成器只接受 hosted native 可執行程式。庫、共享物件、測試腳手架、嵌入式目標和 <code>--desktop</code> 都會被拒絕。<code>--xacp-help</code> 列印後退出，它不是控制會話。埠為 0 時摘要以 <code>tcp: disabled (port 0)</code> 結束。正埠會列印 <code>tcp: enabled</code> 和 <code>bind: 127.0.0.1:PORT</code>。兩種情況下 <code>capabilities</code> 都是 <code>stdio</code>。掃描在 <code>--</code> 處停止，因此寫在該標記之後的業務引數 <code>--xacp-help</code> 不會觸發發現。</p>
+
+<h3>啟動器模式</h3>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>模式</th><th>行為</th></tr></thead>
+<tbody>
+<tr><td><code>xu xacp inspect &lt;program&gt;</code></td><td>執行 <code>&lt;program&gt; --xacp-help</code> 並列印發現文字。不接受業務引數。目標程式會被執行。</td></tr>
+<tr><td><code>xu xacp run &lt;program&gt; -- args...</code></td><td>執行業務 main。在轉發引數前再插入一個 <code>--</code>。不讀取控制 stdin。</td></tr>
+<tr><td><code>xu xacp debug &lt;program&gt; -- args...</code></td><td>先發現，再按同樣邊界執行。不是斷點偵錯程式。發現失敗則不會繼續執行。</td></tr>
+<tr><td><code>xu xacp record &lt;program&gt; -- args...</code></td><td>流式輸出最多 1 MiB 的 stdout，由呼叫方自行重定向。stderr 仍留給終端。僅 Unix；Windows 列印 <code>record is not available on Windows yet</code> 並以狀態 1 退出。它與 <a href="/api/xacp#ui-record"><code>ui.record</code> 的有界 XAR1 UI 取樣</a>不同。</td></tr>
+<tr><td><code>xu xacp control &lt;program&gt;</code></td><td>以 <code>&lt;program&gt; --xacp-stdio</code> 啟動，並繼承呼叫方的 stdin 與 stdout。不接受業務引數。業務 main 不執行。Hello 在請求 finish 之前協商 INFO 或宿主令牌許可權。</td></tr>
+<tr><td><code>xu xacp attach &lt;program&gt; -- args...</code></td><td>執行業務 main；應用必須呼叫 <code>attach_stdio</code>、註冊 Screen，並在所屬協程中輪詢。協議獨佔 stdin/stdout；日誌寫入 stderr。UI 執行行為待驗。</td></tr>
+<tr><td><code>xu xacp connect PORT</code></td><td>把帶幀的 stdin/stdout 中繼到 <code>127.0.0.1:PORT</code>。一次請求，再等一次響應。目標必須已經用 <code>--xacp-tcp</code> 在監聽。<code>PORT</code> 為 1..65535。輸入幀使用 <code>XACP/1\n&lt;N&gt;\n</code>，後接恰好 N 位元組正文。幀邊界上的 EOF 會斷開連線。</td></tr>
+</tbody></table></div>
+<p><code>run</code>、<code>debug</code>、<code>record</code>、<code>attach</code> 的引數必須寫在工具自己的 <code>--</code> 之後。<code>inspect</code> 與 <code>control</code> 拒絕額外引數。子程序失敗時，工具能讀到退出狀態就會原樣返回。</p>
+
+<h3>stdio 與本機迴環 TCP</h3>
+<p>用 Python 3 生成與指南完全一致的 hello 位元組，儲存為 <code>control.xacp</code>：</p>
+<pre><code>python3 - &lt;&lt;'PY'
+from pathlib import Path
+body = b"id: !i 1\nop: xacp.hello\nargs:\n  ver: !ver 1.0.0\n  nonce: docs-client\n"
+Path("control.xacp").write_bytes(b"XACP/1\n" + str(len(body)).encode("ascii") + b"\n" + body)
+PY</code></pre>
+<pre><code># stdio：管道送入幀；業務 main 被跳過
+xu xacp control ./app &lt; control.xacp
+
+# TCP：用正埠構建，先監聽，再從另一個終端連線
+xu build --xacp-port 4321 main.xu -o app
+./app --xacp-tcp
+xu xacp connect 4321 &lt; control.xacp</code></pre>
+<p>兩種傳輸均使用 <code>XACP/1\n&lt;N&gt;\n</code> 加恰好 <code>N</code> 位元組純 XUN 正文。按 UTF-8 位元組計數，包含正文換行，不含字首；沒有結束分隔符或額外分隔位元組。傳輸解碼後，<code>parse_frame</code> 只接收正文。<a href="/api/xacp">API 指南</a>給出 69 位元組 hello 和 109 位元組響應。<code>--</code> 之前首個 <code>--xacp-stdio</code> 或 <code>--xacp-tcp</code> 生效；普通啟動不監聽，也不讀取控制 stdin。</p>
+<p>TCP 只監聽 <code>127.0.0.1</code>。沒有 TLS，也不能繫結其他地址。每個連線是獨立會話。連線按順序處理。失敗的對端只結束自己的會話，監聽繼續接受。stdio 會話結束時程序退出。EOF 時的半幀返回 <code>truncated_frame</code>。超過 1 MiB 的幀返回 <code>frame_too_large</code> 並關閉該會話。幀錯誤的 id 為 <code>0</code>；schema 錯誤儘量使用有效的 id 提示，否則使用 <code>0</code>。</p>
+<p>Hello 必須提供 <code>ver: !ver 1.0.0</code> 和非空 nonce。宿主未設定 <code>XU_XACP_TOKEN</code> 時許可權至多為 INFO；設定後，客戶端令牌缺失或不匹配會以 <code>auth_failed</code> 關閉會話，匹配後允許請求 <code>PERM_ALL</code>（<code>15</code>）的子集。INFO 下 <code>proc.status</code> 返回 pid。輸出/UI 操作需要相應許可權位，沒有介面卡時返回 <code>not_implemented</code>。啟動控制沒有註冊 Screen；UI 附著需要註冊和輪詢，預設請求期限為 5000 ms，可用 <code>XU_XACP_REQUEST_TIMEOUT_MS</code>（<code>1..600000</code>）配置。目標掛起時，呼叫方仍需程序/I/O 超時。</p>
+
+<h2>2. 自動化測試 (test)</h2>
+<p>向 <code>xu test</code> 傳入一個或多個 Xu 原始檔。0.12.2 構建的臨時程式會執行所提供的 <code>main</code> 函式，請在該入口呼叫測試。將示例儲存為 <code>test.example.xu</code>。</p>
+<pre><code class="language-xu">@main
+
+fn test_add() {
+    assert(1 + 1 == 2)
+}
+
+fn main() {
+    test_add()
+}</code></pre>
+<pre><code class="language-shell">xu test test.example.xu
+xu test test.example.xu --no-opt
+xu test test.example.xu -list</code></pre>
+<p><code>-list</code> 列出無引數的 <code>fn test_*</code> 宣告。</p>
+
+<h2>3. 專案初始化與相依性管理 (init / get / install)</h2>
+
+<p>0.8.x 提供了現代化、零外部相依性的專案管理與相依性解析體系，從根源杜絕相依性漂移：</p>
+
+<h3><code>xu init [module]</code>：初始化工程清單與入口</h3>
+<p>在當前目錄下快速初始化一個規範的 Xu 專案：</p>
+<pre><code># 1. 採用當前目錄名作為模組名初始化工程
+xu init
+
+# 2. 顯式指定模組名稱初始化工程
+xu init myapp</code></pre>
+<ul>
+  <li><strong>自動生成清單</strong>：生成規範的 <code>xu.xun</code> 清單檔案並自動登記當前編譯器版本（例如 <code>xu: !ver {{xu_version}}</code>）。若當前目錄已存在 <code>xu.xun</code>，則自動報錯攔截，避免覆蓋現有配置。</li>
+  <li><strong>自動生成入口原始碼</strong>：若當前目錄下尚未建立 <code>main.xu</code>，自動生成標準的入口原始碼模板。</li>
+  <li><strong>即開即用</strong>：初始化完成後，在當前目錄直接執行 <code>xu run .</code> 即可秒級編譯執行。</li>
+</ul>
+
+<h3><code>xu get &lt;module&gt;@&lt;version&gt;</code> (0.8.12 核心新增)</h3>
+<p>在當前專案根目錄下顯式新增或更新單個相依性模組：</p>
+<pre><code>xu get &lt;module&gt;@&lt;version&gt;</code></pre>
+<p>上述命令為語法模板，請將佔位符替換為真實模組及其釋出標籤。本站官方擴充套件包請使用<a href="/docs/packages">SDK 內建包或對應固定原始碼提交</a>，再執行 <code>xu install</code>。</p>
+<ul>
+  <li><strong>顯式版本約束</strong>：必須提供精確的 SemVer 版本（選擇的模組已釋出且確認存在的標籤）；拒絕使用 <code>@latest</code> 或萬用字元，從根源確保構建絕對確定性。</li>
+  <li><strong>事務原子保障</strong>：自動解析相依性圖、下載原始碼到本地 <code>vendor/</code>、校驗 SHA-256 完整性並更新 <code>xu.xun</code> 和 <code>xu.lock</code>。若過程中斷或網路失敗，<strong>自動原子回滾</strong>，不破壞現有工程。</li>
+  <li><strong>離線更新</strong>：支援 <code>xu get &lt;module&gt;@&lt;version&gt; --offline</code>，僅使用本地已有的包快取完成新增。</li>
+</ul>
+
+<h3><code>xu install [dir]</code></h3>
+<p>根據專案 <code>xu.xun</code> 中已宣告的 <code>require:</code> 規則，一鍵還原整個相依性拓撲圖至本地 <code>vendor/</code>：</p>
+<pre><code>xu install                      # 還原當前目錄專案相依性
+xu install --offline            # 離線模式：僅使用本地全域性快取 (~/.xu/pkg)</code></pre>
+<p>詳見 <a href="/docs/packages">官方擴充套件包列表</a> 與 <a href="/docs/modules">模組與相依性規範細則</a>。</p>
+
+<h2>4. 程式碼工具與文件 (fmt / doc / map)</h2>
+
+<h3><code>xu fmt</code>：官方標準格式化</h3>
+<pre><code>xu fmt src/main.xu -w           # 原地格式化單個檔案
+xu fmt src/ -w                  # 遞迴格式化 src/ 下的所有 .xu 原始碼
+xu fmt main.xu                  # 僅將格式化結果輸出至終端 stdout，不修改原檔案</code></pre>
+
+<h3><code>xu doc</code>：API 文件提取與實時預覽</h3>
+<pre><code># 1. 提取所有公開 API 生成 Markdown 文件
+xu doc src/net --public -o docs/net.md
+
+# 2. 啟動內建 XUDOCS Web 實時文件伺服器 (預設監聽 127.0.0.1:6060)
+xu doc src/ --serve --addr 127.0.0.1:8080</code></pre>
+<p class="note"><code>--serve</code> 啟動的 HTTP 服務內建提供 <code>/</code> 互動瀏覽、<code>/docs.md</code> 原始 Markdown 以及 <code>/health</code> 健康檢查端點。</p>
+
+<h3><code>xu map</code>：原始碼拓撲與流程圖生成</h3>
+<pre><code># 生成標準 Mermaid flowchart 流程圖
+xu map src/main.xu -o flow.mmd
+
+# 輸出輕量機器可讀的節點與連線資料，供繪圖畫布渲染
+xu map src/ --graph</code></pre>
+
+<h2>5. 系統維護與線上更新 (doctor / setup / update)</h2>
+
+<h3><code>xu doctor</code>：環境健康體檢</h3>
+<pre><code>xu doctor                       # 診斷當前系統 C 連結器與基礎編譯工具
+xu doctor --desktop             # 診斷桌面打包工具鏈 (WebKitGTK, GTK4, WebView2, MinGW)</code></pre>
+
+<h3><code>xu setup</code>：原生安裝嚮導</h3>
+<p>配套的 <code>xu-setup</code> 擁有自繪純原生圖形嚮導與控制檯靜默模式，可隨時重新配置全域性環境：</p>
+<pre><code>xu setup -y                     # 靜默一鍵配置全域性 PATH 與 XU_ROOT
+xu setup --prefix /opt/xu -y   # 指定目標安裝目錄進行安裝
+xu setup --cli                  # 強制控制檯互動模式 (無圖形介面的伺服器)</code></pre>
+
+<h3><code>xu up / xu update</code>：官方 Release 熱升級</h3>
+<p>直接自舉更新 <code>xu</code> 自身及伴生工具鏈，支援自動校驗 SHA-256 簽名並執行原子替換：</p>
+<pre><code>xu up --check                   # 僅檢查官方 GitHub Releases 是否有新版本
+xu up                           # 自動下載並升級至最新正式穩定版
+xu update --version {{xu_version}}        # 鎖定並更新/降級至指定版本
+xu update --force               # 強制重新安裝當前相同版本</code></pre>
+
+<h2>6. 原生 C 模組與多目標打包 (xu native)</h2>
+<p>伴生原生工具 <code>xu-native</code> 已全面整合為一級子命令 <code>xu native</code>，負責在不相依性任何額外指令碼的情況下完成跨平臺原生 C 橋接庫的構建、後設資料嵌入與多架構切片聚合：</p>
+<pre><code># 1. 編譯 C 原始碼並注入 .xumeta 規範切片 (.a)
+xu native compile --manifest native.json --target macos-arm64 bridge.c -o native/native_add-arm64.a
+
+# 2. 聚合多平臺切片為行動式單一分發容器 (.xulib)
+xu native pack --manifest native.json --slice macos-arm64=native/native_add-arm64.a --slice macos-x64=native/native_add-x64.a -o native/native_add.xulib
+
+# 3. 檢視 .xulib 容器切片架構、大小與 SHA-256 校驗和
+xu native inspect native/native_add.xulib
+
+# 4. 從 .xulib 提取指定目標架構的切片
+xu native extract native/native_add.xulib --target macos-arm64 -o slice.a</code></pre>
+
+<h2>7. 環境變數與全域性配置 (xu env)</h2>
+<p>執行 <code>xu env</code> 可以快速列印當前工具鏈的有效環境變數配置。常用控制變數如下：</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>環境變數</th><th>預設值</th><th>作用與配置說明</th></tr></thead>
+<tbody>
+<tr><td><code>XU_ROOT</code></td><td><code>~/.xu</code></td><td>當前啟用的 Xu 編譯器與工具鏈安裝根目錄。</td></tr>
+<tr><td><code>XU_STDLIB_ROOT</code></td><td><code>$XU_ROOT/src</code></td><td>顯式指定標準庫原始碼所在目錄。</td></tr>
+<tr><td><code>XUPATH</code></td><td>空</td><td>模組與包查詢根路徑（Unix 採用冒號 <code>:</code> 分隔，Windows 採用分號 <code>;</code>）。</td></tr>
+<tr><td><code>XU_CACHE</code></td><td><code>~/.xu/pkg</code></td><td>網路相依性包下載快取目錄。</td></tr>
+<tr><td><code>XUPROXY</code></td><td><code>direct</code></td><td>相依性模組代理伺服器 URL。支援多代理逗號 <code>,</code>（404 時回退）與豎線 <code>|</code>（網路錯誤時回退）。</td></tr>
+<tr><td><code>XUPRIVATE</code></td><td>空</td><td>私有模組字首萬用字元，匹配的模組自動繞過代理與公開校驗服務。</td></tr>
+<tr><td><code>XUSUMDB</code></td><td><code>direct</code></td><td>固定公鑰校驗日誌伺服器；配置為 <code>off</code> 時保持首次使用信任（TOFU）。</td></tr>
+<tr><td><code>XUOS</code></td><td>當前宿主系統</td><td>當省略 <code>--target</code> 時預設採用的目標作業系統（linux, macos, windows, none）。</td></tr>
+<tr><td><code>XUARCH</code></td><td>當前宿主架構</td><td>當省略 <code>--target</code> 時預設採用的目標硬體架構（arm64, x64, riscv64 等）。</td></tr>
+</tbody></table></div>
+
+<h2>8. 語言服務協議與編輯器支援 (xu lsp)</h2>
+<p>伴生工具 <code>xu-lsp</code> 原生實現了微軟語言服務協議（Language Server Protocol, JSON-RPC 2.0），透過標準輸入輸出 stdin/stdout 與各類現代 IDE（VS Code、Cursor、Neovim、Helix 等）無縫協作：</p>
+<pre><code># 啟動 LSP 守護程序（一般由編輯器外掛後臺自動啟動）
+xu lsp
+
+# 檢視 LSP 引數與使用說明
+xu lsp --help</code></pre>
+<p>核心服務能力包括：語法與借用錯誤實時診斷、F12 / Cmd+Click 跳轉定義、Markdown 型別與文件懸停提示、符號大綱（Cmd+Shift+O）、智慧程式碼補全、查詢全部引用（Shift+F12）與重新命名重構（F2）。詳見 <a href="/docs/vscode">VS Code / Cursor 外掛指南</a>。</p>
+
+<h2>9. 全命令幫助系統與規範排版 (help 與 --help)</h2>
+<p>Xu 遵從嚴格的 CLI 人機工程學設計規範，<strong>所有內建子命令及獨立伴生工具均已完整支援官方統一的 <code>--help</code> 與 <code>-h</code> 幫助輸出</strong>，並保證以標準退出碼 0 退出，絕不因缺少業務引數報錯：</p>
+
+<div class="doc-table-wrap"><table>
+<thead><tr><th>幫助呼叫形式</th><th>示例</th><th>效果與說明</th></tr></thead>
+<tbody>
+<tr><td><strong>子命令幫助標誌</strong></td><td><code>xu build --help</code> 或 <code>xu build -h</code></td><td>列印該子命令的用法、引數說明與專屬配置選項</td></tr>
+<tr><td><strong>分級幫助命令</strong></td><td><code>xu help build</code>、<code>xu help native</code></td><td>效果等價於 <code>--help</code>，與 Go / Cargo 體驗一致</td></tr>
+<tr><td><strong>巢狀子命令幫助</strong></td><td><code>xu native compile --help</code></td><td>二級子命令同樣完整支援獨立專屬幫助與選項說明</td></tr>
+<tr><td><strong>伴生工具自舉幫助</strong></td><td><code>xu fmt --help</code>、<code>xu doctor --help</code></td><td>即使環境尚未安裝對應伴生二進位制，<code>xu</code> 亦能優雅展示標準幫助</td></tr>
+</tbody></table></div>
+
+<p>執行 <code>xu --help</code> 或 <code>xu help</code> 時，工具鏈將呈現美觀對齊的現代分類終端排版：</p>
+<pre><code>$ xu --help
+usage: xu &lt;command&gt; [arguments]
+
+Build and execution commands:
+  build          compile Xu source files into an executable or library
+  run            compile and immediately execute a Xu program
+  test           build and run test harness binaries (fn test_*)
+  check          parse and type/borrow check without code generation
+
+Package and module commands:
+  init           initialize a new Xu module and create xu.xun manifest
+  get            add or update a pinned module dependency in xu.xun
+  install        download remote require: packages into vendor/
+  env            print Xu toolchain and environment variables
+
+Development and diagnostic tools:
+  fmt            format Xu source files via sibling xu-fmt
+  doc            render declarations as Markdown via sibling xu-doc
+  map            visualize source architecture flowchart via sibling xu-map
+  doctor         check host tools and dependencies via sibling xu-doctor
+  native         compile, archive, pack, and inspect native C modules
+  xacp           inspect, run, and debug XACP-enabled programs
+  lsp            Language Server Protocol daemon via sibling xu-lsp
+  setup          launch native installer via sibling xu-setup
+
+Toolchain management:
+  up, update     download latest release and update toolchain
+  help           show help for xu or a specific subcommand
+  --ver, --version show toolchain version
+
+Common build options:
+  -o, --output OUT  output binary path (default a.out)
+  --target TARGET   target platform (macos-arm64, linux-x64, wasm32-wasi, xtensa-esp32-none, ...)
+  --debug-build     disable optimization and emit DWARF
+  -g, --debug       emit DWARF
+  --emit-obj        emit an application object (XUOBJ)
+  --desktop         package a native desktop application
+  --webview         include the WebView host in a desktop build
+  --no-webview      use the Draw-only desktop host
+  --www DIR         embed resources in a desktop build
+  --xacp            embed XACP startup and discovery
+  --xacp-port PORT  enable XACP TCP on loopback (0 = stdio only)
+  --no-opt          disable optimization
+  --release         select a release build (default)
+  --ra=1            select the default register allocator
+  --offline         resolve dependencies using local sources, vendor, and cache
+  --frozen          use locked dependencies without writes or downloads
+  -v, --verbose    print the selected target and chip features
+
+Use "xu &lt;command&gt; --help" or "xu help &lt;command&gt;" for more information.</code></pre>
+
+<p><a href="/docs/start">快速起步</a> · <a href="/docs/modules">模組與相依性規範</a> · <a href="/docs/vscode">VS Code 外掛指南</a> · <a href="/docs/install">安裝指南</a></p>
+
+<h2>原始碼除錯（0.10.5）</h2>
+<p><code>xu debug</code> 生成帶 DWARF 的除錯程式並呼叫宿主 LLDB/GDB；需先安裝偵錯程式。<code>--break</code> 設定原始碼行或函式斷點，<code>--eval</code> 執行偵錯程式命令，<code>--batch</code> 用於批處理。<code>--binary</code> 可除錯已有可執行檔案。</p>
+<pre><code>xu debug --help
+xu debug --break main.xu:8 --run main.xu
+xu debug --binary ./app --batch --eval "image lookup -n main"</code></pre>
