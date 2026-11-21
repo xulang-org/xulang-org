@@ -1,0 +1,34 @@
+<!--title: Xu 0.13.1: standard library hardening, zero-stub audit, networking upgrades, and Cond/WSAPoll semantics-->
+<!--summary: Full completion of the standard library zero-stub audit, featuring zstd truncation validation, Cond registered waiter queue signaling, cross-platform os/exec streaming pipes, native console signal trapping, HTTPS connection reuse, Windows WSAPoll batch socket polling, HTTP/2 HPACK Huffman decoding, and real SOCK_RAW IP sockets.-->
+<p class="crumb"><a href="/blog">Blog</a></p>
+<h1>Xu 0.13.1: standard library hardening, zero-stub audit, networking upgrades, and Cond/WSAPoll semantics</h1>
+<p class="meta">2026-11-20 · <a href="https://github.com/xulang-org/xu/releases/tag/v0.13.1">Xu v0.13.1</a></p>
+<p>Xu 0.13.1 delivers comprehensive engineering hardening across the standard library, establishing full zero-stub compliance, precision condition variable notification semantics, major enhancements to networking and HTTP/HTTPS protocol stacks, and cross-platform streaming process pipes and signal dispatching.</p>
+
+<h2>Standard Library Hardening &amp; Zero-Stub Compliance</h2>
+<ul>
+  <li><strong><code>compress/zstd</code></strong>: Corrects frame header content size encoding and parsing; strictly validates final block completeness to trap truncated input; cross-verified against <code>bsdtar</code> libzstd 1.5.7.</li>
+  <li><strong><code>sync.Cond</code></strong>: Re-engineers notification semantics onto an ordered registered waiter queue. Guarantees that <code>signal()</code> wakes exactly one waiter, and <code>broadcast()</code> wakes all waiters (verified with 4,097 concurrent coroutines), eliminating unobserved notification leakage when no waiters are present.</li>
+  <li><strong><code>os/exec</code></strong>: Implements cross-platform bidirectional streaming pipes (<code>stdin_pipe</code>, <code>stdout_pipe</code>, <code>stderr_pipe</code>) across Windows and Unix platforms, configuring handle inheritance and recycling descriptors on process spawn failures.</li>
+  <li><strong><code>os/signal</code></strong>: Traps native operating system console signals (using Windows SRWLock+Event and Unix signal hooks), strictly validating signal numbers and preserving channel ownership on invalid inputs.</li>
+  <li><strong><code>time</code></strong>: Removes Windows hardcoded timezone bypasses, adding dynamic loading and parsing of external IANA TZif databases via <code>$env:ZONEINFO</code>.</li>
+  <li><strong><code>crypto/cipher</code> &amp; <code>encoding/json</code></strong>: Adds AES-CFB and AES-OFB streaming cipher modes; expands JSON parser buffers up to 64 MiB with dynamic capacity via <code>parse_max</code>.</li>
+</ul>
+
+<h2>Networking &amp; I/O Multiplexing Upgrades</h2>
+<ul>
+  <li><strong>HTTPS Connection Pooling &amp; Reuse</strong>: <code>net/http</code> client pools connections partitioned by Host/SNI and TLS configurations, automatically evicting connections marked with <code>Connection: close</code>, providing an explicit <code>close_idle_connections()</code> hook, and supporting idempotent retries.</li>
+  <li><strong>Native Windows <code>WSAPoll</code> Batch Detection</strong>: The <code>net/poller</code> removes sleep latency and bridges directly onto persistent <code>EventSet</code> backends, using Windows <code>WSAPoll</code> for sub-millisecond batch socket event dispatching.</li>
+  <li><strong>HTTP/2 HPACK Huffman Decoding</strong>: <code>net/http2</code> implements the RFC 7541 HPACK Huffman decoder (<code>decode_huffman</code>), enabling header decompression for responses from standard HTTP/2 servers.</li>
+  <li><strong>Real <code>SOCK_RAW</code> &amp; IPv6 Datagrams</strong>: <code>net</code> supports true raw IP socket creation (<code>dial_ip</code>, <code>listen_ip</code>, <code>listen_packet</code>) with protocol dispatching, alongside IPv6 UDP datagram support.</li>
+</ul>
+
+<h2>WebAssembly &amp; Mobile Platform Linking</h2>
+<ul>
+  <li><strong>WebAssembly Top-Level Exports</strong>: Added the <code>--wasm-export</code> compiler flag to export top-level functions directly to the WebAssembly host for JavaScript invocation.</li>
+  <li><strong>ARM64 Mobile Game Linking</strong>: Added native archive and C bridge linking for ARM64 iOS and Android application objects.</li>
+</ul>
+
+<h2>Upgrade the full SDK</h2>
+<p>All six native platform SDKs (Linux x64/arm64, macOS arm64/x64, Windows x64/arm64) passed full self-host fixed-point verification, runtime protocol tests, and the standard library zero-stub regression suite.</p>
+<p><a href="/download">Download the SDK</a> · <a href="https://github.com/xulang-org/xu/releases/download/v0.13.1/SHA256SUMS">SHA-256 checksums</a> · <a href="https://github.com/xulang-org/xu/blob/v0.13.1/RELEASES.md#xu-0131">Release notes</a></p>
