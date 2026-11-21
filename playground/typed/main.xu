@@ -7,6 +7,8 @@
 #xu/token
 #xu/parser
 #xu/types
+#xu/checker
+#xu/ds
 #xu/mir
 
 // Compile user code for the Linux ARM64 runtime ABI inside the sandbox.
@@ -64,9 +66,11 @@ fn prepare_source(source string, program $&mir.Mir) int {
     p.file_names.push("playground.xu")
     $draw := false
     $widgets := false
+    $ext_core := false
     for i in 0:p.imp_path.len {
         import_path := &p.imp_path[i]
         if *import_path == "playground" { draw = true }
+        if *import_path == "errors" || *import_path == "math/bits" { ext_core = true }
         if *import_path == "ui" || *import_path == "ui/draw" || *import_path == "ui/widgets" ||
             *import_path == "ui/layout" || *import_path == "ui/internal/codec" ||
             *import_path == "math" || *import_path == "time" || *import_path == "unicode/utf8" ||
@@ -75,15 +79,17 @@ fn prepare_source(source string, program $&mir.Mir) int {
         }
     }
     add_core($&p)
+    if ext_core || widgets { add_extended_core($&p) }
     if draw || widgets { add_browser_ui($&p, widgets) }
     if widgets {
         flags := playground_widget_flags(&file.tokens)
         playground_merge_widget_extensions($&p, &flags)
     }
-    $checker := types.Checker{}
+    $chk := checker.Checker{}
     $typed := types.typed_program_new()
-    types.check_typed(&p, USER_TARGET, 0, $&checker, $&typed)
-    << mir.lower_typed(&p, $&typed, USER_OS, USER_ARCH, false, false, program)
+    checker.check_typed(&p, USER_TARGET, 0, $&chk, $&typed)
+    $roots := []int{}
+    << mir.lower_typed(&p, $&typed, USER_OS, USER_ARCH, false, false, &roots, program)
 }
 
 pub fn playground_prepare(program $&Program) int {
@@ -93,7 +99,7 @@ pub fn playground_prepare(program $&Program) int {
     }
     status := prepare_source(source, $&program.body)
     if status != 0 { << status }
-    $functions := types.new_strmap()
+    $functions := ds.new_strmap()
     for i in 0:program.body.fns.len {
         f := &program.body.fns[i]
         if !f.is_extern { functions.put(f.label + "", i) }

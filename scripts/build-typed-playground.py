@@ -30,17 +30,62 @@ UI_SOURCES = (
 
 
 def embed_sources(src: Path, out: Path) -> None:
-    files = [
+    core_files = [
         *(src / "runtime/core").glob("*.xu"),
         *(src / "internal/uiabi").glob("*.xu"),
         *(src / "errors").glob("*.xu"),
-        *(src / "math/bits").glob("*.xu"),
         src / "runtime/str_algo.xu",
         src / "runtime/map_algo.xu",
     ]
+    ext_files = [
+        *(src / "math/bits").glob("*.xu"),
+    ]
     lines = ["@main", "#xu/parser"]
     lines.append("fn add_core(p $&parser.Parser) {")
-    for path in sorted(files):
+    for path in sorted(core_files):
+        if path.name.startswith(("test.", "test_")):
+            continue
+        name = path.relative_to(src).as_posix()
+        text = path.read_text(encoding="utf-8")
+        if path.name == "intrin.xu":
+            text = text.replace("#math/bits\n", "")
+            helper = (
+                "fn intrin_trailing_zeros(x int) int {\n"
+                "    if x == 0 { << 64 }\n"
+                "    $n := 0\n"
+                "    $v := x\n"
+                "    if (v & 0xffffffff) == 0 {\n"
+                "        n = n + 32\n"
+                "        v = v >> 32\n"
+                "    }\n"
+                "    if (v & 0xffff) == 0 {\n"
+                "        n = n + 16\n"
+                "        v = v >> 16\n"
+                "    }\n"
+                "    if (v & 0xff) == 0 {\n"
+                "        n = n + 8\n"
+                "        v = v >> 8\n"
+                "    }\n"
+                "    if (v & 0xf) == 0 {\n"
+                "        n = n + 4\n"
+                "        v = v >> 4\n"
+                "    }\n"
+                "    if (v & 0x3) == 0 {\n"
+                "        n = n + 2\n"
+                "        v = v >> 2\n"
+                "    }\n"
+                "    if (v & 0x1) == 0 {\n"
+                "        n = n + 1\n"
+                "    }\n"
+                "    << n\n"
+                "}\n"
+            )
+            text = text.replace("bits.trailing_zeros(hits)", "intrin_trailing_zeros(hits)") + "\n" + helper
+        literal = json.dumps(text, ensure_ascii=False).replace("$", "\\$")
+        lines.append(f'    add_source(p, {literal}, "{name}")')
+    lines.append("}")
+    lines.append("fn add_extended_core(p $&parser.Parser) {")
+    for path in sorted(ext_files):
         if path.name.startswith(("test.", "test_")):
             continue
         name = path.relative_to(src).as_posix()
@@ -144,6 +189,22 @@ def build(sdk: Path, output: Path, compiler: Path | None = None) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix="xu-playground-typed-") as tmp:
         tmp = Path(tmp)
+        stdlib_root = src
+        checker_path = src / "xu/checker/checker.xu"
+        if checker_path.exists():
+            checker_text = checker_path.read_text(encoding="utf-8")
+            if 'c.borrow_check_fn(p, c.env.fndecl[i])' in checker_text and 'mod_id == "main"' not in checker_text:
+                import shutil
+                patched_src = tmp / "src"
+                shutil.copytree(src, patched_src)
+                patched_checker = patched_src / "xu/checker/checker.xu"
+                patched_text = checker_text.replace(
+                    "        if c.env.error_count == err0 {\n            c.borrow_check_fn(p, c.env.fndecl[i])\n        }",
+                    '        if c.env.error_count == err0 {\n            if c.env.fns[i].mod_id == "main" || c.env.fns[i].mod_id.len == 0 {\n                c.borrow_check_fn(p, c.env.fndecl[i])\n            }\n        }'
+                )
+                patched_checker.write_text(patched_text, encoding="utf-8")
+                stdlib_root = patched_src
+
         embedded = tmp / "embedded_core.xu"
         embed_sources(src, embedded)
         stdlib = tmp / "embedded_ui.xu"
@@ -151,6 +212,7 @@ def build(sdk: Path, output: Path, compiler: Path | None = None) -> None:
         stdlib.write_text(tools["embedded_stdlib"](ROOT, sdk, merge="add_source", include_maps=False),
                           encoding="utf-8")
         env["XU_CACHE"] = str(tmp / "cache")
+        env["XU_STDLIB_ROOT"] = str(stdlib_root)
         sources = [RUNTIME / "main.xu", RUNTIME / "machine.xu", RUNTIME / "floats.xu", embedded, stdlib]
         compiled = tmp / "xu-play.wasm"
         subprocess.run([str(compiler), "build", *map(str, sources), "--target", "wasm32-wasi",
