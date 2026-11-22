@@ -47,7 +47,7 @@ def embed_sources(src: Path, out: Path) -> None:
             continue
         name = path.relative_to(src).as_posix()
         text = path.read_text(encoding="utf-8")
-        if path.name == "intrin.xu":
+        if name == "runtime/core/intrin.xu" and "bits.trailing_zeros(hits)" in text:
             text = text.replace("#math/bits\n", "")
             helper = (
                 "fn intrin_trailing_zeros(x int) int {\n"
