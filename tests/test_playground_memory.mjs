@@ -89,17 +89,23 @@ test('large execution snapshots fall back to replay within the 8 MiB host budget
   assert.equal(next.timings.checkpointBytes, 0);
 });
 
-for (const maximum of [96, 104]) {
-  test(`engine growth failure at ${maximum} MiB reports a limit and permits recovery`, async () => {
-    const runtime = await createRuntime(withMaximum(maximum));
-    const result = runtime.run(color, {profile: true});
-    assert.equal(result.exit, 1);
-    assert.match(result.stderr, /memory limit exceeded/);
-    assert.ok(result.timings.memoryBytes > build.initial_memory_bytes);
-    assert.ok(result.timings.memoryBytes <= maximum * MiB);
-    const recovered = runtime.run(hello, {profile: true});
-    assert.equal(recovered.exit, 0, recovered.stderr);
-    assert.equal(recovered.stdout, 'small\n');
-    assert.equal(recovered.timings.cacheHit, false);
-  });
-}
+test('engine growth failure reports a limit and permits recovery', async t => {
+  const baseline = (await createRuntime(bytes)).run(hello, {profile: true});
+  assert.equal(baseline.exit, 0, baseline.stderr);
+  // Both constrained instances must fit the recovery program on this SDK.
+  const minimum = Math.ceil(baseline.timings.memoryBytes / MiB);
+  for (const maximum of [minimum, minimum + 8]) {
+    await t.test(`${maximum} MiB engine limit`, async () => {
+      const runtime = await createRuntime(withMaximum(maximum));
+      const result = runtime.run(color, {profile: true});
+      assert.equal(result.exit, 1);
+      assert.match(result.stderr, /memory limit exceeded/);
+      assert.ok(result.timings.memoryBytes > build.initial_memory_bytes);
+      assert.ok(result.timings.memoryBytes <= maximum * MiB);
+      const recovered = runtime.run(hello, {profile: true});
+      assert.equal(recovered.exit, 0, recovered.stderr);
+      assert.equal(recovered.stdout, 'small\n');
+      assert.equal(recovered.timings.cacheHit, false);
+    });
+  }
+});

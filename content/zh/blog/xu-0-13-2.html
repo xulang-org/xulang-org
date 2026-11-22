@@ -1,0 +1,17 @@
+<!--title: Xu 0.13.2 发布 · HTTP 缓冲区、套接字调度与文件 I/O-->
+<!--summary: Xu 0.13.2 限制 HTTP 缓冲区增长，按范围读取静态文件，批量等待套接字就绪，并减少文件读取和字符串处理开销。-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.13.2 发布 · HTTP 缓冲区、套接字调度与文件 I/O</h1>
+<p class="meta"><time datetime="2026-11-22">2026-11-22</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.13.2">Xu v0.13.2</a></p>
+<p>Xu 0.13.2 改进了 HTTP 请求经常经过的网络与文件路径，也调整了协作式调度器在没有可运行任务时等待套接字的方式。</p>
+
+<h2>HTTP 与文件读写</h2>
+<p>HTTP 服务端限制待处理请求缓冲区的增长。客户端限制接收缓冲区的增长，并随数据到达逐步解码分块响应。静态文件处理可以根据元数据响应 <code>HEAD</code>，处理字节范围请求时只读取所需范围。</p>
+<p><code>DirFS</code> 复用已有缓冲区容量。整文件读取会先确认是否到达文件末尾，再决定是否扩容。Windows 目录枚举无论成功还是失败都会释放搜索缓冲区。</p>
+
+<h2>运行时与字符串</h2>
+<p>当可运行队列为空时，调度器在一次轮询中等待多个套接字。本版还减少了哈希表内存占用，并复用 AES 初始化表。ARM64 和 x64 可以按机器字扫描较短的字节序列，前缀和后缀判断增加了单字节路径。分割结果的切片扩容后，各片段依然独立拥有其字节。</p>
+
+<h2>基准测试与 SDK 下载</h2>
+<p>官方<a href="/zh/benchmarks">基准测试看板</a>已同步更新来自 <a href="https://github.com/xulang-org/bench/actions/runs/45006897421">GitHub Actions 实测运行</a> 的全部 6 个平台、72 项测试负载数据。Linux、macOS 和 Windows 的 ARM64 与 x86-64 SDK 已通过原生安装和执行检查。Linux LoongArch64 与 RISC-V SDK 通过交叉构建提供。</p>
+<p><a href="/download">下载 SDK</a> · <a href="https://github.com/xulang-org/xu/releases/download/v0.13.2/SHA256SUMS">SHA-256 校验摘要</a> · <a href="https://github.com/xulang-org/xu/blob/v0.13.2/RELEASES.zh-CN.md#xu-0132">完整发布说明</a></p>

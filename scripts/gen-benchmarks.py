@@ -1785,6 +1785,46 @@ def main():
     print(f"Generated {zh_out}")
     print(f"Generated {en_out}")
 
+    i18n_headers = {
+        "de": ("<!--title: Benchmarks — Reale Messwerte über Sprachen und Architekturen-->", "<h1>Sprachübergreifende Multi-Architektur-Benchmarks</h1>"),
+        "es": ("<!--title: Pruebas de rendimiento — Mediciones reales entre lenguajes y arquitecturas-->", "<h1>Pruebas de rendimiento multiarquitectura entre lenguajes</h1>"),
+        "fr": ("<!--title: Performances — Mesures comparatives multi-langages et multi-architectures-->", "<h1>Tests de performance multi-architectures entre langages</h1>"),
+        "ja": ("<!--title: ベンチマーク — クロス言語・クロスアーキテクチャ実測-->", "<h1>マルチアーキテクチャ・クロス言語ベンチマーク</h1>"),
+        "ko": ("<!--title: 벤치마크 — 다중 언어 및 아키텍처 실측 데이터-->", "<h1>다중 아키텍처 크로스 언어 벤치마크</h1>"),
+        "pt-br": ("<!--title: Benchmarks — Medições reais entre linguagens e arquiteturas-->", "<h1>Benchmarks multiarquitetura entre linguagens</h1>"),
+        "ru": ("<!--title: Бенчмарки — Кросс-языковые тесты производительности-->", "<h1>Кросс-языковые тесты производительности на различных архитектурах</h1>"),
+    }
+
+    for lang, (title, h1) in i18n_headers.items():
+        content = en_content
+        content = re.sub(r"<!--title: [^>]+-->", title, content, count=1)
+        content = re.sub(r"<h1>[^<]+</h1>", h1, content, count=1)
+        out_file = ROOT / f"content/{lang}/benchmarks.html"
+        out_file.write_text("\n".join(line.rstrip() for line in content.splitlines()) + "\n", encoding="utf-8")
+        print(f"Generated {out_file}")
+
+    tw_out = ROOT / "content/zh-tw/benchmarks.html"
+    try:
+        import opencc
+        cc = opencc.OpenCC("s2twp")
+        tw_content = cc.convert(zh_content)
+    except Exception:
+        tw_content = zh_content
+
+    total_benches = data["metadata"]["total_benches"]
+    date_str = data["metadata"]["date"]
+    version_str = data["metadata"]["xu_version"]
+    tw_title = f"<!--title: 橫向測評 — {total_benches} 項跨語言與雙架構效能實測-->"
+    tw_h1 = "<h1>全量跨語言與雙架構效能基準評測</h1>"
+    tw_banner = f'    <p class="banner"><i class="xi xi-benchmark xi-brand"></i> Updated: {date_str} · Measured Xu v{version_str} · Dual-Architecture (ARM64 + x86_64)</p>'
+
+    tw_content = re.sub(r"<!--title: [^>]+-->", tw_title, tw_content, count=1)
+    tw_content = re.sub(r"<h1>[^<]+</h1>", tw_h1, tw_content, count=1)
+    tw_content = re.sub(r'    <p class="banner"><i class="xi xi-benchmark xi-brand"></i> [^<]+</p>', tw_banner, tw_content, count=1)
+
+    tw_out.write_text("\n".join(line.rstrip() for line in tw_content.splitlines()) + "\n", encoding="utf-8")
+    print(f"Generated {tw_out}")
+
 
 if __name__ == "__main__":
     main()
