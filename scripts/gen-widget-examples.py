@@ -217,6 +217,7 @@ def generate(root=ROOT, check=False):
     else:
         for idx, g in enumerate(catalog['groups']):
             if g['id'] == 'widgets':
+                widgets_group['title'] = g['title'] | widgets_group['title']
                 catalog['groups'][idx] = widgets_group
     for c in widgets['components']:
         slug = c['slug']
@@ -233,7 +234,9 @@ def generate(root=ROOT, check=False):
         code = measured_text(code, slug)
         key = 'widget-' + slug
         zh_title = f"{WIDGET_ZH_NAMES.get(slug, c['name'])} · {c['name']}"
-        catalog['projects'][key] = dict(group='widgets', component=slug, title={'zh': zh_title, 'en': c['name']},
+        # Keep the title translations authored in the multilingual catalog.
+        title = catalog['projects'].get(key, {}).get('title', {}) | {'zh': zh_title, 'en': c['name']}
+        catalog['projects'][key] = dict(group='widgets', component=slug, title=title,
             description=c['description'], exercise=c['exercise'], entry='main.xu', files={'main.xu': code}, expected={'kind': 'stdout', 'value': expected_val})
         outputs[root / f'playground/examples/{key}.xu'] = code
     outputs[path] = json.dumps(catalog, ensure_ascii=False, indent=2) + '\n'
