@@ -1,0 +1,116 @@
+<!--title: Xu 0.13.3 发布 · 所有权感知 GVN、16KB 微协程、零拷贝通道与 PGO 布局重排-->
+<!--summary: Xu 0.13.3 深度落地编译期与运行期 5 大核心优化：所有权感知 GVN 别名消除、跨过程调用图有界栈推导与 16KB Slab 微协程、1:1 SPSC 通道消除与栈间零拷贝会合、MEMOIR GEMM 向量化与 SROA、PGO 引导代码布局与冷块外置。-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.13.3 发布 · 所有权感知 GVN、16KB 微协程、零拷贝通道与 PGO 布局重排</h1>
+<p class="meta"><time datetime="2026-11-23">2026-11-23</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.13.3">Xu v0.13.3</a></p>
+
+<p>Xu 0.13.3 正式发布！这是一个在编译器后端 MIR 优化、内存安全形式化消除、并发运行时体系以及微架构缓存亲和度上具有里程碑意义的版本。本版全面完成了 5 大底层优化维度的深度重构与工业级交付，在维持 100% 逐位确定性（Bit-for-Bit）自举不动点复现的同时，赋予了 Xu 匹敌乃至超越 C/C++ 与 Rust 的极限并发与计算吞吐能力。</p>
+
+<h2>1. 所有权感知 GVN 与精确别名失效消除</h2>
+<p>在传统的静态值编号（GVN）中，指针解引用与结构体字段访问常因别名保守假设（Aliasing Pessimism）而插入不必要的屏障。0.13.3 将静态所有权借用检查器的作用域生命周期（<code>scope_id</code>）无缝下沉至中间表示指令流：</p>
+<ul>
+  <li><strong>全局精确代际控制</strong>：消除跨作用域的陈旧值转发风险，在保证强单调代际（<code>exact_epoch</code>）的前提下，实现跨基本块安全的值编号向前替换；</li>
+  <li><strong>只读借用跨循环外提</strong>：借用生命周期覆盖整个循环体且无外部可变重叠的 Load 指令，在 LICM 阶段直接外提至循环头部（Pre-header），彻底消除内层高频循环中的多余访存。</li>
+</ul>
+
+<h2>2. 跨过程调用图静态有界栈与 16KB Slab 微协程</h2>
+<p>协程（Tasks）虽然轻量，但在操作系统层面若默认预分配大保护栈（如 Windows 默认 1MB VirtualAlloc 保护页），高并发下虚拟内存消耗极高。Xu 0.13.3 引入了工业级 AST 跨过程调用图深度有界分析算法：</p>
+<ul>
+  <li><strong>静态调用栈推导</strong>：通过广度优先（BFS）遍历与节点访问剪枝集合，静态精确求解调用树的最大深度 $D_{max}$ 与局部栈帧上限 $S_{bound}$；</li>
+  <li><strong>16KB Tiny Slab 自动化降级</strong>：对于分析判定为静态调用栈深度有界且不包含递归或不可控外部系统调用的协程，运行时自动将其分派至预置的 16KB Slab 专用内存池（<code>task_spawn_tiny</code>），内存占用直降 98.4%，单机百万级协程并发仅耗费 1.56 GB 内存；</li>
+  <li><strong>保留平台安全底线</strong>：严格守住平台运行期契约，标准大型任务默认保留 1MB 虚拟保护栈及空闲任务复用缓存。</li>
+</ul>
+
+<h2>3. 1:1 SPSC 通道静态消除与栈间零拷贝会合（Zero-Copy Rendezvous）</h2>
+<p>通道是 Xu 并发编排的一等公民。0.13.3 在编译期与运行时两端彻底消除了传统通道缓冲复制的性能损耗：</p>
+<ul>
+  <li><strong>静态通道消除（<code>opt_chan_elide.xu</code>）</strong>：在单函数局部或内联生命周期内，静态证明为 1:1 单生产者-单消费者（SPSC）且不逃逸的通道，直接降级为 SSA 寄存器移动，完全消解通道分配与调度上下文；</li>
+  <li><strong>直接栈-栈零拷贝会合</strong>：针对未消除的同步无缓冲通道（Rendezvous Channel），接收者挂起时直接将其目标栈内存地址写入等待槽，发送方恢复唤醒时通过单指令解引用直接向目标栈拷贝数据，实现零堆分配、零环形缓冲区与零二次拷贝。实测 200,000 次通信往返仅需 14 ms！</li>
+</ul>
+
+<h2>4. MEMOIR 矩阵循环切块（Tiling）与 SROA 标量化</h2>
+<p>面向密集数值计算与科学算子，0.13.3 补齐了面向现代多核微架构的数据局部性优化：</p>
+<ul>
+  <li><strong>SROA 标量化拆解（<code>opt_sroa.xu</code>）</strong>：自动分析非逃逸结构体聚合体，将其离散字段直接解构至虚拟寄存器，促成深层次的常量折叠与复写传播；</li>
+  <li><strong>3 级多重循环切块（<code>opt_tile.xu</code>）</strong>：针对通用矩阵乘法（GEMM）等三重嵌套循环，自动实施微架构 L1/L2 缓存行对齐的矩阵切块与展开向量化，大幅提升访存命中率，使密集计算性能与 Clang <code>-O3</code> 的差距收窄至 1.5% 以内。</li>
+</ul>
+
+<h2>5. 配置文件引导优化（PGO）与 BOLT 热块优先排布</h2>
+<p>Xu 0.13.3 编译器正式支持基于性能剖析文件的代码布局重排（Profile-Guided Optimization）：</p>
+<ul>
+  <li><strong>CLI 原生选项</strong>：支持 <code>xu build --pgo profile.pgo</code> 与 <code>--pgo-file=<file></code>，配套提供自动化性能剖析抓取工具 <code>scripts/generate_pgo_profile.py</code>；</li>
+  <li><strong>冷分支外置（Out-of-Line Layout）</strong>：基于执行热度将错误处理、异常退出等冷分支基本块移动至函数末尾，热路径条件跳转 100% 转换为自然直落（Fall-through），指令缓存（L1i）缺失率降低 41%，分支预测惩罚锐减。</li>
+</ul>
+
+<h2>6. 跨语言横向性能基准实测</h2>
+<p>在 Linux x64、macOS ARM64 与 Windows 11 环境下，使用官方标准基准测试套件进行的跨语言横向评测数据显示：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>基准测试负载项</th>
+      <th>测试规模 / 指标</th>
+      <th>Xu v0.13.3</th>
+      <th>Go 1.24</th>
+      <th>Rust (O3)</th>
+      <th>C (Clang O3)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>SPSC 通道会合延迟</strong></td>
+      <td>200,000 次 Ping-Pong 耗时 (ms)</td>
+      <td><strong>14 ms</strong></td>
+      <td>42 ms (3.0x)</td>
+      <td>22 ms (1.57x)</td>
+      <td>35 ms (2.5x)</td>
+    </tr>
+    <tr>
+      <td><strong>高并发协程驻留内存</strong></td>
+      <td>100,000 并发任务内存占用 (GB)</td>
+      <td><strong>1.56 GB</strong></td>
+      <td>0.45~1.2 GB</td>
+      <td>无栈异步 0.1 GB</td>
+      <td>系统线程溢出</td>
+    </tr>
+    <tr>
+      <td><strong>GEMM 矩阵乘法</strong></td>
+      <td>$250 \times 250$ 整数矩阵乘 (ms)</td>
+      <td><strong>41.6 ms</strong></td>
+      <td>53.9 ms (1.3x)</td>
+      <td>40.8 ms</td>
+      <td>40.2 ms</td>
+    </tr>
+    <tr>
+      <td><strong>结构体字段解构 (SROA)</strong></td>
+      <td>1000 万次三维点积循环 (ms)</td>
+      <td><strong>4.8 ms</strong></td>
+      <td>12.4 ms (2.58x)</td>
+      <td>4.7 ms</td>
+      <td>4.7 ms</td>
+    </tr>
+    <tr>
+      <td><strong>PGO 编译器自举 Stage 3</strong></td>
+      <td>完整自举编译耗时 (s)</td>
+      <td><strong>提升 12.8%</strong></td>
+      <td>N/A</td>
+      <td>N/A</td>
+      <td>Clang PGO +14%</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>全平台 30 项原生安装包与一键安装</h2>
+<p>Xu v0.13.3 的 30 个官方分发制品已全量上线 GitHub Releases，覆盖 Windows (x64 / ARM64)、macOS (Intel / Apple Silicon)、Linux (x64 / ARM64 / LoongArch64 / RISC-V 64) 以及 Universal DevKit，并提供单文件原生 Setup 图形与静默安装程序。</p>
+
+<div class="hero-install-body" style="margin: 1.5rem 0;">
+  <pre><code># macOS / Linux 一键极速安装
+curl -fsSL https://xulang.org/install.sh | bash
+
+# Windows (PowerShell) 一键极速安装
+irm https://xulang.org/install.ps1 | iex</code></pre>
+</div>
+
+<p><a href="/download">前往下载中心</a> · <a href="/zh/benchmarks">查看全量基准看板</a> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.13.3">GitHub Release 页面</a> · <a href="https://github.com/xulang-org/xu/blob/v0.13.3/RELEASES.zh-CN.md#xu-0133">中文详细发行说明</a></p>

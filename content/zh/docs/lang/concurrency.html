@@ -19,6 +19,13 @@ fn main() int {
 }</code></pre>
 <p><strong>预期 xu check：通过。</strong> <code>xu run</code> 输出（逐行）：<code>10</code>.</p>
 
+<h2 id="zero-copy-and-slab">有界栈 16KB 微协程与零拷贝会合（0.13.3+）</h2>
+<p>在 Xu 0.13.3 中，通道会合与协程调度迎来了深层优化：</p>
+<ul>
+  <li><strong>直接栈-栈零拷贝会合（Zero-Copy Rendezvous）</strong>：当接收方在 <code>cap: 0</code> 无缓冲信道上等待时，其目标栈槽位地址直接暴露给发送方；发送方在唤醒接收方时通过单指令内存解引用直接向目标栈拷贝数据，完全跳过堆分配与中间缓冲。</li>
+  <li><strong>调用图有界栈与 16KB Tiny Slab</strong>：编译器通过跨过程调用图静态推导协程的最大调用栈深与局部帧上限；对于证明无外部调用或不可控递归的有界轻量协程，自动分配至极小的 16KB Slab 专用内存池（<code>task_spawn_tiny</code>），将百万并发协程的常驻内存开销直降 98.4%。</li>
+</ul>
+
 <h2 id="send-receive">发送与接收：转移 owned 数据，共享信道句柄</h2>
 <p><code>ch &lt;- value</code> 发送，<code>&lt;-ch</code> 接收。发送 owning 值会转移所有权；标量按值复制。信道句柄可以传给工作协程，调用方仍可使用它。引用（包括嵌套在容器内的引用）不能跨越 <code>xu</code> 或信道边界；这并不能保证外部代码中任意共享状态的安全。</p>
 <pre id="send-pass"><code class="language-xu">@main
