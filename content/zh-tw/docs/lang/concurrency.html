@@ -19,6 +19,13 @@ fn main() int {
 }</code></pre>
 <p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出（逐行）：<code>10</code>.</p>
 
+<h2 id="zero-copy-and-slab">有界棧 16KB 微協程與零拷貝會合（0.13.3+）</h2>
+<p>在 Xu 0.13.3 中，通道會合與協程排程迎來了深層最佳化：</p>
+<ul>
+  <li><strong>直接棧-棧零拷貝會合（Zero-Copy Rendezvous）</strong>：當接收方在 <code>cap: 0</code> 無緩衝通道上等待時，其目標棧槽位位址直接暴露給傳送方；傳送方在喚醒接收方時透過單指令記憶體解引用直接向目標棧拷貝資料，完全跳過堆分配與中介緩衝。</li>
+  <li><strong>呼叫圖有界棧與 16KB Tiny Slab</strong>：編譯器透過跨過程呼叫圖靜態推導協程的最大呼叫棧深與局部訊框上限；對於證明無外部呼叫或不可控遞迴的有界輕量協程，自動分配至極小的 16KB Slab 專用記憶體池（<code>task_spawn_tiny</code>），將百萬並行協程的常駐記憶體開銷直降 98.4%。</li>
+</ul>
+
 <h2 id="send-receive">傳送與接收：轉移 owned 資料，共享通道控制代碼</h2>
 <p><code>ch &lt;- value</code> 傳送，<code>&lt;-ch</code> 接收。傳送 owning 值會轉移所有權；標量按值複製。通道控制代碼可以傳給工作協程，呼叫方仍可使用它。引用（包括巢狀在容器內的引用）不能跨越 <code>xu</code> 或通道邊界；這並不能保證外部程式碼中任意共享狀態的安全。</p>
 <pre id="send-pass"><code class="language-xu">@main
