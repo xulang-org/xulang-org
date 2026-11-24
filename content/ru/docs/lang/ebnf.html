@@ -3,17 +3,22 @@
 <h1>Грамматика EBNF</h1>
 <p>Формальное описание синтаксиса Xu в нотации Бэкуса — Наура (EBNF):</p>
 
-<pre><code>SourceFile   = { TopLevelDecl } ;
-TopLevelDecl = [ "@main" ] ( VarDecl | ConstDecl | FuncDecl | StructDecl | EnumDecl ) ;
+<pre><code>SourceFile   = { CompileTag } { TopLevelDecl } ;
+CompileTag   = "$" ( "freestanding" | "macos" | "linux" | "windows" | Ident ) ;
+TopLevelDecl = [ "@main" ] [ Attribute ] ( VarDecl | ConstDecl | FuncDecl | StructDecl | EnumDecl ) ;
+Attribute    = "#[" Ident [ "(" AttrArg ")" ] "]" | "@repr" "(" StringLit [ "," ReprArg ] ")" ;
 
 FuncDecl     = "fn" [ Receiver ] Ident Signature Block ;
 Receiver     = "(" Ident [ [ "$" ] "&amp;" ] Type ")" ;
 Signature    = "(" [ ParameterList ] ")" [ Type ] ;
 
 Block        = "{" { Statement } "}" ;
-Statement    = VarDecl | Assignment | ReturnStmt | ThrowStmt | BreakStmt | IfStmt | ForStmt | ExprStmt ;
+Statement    = VarDecl | Assignment | ReturnStmt | ThrowStmt | BreakStmt | IfStmt | ForStmt | ExprStmt | UnsafeBlock | AsmStmt ;
 
 ReturnStmt   = "&lt;&lt;" [ Expression ] ;
 ThrowStmt    = "&gt;&gt;" Expression ;
 BreakStmt    = "&lt;-" ;
+UnsafeBlock  = "unsafe" Block ;
+AsmStmt      = "asm!" "(" StringLit { "," AsmOperand } ")" ;
+RawPointer   = "*raw" Type ;
 </code></pre>
