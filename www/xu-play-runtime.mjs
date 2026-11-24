@@ -78,7 +78,10 @@ export async function createRuntime(bytesOrModule, {cache = true, checkpoints = 
             throw new Error('Invalid UI scroll delta');
           }
         }
-        for (const field of ['key', 'modifiers', 'repeat', 'button', 'buttons']) {
+        if (!Number.isInteger(event.key ?? 0) || (event.key ?? 0) < 0 || (event.key ?? 0) > 1114111) {
+          throw new Error('Invalid UI event field');
+        }
+        for (const field of ['modifiers', 'repeat', 'button', 'buttons']) {
           if (!Number.isInteger(event[field] ?? 0) || (event[field] ?? 0) < 0 || (event[field] ?? 0) > 65535) {
             throw new Error('Invalid UI event field');
           }

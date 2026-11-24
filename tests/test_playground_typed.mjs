@@ -162,3 +162,96 @@ fn main() int {
   assert.equal(result.stdout, 'x'.repeat(256 * 1024));
   assert.equal(result.truncated, true);
 });
+
+test('widget-input supports selection, clipboard copy/cut/paste, UTF-8 deletion, cursor_rect, and synced caret', () => {
+  const inputSrc = sourceFor('widget-input');
+  const fakeCanvas = {ownerDocument: {defaultView: {devicePixelRatio: 1}, createElement: () => ({getContext: () => fakeCtx})}, getContext: () => fakeCtx};
+  const fakeCtx = new Proxy({measureText: () => ({width: 12, actualBoundingBoxAscent: 10, actualBoundingBoxDescent: 2})}, {get: (t, k) => k in t ? t[k] : () => {}});
+  const renderResult = res => {
+    assert.equal(res.exit, 0, res.stderr);
+    canvas.XuPlayCanvas.render(fakeCanvas, res.ui.commands);
+    return canvas.XuPlayCanvas;
+  };
+  // Hover cursor region for input field + non-overlapping font transition around editable value.
+  const initRes = runtime.run(inputSrc);
+  const hostApi = renderResult(initRes);
+  assert.equal(hostApi.cursorAt(fakeCanvas, 120, 136), 'text');
+  assert.equal(hostApi.cursorAt(fakeCanvas, 10, 10), '');
+  assert.match(initRes.ui.commands, /font\tmono\nlayout_text\t.*\tdeveloper@xulang\.org\nfont\tsans/);
+  assert.doesNotMatch(initRes.ui.commands, /font\tmono\nlayout_text\t.*\tUser email 用户邮箱/);
+
+  // Click at index 9 ('@'), type UTF-8 '中', copy word on double-click, cut, paste, word-delete.
+  const atX = 62 + 9 * 9;
+  const typed = runtime.run(inputSrc, {events: [
+    {kind: 72, x: atX, y: 136, button: 1, buttons: 1},
+    {kind: 73, x: atX, y: 136, button: 1},
+    {kind: 78, key: 0x4E2D, modifiers: 16},
+    {kind: 78, key: 259},
+  ]});
+  assert.equal(typed.stdout, 'Value: developer@xulang.org\n');
+  const pasted = runtime.run(inputSrc, {events: [
+    {kind: 72, x: atX, y: 136, button: 1, buttons: 1},
+    {kind: 73, x: atX, y: 136, button: 1},
+    {kind: 78, key: 0x4E2D, modifiers: 16},
+  ]});
+  assert.equal(pasted.stdout, 'Value: developer中@xulang.org\n');
+  const caretLine = canvas.XuPlayCanvas.frame(pasted.ui.commands).filter(c => c.op === 'line').at(-1);
+  assert.equal(caretLine.args[0], 62 + 11 * 9, 'caret advances by 2 mono cells for CJK char');
+
+  // Double-click 'developer' then Ctrl+C emits clipboard and Ctrl+X cuts.
+  const copied = runtime.run(inputSrc, {events: [
+    {kind: 72, x: 80, y: 136, button: 1, buttons: 1, repeat: 2},
+    {kind: 73, x: 80, y: 136, button: 1},
+    {kind: 78, key: 67, modifiers: 2},
+  ]});
+  renderResult(copied);
+  assert.deepEqual({...hostApi.clipboardOf(fakeCanvas)}, {seq: 1, text: 'developer'});
+  const cut = runtime.run(inputSrc, {events: [
+    {kind: 72, x: 80, y: 136, button: 1, buttons: 1, repeat: 2},
+    {kind: 73, x: 80, y: 136, button: 1},
+    {kind: 78, key: 88, modifiers: 2},
+  ]});
+  assert.equal(cut.stdout, 'Value: @xulang.org\n');
+
+  // Alt+Backspace deletes word before caret.
+  const wordDel = runtime.run(inputSrc, {events: [
+    {kind: 72, x: atX, y: 136, button: 1, buttons: 1},
+    {kind: 73, x: atX, y: 136, button: 1},
+    {kind: 78, key: 259, modifiers: 4},
+  ]});
+  assert.equal(wordDel.stdout, 'Value: @xulang.org\n');
+
+  // widget-field clear cursor & field-area CJK UTF-8 caret + deletion.
+  const fieldRes = runtime.run(sourceFor('widget-field'));
+  renderResult(fieldRes);
+  assert.equal(hostApi.cursorAt(fakeCanvas, 120, 134), 'text');
+  assert.equal(hostApi.cursorAt(fakeCanvas, 460, 130), 'pointer');
+  const faClickX = 60 + 14 * 9; // after "Build notes 构" (12 + 2 cells = 14)
+  const faDel = runtime.run(sourceFor('widget-field-area'), {events: [
+    {kind: 72, x: faClickX, y: 132, button: 1, buttons: 1},
+    {kind: 73, x: faClickX, y: 132, button: 1},
+    {kind: 78, key: 259},
+  ]});
+  assert.equal(faDel.exit, 0, faDel.stderr);
+  assert.equal(faDel.stdout, 'FieldArea: 29 characters\n');
+  assert.match(faDel.ui.commands, /Build notes 建说明 · 中文与 emoji 🙂/);
+
+  // ui-text-selection Copy button emits clipboard and Ctrl+X cuts.
+  const selCopy = runtime.run(sourceFor('ui-text-selection'), {events: [
+    {kind: 72, x: 200, y: 232, button: 1, buttons: 1},
+    {kind: 73, x: 200, y: 232, button: 1},
+  ]});
+  renderResult(selCopy);
+  assert.deepEqual({...hostApi.clipboardOf(fakeCanvas)}, {seq: 1, text: 'Zero GC ownership'});
+
+  // Password input forbids copy/cut.
+  const pwdRes = runtime.run(sourceFor('widget-password-input'), {events: [
+    {kind: 72, x: 80, y: 135, button: 1, buttons: 1},
+    {kind: 73, x: 80, y: 135, button: 1},
+    {kind: 78, key: 65, modifiers: 2},
+    {kind: 78, key: 67, modifiers: 2},
+    {kind: 78, key: 88, modifiers: 2},
+  ]});
+  assert.equal(pwdRes.stdout, 'Password: masked (15 chars)\n');
+  assert.doesNotMatch(pwdRes.ui.commands, /^clipboard\t/m);
+});

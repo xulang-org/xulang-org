@@ -5,12 +5,6 @@
 #ui/widgets
 #playground
 
-fn remove_last(value &string) string {
-    if value.len == 0 { << "" }
-    $end := value.len-1
-    while end > 0 && (value[end] & 192) == 128 { end -= 1 }
-    << value[0:end]
-}
 fn codepoints(value &string) int {
     $count := 0
     for i in 0:value.len { if (value[i] & 192) != 128 { count += 1 } }
@@ -28,7 +22,94 @@ fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,heigh
 fn box(x f64,y f64,w f64,h f64) layout.Rect {
     << layout.Rect{x: x,y: y,width: w,height: h}
 }
-fn char_from_key(key int, shift bool) string {
+fn mono_options(size f64) draw.TextOptions {
+    $opts := draw.text_options(size)
+    opts.family = "mono"
+    << opts
+}
+fn utf8_next(s &string,pos int) int {
+    if pos >= s.len { << s.len }
+    b := s[pos] & 255
+    $w := 1
+    if b >= 240 { w = 4 }
+    else if b >= 224 { w = 3 }
+    else if b >= 194 { w = 2 }
+    if pos + w > s.len { << s.len }
+    << pos + w
+}
+fn utf8_prev(s &string,pos int) int {
+    if pos <= 0 { << 0 }
+    $p := pos - 1
+    while p > 0 && (s[p] & 192) == 128 { p -= 1 }
+    << p
+}
+fn snap_pos(s &string,pos int) int {
+    if pos <= 0 { << 0 }
+    if pos >= s.len { << s.len }
+    $p := pos
+    while p > 0 && (s[p] & 192) == 128 { p -= 1 }
+    << p
+}
+fn count_cps(s &string) int {
+    $n := 0
+    for i in 0:s.len { if (s[i] & 192) != 128 { n += 1 } }
+    << n
+}
+fn is_word_byte(b int) bool {
+    if b >= 48 && b <= 57 { << true }
+    if b >= 65 && b <= 90 { << true }
+    if b >= 97 && b <= 122 { << true }
+    if b == 95 || b >= 128 { << true }
+    << false
+}
+fn prev_word_start(text &string,pos int) int {
+    if pos <= 0 { << 0 }
+    $p := pos
+    while p > 0 {
+        prev := utf8_prev(text,p)
+        if is_word_byte(text[prev] & 255) { <- }
+        p = prev
+    }
+    while p > 0 {
+        prev := utf8_prev(text,p)
+        if !is_word_byte(text[prev] & 255) { <- }
+        p = prev
+    }
+    << p
+}
+fn next_word_end(text &string,pos int) int {
+    if pos >= text.len { << text.len }
+    $p := pos
+    while p < text.len && !is_word_byte(text[p] & 255) { p = utf8_next(text,p) }
+    while p < text.len && is_word_byte(text[p] & 255) { p = utf8_next(text,p) }
+    << p
+}
+fn select_word_at(text &string,pos int) []int {
+    if text.len == 0 { << [0,0] }
+    $idx := pos
+    if idx >= text.len { idx = utf8_prev(text,text.len) }
+    $lo := idx
+    $hi := utf8_next(text,idx)
+    target := is_word_byte(text[idx] & 255)
+    while lo > 0 {
+        prev := utf8_prev(text,lo)
+        if is_word_byte(text[prev] & 255) != target { <- }
+        lo = prev
+    }
+    while hi < text.len {
+        if is_word_byte(text[hi] & 255) != target { <- }
+        hi = utf8_next(text,hi)
+    }
+    << [lo,hi]
+}
+fn char_from_key(key int,mods int,shift bool) string {
+    if (mods & 16) != 0 {
+        if key < 32 || (key >= 0xD800 && key <= 0xDFFF) || key > 0x10FFFF { << "" }
+        if key < 0x80 { << string_from_byte(key) }
+        if key < 0x800 { << string_from_bytes([0xC0 | (key >> 6),0x80 | (key & 0x3F)]) }
+        if key < 0x10000 { << string_from_bytes([0xE0 | (key >> 12),0x80 | ((key >> 6) & 0x3F),0x80 | (key & 0x3F)]) }
+        << string_from_bytes([0xF0 | (key >> 18),0x80 | ((key >> 12) & 0x3F),0x80 | ((key >> 6) & 0x3F),0x80 | (key & 0x3F)])
+    }
     if key == 32 { << " " }
     if key >= 65 && key <= 90 {
         lower := "abcdefghijklmnopqrstuvwxyz"
@@ -44,58 +125,265 @@ fn char_from_key(key int, shift bool) string {
         if shift { << symbols[idx:idx + 1] }
         << digits[idx:idx + 1]
     }
-    if key == 45 { if shift { << "_" } << "-" }
-    if key == 61 { if shift { << "+" } << "=" }
-    if key == 46 { if shift { << ">" } << "." }
+    if key == 39 { if shift { << "\"" } << "'" }
     if key == 44 { if shift { << "<" } << "," }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 46 { if shift { << ">" } << "." }
     if key == 47 { if shift { << "?" } << "/" }
-    if key == 58 || key == 59 { if shift { << ":" } << ";" }
-    if key == 64 { << "@" }
+    if key == 59 { if shift { << ":" } << ";" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 91 { if shift { << "{" } << "[" }
+    if key == 92 { if shift { << "|" } << "\\" }
+    if key == 93 { if shift { << "}" } << "]" }
+    if key == 96 { if shift { << "~" } << "`" }
+    if key >= 33 && key <= 126 { << string_from_byte(key) }
     << ""
+}
+fn measure_prefix(context &draw.Context,options &draw.TextOptions,text &string,pos int) f64 {
+    if pos <= 0 { << 0.0 }
+    $n := pos
+    if n > text.len { n = text.len }
+    n = snap_pos(text,n)
+    if n <= 0 { << 0.0 }
+    sub := text[0:n]
+    shaped := context.layout_text(&sub,options) or >>
+    << shaped.metrics.width
+}
+fn hit_pos(context &draw.Context,options &draw.TextOptions,text &string,rel_x f64) int {
+    if rel_x <= 0.0 || text.len == 0 { << 0 }
+    $prev_pos := 0
+    $prev_w := 0.0
+    while prev_pos < text.len {
+        next_pos := utf8_next(text,prev_pos)
+        w := measure_prefix(context,options,text,next_pos) or >>
+        if rel_x < (prev_w + w) * 0.5 { << prev_pos }
+        prev_pos = next_pos
+        prev_w = w
+    }
+    << text.len
+}
+fn compute_scroll(context &draw.Context,options &draw.TextOptions,text &string,head int,view_w f64,cur_scroll f64) f64 {
+    caret_px := measure_prefix(context,options,text,head) or >>
+    $sx := cur_scroll
+    if caret_px - sx > view_w - 6.0 { sx = caret_px - (view_w - 6.0) }
+    if caret_px - sx < 0.0 { sx = caret_px }
+    if sx < 0.0 { sx = 0.0 }
+    << sx
+}
+fn handle_edit_key(event &ui.InputEvent,text $&string,anchor $&int,head $&int,clipboard $&string,clip_seq $&int,just_copied $&bool,focused $&bool,max_bytes int,max_cps int,allow_copy bool) int {
+    mod_cmd := (event.modifiers & (ui.MOD_CONTROL | ui.MOD_META)) != 0
+    mod_word := (event.modifiers & (ui.MOD_CONTROL | ui.MOD_ALT)) != 0
+    mod_line := (event.modifiers & ui.MOD_META) != 0
+    mod_shift := (event.modifiers & ui.MOD_SHIFT) != 0
+    mod_text := (event.modifiers & 16) != 0
+    $lo := *anchor
+    $hi := *head
+    if lo > hi {
+        tmp := lo
+        lo = hi
+        hi = tmp
+    }
+    *just_copied = false
+    if !mod_text && mod_cmd && (event.key == 65 || event.key == 97) {
+        *anchor = 0
+        *head = text.len
+    } else if !mod_text && allow_copy && mod_cmd && (event.key == 67 || event.key == 99) {
+        if hi > lo {
+            *clipboard = (*text)[lo:hi]
+            *clip_seq += 1
+            *just_copied = true
+        }
+    } else if !mod_text && allow_copy && mod_cmd && (event.key == 88 || event.key == 120) {
+        if hi > lo {
+            *clipboard = (*text)[lo:hi]
+            *clip_seq += 1
+            *just_copied = true
+            *text = (*text)[0:lo] + (*text)[hi:text.len]
+            *anchor = lo
+            *head = lo
+        }
+    } else if !mod_text && event.key == ui.KEY_BACKSPACE {
+        if hi > lo {
+            *text = (*text)[0:lo] + (*text)[hi:text.len]
+            *anchor = lo
+            *head = lo
+        } else if *head > 0 && text.len > 0 {
+            $from := utf8_prev(text,*head)
+            if mod_line { from = 0 }
+            else if mod_word { from = prev_word_start(text,*head) }
+            *text = (*text)[0:from] + (*text)[*head:text.len]
+            *head = from
+            *anchor = from
+        }
+    } else if !mod_text && event.key == ui.KEY_DELETE {
+        if hi > lo {
+            *text = (*text)[0:lo] + (*text)[hi:text.len]
+            *anchor = lo
+            *head = lo
+        } else if *head < text.len {
+            $to := utf8_next(text,*head)
+            if mod_line { to = text.len }
+            else if mod_word { to = next_word_end(text,*head) }
+            *text = (*text)[0:*head] + (*text)[to:text.len]
+            *anchor = *head
+        }
+    } else if !mod_text && event.key == ui.KEY_ESCAPE {
+        *focused = false
+        *anchor = *head
+    } else if !mod_text && event.key == ui.KEY_LEFT {
+        if !mod_shift && hi > lo {
+            *head = lo
+            *anchor = lo
+        } else {
+            if mod_line { *head = 0 }
+            else if mod_word { *head = prev_word_start(text,*head) }
+            else if *head > 0 { *head = utf8_prev(text,*head) }
+            if !mod_shift { *anchor = *head }
+        }
+    } else if !mod_text && event.key == ui.KEY_RIGHT {
+        if !mod_shift && hi > lo {
+            *head = hi
+            *anchor = hi
+        } else {
+            if mod_line { *head = text.len }
+            else if mod_word { *head = next_word_end(text,*head) }
+            else if *head < text.len { *head = utf8_next(text,*head) }
+            if !mod_shift { *anchor = *head }
+        }
+    } else if !mod_text && event.key == ui.KEY_HOME {
+        *head = 0
+        if !mod_shift { *anchor = *head }
+    } else if !mod_text && event.key == ui.KEY_END {
+        *head = text.len
+        if !mod_shift { *anchor = *head }
+    } else if mod_text || !mod_cmd {
+        ch := char_from_key(event.key,event.modifiers,mod_shift)
+        if ch.len > 0 {
+            replaced := (*text)[0:lo] + ch + (*text)[hi:text.len]
+            $within := replaced.len <= max_bytes
+            if within && max_cps > 0 { within = count_cps(&replaced) <= max_cps }
+            if within {
+                *text = replaced
+                *anchor = lo + ch.len
+                *head = lo + ch.len
+            }
+        }
+    }
+    << 0
+}
+fn paint_edit_line(frame $&draw.Frame,context &draw.Context,options &draw.TextOptions,text &string,text_x f64,top f64,line_h f64,clip_x f64,clip_y f64,clip_w f64,clip_h f64,scroll_x f64,anchor int,head int,focused bool,ink draw.Color) int {
+    $lo := anchor
+    $hi := head
+    if lo > hi {
+        tmp := lo
+        lo = hi
+        hi = tmp
+    }
+    $sel_pad := (line_h - 24.0) * 0.5
+    if sel_pad < 2.0 { sel_pad = 2.0 }
+    $caret_pad := (line_h - 20.0) * 0.5
+    if caret_pad < 2.0 { caret_pad = 2.0 }
+    frame.push() or >>
+    frame.clip_rect(clip_x,clip_y,clip_w,clip_h) or >>
+    if focused && hi > lo {
+        x0 := text_x - scroll_x + (measure_prefix(context,options,text,lo) or >>)
+        x1 := text_x - scroll_x + (measure_prefix(context,options,text,hi) or >>)
+        frame.fill_rect(x0,top + sel_pad,x1 - x0,line_h - sel_pad * 2.0,draw.rgba(225,29,72,56)) or >>
+    }
+    if text.len > 0 {
+        shaped := context.layout_text(text,options) or >>
+        frame.text_layout(&shaped,text_x - scroll_x,top + (line_h - shaped.metrics.height) * 0.5,ink) or >>
+    }
+    if focused {
+        cx := text_x - scroll_x + (measure_prefix(context,options,text,head) or >>)
+        frame.line(cx,top + caret_pad,cx,top + line_h - caret_pad,draw.rgb(225,29,72),1.5) or >>
+    }
+    frame.pop() or >>
+    << 0
 }
 fn demo() int {
     context := draw.default_context()
     styles := playground.light_styles()
+    edit_opts := mono_options(15.0)
     bounds := box(48.0,110.0,500.0,92.0)
+    text_x := bounds.x + 12.0
+    view_w := bounds.width - 24.0
     $text := "Build notes 构建说明 · 中文与 emoji 🙂"
     $focused := false
+    $anchor := 0
+    $head := 0
+    $dragging := false
+    $clipboard := ""
+    $clip_seq := 0
+    $just_copied := false
+    $scroll_x := 0.0
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
-        if event.kind == 77 { focused = false }
+        if event.kind == 77 {
+            focused = false
+            dragging = false
+        }
         if event.kind == 72 {
             px := event.x
             py := event.y
+            just_copied = false
             if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
                 focused = true
+                pos := hit_pos(&context,&edit_opts,&text,px - text_x + scroll_x) or >>
+                if event.repeat >= 3 {
+                    anchor = 0
+                    head = text.len
+                    dragging = false
+                } else if event.repeat == 2 {
+                    span := select_word_at(&text,pos)
+                    anchor = span[0]
+                    head = span[1]
+                    dragging = false
+                } else {
+                    dragging = true
+                    if (event.modifiers & ui.MOD_SHIFT) != 0 {
+                        head = pos
+                    } else {
+                        anchor = pos
+                        head = pos
+                    }
+                }
+                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
             } else {
                 focused = false
+                dragging = false
             }
+        } else if event.kind == 74 && dragging {
+            head = hit_pos(&context,&edit_opts,&text,event.x - text_x + scroll_x) or >>
+            scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+        } else if event.kind == 73 {
+            dragging = false
         }
         if event.kind == 78 {
-            if event.key == 257 { focused = !focused }
-            if focused {
-                if event.key == 259 {
-                    if text.len > 0 { text = remove_last(&text) }
-                } else if event.key == 256 {
-                    focused = false
-                } else if codepoints(&text) < 120 {
-                    shift := (event.modifiers & 1) != 0
-                    ch := char_from_key(event.key, shift)
-                    if ch.len > 0 { text = text + ch }
+            if event.key == 257 {
+                focused = !focused
+                just_copied = false
+                if focused {
+                    anchor = 0
+                    head = text.len
+                    scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
                 }
+            } else if focused {
+                handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,256,120,true) or >>
+                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
             }
         }
     }
-    $caret := ""
-    if focused { caret = "│" }
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
+    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") or >>
+    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) or >> }
     frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
     frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
     demo_text($&frame,&context,32,22,20,draw.rgb(40,35,41),"XUUI  /  FieldArea") or >>
-    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器字段预览：编辑首行末尾，计数与辅助区保持一致。") or >>
+    demo_text($&frame,&context,32,48,12,draw.rgb(109,98,110),"浏览器字段预览：支持选区拖拽、复制粘贴、词级删除及 Unicode 计数。") or >>
 
     frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
     if focused {
@@ -109,18 +397,24 @@ fn demo() int {
     bw := int(bounds.width)
     bh := int(bounds.height)
 
-    // Floating notch and label
-    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,160.0,14.0,draw.rgb(255,253,251)) or >>
+    // Floating notch and label sized dynamically to label text
+    notch_text := "Build notes 构建说明 *"
+    notch_lbl := context.layout_text(&notch_text,&draw.text_options(12.0)) or >>
+    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,notch_lbl.metrics.width + 8.0,14.0,draw.rgb(255,253,251)) or >>
     if focused {
         demo_center_text($&frame,&context,bx + 16,bounds.y-7.0,14.0,12,draw.rgb(40,35,41),"Build notes 构建说明 *") or >>
     } else {
         demo_center_text($&frame,&context,bx + 16,bounds.y-7.0,14.0,12,draw.rgb(109,98,110),"Build notes 构建说明 *") or >>
     }
 
-    demo_text($&frame,&context,bx + 12,by + 14,15,draw.rgb(40,35,41),text + caret) or >>
-    demo_text($&frame,&context,bx + 12,by + 40,14,draw.rgb(109,98,110),"完整多行编辑请使用桌面 SDK。") or >>
+    paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y + 12.0,24.0,bounds.x + 2.0,bounds.y + 8.0,bounds.width - 4.0,bounds.height - 12.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) or >>
+    demo_text($&frame,&context,bx + 12,by + 42,14,draw.rgb(109,98,110),"完整多行编辑请使用桌面 SDK。") or >>
 
-    demo_text($&frame,&context,bx,by + bh + 8,12,draw.rgb(109,98,110),"首行末尾输入 / 退格删除 · 按 Unicode 码点计数") or >>
+    if just_copied {
+        demo_text($&frame,&context,bx,by + bh + 8,12,draw.rgb(20,103,71),"Copied to clipboard · 已复制到剪贴板") or >>
+    } else {
+        demo_text($&frame,&context,bx,by + bh + 8,12,draw.rgb(109,98,110),"首行支持光标准确定位 / 退格删词 · 按 Unicode 码点计数") or >>
+    }
     demo_text($&frame,&context,bx + bw - 60,by + bh + 8,12,draw.rgb(109,98,110),str(codepoints(&text)) + " / 120") or >>
 
     chars := codepoints(&text)
