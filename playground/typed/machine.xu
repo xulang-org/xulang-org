@@ -370,9 +370,16 @@ fn (s $&Machine) switch_task(program &Program, frame int, from int, to int) {
     parent := s.enter(program, exit_addr, -1, -1, 1)
     if s.failed { << }
     count := m.fns[fn_addr].nparams
-    for i in 0:count {
-        value := s.load(block + i * 8, 8)
-        s.set_arg(i, value)
+    args_addr := s.load(to + 200, 8)
+    if args_addr == 0 {
+        if count == 1 {
+            s.set_arg(0, block)
+        }
+    } else {
+        for i in 0:count {
+            value := s.load(block + i * 8, 8)
+            s.set_arg(i, value)
+        }
     }
     if !s.failed { s.current = s.enter(program, fn_addr, parent, -1, count) }
 }
@@ -744,6 +751,8 @@ fn (s $&Machine) step(program &Program, events &string, batch_start int, checkpo
                 <<
             }
             if m.fns[target].label == "_xu_runtime_core_task_spawn" ||
+                m.fns[target].label == "_xu_runtime_core_task_spawn_tiny" ||
+                m.fns[target].label == "_xu_runtime_core_task_spawn_word" ||
                 m.fns[target].label == "_xu_runtime_core_chan_new" { s.concurrent = true }
             s.current = s.enter(program, target, frame, ins.a, count)
         }
