@@ -1,24 +1,25 @@
 <!--title: Frequently Asked Questions (FAQ)-->
 <p class="crumb"><a href="/docs/start">Docs</a></p>
 <h1>Frequently Asked Questions (FAQ)</h1>
-<p class="banner">Core answers on Xu language design, memory, compilation, desktop UI, editor support, dependencies, native interoperability, and XACP</p>
+<p class="banner">Core answers on Xu language design, memory, bare-metal OS &amp; kernel development, compilation, desktop UI, editor support, dependencies, native interoperability, and XACP</p>
 
 <div class="faq-toolbar" role="search" aria-label="FAQ Search & Filter">
   <div class="faq-search-wrap">
     <i class="xi xi-search" aria-hidden="true"></i>
-    <input type="search" class="faq-search-input" id="faq-search" placeholder="Search questions or keywords (e.g. GC, Rust, UI, LSP, XACP)..." aria-label="Search FAQ">
+    <input type="search" class="faq-search-input" id="faq-search" placeholder="Search questions or keywords (e.g. GC, baremetal, kernel, UI, LSP, XACP)..." aria-label="Search FAQ">
     <button type="button" class="faq-search-clear" id="faq-search-clear" aria-label="Clear search" hidden>&times;</button>
   </div>
   <div class="faq-controls">
-    <span class="faq-count-badge" id="faq-count" aria-live="polite">19 questions</span>
+    <span class="faq-count-badge" id="faq-count" aria-live="polite">23 questions</span>
     <button type="button" class="faq-btn" id="faq-expand-all"><i class="xi xi-sliders"></i> Expand All</button>
     <button type="button" class="faq-btn" id="faq-collapse-all"><i class="xi xi-close"></i> Collapse All</button>
   </div>
 </div>
 
 <div class="faq-categories" role="tablist" aria-label="FAQ Category Filter">
-  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> All (19)</button>
+  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> All (23)</button>
   <button type="button" class="faq-cat-btn" data-cat="lang" role="tab" aria-selected="false"><i class="xi xi-cpu"></i> Language &amp; Memory (6)</button>
+  <button type="button" class="faq-cat-btn" data-cat="os" role="tab" aria-selected="false"><i class="xi xi-chip"></i> OS &amp; Kernel (4)</button>
   <button type="button" class="faq-cat-btn" data-cat="ui" role="tab" aria-selected="false"><i class="xi xi-monitor"></i> Desktop UI (4)</button>
   <button type="button" class="faq-cat-btn" data-cat="tools" role="tab" aria-selected="false"><i class="xi xi-terminal"></i> Toolchain &amp; Ecosystem (4)</button>
   <button type="button" class="faq-cat-btn" data-cat="xacp" role="tab" aria-selected="false"><i class="xi xi-shield-check"></i> XACP Protocol (5)</button>
@@ -28,7 +29,7 @@
   <details class="faq-item" id="what-is-xu" data-category="lang">
     <summary><h3>What is the Xu programming language?</h3></summary>
     <div class="faq-answer">
-      <p>Xu is a statically typed systems language with custom native and WebAssembly AOT backends. It combines inferred ownership, borrow checking, and deterministic cleanup without a garbage collector, plus built-in coroutines (<code>xu f()</code>) and typed channels (<code>chan T</code>).</p>
+      <p>Xu is a statically typed systems language with custom native and WebAssembly AOT backends. It combines inferred ownership, borrow checking, and deterministic cleanup without a garbage collector, plus built-in coroutines (<code>xu f()</code>) and typed channels (<code>chan T</code>). It powers high-concurrency network services, native desktop applications, and unhosted bare-metal operating system kernels.</p>
     </div>
   </details>
 
@@ -50,7 +51,7 @@
   <details class="faq-item" id="rust-go-comparison" data-category="lang">
     <summary><h3>How does Xu compare to Rust and Go?</h3></summary>
     <div class="faq-answer">
-      <p>Xu infers ownership and uses deterministic cleanup without explicit lifetime annotations such as <code>&lt;'a&gt;</code>. It offers Go-like coroutines and typed channels while using ownership and borrow checking instead of a garbage collector. See the <a href="#memory-safety">safety boundaries above</a> and the <a href="/benchmarks">benchmark dashboard</a> for measured runtime and memory results.</p>
+      <p>Xu infers ownership and uses deterministic cleanup without explicit lifetime annotations such as <code>&lt;'a&gt;</code>. It offers Go-like coroutines and typed channels while using ownership and borrow checking instead of a garbage collector. For bare-metal and OS kernel development, Go is tethered to its runtime and GC, precluding freestanding usage; Rust supports <code>no_std</code> but requires pervasive explicit lifetime annotations (<code>&lt;'a&gt;</code>); Xu delivers a freestanding unhosted profile and pure <code>#core</code> library while preserving implicit ownership inference without lifetime annotations, strictly isolating raw hardware manipulation inside explicit <code>unsafe</code> blocks. See the <a href="#memory-safety">safety boundaries above</a> and the <a href="/benchmarks">benchmark dashboard</a> for measured runtime and memory results.</p>
     </div>
   </details>
 
@@ -65,6 +66,58 @@
     <summary><h3>Does Xu support WebAssembly (WASM) out of the box?</h3></summary>
     <div class="faq-answer">
       <p>Xu {{xu_version}} emits <code>wasm32-wasi</code> modules for WASI runtimes. The <a href="/playground">browser Playground</a> uses a client-side interpreter built with Xu {{playground_version}}.</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="baremetal-support" data-category="os">
+    <summary><h3>How does Xu support operating system kernel and bare-metal development?</h3></summary>
+    <div class="faq-answer">
+      <p><strong>Xu natively supports writing operating system microkernels, embedded firmware, and bare-metal device drivers from scratch.</strong> Unlike hosted languages constrained by runtime garbage collectors, and unlike languages that require complex lifetime annotations across application code, Xu utilizes a strictly partitioned systems architecture:</p>
+      <ul>
+        <li>In standard system components and kernel service logic, Xu preserves <strong>implicit ownership inference</strong> and <strong>compile-time zero-GC deterministic destruction</strong>, requiring no garbage collector and no manual <code>&lt;'a&gt;</code> lifetime annotations;</li>
+        <li>In low-level hardware interactions (typically the bottom 5% of code), it isolates micro-architectural control using freestanding unhosted profiles (<code>freestanding</code>), raw pointers (<code>*raw T</code>), volatile MMIO memory barriers (<code>volatile_read</code> / <code>volatile_write</code>), and a pure static core foundation library (<code>#core</code>).</li>
+      </ul>
+      <p>Refer to the official <a href="https://github.com/xulang-org/xu/tree/main/examples/baremetal/kernel_poc">kernel_poc verification project</a> and the <a href="/blog/xu-0-14-0">Xu 0.14.0 release blog</a> for hands-on examples.</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="freestanding-profile" data-category="os">
+    <summary><h3>What is Freestanding Profile? How does it sever host OS dependencies?</h3></summary>
+    <div class="faq-answer">
+      <p>Freestanding profile produces binaries that do not depend on host operating system syscalls, dynamic linkers, or C runtime libraries (libc). Xu provides a three-tiered configuration mechanism:</p>
+      <ul>
+        <li><strong>Source-level directive</strong>: declare the <code>$freestanding</code> compilation tag on the first line of the source file;</li>
+        <li><strong>Project manifest</strong>: specify <code>profile: freestanding</code> in <code>xu.xun</code>;</li>
+        <li><strong>Compiler CLI flags</strong>: pass <code>--profile=freestanding</code> or <code>--no-std</code> during compilation.</li>
+      </ul>
+      <p>When enabled, the compiler completely strips host runtime schedulers and hosted stdio, emitting lean, self-contained bare-metal ELF or PE images (~1.9 KB to 2.4 KB binary size).</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="core-library" data-category="os">
+    <summary><h3>What hardware abstractions and concurrency primitives does #core provide without a standard library?</h3></summary>
+    <div class="faq-answer">
+      <p>Xu provides a pure static, zero-syscall, zero-allocation foundation library <code>#core</code>:</p>
+      <ul>
+        <li><code>#core/arch</code>: CPU privileged instructions (<code>cli</code>, <code>sti</code>, <code>hlt</code>, <code>pause</code>, <code>wfi</code>), control register access (CR0/CR2/CR3/CR4, VBAR, SCTLR), 8259A PIC interrupt controller remapping, 8254 PIT programmable timer initialization, and IDT gate descriptor loading (<code>load_idt</code>);</li>
+        <li><code>#core/sync</code>: interrupt-safe <code>IrqSpinlock</code> and standard <code>Spinlock</code> paired with RAII guards (<code>IrqGuard</code>, <code>SpinGuard</code>) for zero-GC deterministic lock release and automatic interrupt flag restoration (EFLAGS / PSTATE) upon scope exit;</li>
+        <li><code>#core/task</code>: cross-architecture 192-byte 16-byte aligned <code>TaskContext</code>, atomic hardware context switching (<code>switch_context</code>), <code>TrapFrame</code> exception snapshots, and syscall dispatch entries;</li>
+        <li><code>#core/virtio</code>: static VirtIO MMIO driver contracts, VirtQueue descriptor rings, <code>VirtioBlkDriver</code> block device, and <code>VirtioNetDriver</code> network card;</li>
+        <li><code>#core/mem</code> &amp; <code>#core/alloc</code>: zero-allocation memory primitives (<code>memset</code>/<code>memcpy</code>/<code>memcmp</code>) and the pluggable <code>GlobalAlloc</code> kernel allocator contract for buddy and slab allocators.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="faq-item" id="raw-pointers-mmio" data-category="os">
+    <summary><h3>How does Xu safely handle MMIO, raw pointers, and kernel scaffolding?</h3></summary>
+    <div class="faq-answer">
+      <p>Hardware control registers and device memory mapping (MMIO) bypass standard ownership tracking:</p>
+      <ul>
+        <li><strong>Raw pointers (<code>*raw T</code>) and <code>unsafe { ... }</code> blocks</strong>: raw pointer dereferences must be explicitly enclosed within <code>unsafe { ... }</code> blocks. Ownership inference skips raw pointers, preventing unchecked hardware operations from propagating into normal kernel logic;</li>
+        <li><strong>Volatile MMIO barriers</strong>: built-in <code>volatile_read</code> and <code>volatile_write</code> intrinsics prevent dead-code elimination (DCE) and loop-invariant hoisting (LICM);</li>
+        <li><strong>Precise memory layout control</strong>: <code>@repr("C", align: N)</code> (e.g., 4096-byte alignment for PML4 page directory tables) and <code>@repr("C", packed)</code> for compact hardware packets;</li>
+        <li><strong>Scaffolding &amp; QEMU tooling</strong>: <code>xu init --baremetal &lt;name&gt;</code> scaffolds a complete multi-architecture kernel project with custom linker scripts (<code>linker.ld</code>) and Makefiles, runnable immediately via <code>make qemu</code>.</li>
+      </ul>
     </div>
   </details>
 
@@ -128,7 +181,7 @@
   <details class="faq-item" id="target-platforms" data-category="tools">
     <summary><h3>What operating systems and CPU architectures are supported?</h3></summary>
     <div class="faq-answer">
-      <p>Code generation targets include macOS arm64/x64, Linux arm64/x64/loongarch64/riscv64, Windows x64/arm64, and WebAssembly (wasm32-wasi), with Thumb and RISC-V bare-metal targets listed in <a href="/docs/status">Status &amp; Limitations</a>. Downloadable SDK assets are listed on the <a href="/download">download page</a>. Emission support and an available SDK do not establish tested runtime or GUI behavior; paths without target-machine acceptance results remain unverified. Check status and <a href="/docs/packages">per-package limits</a> for the intended target.</p>
+      <p>Hosted code emission targets include macOS arm64/x64, Linux arm64/x64/loongarch64/riscv64, Windows x64/arm64, and WebAssembly (wasm32-wasi). For bare-metal and OS kernel development, Xu emits lean freestanding ELF kernel images targeting x86_64, aarch64, and riscv64 via <code>--profile=freestanding</code>. Downloadable SDK assets are listed on the <a href="/download">Download page</a>. Code generation capability does not guarantee full runtime or GUI qualification; consult <a href="/docs/status">Status &amp; Limitations</a> and <a href="/docs/packages">package boundaries</a> for target-specific verification.</p>
     </div>
   </details>
 
