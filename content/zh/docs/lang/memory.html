@@ -9,6 +9,7 @@
 <tr><td><code>&amp;x</code></td><td>共享只读访问；多个共享借用可以共存。</td></tr>
 <tr><td>先声明 <code>$x</code>，再取 <code>$&amp;x</code></td><td>可写绑定，再取得独占可写访问权。</td></tr>
 <tr><td><code>*r</code></td><td>通过引用读取标量；写入须有独占引用。</td></tr>
+<tr><td><code>*raw T</code> 裸指针</td><td>底层硬件契约；仅允许在 <code>unsafe</code> 块内解引用，跳过借用检查。</td></tr>
 </table>
 <p><code>int</code> 等标量按值复制。Channel 值是指向同一个运行时信道的共享句柄，传递信道不会消耗发送方的句柄。借用与发送的边界见<a href="/docs/lang/concurrency">并发</a>。</p>
 
@@ -131,4 +132,33 @@ fn retire(surface &amp;draw.Surface) int {
 <p><strong>预期 xu check --lib：失败，诊断包含</strong> <code>through a shared reference</code>.</p>
 <p>漏掉 dispose 不一定编译失败：<code>xu check</code> 不是原生泄漏检测器。<strong>待验：</strong> 此辅助函数已做类型检查，但尚未在真实原生渲染器上运行分配与释放，也未实跑错误 / 取消清理路径。</p>
 <p>宿主调度器的协程栈与信道元数据另有进程级生命周期策略；离开作用域不代表所有运行时分配立即回收。FFI 调用方还须遵守各外部 API 的所有权契约。</p>
+
+<h2 id="unsafe-hardware">底层硬件契约：裸指针 (*raw T) 与 unsafe 隔离</h2>
+<p>常规业务代码严格遵循隐式所有权推导与借用检查，零 GC 且无显式生命周期标注。而在底层 5% 的操作系统内核、设备驱动与 MMIO 寄存器交互中，Xu 通过显式隔离的硬件契约提供零妥协的微架构控制：</p>
+<ul>
+  <li><strong>裸指针 <code>*raw T</code></strong>：允许从物理整型地址强转构造（如 <code>base as *raw u32</code>），支持指针算术与比较运算符（<code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>）；</li>
+  <li><strong><code>unsafe { … }</code> 隔离块</strong>：解引用裸指针（读 <code>*p</code> 或写 <code>*p = val</code>）必须置于显式 <code>unsafe</code> 块内；未置于 <code>unsafe</code> 会触发编译期拒止。借用推导图完全跳过裸指针；</li>
+  <li><strong>Volatile 易失访存屏障</strong>：内建 <code>volatile_read(ptr)</code> 与 <code>volatile_write(ptr, val)</code>，严密防范死存储消除（DSE）与循环不变量外提（LICM），确保硬件寄存器读写准确直达总线；</li>
+  <li><strong>精确对齐与紧凑布局</strong>：<code>@repr("C", align: 4096)</code> 保证页表物理页面对齐，<code>@repr("C", packed)</code> 消除网络包头与控制块内部填充。</li>
+</ul>
+<pre id="unsafe-pass"><code class="language-xu">@main
+
+fn mmio_write(reg_addr usize, val u32) {
+    p := reg_addr as *raw u32
+    unsafe {
+        *p = val
+    }
+}
+
+fn main() int {
+    $buf: [4]u8
+    ptr := (&amp;buf[0]) as *raw u8
+    unsafe {
+        *ptr = 42
+    }
+    println(buf[0])
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>预期 xu check：通过。</strong> <code>xu run</code> 输出：<code>42</code>.</p>
+
 <p><a href="/api/os">OS API</a> · <a href="/api/io">I/O API</a> · <a href="/api/ui/draw">绘图 API</a> · <a href="/docs/lang/concurrency">并发</a></p>

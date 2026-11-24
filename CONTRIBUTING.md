@@ -28,6 +28,8 @@ make check-chan
 
 官网根 `VERSION`、根 `xu.xun` 的 `version:` 与 `xu:` 跟随选定的正式 SDK；不因正文或治理修订独立升级。运行器模块的自身版本另行维护。公开正文位于 `content/{en,zh}/`；本机研发材料和生成产物保持忽略。
 
+正式发布须遵守 [.github/RELEASE_PROCESS.md](.github/RELEASE_PROCESS.md)：每个正式版本发布必须同步撰写并在 `content/{en,zh}/blog/` 上线中英文版本发布博客，并在 `templates/releases.json` 中配置 10 种语言条目；版本横测数据须通过 `scripts/sync_all_benches.py`、`scripts/import-benchmarks.py` 与 `scripts/gen-benchmarks.py` 完整校验并生成多语言看板。
+
 ## 提交 PR
 
 使用 Issue 表单报告缺陷或提议功能、文档改进。PR 写明问题与结果、目标分支、SDK 与模块版本影响、实际验证结果及回滚方法；没有执行的检查如实标注。`main` 的合并可能触发 GitHub Pages 部署，合并前须核对发布范围。

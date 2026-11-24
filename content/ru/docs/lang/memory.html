@@ -9,6 +9,7 @@
 <tr><td><code>&amp;x</code></td><td>Разделяемый доступ только для чтения (Shared Borrow).</td></tr>
 <tr><td><code>$x</code>, затем <code>$&amp;x</code></td><td>Изменяемая привязка и эксклюзивное изменяемое заимствование (Mutable Borrow).</td></tr>
 <tr><td><code>*r</code></td><td>Разыменование скаляра через ссылку.</td></tr>
+<tr><td><code>*raw T</code></td><td>Низкоуровневый аппаратный контракт: разыменование требует блока <code>unsafe</code>, пропуская проверку заимствований.</td></tr>
 </table></div>
 
 <h2>Перемещение (Move)</h2>
@@ -36,3 +37,30 @@ fn main() int {
 
 <h2>Изменяемое заимствование ($&amp;)</h2>
 <p>Для изменения данных требуется эксклюзивная изменяемая ссылка <code>$&amp;</code> при отсутствии других активных заимствований.</p>
+
+<h2 id="unsafe-hardware">Низкоуровневый аппаратный контракт (*raw T и unsafe)</h2>
+<p>В системном коде ядер операционных систем и драйверов (менее 5% кодовой базы) Xu предоставляет детерминированный низкоуровневый контроль:</p>
+<ul>
+  <li>Необработанные указатели <code>*raw T</code> могут создаваться из числовых адресов (<code>addr as *raw u32</code>);</li>
+  <li>Разыменование указателей (чтение <code>*p</code> или запись <code>*p = val</code>) разрешено исключительно внутри блоков <code>unsafe { … }</code>;</li>
+  <li>Функции <code>volatile_read(ptr)</code> и <code>volatile_write(ptr, val)</code> исключают удаление оптимизатором операций ввода-вывода (MMIO);</li>
+  <li>Атрибуты <code>@repr("C", align: 4096)</code> обеспечивают строгое выравнивание страниц памяти.</li>
+</ul>
+<pre id="unsafe-pass"><code class="language-xu">@main
+
+fn mmio_write(reg_addr usize, val u32) {
+    p := reg_addr as *raw u32
+    unsafe {
+        *p = val
+    }
+}
+
+fn main() int {
+    $buf: [4]u8
+    ptr := (&amp;buf[0]) as *raw u8
+    unsafe {
+        *ptr = 42
+    }
+    println(buf[0])
+    &lt;&lt; 0
+}</code></pre>
