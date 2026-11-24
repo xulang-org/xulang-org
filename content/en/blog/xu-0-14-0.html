@@ -1,0 +1,120 @@
+<!--title: Xu 0.14.0 Released: Operating System Kernel Support, Freestanding Profile, Raw Pointers, and HAL Contracts-->
+<!--summary: Xu 0.14.0 introduces foundational OS development capabilities: unhosted execution via $freestanding and the static #core library, raw pointers (*raw T) with unsafe blocks, interrupt-safe spinlocks, cross-architecture task context switching, enhanced GVN memory load forwarding, and ASCII installer resilience.-->
+<p class="crumb"><a href="/blog">Blog</a></p>
+<h1>Xu 0.14.0 Released: Operating System Kernel Support, Freestanding Profile, Raw Pointers, and HAL Contracts</h1>
+<p class="meta"><time datetime="2026-11-24">2026-11-24</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.0">Xu v0.14.0</a></p>
+
+<p>Xu 0.14.0 is officially released! This milestone update expands Xu's reach into low-level systems programming and modern operating system kernel development. Starting with 0.14.0, Xu is no longer restricted to hosted environments: developers can now build bare-metal bootloaders, firmware, and operating system microkernels with zero libc and runtime dependencies, while retaining ownership safety and bit-for-bit reproducible self-hosting.</p>
+
+<h2>1. Freestanding Execution Profile & Static Core Library <code>#core</code></h2>
+<p>Developing OS kernels requires complete isolation from host operating system syscalls and hidden runtime machinery. Xu 0.14.0 introduces full freestanding support:</p>
+<ul>
+  <li><strong>Three-Level Freestanding Configuration</strong>: Configurable via source-level directive <code>$freestanding</code>, manifest declaration in <code>xu.xun</code> (<code>profile: freestanding</code>), or CLI flags <code>--profile=freestanding</code> and <code>--no-std</code>. When active, all host OS syscalls, default thread/task schedulers, and libc bindings are decoupled;</li>
+  <li><strong>Pure Static Zero-Allocation Core Library <code>#core</code></strong>:
+    <ul>
+      <li><code>#core/arch</code>: CPU hardware interrupt controls, system control registers (CR0/CR3/CR4), 8259A PIC and 8254 PIT programmable timers, and IDT gate descriptor structures;</li>
+      <li><code>#core/mem</code>: Zero-allocation physical and virtual page arithmetic and boundary validation primitives;</li>
+      <li><code>#core/alloc</code>: Pluggable global kernel allocator contract (<code>GlobalAlloc</code>), integrating with buddy allocators and kernel slab allocators;</li>
+      <li><code>#core/sync</code>: Interrupt-safe spinlocks (<code>IrqSpinlock</code> and <code>Spinlock</code>) with automatic RAII guard restoration of interrupt flags (EFLAGS/PSTATE);</li>
+      <li><code>#core/task</code>: Cross-architecture 192-byte atomic hardware context switching, <code>TrapFrame</code> exception state capture, and syscall dispatch entries;</li>
+      <li><code>#core/virtio</code>: VirtIO MMIO device drivers for virtual block storage and network adapters.</li>
+    </ul>
+  </li>
+  <li><strong>Scaffolding & Tooling</strong>: Commands <code>xu init --baremetal &lt;name&gt;</code> and <code>xu new --baremetal &lt;name&gt;</code> automatically scaffold kernel workspaces with custom linker scripts and Makefiles, generating minimal ELF kernel images of just <strong>1.9 KB to 2.4 KB</strong>.</li>
+</ul>
+
+<h2>2. Strict Hardware Contracts: Raw Pointers, <code>unsafe</code> Blocks & Memory Layouts</h2>
+<p>To safely program memory-mapped I/O (MMIO) and hardware registers, Xu establishes an explicit isolation boundary:</p>
+<ul>
+  <li><strong>Raw Pointers (<code>*raw T</code>) & Mandatory <code>unsafe { ... }</code> Blocks</strong>:
+    Arbitrary physical address dereferencing and pointer arithmetic are supported but strictly restricted inside explicit <code>unsafe { ... }</code> blocks:
+<pre><code>// MMIO physical VGA buffer access
+unsafe {
+    $vga := cast[*raw u16](0xb8000)
+    *vga = 0x0f41  // write white 'A'
+}
+</code></pre>
+  </li>
+  <li><strong>Volatile Access Primitives</strong>: Built-in <code>volatile_read</code> and <code>volatile_write</code> intrinsics guarantee that compiler passes never reorder, hoist, or eliminate hardware MMIO register accesses;</li>
+  <li><strong>Explicit Structure Layouts</strong>: Support for <code>@repr("C", align: N)</code> and <code>@repr("C", packed)</code> ensures exact byte-level alignment matching CPU registers and wire protocols.</li>
+</ul>
+
+<h2>3. Compiler GVN Memory Load Forwarding & Monotonic Epoch Hardening</h2>
+<p>The compiler optimization pipeline introduces several high-impact memory forwarding improvements:</p>
+<ul>
+  <li><strong>Read-Only Direct Call Chains</strong>: GVN can reuse loaded values across direct function call chains proven to only read memory or modify their own stack frames;</li>
+  <li><strong>Disjoint Byte-Range Stores</strong>: Stores to disjoint byte ranges of the same base pointer (such as struct slice fields at constant indices) no longer invalidate cached loads of unrelated fields;</li>
+  <li><strong>CFG Join Dominance Preservation</strong>: Dominating load facts are retained at control-flow merge points whose incoming edges share memory version tags with the immediate dominator;</li>
+  <li><strong>Single-Pass PGO Profile Parser</strong>: PGO profile ingestion is now streamed in a single pass with line-level diagnostics, while binary layout reordering preserves DWARF function ranges and source lines.</li>
+</ul>
+
+<h2>4. Pure ASCII Installer Wizard & Automated macOS arm64 Signing</h2>
+<ul>
+  <li><strong>Strict English ASCII Setup</strong>: The native setup installer and interactive CLI wizard enforce pure English ASCII across all terminal locales, avoiding encoding corruption or terminal pauses;</li>
+  <li><strong>macOS arm64 Toolchain Signing</strong>: The setup installer automatically performs ad-hoc code signing (<code>codesign --force --deep --sign -</code>) on arm64 binaries and outputs, eliminating Apple Silicon Gatekeeper crashes.</li>
+</ul>
+
+<h2>5. Horizontal Bare-Metal & Systems Benchmarks</h2>
+<p>Empirical measurements across x86_64 and Apple Silicon hardware demonstrate lightweight efficiency:</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Benchmark Workload</th>
+      <th>Scale / Metric</th>
+      <th>Xu v0.14.0</th>
+      <th>Rust (no_std O3)</th>
+      <th>C (Clang baremetal -O3)</th>
+      <th>Go (TinyGo / GBA)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Kernel Context-Switch Latency</strong></td>
+      <td>192-byte register state save/restore (Cycles)</td>
+      <td><strong>42 cycles</strong> (~18 ns)</td>
+      <td>46 cycles (~20 ns)</td>
+      <td>44 cycles (~19 ns)</td>
+      <td>N/A</td>
+    </tr>
+    <tr>
+      <td><strong>Freestanding Binary Size</strong></td>
+      <td>Minimal multitask + VirtIO kernel ELF (KB)</td>
+      <td><strong>2.1 KB</strong></td>
+      <td>4.2 KB (with core)</td>
+      <td>1.8 KB</td>
+      <td>68 KB+</td>
+    </tr>
+    <tr>
+      <td><strong>GVN Redundant Load Elimination</strong></td>
+      <td>Eliminated redundant loads in tight slice loops (%)</td>
+      <td><strong>18.4% reduction</strong></td>
+      <td>LLVM GVN parity</td>
+      <td>Clang parity</td>
+      <td>Pessimistic</td>
+    </tr>
+    <tr>
+      <td><strong>Spinlock Contention & Restoral</strong></td>
+      <td>100,000 CLI/STI spinlock cycles (ms)</td>
+      <td><strong>3.2 ms</strong></td>
+      <td>3.4 ms</td>
+      <td>3.1 ms</td>
+      <td>N/A</td>
+    </tr>
+    <tr>
+      <td><strong>PGO Profile Ingestion Overhead</strong></td>
+      <td>PGO parse and indexing duration (ms)</td>
+      <td><strong>64% faster</strong></td>
+      <td>N/A</td>
+      <td>N/A</td>
+      <td>N/A</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>6. Upgrading & Toolchain Distribution</h2>
+<p>Official release artifacts for Xu v0.14.0 across 30 distribution targets are available on GitHub Releases. When upgrading, please update the compiler, standard library, and SDK tools in unison.</p>
+
+<p><a href="/download">Download Center</a> · <a href="/en/benchmarks">View All Benchmarks</a> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.0">GitHub Release Page</a> · <a href="https://github.com/xulang-org/xu/blob/v0.14.0/RELEASES.md#xu-0140">Full Release Notes</a></p>

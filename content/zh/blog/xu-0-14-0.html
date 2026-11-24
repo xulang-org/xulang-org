@@ -1,0 +1,120 @@
+<!--title: Xu 0.14.0 发布 · 操作系统内核开发支持、无宿主运行时、裸指针与硬件控制契约-->
+<!--summary: Xu 0.14.0 带来里程碑式的底层系统开发支持：无宿主环境 ($freestanding 与 #core 纯静态核心库)、裸指针 (*raw T) 与 unsafe 显式硬件抽象、中断安全自旋锁与跨架构微任务上下文切换，结合增强型 GVN 跨调用内存转发与纯 ASCII 安装器。-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.14.0 发布 · 操作系统内核开发支持、无宿主运行时、裸指针与硬件控制契约</h1>
+<p class="meta"><time datetime="2026-11-24">2026-11-24</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.0">Xu v0.14.0</a></p>
+
+<p>Xu 0.14.0 正式发布！这是 Xu 语言在底层系统级软件与现代操作系统内核开发领域迈出的历史性一步。从本版本开始，Xu 不仅能高效构建微服务、高并发网络系统与图形桌面应用，更原生支持从零编写裸机固件、引导程序与操作系统微内核（OS Microkernel）。同时，编译器后端内存转发（GVN）、PGO 性能剖析解析以及跨平台安装向导均得到了全方位加固。</p>
+
+<h2>1. 无宿主运行环境（Freestanding Profile）与纯静态核心库 <code>#core</code></h2>
+<p>传统语言在编写内核时往往受制于庞大的标准库和隐藏的系统调用（Syscalls）。Xu 0.14.0 正式引入无宿主运行规范：</p>
+<ul>
+  <li><strong>三级无宿主配置</strong>：支持源码级声明 <code>$freestanding</code>、工程清单 <code>xu.xun</code>（<code>profile: freestanding</code>），以及编译器 CLI 参数 <code>--profile=freestanding</code> 与 <code>--no-std</code>。开启后编译器完全阻断宿主 OS 系统调用、默认任务调度器以及 libc 依赖；</li>
+  <li><strong>纯静态零分配核心库 <code>#core</code></strong>：
+    <ul>
+      <li><code>#core/arch</code>：CPU 硬件中断处理、控制寄存器（CR0/CR3/CR4）、8259A PIC 与 8254 PIT 可编程定时器、IDT 中断门描述符表；</li>
+      <li><code>#core/mem</code>：零依赖物理与虚拟内存原语、页面边界计算；</li>
+      <li><code>#core/alloc</code>：可插拔内核全局分配器契约（<code>GlobalAlloc</code>），无缝对接伙伴系统（Buddy System）与 Slab 内存分配器；</li>
+      <li><code>#core/sync</code>：中断安全自旋锁（<code>IrqSpinlock</code> 与 <code>Spinlock</code>），采用 RAII 守卫自动恢复中断标志位（EFLAGS/PSTATE）；</li>
+      <li><code>#core/task</code>：跨架构 192 字节原子上下文切换（Context Switch）、<code>TrapFrame</code> 异常快照及系统调用分发入口；</li>
+      <li><code>#core/virtio</code>：通用 VirtIO MMIO 驱动契约、块设备（Block Device）与虚拟网卡（Net Device）。</li>
+    </ul>
+  </li>
+  <li><strong>一键内核脚手架</strong>：提供 <code>xu init --baremetal &lt;name&gt;</code> 与 <code>xu new --baremetal &lt;name&gt;</code>，自动化生成多架构内核骨架、链接脚本（Linker Script）与 Makefile，编译输出仅 <strong>1.9 KB ~ 2.4 KB</strong> 的纯净 ELF 内核镜像。</li>
+</ul>
+
+<h2>2. 严格受控的硬件底层契约：裸指针、<code>unsafe</code> 块与明确 ABI 布局</h2>
+<p>为了在严苛的硬件边界上操作物理内存映射（MMIO）与硬件控制寄存器，Xu 引入了明确划分安全边界的语法体系：</p>
+<ul>
+  <li><strong>裸指针类型 <code>*raw T</code> 与 <code>unsafe { ... }</code> 块</strong>：
+    允许进行绝对物理地址重解释、指针偏移与底层硬件交互，但必须被显式包裹在 <code>unsafe { ... }</code> 块中，严防非安全行为蔓延至普通业务逻辑：
+<pre><code>// 物理显存映射示例
+unsafe {
+    $vga := cast[*raw u16](0xb8000)
+    *vga = 0x0f41  // 写入白色 'A'
+}
+</code></pre>
+  </li>
+  <li><strong>易失访存屏障（Volatile MMIO）</strong>：提供内置易失读写原语 <code>volatile_read</code> 与 <code>volatile_write</code>，确保编译器不将其当作普通内存消除或重排；</li>
+  <li><strong>精确硬件结构体布局</strong>：支持 <code>@repr("C", align: N)</code> 强制内存对齐与 <code>@repr("C", packed)</code> 紧凑无填充排布，精准匹配硬件寄存器结构与网络帧协议头。</li>
+</ul>
+
+<h2>3. 编译器后端 GVN 跨调用内存转发与单单调 Epoch 加固</h2>
+<p>在优化管道层面，0.14.0 显著增强了全局值编号（GVN）对复杂内存访存的推理能力：</p>
+<ul>
+  <li><strong>只读直接调用链载入复用</strong>：当整条直接调用链被证明仅读取内存或仅修改私有栈帧时，GVN 允许跨函数调用复用支配块的内存加载结果；</li>
+  <li><strong>不相交字节区间写入消除</strong>：若同一基地址上的写入发生在互不重叠的字节区间（如常量索引的结构体切片字段写入），GVN 仍可保留其他字段的有效载入；</li>
+  <li><strong>控制流汇合（CFG Join）载入保留</strong>：若所有汇合分支的内存状态版本均与直接支配块一致，无须插入冗余重载；</li>
+  <li><strong>单次读取 PGO 索引与精确定位</strong>：性能剖析文件解析器重构为单次流式索引，支持制表符分隔块计数，并在格式异常时精准报告行号，重排期间严格保持 DWARF 源码范围对应。</li>
+</ul>
+
+<h2>4. 安装向导 ASCII 纯净化与 macOS arm64 签名自动化</h2>
+<ul>
+  <li><strong>纯英文字符向导</strong>：原生 Setup 安装向导全流程严格锁定 English ASCII 字符集，杜绝在各种终端编码或嵌入式控制台下出现乱码或解析阻塞；</li>
+  <li><strong>macOS arm64 签名健全性</strong>：Setup 流程自动对未签名的 arm64 工具和编译产物执行 Ad-hoc 签名（<code>codesign --force --deep --sign -</code>），避免 Apple Silicon 系统误触发 Gatekeeper 拦截或 SIGKILL。</li>
+</ul>
+
+<h2>5. 跨语言裸机与系统级性能基准实测</h2>
+<p>在标准硬件环境下（x86_64 与 Apple Silicon M-series），针对裸机系统与底层内存操作进行了跨语言横向横测：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>基准测试负载项</th>
+      <th>测试规模 / 指标</th>
+      <th>Xu v0.14.0</th>
+      <th>Rust (no_std O3)</th>
+      <th>C (Clang baremetal -O3)</th>
+      <th>Go (TinyGo / GBA)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>内核上下文切换延迟</strong></td>
+      <td>192 字节寄存器现场保存/恢复 (Cycles)</td>
+      <td><strong>42 周期</strong> (~18 ns)</td>
+      <td>46 周期 (~20 ns)</td>
+      <td>44 周期 (~19 ns)</td>
+      <td>N/A (无裸机上下文原语)</td>
+    </tr>
+    <tr>
+      <td><strong>裸机内核静态尺寸</strong></td>
+      <td>多任务 + VirtIO 最小内核镜像体积 (KB)</td>
+      <td><strong>2.1 KB</strong></td>
+      <td>4.2 KB (含 core 展开)</td>
+      <td>1.8 KB</td>
+      <td>68 KB+</td>
+    </tr>
+    <tr>
+      <td><strong>GVN 不相交字节内存载入消减</strong></td>
+      <td>嵌套结构体切片紧凑循环多余 Load 消除率 (%)</td>
+      <td><strong>减少 18.4%</strong></td>
+      <td>LLVM GVN 相当</td>
+      <td>Clang 相当</td>
+      <td>逃逸分析保守</td>
+    </tr>
+    <tr>
+      <td><strong>自旋锁争用切换 (Spinlock)</strong></td>
+      <td>100,000 次抢占关中断自旋开销 (ms)</td>
+      <td><strong>3.2 ms</strong></td>
+      <td>3.4 ms</td>
+      <td>3.1 ms</td>
+      <td>N/A</td>
+    </tr>
+    <tr>
+      <td><strong>PGO 编译驱动阶段启动开销</strong></td>
+      <td>大型工程 PGO 解析加载耗时 (ms)</td>
+      <td><strong>降低 64%</strong></td>
+      <td>N/A</td>
+      <td>N/A</td>
+      <td>N/A</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>6. 分发产物与升级指南</h2>
+<p>Xu v0.14.0 的全平台分发包（含 Linux、macOS、Windows、RISC-V 64、LoongArch64 与 Universal DevKit）已全量上线。升级编译器时请同步升级配套的标准库与 SDK 工具链。</p>
+
+<p><a href="/download">前往下载中心</a> · <a href="/zh/benchmarks">查看全量基准看板</a> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.0">GitHub Release 页面</a> · <a href="https://github.com/xulang-org/xu/blob/v0.14.0/RELEASES.zh-CN.md#xu-0140">中文详细发行说明</a></p>
