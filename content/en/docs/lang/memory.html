@@ -9,6 +9,7 @@
 <tr><td><code>&amp;x</code></td><td>Shared, read-only access; several shared borrows may coexist.</td></tr>
 <tr><td><code>$x</code>, then <code>$&amp;x</code></td><td>Writable binding, then exclusive writable access.</td></tr>
 <tr><td><code>*r</code></td><td>Read a scalar through a reference; writing requires an exclusive reference.</td></tr>
+<tr><td><code>*raw T</code> raw pointer</td><td>Low-level hardware contract; dereferencing requires an <code>unsafe</code> block, bypassing borrow checks.</td></tr>
 </table>
 <p>Scalar values such as <code>int</code> copy. Channel values are shared handles to the same runtime channel; passing a channel does not consume its sender's handle. See <a href="/en/docs/lang/concurrency">Concurrency</a> for the boundary between borrowing and sending.</p>
 
@@ -131,4 +132,33 @@ fn retire(surface &amp;draw.Surface) int {
 <p><strong>Expected xu check --lib: fail; diagnostic containing</strong> <code>through a shared reference</code>.</p>
 <p>Omitting disposal is not necessarily a compile error: <code>xu check</code> is not a native leak detector. <strong>To be verified:</strong> this helper is type checked, but allocation and disposal against a live native renderer, including error/cancellation cleanup, have not been run here.</p>
 <p>The hosted scheduler's coroutine stacks and channel metadata have a separate process-lifetime policy. Scope exit does not promise immediate reclamation of every runtime allocation. FFI callers must also follow each foreign API's ownership contract.</p>
+
+<h2 id="unsafe-hardware">Low-Level Hardware Contracts: Raw Pointers (*raw T) &amp; unsafe Isolation</h2>
+<p>Application code strictly adheres to implicit ownership inference and borrow checks, achieving zero GC without manual lifetime annotations. In the bottom 5% of systems code—operating system kernels, device drivers, and MMIO register interactions—Xu provides uncompromised micro-architectural control through explicitly isolated hardware contracts:</p>
+<ul>
+  <li><strong>Raw pointers <code>*raw T</code></strong>: May be constructed via integer address casts (e.g. <code>base as *raw u32</code>), supporting pointer arithmetic and comparison operators (<code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>);</li>
+  <li><strong><code>unsafe { … }</code> isolation blocks</strong>: Dereferencing raw pointers (reading <code>*p</code> or writing <code>*p = val</code>) must occur inside an explicit <code>unsafe</code> block; accessing raw pointers outside <code>unsafe</code> triggers a compile-time rejection. Borrow inference skips raw pointers entirely;</li>
+  <li><strong>Volatile MMIO barriers</strong>: Built-in <code>volatile_read(ptr)</code> and <code>volatile_write(ptr, val)</code> intrinsics strictly prevent dead-store elimination (DSE) and loop-invariant code motion (LICM), ensuring register reads and writes hit the bus deterministically;</li>
+  <li><strong>Precise alignment &amp; packed layouts</strong>: <code>@repr("C", align: 4096)</code> guarantees page directory alignment, while <code>@repr("C", packed)</code> eliminates struct padding for network packet headers and hardware descriptors.</li>
+</ul>
+<pre id="unsafe-pass"><code class="language-xu">@main
+
+fn mmio_write(reg_addr usize, val u32) {
+    p := reg_addr as *raw u32
+    unsafe {
+        *p = val
+    }
+}
+
+fn main() int {
+    $buf: [4]u8
+    ptr := (&amp;buf[0]) as *raw u8
+    unsafe {
+        *ptr = 42
+    }
+    println(buf[0])
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>Expected xu check: pass.</strong> <code>xu run</code> prints <code>42</code>.</p>
+
 <p><a href="/en/api/os">OS API</a> · <a href="/en/api/io">I/O API</a> · <a href="/en/api/ui/draw">Drawing API</a> · <a href="/en/docs/lang/concurrency">Concurrency</a></p>

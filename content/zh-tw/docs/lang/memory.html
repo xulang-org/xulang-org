@@ -9,6 +9,7 @@
 <tr><td><code>&amp;x</code></td><td>共享只讀訪問；多個共享借用可以共存。</td></tr>
 <tr><td>先宣告 <code>$x</code>，再取 <code>$&amp;x</code></td><td>可寫繫結，再取得獨佔可寫訪問權。</td></tr>
 <tr><td><code>*r</code></td><td>透過引用讀取標量；寫入須有獨佔引用。</td></tr>
+<tr><td><code>*raw T</code> 裸指標</td><td>底層硬體契約；僅允許在 <code>unsafe</code> 塊內解引用，跳過借用檢查。</td></tr>
 </table>
 <p><code>int</code> 等標量按值複製。Channel 值是指向同一個執行時通道的共享控制代碼，傳遞通道不會消耗傳送方的控制代碼。借用與傳送的邊界見<a href="/docs/lang/concurrency">併發</a>。</p>
 
@@ -131,4 +132,33 @@ fn retire(surface &amp;draw.Surface) int {
 <p><strong>預期 xu check --lib：失敗，診斷包含</strong> <code>through a shared reference</code>.</p>
 <p>漏掉 dispose 不一定編譯失敗：<code>xu check</code> 不是原生洩漏檢測器。<strong>待驗：</strong> 此輔助函式已做型別檢查，但尚未在真實原生渲染器上執行分配與釋放，也未實跑錯誤 / 取消清理路徑。</p>
 <p>宿主排程器的協程棧與通道後設資料另有程序級生命週期策略；離開作用域不代表所有執行時分配立即回收。FFI 呼叫方還須遵守各外部 API 的所有權契約。</p>
+
+<h2 id="unsafe-hardware">底層硬體契約：裸指標 (*raw T) 與 unsafe 隔離</h2>
+<p>常規業務程式碼嚴格遵循隱式所有權推導與借用檢查，零 GC 且無顯式生命週期標註。而在底層 5% 的作業系統核心、裝置驅動與 MMIO 暫存器互動中，Xu 透過顯式隔離的硬體契約提供零妥協的微架構控制：</p>
+<ul>
+  <li><strong>裸指標 <code>*raw T</code></strong>：允許從實體整數型態位址強轉構造（如 <code>base as *raw u32</code>），支援指標算術與比較運算子（<code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&gt;</code>, <code>&lt;=</code>, <code>&gt;=</code>）；</li>
+  <li><strong><code>unsafe { … }</code> 隔離塊</strong>：解引用裸指標（讀 <code>*p</code> 或寫 <code>*p = val</code>）必須置於顯式 <code>unsafe</code> 塊內；未置於 <code>unsafe</code> 會觸發編譯期拒止。借用推導圖完全跳過裸指標；</li>
+  <li><strong>Volatile 易失訪存屏障</strong>：內建 <code>volatile_read(ptr)</code> 與 <code>volatile_write(ptr, val)</code>，嚴密防範死儲存消除（DSE）與迴圈不變量外提（LICM），確保硬體暫存器讀寫準確直達匯流排；</li>
+  <li><strong>精確對齊與緊湊佈局</strong>：<code>@repr("C", align: 4096)</code> 保證頁表實體頁面對齊，<code>@repr("C", packed)</code> 消除網路封包標頭與控制塊內部填充。</li>
+</ul>
+<pre id="unsafe-pass"><code class="language-xu">@main
+
+fn mmio_write(reg_addr usize, val u32) {
+    p := reg_addr as *raw u32
+    unsafe {
+        *p = val
+    }
+}
+
+fn main() int {
+    $buf: [4]u8
+    ptr := (&amp;buf[0]) as *raw u8
+    unsafe {
+        *ptr = 42
+    }
+    println(buf[0])
+    &lt;&lt; 0
+}</code></pre>
+<p><strong>預期 xu check：透過。</strong> <code>xu run</code> 輸出：<code>42</code>.</p>
+
 <p><a href="/api/os">OS API</a> · <a href="/api/io">I/O API</a> · <a href="/api/ui/draw">繪圖 API</a> · <a href="/docs/lang/concurrency">併發</a></p>
