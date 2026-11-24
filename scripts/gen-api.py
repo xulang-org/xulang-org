@@ -2526,7 +2526,7 @@ def refresh_examples(site: str, root: str, ref: str, xu_version: str,
         original = (checkout / relative).resolve()
         if not original.is_relative_to(checkout):
             raise ValueError(f'example source escapes checkout: {value}')
-        data = original.read_bytes()
+        data = original.read_bytes().replace(b'\r\n', b'\n')
         data.decode('utf-8')
         sources.append((relative, data))
     destination.mkdir(parents=True, exist_ok=True)
