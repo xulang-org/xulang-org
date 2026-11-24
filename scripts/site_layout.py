@@ -681,8 +681,8 @@ def get_seo_meta(route: str, title: str, en: bool | str, xu_version: str, body: 
         desc = (f"Get started with Xu v{xu_version}: language introduction, environment setup, writing and compiling your first zero-GC program."
                 if lang == 'en' else f"Xu (v{xu_version}) 快速起步：语言介绍、环境配置与第一个零 GC 程序。")
     elif bare_path.startswith('docs/faq'):
-        desc = ("Xu FAQ: ownership, borrow checking, shared-state synchronization, native/FFI safety boundaries, and toolchain features."
-                if lang == 'en' else "Xu 常见问题：所有权与借用检查、共享状态同步、原生 / FFI 安全边界与工具链特性。")
+        desc = ("Xu FAQ: bare-metal OS & kernel development, ownership, borrow checking, shared-state synchronization, native/FFI safety boundaries, and toolchain features."
+                if lang == 'en' else "Xu 常见问题：操作系统与裸机开发、所有权与借用检查、共享状态同步、原生 / FFI 安全边界与工具链特性。")
     elif bare_path.startswith('docs/tutorial'):
         desc = (f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
                 if lang == 'en' else f"{title} — Xu 编程语言实战系列教程，系统讲解语法结构、所有权机制、高并发通道与系统级网络编程。")

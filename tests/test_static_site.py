@@ -77,8 +77,8 @@ class StaticSiteTests(unittest.TestCase):
         self.assertIn('<link rel="canonical" href="https://xulang.org/zh/">', chinese)
         self.assertIn('SoftwareApplication', chinese)
         for page, expected in ((home, 4), (chinese, 4),
-                               ((output / 'docs/faq/index.html').read_text(), 19),
-                               ((output / 'zh/docs/faq/index.html').read_text(), 19)):
+                               ((output / 'docs/faq/index.html').read_text(), 23),
+                               ((output / 'zh/docs/faq/index.html').read_text(), 23)):
             schema = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.DOTALL)[1])
             faq = next(item for item in schema['@graph'] if item['@type'] == 'FAQPage') if '@graph' in schema else schema
             questions = re.findall(r'<summary><h3>(.*?)</h3></summary>', page)

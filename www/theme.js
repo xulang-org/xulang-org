@@ -598,14 +598,16 @@
     var faqItems = faqList.querySelectorAll ? faqList.querySelectorAll('.faq-item') : null;
     if (!faqItems || !faqItems.length) return;
 
-    var isZh = document.documentElement && document.documentElement.lang !== 'en';
+    var docLang = (document.documentElement && document.documentElement.lang) || 'en';
+    var isZh = docLang.indexOf('zh') === 0;
     var activeCategory = 'all';
     var searchQuery = '';
 
     var catLabels = {
-      lang: isZh ? '语言与内存' : 'Language & Memory',
-      ui: isZh ? '原生桌面 UI' : 'Desktop UI',
-      tools: isZh ? '工具链与生态' : 'Toolchain & Ecosystem',
+      lang: isZh ? '语言与内存' : (docLang === 'ja' ? '言語とメモリ' : (docLang === 'ko' ? '언어 및 메모리' : 'Language & Memory')),
+      os: isZh ? '操作系统与内核' : (docLang === 'ja' ? 'OS・カーネル' : (docLang === 'ko' ? '운영체제 및 커널' : 'OS & Kernel')),
+      ui: isZh ? '原生桌面 UI' : (docLang === 'ja' ? 'デスクトップ UI' : (docLang === 'ko' ? '데스크톱 UI' : 'Desktop UI')),
+      tools: isZh ? '工具链与生态' : (docLang === 'ja' ? 'ツールチェーン' : (docLang === 'ko' ? '툴체인 및 생태계' : 'Toolchain & Ecosystem')),
       xacp: isZh ? 'XACP 协议' : 'XACP Protocol'
     };
 

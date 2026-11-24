@@ -1,24 +1,25 @@
 <!--title: 常見問題解答 (FAQ)-->
 <p class="crumb"><a href="/docs/start">文件</a></p>
 <h1>常見問題解答 (FAQ)</h1>
-<p class="banner">關於 Xu 語言設計、記憶體模型、編譯架構、桌面 UI、編輯器支援、相依性管理、原生互操作與 XACP 的核心問答</p>
+<p class="banner">關於 Xu 語言設計、記憶體模型、作業系統核心與裸機開發、編譯架構、桌面 UI、編輯器支援、相依性管理、原生互操作與 XACP 的核心問答</p>
 
 <div class="faq-toolbar" role="search" aria-label="FAQ 搜尋與篩選">
   <div class="faq-search-wrap">
     <i class="xi xi-search" aria-hidden="true"></i>
-    <input type="search" class="faq-search-input" id="faq-search" placeholder="搜尋問題或技術關鍵詞 (如 GC、Rust、UI、LSP、XACP)..." aria-label="搜尋常見問題">
+    <input type="search" class="faq-search-input" id="faq-search" placeholder="搜尋問題或技術關鍵詞 (如 GC、裸機、核心、UI、LSP、XACP)..." aria-label="搜尋常見問題">
     <button type="button" class="faq-search-clear" id="faq-search-clear" aria-label="清空搜尋" hidden>&times;</button>
   </div>
   <div class="faq-controls">
-    <span class="faq-count-badge" id="faq-count" aria-live="polite">共 19 個問題</span>
+    <span class="faq-count-badge" id="faq-count" aria-live="polite">共 23 個問題</span>
     <button type="button" class="faq-btn" id="faq-expand-all"><i class="xi xi-sliders"></i> 展開全部</button>
     <button type="button" class="faq-btn" id="faq-collapse-all"><i class="xi xi-close"></i> 摺疊全部</button>
   </div>
 </div>
 
 <div class="faq-categories" role="tablist" aria-label="FAQ 分類篩選">
-  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> 全部 (19)</button>
+  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> 全部 (23)</button>
   <button type="button" class="faq-cat-btn" data-cat="lang" role="tab" aria-selected="false"><i class="xi xi-cpu"></i> 語言核心與記憶體 (6)</button>
+  <button type="button" class="faq-cat-btn" data-cat="os" role="tab" aria-selected="false"><i class="xi xi-chip"></i> 作業系統與核心 (4)</button>
   <button type="button" class="faq-cat-btn" data-cat="ui" role="tab" aria-selected="false"><i class="xi xi-monitor"></i> 原生桌面 UI (4)</button>
   <button type="button" class="faq-cat-btn" data-cat="tools" role="tab" aria-selected="false"><i class="xi xi-terminal"></i> 工具鏈與生態 (4)</button>
   <button type="button" class="faq-cat-btn" data-cat="xacp" role="tab" aria-selected="false"><i class="xi xi-shield-check"></i> XACP 協議與安全 (5)</button>
@@ -28,7 +29,7 @@
   <details class="faq-item" id="what-is-xu" data-category="lang">
     <summary><h3>什麼是 Xu 程式語言？</h3></summary>
     <div class="faq-answer">
-      <p>Xu 是一門靜態型別系統程式語言，採用自研原生與 WebAssembly AOT 後端。它結合所有權推斷、借用檢查與確定性資源釋放，無需垃圾回收器，並內建協程（<code>xu f()</code>）與型別安全通道（<code>chan T</code>）。</p>
+      <p>Xu 是一門靜態型別系統程式語言，採用自研原生與 WebAssembly AOT 後端。它結合所有權推斷、借用檢查與確定性資源釋放，無需垃圾回收器，並內建協程（<code>xu f()</code>）與型別安全通道（<code>chan T</code>）。它既可用於構建高並發網路服務與跨平臺原生桌面 UI，也原生支援無宿主裸機韌體與作業系統微核心開發。</p>
     </div>
   </details>
 
@@ -50,7 +51,7 @@
   <details class="faq-item" id="rust-go-comparison" data-category="lang">
     <summary><h3>Xu 相比 Rust 與 Go 有哪些區別？</h3></summary>
     <div class="faq-answer">
-      <p>Xu 推斷所有權並確定性釋放資源，無需顯式生命週期標註（如 <code>&lt;'a&gt;</code>）。它提供類似 Go 的協程與型別安全通道，以所有權和借用檢查替代垃圾回收器。安全限制見<a href="#memory-safety">上文邊界說明</a>；執行時間與記憶體的實測結果見<a href="/benchmarks">基準看板</a>。</p>
+      <p>Xu 推斷所有權並確定性釋放資源，無需顯式生命週期標註（如 <code>&lt;'a&gt;</code>）。它提供類似 Go 的協程與型別安全通道，以所有權和借用檢查替代垃圾回收器。在底層與核心開發方面，Go 強綁定 GC 與龐大執行環境而無法直接編寫裸機微核心；Rust 雖支援 <code>no_std</code>，但在複雜系統開發中常面臨繁瑣的生命週期標註；Xu 則透過 <code>profile: freestanding</code> 無宿主模式與純靜態 <code>#core</code> 庫提供零 GC 原生開發體驗，同時保持免生命週期標註的人性化語法，將底層硬體操作嚴格限制在 <code>unsafe</code> 隔離邊界內。安全限制見<a href="#memory-safety">上文邊界說明</a>；執行時間與記憶體的實測結果見<a href="/benchmarks">基準看板</a>。</p>
     </div>
   </details>
 
@@ -65,6 +66,58 @@
     <summary><h3>Xu 是否原生支援 WebAssembly (WASM)？</h3></summary>
     <div class="faq-answer">
       <p>Xu {{xu_version}} 支援生成面向 WASI 執行時的 <code>wasm32-wasi</code> 模組。<a href="/playground">瀏覽器演練場</a>使用 Xu {{playground_version}} 構建的直譯器在客戶端執行。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="baremetal-support" data-category="os">
+    <summary><h3>Xu 如何支援作業系統核心與裸機韌體開發？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>原生支援從零編寫作業系統微核心、裸機韌體與硬體驅動程式。</strong>不同於依賴執行階段垃圾回收（GC）的託管語言，也不同於需要複雜顯式生命週期標註的語言，Xu 採用嚴格分層的底層系統架構：</p>
+      <ul>
+        <li>在普通系統組件與核心服務邏輯中，嚴格保留<strong>隱式所有權推斷</strong>與<strong>編譯期確定性解構</strong>，無需垃圾回收器也無須手寫 <code>&lt;'a&gt;</code> 生命週期標註；</li>
+        <li>在最底層的硬體互動（約佔 5% 程式碼）中，透過無宿主模式（<code>freestanding</code>）、裸指標（<code>*raw T</code>）、易失訪存屏障（<code>volatile_read</code> / <code>volatile_write</code>）與純靜態核心庫（<code>#core</code>）進行精確受控的微架構操縱。</li>
+      </ul>
+      <p>核心範例與規範可參考官方 <a href="https://github.com/xulang-org/xu/tree/main/examples/baremetal/kernel_poc">kernel_poc 概念驗證專案</a>與 <a href="/blog/xu-0-14-0">Xu 0.14.0 發布公告</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="freestanding-profile" data-category="os">
+    <summary><h3>什麼是無宿主模式（Freestanding Profile）？如何徹底阻斷外部 OS 相依性？</h3></summary>
+    <div class="faq-answer">
+      <p>無宿主模式指編譯產物完全不依賴外部作業系統核心的系統呼叫（Syscalls）、動態連結器以及 C 執行階段程式庫（libc）。Xu 提供三級宣告機制：</p>
+      <ul>
+        <li><strong>原始碼級標記</strong>：原始檔首行宣告 <code>$freestanding</code> 編譯標籤；</li>
+        <li><strong>專案級清單</strong>：在專案設定檔 <code>xu.xun</code> 中宣告 <code>profile: freestanding</code>；</li>
+        <li><strong>命令列引數</strong>：編譯時傳入 <code>--profile=freestanding</code> 或 <code>--no-std</code>。</li>
+      </ul>
+      <p>開啟該模式後，編譯器將徹底剝離宿主 OS 執行環境、預設協程排程器與標準 I/O 執行環境，直接輸出純淨獨立的裸機 ELF / PE 映像，產物尺寸通常僅 <strong>1.9 KB ~ 2.4 KB</strong>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="core-library" data-category="os">
+    <summary><h3>在沒有標準庫的裸機環境下，Xu 提供哪些核心硬體抽象與並發原語？</h3></summary>
+    <div class="faq-answer">
+      <p>Xu 交付了純靜態、零系統呼叫、零隱式分配的核心基礎庫 <code>#core</code>，包含現代核心研發的必備模組：</p>
+      <ul>
+        <li><code>#core/arch</code>：CPU 特權指令（<code>cli</code>、<code>sti</code>、<code>hlt</code>、<code>pause</code>、<code>wfi</code>）、控制暫存器存取（CR0/CR2/CR3/CR4、VBAR、SCTLR）、8259A PIC 中斷晶片重對映、8254 PIT 可程式化定時器初始化及 IDT 中斷門描述符載入（<code>load_idt</code>）；</li>
+        <li><code>#core/sync</code>：提供中斷安全自旋鎖 <code>IrqSpinlock</code> 與普通自旋鎖 <code>Spinlock</code>，配合 RAII 守衛（<code>IrqGuard</code>、<code>SpinGuard</code>）實現作用域退出時確定性解鎖並自動恢復 CPU 中斷旗標位（EFLAGS / PSTATE），即使在核心中斷上下文也保證零洩漏與無死鎖；</li>
+        <li><code>#core/task</code>：跨架構 192 位元組 16 位元組對齊的微任務上下文結構 <code>TaskContext</code>、原子級硬體上下文切換（<code>switch_context</code>）、<code>TrapFrame</code> 異常現場快照與系統呼叫分發入口；</li>
+        <li><code>#core/virtio</code>：純靜態 VirtIO MMIO 驅動框架、VirtQueue 描述符環、<code>VirtioBlkDriver</code> 磁碟區塊裝置與 <code>VirtioNetDriver</code> 虛擬網路卡驅動；</li>
+        <li><code>#core/mem</code> 與 <code>#core/alloc</code>：零相依記憶體原語（<code>memset</code>/<code>memcpy</code>/<code>memcmp</code>）與可插拔全域分配器契約 <code>GlobalAlloc</code>，可直接接入夥伴系統（Buddy System）或 Slab 分配器。</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="faq-item" id="raw-pointers-mmio" data-category="os">
+    <summary><h3>核心中如何安全地進行實體記憶體映射（MMIO）與裸指標操作？</h3></summary>
+    <div class="faq-answer">
+      <p>硬體暫存器與週邊記憶體存取要求精確受控的語法屏障：</p>
+      <ul>
+        <li><strong>裸指標型別 <code>*raw T</code> 與 <code>unsafe { ... }</code> 區塊</strong>：允許進行絕對實體位址重解釋與指標算術，但解引用必須強制包裹在 <code>unsafe { ... }</code> 隔離區塊中。所有權推斷跳過裸指標，確保底層危險操作不污染上層核心業務邏輯；</li>
+        <li><strong>易失訪存屏障（Volatile MMIO）</strong>：提供內建 <code>volatile_read</code> 與 <code>volatile_write</code> 原語，防止編譯器最佳化通道將其作為無用程式碼消除（DCE）或進行迴圈不變量外提（LICM）；</li>
+        <li><strong>精確記憶體佈局控制</strong>：支援 <code>@repr("C", align: N)</code>（如 4KB 頁面對齊 <code>@repr("C", align: 4096)</code> 用於 PML4 頁表）和 <code>@repr("C", packed)</code> 緊湊排布（用於硬體協定幀與描述符）；</li>
+        <li><strong>鷹架與模擬整合</strong>：使用 <code>xu init --baremetal my_os</code> 一鍵生成多架構核心專案、連結腳本（<code>linker.ld</code>）與 Makefile，並透過 <code>make qemu</code> 即可在 QEMU 模擬器中直接引導執行。</li>
+      </ul>
     </div>
   </details>
 
@@ -128,7 +181,7 @@
   <details class="faq-item" id="target-platforms" data-category="tools">
     <summary><h3>Xu 目前支援哪些作業系統與 CPU 晶片架構？</h3></summary>
     <div class="faq-answer">
-      <p>程式碼發射目標包括 macOS arm64/x64、Linux arm64/x64/loongarch64/riscv64、Windows x64/arm64 與 WebAssembly（wasm32-wasi）；Thumb 與 RISC-V 裸機目標見<a href="/docs/status">狀態與限制</a>。可下載的 SDK 資產見<a href="/download">下載頁</a>。程式碼可發射、SDK 可下載不代表執行時或 GUI 行為已實測；沒有目標機驗收結果的路徑仍屬待驗。請按所需目標查閱狀態與<a href="/docs/packages">逐包限制</a>。</p>
+      <p>程式碼發射目標包括 macOS arm64/x64、Linux arm64/x64/loongarch64/riscv64、Windows x64/arm64 與 WebAssembly（wasm32-wasi）。在無宿主裸機與作業系統核心開發領域，支援透過 <code>--profile=freestanding</code> 阻斷宿主 syscall 與 libc 相依性，直接生成面向 x86_64、aarch64 與 riscv64 的純淨裸機 ELF 核心映像。可下載的 SDK 資產見<a href="/download">下載頁</a>。程式碼可發射、SDK 可下載不代表執行環境或 GUI 行為已實測；沒有目標機驗收結果的路徑仍屬待驗。請按所需目標查閱狀態與<a href="/docs/packages">逐包限制</a>。</p>
     </div>
   </details>
 
@@ -178,4 +231,4 @@
   </details>
 </section>
 
-<p class="faq-footer-nav"><a href="/docs/start">起步教程</a> · <a href="/docs/ui">UI / WebView</a> · <a href="/docs/modules">模組與相依性</a> · <a href="/docs/native">原生模組與 .xulib 規範</a> · <a href="/docs/vscode">編輯器支援</a> · <a href="/docs/cli#xacp">命令列 / XACP</a> · <a href="/api/xacp"><code>#xacp</code> API</a></p>
+<p class="faq-footer-nav"><a href="/docs/start">起步教程</a> · <a href="/docs/ui">UI / WebView</a> · <a href="/docs/modules">模組與相依性</a> · <a href="/docs/native">原生模組與 .xulib 規範</a> · <a href="https://github.com/xulang-org/xu/tree/main/examples/baremetal/kernel_poc">核心與裸機範例</a> · <a href="/docs/vscode">編輯器支援</a> · <a href="/docs/cli#xacp">命令列 / XACP</a> · <a href="/api/xacp"><code>#xacp</code> API</a></p>
