@@ -51,7 +51,7 @@
   <details class="faq-item" id="rust-go-comparison" data-category="lang">
     <summary><h3>Xu 相比 Rust 与 Go 有哪些区别？</h3></summary>
     <div class="faq-answer">
-      <p>Xu 推断所有权并确定性释放资源，无需显式生命周期标注（如 <code>&lt;'a&gt;</code>）。它提供类似 Go 的协程与类型安全通道，以所有权和借用检查替代垃圾回收器。安全限制见<a href="#memory-safety">上文边界说明</a>；运行时间与内存的实测结果见<a href="/benchmarks">基准看板</a>。</p>
+      <p>Xu 推断所有权并确定性释放资源，无需显式生命周期标注（如 <code>&lt;'a&gt;</code>）。它提供类似 Go 的协程与类型安全通道，以所有权和借用检查替代垃圾回收器。在底层与内核开发方面，Go 强绑定 GC 与庞大运行时而无法直接编写裸机微内核；Rust 虽支持 <code>no_std</code>，但在复杂系统开发中常面临繁琐的生命周期标注；Xu 则通过 <code>profile: freestanding</code> 无宿主模式与纯静态 <code>#core</code> 库提供零 GC 原生开发体验，同时保持免生命周期标注的人性化语法，将底层硬件操纵严格限制在 <code>unsafe</code> 隔离边界内。安全限制见<a href="#memory-safety">上文边界说明</a>；运行时间与内存的实测结果见<a href="/benchmarks">基准看板</a>。</p>
     </div>
   </details>
 
@@ -66,6 +66,58 @@
     <summary><h3>Xu 是否原生支持 WebAssembly (WASM)？</h3></summary>
     <div class="faq-answer">
       <p>Xu {{xu_version}} 支持生成面向 WASI 运行时的 <code>wasm32-wasi</code> 模块。<a href="/playground">浏览器演练场</a>使用 Xu {{playground_version}} 构建的解释器在客户端运行。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="baremetal-support" data-category="os">
+    <summary><h3>Xu 如何支持操作系统内核与裸机固件开发？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>原生支持从零编写操作系统微内核、裸机固件与硬件驱动程序。</strong>不同于依赖运行时垃圾回收（GC）的托管语言，也不同于需要复杂显式生命周期标注的语言，Xu 采用严格分层的底层系统架构：</p>
+      <ul>
+        <li>在普通系统组件与内核服务逻辑中，严格保留<strong>隐式所有权推断</strong>与<strong>编译期确定性析构</strong>，无需垃圾回收器也无须手写 <code>&lt;'a&gt;</code> 生命周期标注；</li>
+        <li>在最底层的硬件交互（约占 5% 代码）中，通过无宿主模式（<code>freestanding</code>）、裸指针（<code>*raw T</code>）、易失访存屏障（<code>volatile_read</code> / <code>volatile_write</code>）与纯静态核心库（<code>#core</code>）进行精确受控的微架构操纵。</li>
+      </ul>
+      <p>内核示例与规范可参考官方 <a href="https://github.com/xulang-org/xu/tree/main/examples/baremetal/kernel_poc">kernel_poc 概念验证工程</a>与 <a href="/blog/xu-0-14-0">Xu 0.14.0 发布公告</a>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="freestanding-profile" data-category="os">
+    <summary><h3>什么是无宿主模式（Freestanding Profile）？如何彻底阻断外部 OS 依赖？</h3></summary>
+    <div class="faq-answer">
+      <p>无宿主模式指编译产物完全不依赖外部操作系统内核的系统调用（Syscalls）、动态链接器以及 C 运行时库（libc）。Xu 提供三级声明机制：</p>
+      <ul>
+        <li><strong>源码级标记</strong>：源文件首行声明 <code>$freestanding</code> 编译标签；</li>
+        <li><strong>工程级清单</strong>：在项目配置文件 <code>xu.xun</code> 中声明 <code>profile: freestanding</code>；</li>
+        <li><strong>命令行参数</strong>：编译时传入 <code>--profile=freestanding</code> 或 <code>--no-std</code>。</li>
+      </ul>
+      <p>开启该模式后，编译器将彻底剥离宿主 OS 运行时、默认协程调度器与标准 I/O 运行时，直接输出纯净独立的裸机 ELF / PE 镜像，产物尺寸通常仅 <strong>1.9 KB ~ 2.4 KB</strong>。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="core-library" data-category="os">
+    <summary><h3>在没有标准库的裸机环境下，Xu 提供哪些核心硬件抽象与并发原语？</h3></summary>
+    <div class="faq-answer">
+      <p>Xu 交付了纯静态、零系统调用、零隐式分配的核心基础库 <code>#core</code>，包含现代内核研发的必备模块：</p>
+      <ul>
+        <li><code>#core/arch</code>：CPU 特权指令（<code>cli</code>、<code>sti</code>、<code>hlt</code>、<code>pause</code>、<code>wfi</code>）、控制寄存器访问（CR0/CR2/CR3/CR4、VBAR、SCTLR）、8259A PIC 中断芯片重映射、8254 PIT 可编程定时器初始化及 IDT 中断门描述符加载（<code>load_idt</code>）；</li>
+        <li><code>#core/sync</code>：提供中断安全自旋锁 <code>IrqSpinlock</code> 与普通自旋锁 <code>Spinlock</code>，配合 RAII 守卫（<code>IrqGuard</code>、<code>SpinGuard</code>）实现作用域退出时确定性解锁并自动恢复 CPU 中断标志位（EFLAGS / PSTATE），即使在内核中断上下文也保证零泄漏与无锁死；</li>
+        <li><code>#core/task</code>：跨架构 192 字节 16 字节对齐的微任务上下文结构 <code>TaskContext</code>、原子级硬件上下文切换（<code>switch_context</code>）、<code>TrapFrame</code> 异常现场快照与系统调用分发入口；</li>
+        <li><code>#core/virtio</code>：纯静态 VirtIO MMIO 驱动框架、VirtQueue 描述符环、<code>VirtioBlkDriver</code> 磁盘块设备与 <code>VirtioNetDriver</code> 虚拟网卡驱动；</li>
+        <li><code>#core/mem</code> 与 <code>#core/alloc</code>：零依赖内存原语（<code>memset</code>/<code>memcpy</code>/<code>memcmp</code>）与可插拔全局分配器契约 <code>GlobalAlloc</code>，可直接接入伙伴系统（Buddy System）或 Slab 分配器。</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="faq-item" id="raw-pointers-mmio" data-category="os">
+    <summary><h3>内核中如何安全地进行物理内存映射（MMIO）与裸指针操作？</h3></summary>
+    <div class="faq-answer">
+      <p>硬件寄存器与外设内存访问要求精确受控的语法屏障：</p>
+      <ul>
+        <li><strong>裸指针类型 <code>*raw T</code> 与 <code>unsafe { ... }</code> 块</strong>：允许进行绝对物理地址重解释与指针算术，但解引用必须强制包裹在 <code>unsafe { ... }</code> 隔离块中。所有权推断跳过裸指针，确保底层危险操作不污染上层内核业务逻辑；</li>
+        <li><strong>易失访存屏障（Volatile MMIO）</strong>：提供内置 <code>volatile_read</code> 与 <code>volatile_write</code> 原语，防止编译器优化通道将其作为死代码消除（DCE）或进行循环不变量外提（LICM）；</li>
+        <li><strong>精确内存布局控制</strong>：支持 <code>@repr("C", align: N)</code>（如 4KB 页面对齐 <code>@repr("C", align: 4096)</code> 用于 PML4 页表）和 <code>@repr("C", packed)</code> 紧凑排布（用于硬件协议帧与描述符）；</li>
+        <li><strong>脚手架与仿真集成</strong>：使用 <code>xu init --baremetal my_os</code> 一键生成多架构内核工程、链接脚本（<code>linker.ld</code>）与 Makefile，并通过 <code>make qemu</code> 即可在 QEMU 模拟器中直接引导运行。</li>
+      </ul>
     </div>
   </details>
 
@@ -129,7 +181,7 @@
   <details class="faq-item" id="target-platforms" data-category="tools">
     <summary><h3>Xu 目前支持哪些操作系统与 CPU 芯片架构？</h3></summary>
     <div class="faq-answer">
-      <p>代码发射目标包括 macOS arm64/x64、Linux arm64/x64/loongarch64/riscv64、Windows x64/arm64 与 WebAssembly（wasm32-wasi）；Thumb 与 RISC-V 裸机目标见<a href="/docs/status">状态与限制</a>。可下载的 SDK 资产见<a href="/download">下载页</a>。代码可发射、SDK 可下载不代表运行时或 GUI 行为已实测；没有目标机验收结果的路径仍属待验。请按所需目标查阅状态与<a href="/docs/packages">逐包限制</a>。</p>
+      <p>代码发射目标包括 macOS arm64/x64、Linux arm64/x64/loongarch64/riscv64、Windows x64/arm64 与 WebAssembly（wasm32-wasi）。在无宿主裸机与操作系统内核开发领域，支持通过 <code>--profile=freestanding</code> 阻断宿主 syscall 与 libc 依赖，直接生成面向 x86_64、aarch64 与 riscv64 的纯净裸机 ELF 内核镜像。可下载的 SDK 资产见<a href="/download">下载页</a>。代码可发射、SDK 可下载不代表运行时或 GUI 行为已实测；没有目标机验收结果的路径仍属待验。请按所需目标查阅状态与<a href="/docs/packages">逐包限制</a>。</p>
     </div>
   </details>
 
@@ -179,4 +231,4 @@
   </details>
 </section>
 
-<p class="faq-footer-nav"><a href="/docs/start">起步教程</a> · <a href="/docs/ui">UI / WebView</a> · <a href="/docs/modules">模块与依赖</a> · <a href="/docs/native">原生模块与 .xulib 规范</a> · <a href="/docs/vscode">编辑器支持</a> · <a href="/docs/cli#xacp">命令行 / XACP</a> · <a href="/api/xacp"><code>#xacp</code> API</a></p>
+<p class="faq-footer-nav"><a href="/docs/start">起步教程</a> · <a href="/docs/ui">UI / WebView</a> · <a href="/docs/modules">模块与依赖</a> · <a href="/docs/native">原生模块与 .xulib 规范</a> · <a href="https://github.com/xulang-org/xu/tree/main/examples/baremetal/kernel_poc">内核与裸机示例</a> · <a href="/docs/vscode">编辑器支持</a> · <a href="/docs/cli#xacp">命令行 / XACP</a> · <a href="/api/xacp"><code>#xacp</code> API</a></p>
