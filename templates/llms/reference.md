@@ -66,7 +66,7 @@ Packing multiple target slices and linking a native executable are separate capa
 
 ## Local AI inference and numerical APIs
 
-These features require a compiler and standard library from the same development checkout after Xu 0.14.0. In the Xu source repository, set `XU` to the local development compiler and build from the repository root.
+These features are available in Xu 0.14.1 using the matching compiler and standard library. In the Xu source repository, set `XU` to your installed or built compiler and build from the repository root.
 
 ```sh
 XU_STDLIB_ROOT="$PWD/src" XU_TENSOR_FUSION=1 "$XU" build examples/llm_engine/main.xu -o llm_engine

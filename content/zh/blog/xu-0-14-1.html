@@ -1,0 +1,169 @@
+<!--title: Xu 0.14.1 发布 · 纯 Xu 本地 LLM 推理、P4K4/分页注意力融合内核与全平台编译器提速-->
+<!--summary: Xu 0.14.1 带来纯 Xu 零 GC 本地 LLM 推理示例（GGUF Q4_0/Q8_0 P4K4 打包与分页 KV 缓存）、可选 MIR 张量与注意力融合内核、循环/GVN/寄存器分配优化带来的最高 65.3% 基准提速、X25519/TLS 1.3 标准库加速以及 macOS 全链路签名支持。-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.14.1 发布 · 纯 Xu 本地 LLM 推理、P4K4/分页注意力融合内核与全平台编译器提速</h1>
+<p class="meta"><time datetime="2026-11-25">2026-11-25</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.1">Xu v0.14.1</a></p>
+
+<p>Xu 0.14.1 正式发布！继 0.14.0 确立裸机与操作系统内核开发能力之后，0.14.1 在 <strong>纯 Xu 本地 AI 推理</strong>、<strong>MIR 张量融合与通用优化器</strong>、<strong>密码学/TLS/短字符串运行时</strong> 以及 <strong>macOS 签名体验</strong> 上实现全面推进。本版本已通过六大目标平台原生 SDK 验收与 72 项标准工作负载的跨语言基准横测（0 失败）。</p>
+
+<h2>1. 纯 Xu 本地 LLM 推理引擎（<code>examples/llm_engine/main.xu</code>）</h2>
+<p><code>examples/llm_engine/main.xu</code> 展示了在不引入外部推理运行时的情况下，仅用 Xu 即可完成端到端语言模型加载与生成：</p>
+<ul>
+  <li><strong>流式 GGUF 加载与内部 P4K4 权重打包</strong>：支持 F32 Safetensors 以及兼容的 Llama / Qwen2 架构 GGUF v2/v3 模型；在流式读取过程中将 Q4_0 和 Q8_0 权重转换为内部 P4K4 布局，匹配分组矩阵向量乘（GEMV4）与 <code>M=12</code> 矩阵乘（GEMM）内核，不改变磁盘 GGUF 文件格式；</li>
+  <li><strong>分页 KV 缓存与连续批处理</strong>：内置分页 Key/Value 缓存与基于协程的连续批处理调度器，支持批量预填充（Prefill）和自回归逐 Token 解码；</li>
+  <li><strong>标准库零 ABI 破坏新增原语</strong>：在保持核心运行时 ABI 冻结的前提下，新增 <code>slice.reserve(n int)</code>、<code>slice.resize_zero(n int)</code> 与 <code>math.float16_to_f32(h int) f32</code>，服务高性能张量缓冲区与半精度解码。</li>
+</ul>
+
+<h2>2. 可选 MIR 张量融合与分页注意力内核</h2>
+<p>通过 <code>XU_TENSOR_FUSION=1</code>（以及允许浮点重排/乘加融合的 <code>XU_TENSOR_FAST_MATH=1</code>），编译器可在优化后的原生 ARM64 与 x64 构建中自动识别常规 Xu 数值循环：</p>
+<ul>
+  <li><strong>分页注意力端到端融合</strong>：识别分页注意力打分（<code>__xu_tensor_attn_scores_paged*</code>）、缩放 Softmax（<code>__xu_tensor_softmax_scaled*</code>）与 Value 加权累加（<code>__xu_tensor_attn_vsum_paged*</code>），按目标平台自动选择标量或 ARM64 NEON/DotProd、x86-64 SSE 内核；</li>
+  <li><strong>量化打包与矩阵内核</strong>：覆盖 Q4_0 / Q8_0 量化与反量化、RMSNorm、RoPE、SwiGLU、argmax 及 P4K4/signed 分组矩阵乘。</li>
+</ul>
+
+<h2>3. 通用编译器优化、标准库与 macOS 签名</h2>
+<ul>
+  <li><strong>中端优化与代码生成</strong>：新增循环常量外提（<code>opt_hoist_loop_consts</code>）、切片描述符与元素缓冲区不相交性证明、循环展开与指针强度折减、跨直接调用的 GVN 副作用分析、<code>blk_noreturn</code> 冷块活跃性剪枝与寄存器合并，以及 ARM64 <code>FMADD</code>/<code>FMSUB</code>/<code>TST</code> 与 x64 <code>TEST</code> 融合指令；</li>
+  <li><strong>运行时与标准库加速</strong>：短字符串操作采用更快的路径；X25519 与 Montgomery <code>big.exp</code> 算术显著提速；TLS 1.3 支持更多握手组合；JSON 解析器补充节点数量上限校验；</li>
+  <li><strong>macOS 签名完备性</strong>：macOS SDK 二进制与独立离线安装器默认附带 Ad-hoc 签名，CLI 亦会为 Apple Silicon 本机 <code>xu run</code> 与 <code>xu test</code> 产生的临时可执行文件自动签名。</li>
+</ul>
+
+<h2>4. 六平台 72 项标准工作负载跨语言横测实测（Run #45679539741）</h2>
+<p>下表基于 <a href="https://github.com/xulang-org/bench/actions/runs/45679539741">xulang-org/bench Actions Run #45679539741</a>（Xu 提交 <code>f99d40da</code>）六大平台完整实测数据，对比同平台 Clang（取 O1/O2/O3 最快）、rustc（取 O1/O2/O3 最快）、Go build 与 Swift -O（比率 &lt; 1.0x 表示 Xu 更快）：</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>目标平台</th>
+      <th>Xu / Clang (几何均值 / 中位数)</th>
+      <th>Xu / Rust (几何均值 / 中位数)</th>
+      <th>Xu / Go (几何均值 / 中位数)</th>
+      <th>Xu / Swift (几何均值 / 中位数)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Linux ARM64</strong></td>
+      <td><strong>0.713x</strong> / 0.988x（41/70 胜或持平）</td>
+      <td><strong>0.676x</strong> / 0.954x（46/72 胜或持平）</td>
+      <td><strong>0.419x</strong> / 0.584x（65/72）</td>
+      <td><strong>0.293x</strong> / 0.473x（68/68）</td>
+    </tr>
+    <tr>
+      <td><strong>Windows ARM64</strong></td>
+      <td><strong>0.851x</strong> / 0.968x（52/70 胜或持平）</td>
+      <td><strong>0.804x</strong> / 0.947x（57/72 胜或持平）</td>
+      <td><strong>0.613x</strong> / 0.735x（70/72）</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><strong>Linux x64</strong></td>
+      <td><strong>0.886x</strong> / 1.126x</td>
+      <td><strong>0.824x</strong> / 1.079x</td>
+      <td><strong>0.503x</strong> / 0.715x（59/72）</td>
+      <td><strong>0.339x</strong> / 0.540x（56/68）</td>
+    </tr>
+    <tr>
+      <td><strong>Windows x64</strong></td>
+      <td><strong>0.923x</strong> / 1.059x</td>
+      <td><strong>0.883x</strong> / 1.032x</td>
+      <td><strong>0.593x</strong> / 0.745x（66/72）</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><strong>macOS ARM64</strong></td>
+      <td><strong>0.957x</strong> / 1.087x</td>
+      <td><strong>0.888x</strong> / 1.072x</td>
+      <td><strong>0.550x</strong> / 0.714x（61/72）</td>
+      <td><strong>0.422x</strong> / 0.621x（64/70）</td>
+    </tr>
+    <tr>
+      <td><strong>macOS x64</strong></td>
+      <td><strong>1.039x</strong> / 1.185x</td>
+      <td><strong>0.954x</strong> / 1.120x</td>
+      <td><strong>0.648x</strong> / 0.845x（53/72）</td>
+      <td><strong>0.423x</strong> / 0.721x（50/70）</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>代表性单项实测（macOS ARM64 / Linux ARM64，单位 ms，7 次采样中位数）及较 0.14.0 提速幅度：</p>
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>工作负载（macOS ARM64）</th>
+      <th>Xu v0.14.1</th>
+      <th>Clang (最快)</th>
+      <th>rustc (最快)</th>
+      <th>Go build</th>
+      <th>较 0.14.0 变化</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>array_ops</code>（数组操作）</td>
+      <td><strong>7.22 ms</strong></td>
+      <td>6.66 ms</td>
+      <td>8.83 ms</td>
+      <td>26.52 ms</td>
+      <td><strong>-65.3%</strong>（20.82 → 7.22 ms）</td>
+    </tr>
+    <tr>
+      <td><code>nested_loop</code>（嵌套循环）</td>
+      <td><strong>19.14 ms</strong></td>
+      <td>21.79 ms</td>
+      <td>16.63 ms</td>
+      <td>50.30 ms</td>
+      <td><strong>-61.8%</strong>（50.09 → 19.14 ms）</td>
+    </tr>
+    <tr>
+      <td><code>match_sum</code>（模式匹配归约）</td>
+      <td><strong>10.12 ms</strong></td>
+      <td>16.04 ms</td>
+      <td>7.70 ms</td>
+      <td>53.26 ms</td>
+      <td><strong>-61.5%</strong>（26.27 → 10.12 ms）</td>
+    </tr>
+    <tr>
+      <td><code>method_sum</code>（方法调用循环）</td>
+      <td><strong>5.52 ms</strong></td>
+      <td>4.13 ms</td>
+      <td>4.70 ms</td>
+      <td>26.75 ms</td>
+      <td><strong>-52.8%</strong>（11.70 → 5.52 ms）</td>
+    </tr>
+    <tr>
+      <td><code>sieve_primes</code>（素数筛）</td>
+      <td><strong>14.64 ms</strong></td>
+      <td>10.49 ms</td>
+      <td>15.56 ms</td>
+      <td>15.31 ms</td>
+      <td><strong>-52.5%</strong>（30.82 → 14.64 ms）</td>
+    </tr>
+    <tr>
+      <td><code>chan_ping</code>（通道通信）</td>
+      <td><strong>12.32 ms</strong></td>
+      <td>—</td>
+      <td>64.65 ms</td>
+      <td>23.92 ms</td>
+      <td>较 Go 快 1.94x，较 Rust 快 5.25x</td>
+    </tr>
+    <tr>
+      <td><code>aes128_encrypt</code> / <code>sha256_chain</code></td>
+      <td><strong>4.81 / 3.52 ms</strong></td>
+      <td>26.24 / 4.05 ms</td>
+      <td>31.77 / 5.26 ms</td>
+      <td>48.26 / 6.48 ms</td>
+      <td><code>aes128_key_setup</code> <strong>-41.9%</strong></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>5. 升级与分发产物</h2>
+<p>Xu v0.14.1 全平台 30 项发布资产与 <code>SHA256SUMS</code> 校验清单已同步上线。升级时请一起更新编译器、标准库与 SDK 工具。GGUF 文件沿用原有磁盘格式，加载时在内存中完成权重打包。</p>
+
+<p><a href="/download">前往下载中心</a> · <a href="/zh/benchmarks">查看全量基准看板</a> · <a href="/zh/docs/ai">本地 AI 推理指南</a> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.1">GitHub Release 页面</a> · <a href="https://github.com/xulang-org/xu/blob/v0.14.1/RELEASES.zh-CN.md#xu-0141">中文详细发行说明</a></p>
