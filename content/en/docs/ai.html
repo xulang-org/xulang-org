@@ -1,0 +1,34 @@
+<!--title: AI development and local inference with Xu-->
+<h1>AI development and local inference</h1>
+<p class="lead">The Xu development compiler can recognize numerical loops and lower them to native CPU kernels. The <code>llm_engine</code> example uses these kernels for local language-model inference in pure Xu.</p>
+<p class="banner">Development preview after Xu 0.14.0. Build with the compiler and standard library from the same source checkout.</p>
+
+<h2 id="run">Build and run the example</h2>
+<p>From the <a href="https://github.com/xulang-org/xu/tree/dev/examples/llm_engine">Xu source checkout</a>, set <code>XU</code> to your locally built compiler and run the following from the repository root. Choose token IDs from your model's vocabulary.</p>
+<pre><code>XU_STDLIB_ROOT="$PWD/src" XU_TENSOR_FUSION=1 "$XU" build examples/llm_engine/main.xu -o llm_engine</code></pre>
+<p>On macOS ARM64, sign the executable locally with <code>codesign -fs - ./llm_engine</code> before running it.</p>
+<pre><code>./llm_engine generate ./model.gguf 'ids:1,7,42' 16 0 40 --ctx 128</code></pre>
+<p>The example loads compatible GGUF v2/v3 models with F32/F16 or Q4_0 layer weights and an F32/F16, Q4_0 or Q8_0 output projection. It also loads the F32 Safetensors layout used by the test fixture. The maximum model width is 2048. GGUF loading streams weights from the local file. A paged key/value cache serves prompt prefill and token decoding, and the example includes a coroutine scheduler for continuous batching.</p>
+<ul>
+  <li><code>generate MODEL PROMPT [MAX_TOKENS] [TEMP_MILLI] [TOP_K]</code> accepts text or <code>ids:</code> followed by comma-separated token IDs. Text uses greedy vocabulary matching. Supply explicit IDs for exact tokenization. Temperature <code>0</code> selects greedy decoding.</li>
+  <li><code>verify MODEL</code> compares sequential and batched results and checks that KV pages return to the pool. <code>verify-f32act</code> uses F32 activations.</li>
+  <li><code>bench MODEL [STEPS] [single] [PROMPT_LEN]</code> measures load, prefill and decode. <code>single</code> skips continuous-batch timing. <code>bench-f32act</code> uses F32 activations.</li>
+</ul>
+<p>Use a positive <code>--ctx N</code> to cap the model context. The default cap is 512 tokens. Generation stops at EOS unless you pass <code>--ignore-eos</code>.</p>
+
+<h2 id="tensor-fusion">Compiler options</h2>
+<p><code>XU_TENSOR_FUSION=1</code> enables loop pattern matching when building an optimized native ARM64 or x64 executable. Eligible patterns include quantized matrix-vector and matrix-matrix multiplication, RMSNorm, RoPE, and paged attention. Kernel selection depends on the operation, layout and target. <code>XU_TENSOR_FAST_MATH=1</code> additionally permits eligible kernels to reassociate floating-point operations or fuse multiply and add. Builds with fast math can produce different low bits.</p>
+<p>Express the numerical work as Xu loops. The compiler emits and calls its own <code>__xu_tensor_*</code> helpers.</p>
+
+<h2 id="verification">Verify and measure inference</h2>
+<p>The regression suite generates compatible test models and compares float and quantized inference against a reference implementation. It also checks batched prefill, decoded tokens, and KV page reuse.</p>
+<pre><code>python3 scripts/test_llm_engine.py --compiler "$XU"
+python3 scripts/test_tensor_opt.py --compiler "$XU"</code></pre>
+<p>Use the example's <code>bench</code> mode to measure an individual model. Record the model and quantization, CPU, context length, and compiler settings with the prefill and decode results.</p>
+
+<h2 id="api">Development API</h2>
+<ul>
+  <li><a href="/api/math#preview-float16_to_f32"><code>math.float16_to_f32(h int) f32</code></a> converts a binary16 bit pattern to <code>f32</code>.</li>
+  <li><a href="/api/slices#reserve"><code>slice.reserve(n int)</code></a> ensures capacity for at least <code>n</code> elements.</li>
+  <li><a href="/api/slices#resize_zero"><code>slice.resize_zero(n int)</code></a> sets the length of a mutable primitive slice and zero-initializes newly visible elements.</li>
+</ul>

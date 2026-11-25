@@ -1,0 +1,34 @@
+<!--title: 使用 Xu 研发 AI 与本地推理-->
+<h1>AI 研发与本地推理</h1>
+<p class="lead">Xu 开发版编译器可以识别数值计算循环并生成原生 CPU 内核。纯 Xu 编写的 <code>llm_engine</code> 示例使用这些内核在本地运行语言模型。</p>
+<p class="banner">此功能是 Xu 0.14.0 之后的开发预览。请使用同一份源码构建的编译器和标准库。</p>
+
+<h2 id="run">编译并运行示例</h2>
+<p>在 <a href="https://github.com/xulang-org/xu/tree/dev/examples/llm_engine">Xu 源码检出目录</a>中，将 <code>XU</code> 设为本地构建的编译器路径，并在仓库根目录运行以下命令。请从所用模型的词表中选择 token ID。</p>
+<pre><code>XU_STDLIB_ROOT="$PWD/src" XU_TENSOR_FUSION=1 "$XU" build examples/llm_engine/main.xu -o llm_engine</code></pre>
+<p>在 macOS ARM64 上，运行前执行 <code>codesign -fs - ./llm_engine</code> 为可执行文件做本地签名。</p>
+<pre><code>./llm_engine generate ./model.gguf 'ids:1,7,42' 16 0 40 --ctx 128</code></pre>
+<p>示例支持兼容的 GGUF v2/v3 模型，层权重为 F32/F16 或 Q4_0，输出投影为 F32/F16、Q4_0 或 Q8_0。它也能加载测试所用布局的 F32 Safetensors。模型宽度上限为 2048。GGUF 权重从本地文件流式读取。预填充和解码使用分页 KV 缓存，示例还提供基于协程的连续批处理调度。</p>
+<ul>
+  <li><code>generate MODEL PROMPT [MAX_TOKENS] [TEMP_MILLI] [TOP_K]</code> 接受文本，或以 <code>ids:</code> 开头的逗号分隔 token ID。文本按词表贪心匹配。需要精确分词时请传入 token ID。温度 <code>0</code> 启用贪心解码。</li>
+  <li><code>verify MODEL</code> 比较逐请求与批处理结果，并检查 KV 页是否归还。<code>verify-f32act</code> 使用 F32 激活值。</li>
+  <li><code>bench MODEL [STEPS] [single] [PROMPT_LEN]</code> 测量加载、预填充和解码。<code>single</code> 跳过连续批处理计时。<code>bench-f32act</code> 使用 F32 激活值。</li>
+</ul>
+<p>用正整数 <code>--ctx N</code> 限制上下文长度，默认上限为 512 个 token。生成遇到 EOS 时结束，可用 <code>--ignore-eos</code> 继续。</p>
+
+<h2 id="tensor-fusion">编译选项</h2>
+<p>构建 ARM64 或 x64 的原生优化程序时，设置 <code>XU_TENSOR_FUSION=1</code> 启用循环模式匹配。可识别的计算包括量化矩阵向量乘法和矩阵乘法、RMSNorm、RoPE 以及分页注意力。是否使用优化内核取决于运算、数据布局和目标架构。另设 <code>XU_TENSOR_FAST_MATH=1</code> 可允许相应内核重排浮点运算或融合乘加，结果的低位可能发生变化。</p>
+<p>用 Xu 循环编写数值计算，<code>__xu_tensor_*</code> 辅助函数由编译器生成和调用。</p>
+
+<h2 id="verification">验证和测量推理</h2>
+<p>回归测试会生成兼容的测试模型，并将浮点与量化推理结果同参考实现比较。测试还覆盖批量预填充、解码 token 和 KV 页复用。</p>
+<pre><code>python3 scripts/test_llm_engine.py --compiler "$XU"
+python3 scripts/test_tensor_opt.py --compiler "$XU"</code></pre>
+<p>用示例的 <code>bench</code> 模式测量选定模型，并将模型及量化格式、CPU、上下文长度和编译器设置与预填充、解码结果一起记录。</p>
+
+<h2 id="api">开发版 API</h2>
+<ul>
+  <li><a href="/api/math#preview-float16_to_f32"><code>math.float16_to_f32(h int) f32</code></a> 将 binary16 位模式转换为 <code>f32</code>。</li>
+  <li><a href="/api/slices#reserve"><code>slice.reserve(n int)</code></a> 确保切片至少可容纳 <code>n</code> 个元素。</li>
+  <li><a href="/api/slices#resize_zero"><code>slice.resize_zero(n int)</code></a> 设置可变标量切片的长度，并把新增区间清零。</li>
+</ul>
