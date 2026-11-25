@@ -17,7 +17,7 @@
   <a href="https://xulang.org/ko/playground"><strong>온라인 플레이그라운드 (무설치)</strong></a> &nbsp; · &nbsp;
   <a href="https://xulang.org/ko/docs/start">30초 빠른 시작</a> &nbsp; · &nbsp;
   <a href="https://xulang.org/ko/download">설치 프로그램 다운로드</a> &nbsp; · &nbsp;
-  <a href="https://github.com/xulang-org/xu">Compiler source</a>
+  <a href="https://github.com/xulang-org/xu">컴파일러 소스</a>
 </p>
 
 <p align="center">
@@ -83,7 +83,7 @@ xu build main.xu -o hello
 
 XU는 현재 **0.x 시리즈**에서 활발히 진화하고 있습니다. 출시된 SDK는 [Releases](https://github.com/xulang-org/xu/releases)를, 지원 플랫폼 및 런타임 현황은 [상태 및 제한 사항](https://xulang.org/ko/docs/status)을 확인하세요. [벤치마크 대시보드](https://xulang.org/ko/benchmarks)에는 실측 워크로드, 컴파일러 버전, 소스 출처가 기록되어 있습니다.
 
-[API 문서](https://xulang.org/ko/api/)를 열고 "API 검색"을 통해 패키지를 찾거나 페이지 내 선언으로 바로 이동할 수 있습니다. 입력창 밖에서 `/` 키를 눌러 검색창을 열고 방향키와 Enter로 결과를 탐색하며 Escape로 닫습니다. 모바일에서는 목차가 자동으로 접혀 본문을 쾌적하게 읽을 수 있습니다. 선언 제목은 영구 링크이며 "링크 복사"로 현재 페이지나 선언을 공유할 수 있습니다.
+[API 문서](https://xulang.org/api/)를 열고 "API 검색"을 통해 패키지를 찾거나 페이지 내 선언으로 바로 이동할 수 있습니다. 입력창 밖에서 `/` 키를 눌러 검색창을 열고 방향키와 Enter로 결과를 탐색하며 Escape로 닫습니다. 모바일에서는 목차가 자동으로 접혀 본문을 쾌적하게 읽을 수 있습니다. 선언 제목은 영구 링크이며 "링크 복사"로 현재 페이지나 선언을 공유할 수 있습니다.
 
 API 색인은 자주 찾는 작업 바로가기, 주제별 설명, 표준 라이브러리·UI·확장 패키지 인라인 검색을 제공합니다. 패키지 상세 페이지 상단에는 이름, 목적, 선언 종류별로 필터링할 수 있는 선언 탐색기가 포함되어 있습니다.
 

@@ -17,7 +17,7 @@
   <a href="https://xulang.org/ja/playground"><strong>オンラインプレイグラウンド（インストール不要）</strong></a> &nbsp; · &nbsp;
   <a href="https://xulang.org/ja/docs/start">30秒クイックスタート</a> &nbsp; · &nbsp;
   <a href="https://xulang.org/ja/download">インストーラーのダウンロード</a> &nbsp; · &nbsp;
-  <a href="https://github.com/xulang-org/xu">Compiler source</a>
+  <a href="https://github.com/xulang-org/xu">コンパイラソース</a>
 </p>
 
 <p align="center">
@@ -83,7 +83,7 @@ xu build main.xu -o hello
 
 XU は現在 **0.x シリーズ** として活発に進化を続けています。リリース済み SDK は [Releases](https://github.com/xulang-org/xu/releases) を、プラットフォームおよびランタイム対応状況は [ステータスと制限](https://xulang.org/ja/docs/status) を参照してください。[ベンチマークダッシュボード](https://xulang.org/ja/benchmarks) では実測ワークロード、コンパイラバージョン、ソース出所を記録しています。
 
-[API ドキュメント](https://xulang.org/ja/api/) を開き、「API 検索」でパッケージの検索やページ内宣言へのジャンプが可能です。入力欄の外で `/` キーを押すと検索が開き、矢印キーと Enter で結果を操作、Escape で閉じます。モバイル表示では目次が自動的に折りたたまれ、本文に素早くアクセスできます。宣言の見出しは固定リンクとなっており、「リンクをコピー」で現在のページや宣言を共有できます。
+[API ドキュメント](https://xulang.org/api/) を開き、「API 検索」でパッケージの検索やページ内宣言へのジャンプが可能です。入力欄の外で `/` キーを押すと検索が開き、矢印キーと Enter で結果を操作、Escape で閉じます。モバイル表示では目次が自動的に折りたたまれ、本文に素早くアクセスできます。宣言の見出しは固定リンクとなっており、「リンクをコピー」で現在のページや宣言を共有できます。
 
 API インデックスには、よく使うタスクへのショートカット、トピック解説、標準ライブラリ・UI・拡張パッケージのページ内検索が用意されています。パッケージページ冒頭には「宣言エクスプローラー」があり、名前、用途、種類で絞り込んで完全なシグネチャと説明へジャンプできます。関連ソースサンプルは必要に応じて展開可能です。
 
