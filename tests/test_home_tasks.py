@@ -15,6 +15,22 @@ def source(lang, route):
 
 
 class HomeTaskTests(unittest.TestCase):
+    def test_research_guides_sit_between_hero_and_feature_modules(self):
+        for page in sorted((ROOT / 'content').glob('*/home.html')):
+            lang = page.parent.name
+            with self.subTest(lang=lang):
+                home = page.read_text()
+                research = home.split('id="research"', 1)[1].split('</section>', 1)[0]
+                prefix = '/zh' if lang == 'zh-tw' else ''
+                self.assertEqual(re.findall(r'class="research-link" href="([^"]+)"', research),
+                                 [prefix + '/docs/os', prefix + '/docs/ai'])
+                for capability in ('x64-none', 'arm64-none', 'riscv64-none', 'GGUF', 'Safetensors'):
+                    self.assertIn(f'<code>{capability}</code>', research)
+                self.assertLess(home.index('class="hero-install"'), home.index('id="research"'))
+                self.assertLess(home.index('id="research"'), home.index('class="pillars"'))
+                if lang in ('en', 'zh'):
+                    self.assertEqual(home.count('class="pillar"'), 9)
+
     def assert_links_resolve(self, markup, lang):
         for href in re.findall(r'href="([^"]+)"', markup):
             url = urlsplit(unescape(href))

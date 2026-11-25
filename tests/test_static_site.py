@@ -118,6 +118,17 @@ class StaticSiteTests(unittest.TestCase):
             self.assertIn('src="/theme.js"', page)
             self.assertIn('href="/site.css"', page)
         self.assertNotIn('<span class="badge">v', home)
+        for prefix in ('', '/zh', '/ja', '/zh-tw'):
+            page = (output / prefix.strip('/') / 'index.html').read_text()
+            research_prefix = '/zh' if prefix in ('/zh', '/zh-tw') else ''
+            self.assertLess(page.index('class="hero-install"'), page.index('id="research"'))
+            self.assertLess(page.index('id="research"'), page.index('class="pillars"'))
+            self.assertIn(f'class="research-link" href="{research_prefix}/docs/os/"', page)
+            self.assertIn(f'class="research-link" href="{research_prefix}/docs/ai/"', page)
+        for guide in ('os', 'ai'):
+            page = (output / 'docs' / guide / 'index.html').read_text()
+            alternates = re.findall(r'<link rel="alternate" hreflang="([^"]+)"', page)
+            self.assertEqual(alternates, ['en', 'zh-CN', 'x-default'])
         self.assertNotIn('XU v' + version, home)
         self.assertIn('XU v' + version, downloads)
         self.assertNotIn('{{xu_version}}', home)
