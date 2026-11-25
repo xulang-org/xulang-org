@@ -6,15 +6,43 @@
   var LAYOUT_LINE_HEIGHT = 1.25;
   // XUUI 0.1.0 font-sans; the preview can also supply the pinned CSS token.
   var fontStack = '"Avenir Next", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", sans-serif';
+  var VALID_CURSORS = new Set(['default', 'text', 'pointer', 'crosshair', 'ew-resize', 'ns-resize', 'grab', 'grabbing']);
   // Argument types: number, color, text. Validate before touching a canvas.
   var signatures = {
     begin: '', present: '', cancel: '', push: '', pop: '', origin: '',
-    bgcolor: 'c', color: 'c', fill: 'c', stroke: 'c', width: 'n',
-    translate: 'nn', rotate: 'n', scale: 'nn', clip_rect: 'nnnn',
-    fill_rect: 'nnnnc', stroke_rect: 'nnnncn', round_rect: 'nnnnnccn',
+    bgcolor: 'c', color: 'c', fill: 'c', stroke: 'c', width: 'n', font: 't',
+    translate: 'nn', rotate: 'n', scale: 'nn', clip_rect: 'nnnn', cursor_rect: 'nnnnt',
+    fill_rect: 'nnnnc', stroke_rect: 'nnnncn', round_rect: 'nnnnnccn', clipboard: 'nt',
     path_begin: '', path_move: 'nn', path_line: 'nn', path_cubic: 'nnnnnn', path_close: '', path_fill: 'c', path_stroke: 'cn',
     layout_text: 'nnncnt', line: 'nnnncn', text: 'nnnct', rect: 'nnnn', circle: 'nnn',
   };
+  function charCells(cp) {
+    if (cp === 0x200D || (cp >= 0xFE00 && cp <= 0xFE0F) || (cp >= 0x0300 && cp <= 0x036F)) return 0;
+    if ((cp >= 0x1100 && cp <= 0x115F) || cp === 0x2329 || cp === 0x232A ||
+        (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
+        (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF) ||
+        (cp >= 0xA000 && cp <= 0xA4CF) || (cp >= 0xAC00 && cp <= 0xD7AF) ||
+        (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFE10 && cp <= 0xFE19) ||
+        (cp >= 0xFE30 && cp <= 0xFE6F) || (cp >= 0xFF01 && cp <= 0xFF60) ||
+        (cp >= 0xFFE0 && cp <= 0xFFE6) || (cp >= 0x1F300 && cp <= 0x1FAFF) ||
+        (cp >= 0x20000 && cp <= 0x3FFFD)) return 2;
+    return 1;
+  }
+  function decodeClipboardText(raw) {
+    var out = '';
+    for (var i = 0; i < raw.length; i++) {
+      if (raw[i] === '\\' && i + 1 < raw.length) {
+        var next = raw[++i];
+        if (next === 'n') out += '\n';
+        else if (next === 'r') out += '\r';
+        else if (next === 't') out += '\t';
+        else out += next;
+      } else {
+        out += raw[i];
+      }
+    }
+    return out;
+  }
   function frame(commands) {
     if (typeof commands !== 'string' || commands.length > 262144) throw Error('Invalid UI command buffer');
     var lines = commands.split('\n');
@@ -52,7 +80,10 @@
       if (op === 'layout_text' && args[4] < 0) throw Error('Negative UI text width');
       if (op === 'push' && ++depth > 32) throw Error('UI transform stack limit exceeded');
       if (op === 'pop' && --depth < 0) throw Error('Unbalanced UI pop');
-      if (['rect', 'fill_rect', 'stroke_rect', 'round_rect', 'clip_rect'].includes(op) && (args[2] < 0 || args[3] < 0)) throw Error('Negative UI size');
+      if (['rect', 'fill_rect', 'stroke_rect', 'round_rect', 'clip_rect', 'cursor_rect'].includes(op) && (args[2] < 0 || args[3] < 0)) throw Error('Negative UI size');
+      if (op === 'font' && args[0] !== 'sans' && args[0] !== 'mono') throw Error('Invalid UI font mode');
+      if (op === 'cursor_rect' && !VALID_CURSORS.has(args[4])) throw Error('Invalid UI cursor');
+      if (op === 'clipboard' && (!Number.isInteger(args[0]) || args[0] < 0)) throw Error('Invalid UI clipboard sequence');
       if (op === 'circle' && args[2] < 0 || op === 'round_rect' && args[4] < 0) throw Error('Negative UI radius');
       if ((op === 'text' || op === 'layout_text') && (args[2] < 1 || args[2] > 256)) throw Error('Invalid UI font size');
       var strokeWidth = op === 'path_stroke' ? args[1] : args.at(-1);
@@ -117,7 +148,8 @@
     ctx.imageSmoothingQuality = 'high';
     function origin() { ctx.setTransform(ratio, 0, 0, ratio, 0, 0); }
     origin();
-    var pen = {fill: '#000000', stroke: '-', width: 1}, stack = [];
+    var pen = {fill: '#000000', stroke: '-', width: 1, font: 'sans'}, stack = [];
+    var cursors = [], clipboard = null;
     var computed = canvas.ownerDocument.defaultView?.getComputedStyle?.(canvas);
     var family = computed?.getPropertyValue('--xu-font-sans').trim() || fontStack;
     var monoFamily = computed?.getPropertyValue('--xu-font-mono').trim() || '"JetBrains Mono", "SFMono-Regular", Consolas, monospace';
@@ -143,6 +175,16 @@
       else if (op === 'fill') pen.fill = a[0];
       else if (op === 'stroke') pen.stroke = a[0];
       else if (op === 'width') pen.width = a[0];
+      else if (op === 'font') pen.font = a[0];
+      else if (op === 'cursor_rect') {
+        var m = typeof ctx.getTransform === 'function' ? ctx.getTransform() : null;
+        if (m && Number.isFinite(m.e) && Number.isFinite(m.f) && Number.isFinite(m.a) && m.a) {
+          cursors.push({x: m.e / ratio + a[0], y: m.f / ratio + a[1], width: a[2], height: a[3], cursor: a[4]});
+        } else {
+          cursors.push({x: a[0], y: a[1], width: a[2], height: a[3], cursor: a[4]});
+        }
+      }
+      else if (op === 'clipboard') clipboard = {seq: a[0], text: decodeClipboardText(a[1])};
       else if (op === 'push') { ctx.save(); stack.push({...pen}); }
       else if (op === 'pop') { ctx.restore(); pen = stack.pop(); }
       else if (op === 'origin') origin();
@@ -167,9 +209,7 @@
         var text = a[5], lineHeight = a[2] * LAYOUT_LINE_HEIGHT;
         if (a[3] !== '-' && a[4] > 0 && lineHeight > 0 && text) {
           ctx.save();
-          var useMono = canvas.dataset?.font === 'mono' ||
-                        (canvas.dataset?.example && /text-selection|input|text-area|field/.test(canvas.dataset.example)) ||
-                        (typeof document !== 'undefined' && document.getElementById('xu-play-src')?.value && /ui-text-selection|measure_prefix|hit_col|TextSelection/.test(document.getElementById('xu-play-src').value));
+          var useMono = pen.font === 'mono' || canvas.dataset?.font === 'mono';
           var textFont = useMono ? monoFamily : family;
           ctx.font = a[2] + 'px ' + textFont;
           ctx.textBaseline = 'alphabetic';
@@ -186,8 +226,24 @@
           if (useMono) {
             var chars = Array.from(text);
             var cellWidth = a[2] * 0.6;
+            var cells = 0;
             for (var ci = 0; ci < chars.length; ci++) {
-              ctx.fillText(chars[ci], a[0] + ci * cellWidth, y);
+              var ch = chars[ci];
+              var span = charCells(ch.codePointAt(0) || 0);
+              if (span === 0) {
+                ctx.fillText(ch, a[0] + Math.max(0, cells - 1) * cellWidth, y);
+                continue;
+              }
+              var drawX = a[0] + cells * cellWidth;
+              var slotWidth = span * cellWidth;
+              if (typeof ctx.measureText === 'function') {
+                var chMetrics = ctx.measureText(ch);
+                if (chMetrics && Number.isFinite(chMetrics.width) && chMetrics.width > 0 && chMetrics.width < slotWidth) {
+                  drawX += (slotWidth - chMetrics.width) * 0.5;
+                }
+              }
+              ctx.fillText(ch, drawX, y);
+              cells += span;
             }
           } else {
             ctx.fillText(text, a[0], y);
@@ -232,6 +288,8 @@
     target.imageSmoothingEnabled = true;
     target.imageSmoothingQuality = 'high';
     target.drawImage(staging, 0, 0);
+    canvas.__xu_cursor_regions = cursors;
+    canvas.__xu_clipboard = clipboard;
     var raf = (canvas.ownerDocument?.defaultView?.requestAnimationFrame) || (typeof requestAnimationFrame === 'function' ? requestAnimationFrame : null);
     if (spin && spin.running && bgData && raf) {
       var perf = (canvas.ownerDocument?.defaultView?.performance) || (typeof performance !== 'undefined' ? performance : null);
@@ -267,5 +325,17 @@
     ctx.font = (size || 14) + 'px ' + (font || fontStack);
     return ctx.measureText(text || '');
   }
-  root.XuPlayCanvas = {render: render, frame: frame, draw: draw, measureText: measureText, fontStack: fontStack, width: WIDTH, height: HEIGHT, maxEvents: MAX_EVENTS};
+  function cursorAt(canvas, x, y) {
+    var list = canvas && canvas.__xu_cursor_regions;
+    if (!list || !list.length) return '';
+    for (var i = list.length - 1; i >= 0; i--) {
+      var r = list[i];
+      if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height) return r.cursor;
+    }
+    return '';
+  }
+  function clipboardOf(canvas) {
+    return canvas && canvas.__xu_clipboard ? canvas.__xu_clipboard : null;
+  }
+  root.XuPlayCanvas = {render: render, frame: frame, draw: draw, measureText: measureText, cursorAt: cursorAt, clipboardOf: clipboardOf, fontStack: fontStack, width: WIDTH, height: HEIGHT, maxEvents: MAX_EVENTS};
 })(typeof window === 'undefined' ? globalThis : window);

@@ -2,24 +2,34 @@
 
 <p class="crumb"><a href="/docs/start">ドキュメント</a></p>
 <h1>よくある質問 (FAQ)</h1>
-<p class="banner">Xu 言語の設計、メモリモデル、AOTコンパイラ、ネイティブUI、エディタサポート、依存関係管理、C言語連携に関する主要なQ&amp;A</p>
+<p class="banner">Xu 言語の設計、メモリモデル、OSカーネル・ベアメタル開発、AOTコンパイラ、ネイティブUI、エディタサポート、依存関係管理、C言語連携に関する主要なQ&amp;A</p>
 
 <div class="faq-toolbar" role="search" aria-label="FAQ 検索とフィルター">
   <div class="faq-search-wrap">
     <i class="xi xi-search" aria-hidden="true"></i>
-    <input type="search" class="faq-search-input" id="faq-search" placeholder="質問またはキーワードで検索 (例: GC, Rust, UI, LSP, XACP)..." aria-label="よくある質問を検索">
+    <input type="search" class="faq-search-input" id="faq-search" placeholder="質問またはキーワードで検索 (例: GC, ベアメタル, カーネル, UI, LSP, XACP)..." aria-label="よくある質問を検索">
     <button type="button" class="faq-search-clear" id="faq-search-clear" aria-label="検索をクリア" hidden>&times;</button>
   </div>
   <div class="faq-controls">
-    <span class="faq-count-badge" id="faq-count" aria-live="polite">全 19 件の質問</span>
+    <span class="faq-count-badge" id="faq-count" aria-live="polite">全 23 件の質問</span>
+    <div class="faq-sort-wrap">
+      <label for="faq-sort" class="faq-sort-label"><i class="xi xi-sort-desc"></i> <span class="faq-sort-text">並び替え:</span></label>
+      <select class="faq-sort-select" id="faq-sort" aria-label="FAQ 並び替え">
+        <option value="default">おすすめ順</option>
+        <option value="os-first">OS・カーネル優先</option>
+        <option value="category">カテゴリー別</option>
+        <option value="title">タイトル順</option>
+      </select>
+    </div>
     <button type="button" class="faq-btn" id="faq-expand-all"><i class="xi xi-sliders"></i> すべて展開</button>
     <button type="button" class="faq-btn" id="faq-collapse-all"><i class="xi xi-close"></i> すべて折りたたむ</button>
   </div>
 </div>
 
 <div class="faq-categories" role="tablist" aria-label="FAQ カテゴリフィルター">
-  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> すべて (19)</button>
+  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> すべて (23)</button>
   <button type="button" class="faq-cat-btn" data-cat="lang" role="tab" aria-selected="false"><i class="xi xi-cpu"></i> 言語コアとメモリ (8)</button>
+  <button type="button" class="faq-cat-btn" data-cat="os" role="tab" aria-selected="false"><i class="xi xi-chip"></i> OS・カーネル開発 (4)</button>
   <button type="button" class="faq-cat-btn" data-cat="ui" role="tab" aria-selected="false"><i class="xi xi-monitor"></i> デスクトップUI (2)</button>
   <button type="button" class="faq-cat-btn" data-cat="tools" role="tab" aria-selected="false"><i class="xi xi-terminal"></i> ツールチェーンと生態系 (9)</button>
 </div>
@@ -79,6 +89,58 @@
 <p>クラス継承ではなく「継承より合成」を重視します。<code>struct</code> でデータを定義し、メソッド拡張と <code>interface</code> でポリモーフィズムを実現します。</p>
     </div>
   </details>
+
+  <details class="faq-item" id="baremetal-support" data-category="os">
+    <summary><h3>XuはOSカーネルやベアメタルファームウェアの開発をどのようにサポートしていますか？</h3></summary>
+    <div class="faq-answer">
+      <p><strong>XuはOSマイクロカーネル、組込みファームウェア、デバイスドライバのスクラッチ開発をネイティブでサポートしています。</strong>ランタイムGCに制約されるマネージド言語や、手動でのライフタイム注釈が複雑化する言語とは異なり、Xuは厳密に階層化されたシステムアーキテクチャを採用しています：</p>
+      <ul>
+        <li>通常のシステムコンポーネントやカーネルサービスでは、<strong>暗黙的所有権推論</strong>と<strong>コンパイル時ゼロGCの決定論的破棄</strong>を維持し、ライフタイム注釈（<code>&lt;'a&gt;</code>）を必要としません；</li>
+        <li>最下層のハードウェア操作（コード全体の約5%）では、Freestandingモード（<code>freestanding</code>）、生ポインタ（<code>*raw T</code>）、揮発性MMIOバリア（<code>volatile_read</code> / <code>volatile_write</code>）、純粋静的コアライブラリ（<code>#core</code>）を通じて安全かつ精密に制御されます。</li>
+      </ul>
+      <p>カーネル実装例は公式の <a href="https://github.com/xulang-org/xu/tree/main/examples/baremetal/kernel_poc">kernel_poc 検証リポジトリ</a> および <a href="/blog/xu-0-14-0">Xu 0.14.0 リリースノート</a> を参照してください。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="freestanding-profile" data-category="os">
+    <summary><h3>Freestandingプロファイルとは何ですか？ホストOSへの依存を完全に遮断するには？</h3></summary>
+    <div class="faq-answer">
+      <p>Freestandingプロファイルとは、ホストOSのシステムコール（Syscalls）、動的リンカ、C標準ライブラリ（libc）に一切依存しないバイナリを生成する実行モードです。Xuは3段階の設定方法を提供します：</p>
+      <ul>
+        <li><strong>ソースコードレベル</strong>：ソースファイルの先頭行に <code>$freestanding</code> コンパイルタグを宣言；</li>
+        <li><strong>プロジェクト設定</strong>：プロジェクトマニフェスト <code>xu.xun</code> 内で <code>profile: freestanding</code> を指定；</li>
+        <li><strong>CLIコンパイルオプション</strong>：ビルド時に <code>--profile=freestanding</code> または <code>--no-std</code> を指定。</li>
+      </ul>
+      <p>このモードを有効にすると、ホストOSランタイムやデフォルトスケジューラが完全に除去され、極めて軽量な独立ベアメタルELF/PEイメージ（通常 <strong>1.9 KB 〜 2.4 KB</strong>）が出力されます。</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="core-library" data-category="os">
+    <summary><h3>標準ライブラリのないベアメタル環境で、#core はどのようなハードウェア抽象化を提供しますか？</h3></summary>
+    <div class="faq-answer">
+      <p>Xuは、外部依存・ゼロシステムコール・ゼロ暗黙割り当ての静的基盤ライブラリ <code>#core</code> を提供します：</p>
+      <ul>
+        <li><code>#core/arch</code>：CPU特権命令（<code>cli</code>, <code>sti</code>, <code>hlt</code>, <code>pause</code>, <code>wfi</code>）、コントロールレジスタアクセス（CR0/CR2/CR3/CR4, VBAR, SCTLR）、8259A PIC再マッピング、8254 PITタイマー初期化、IDTディスクリプタ読み込み（<code>load_idt</code>）；</li>
+        <li><code>#core/sync</code>：割り込み安全スピンロック <code>IrqSpinlock</code> および <code>Spinlock</code>、RAIIガード（<code>IrqGuard</code>, <code>SpinGuard</code>）によるスコープ終了時の決定論的アンロックと割り込みフラグ自動復元（EFLAGS / PSTATE）；</li>
+        <li><code>#core/task</code>：アーキテクチャ共通の192バイト・16バイト境界整列 <code>TaskContext</code>、アトミックコンテキストスイッチ（<code>switch_context</code>）、<code>TrapFrame</code> 例外スナップショットとシステムコールエントリ；</li>
+        <li><code>#core/virtio</code>：静的VirtIO MMIOドライバフレームワーク、VirtQueueディスクリプタリング、<code>VirtioBlkDriver</code> ブロックデバイス、<code>VirtioNetDriver</code> 仮想NIC；</li>
+        <li><code>#core/mem</code> &amp; <code>#core/alloc</code>：ゼロ割り当てメモリー基本関数（<code>memset</code>/<code>memcpy</code>/<code>memcmp</code>）とプラガブルな <code>GlobalAlloc</code> アロケータインターフェース。</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="faq-item" id="raw-pointers-mmio" data-category="os">
+    <summary><h3>カーネル内で物理メモリマッピング（MMIO）や生ポインタ操作を安全に行うには？</h3></summary>
+    <div class="faq-answer">
+      <p>ハードウェアレジスタやMMIOデバイスメモリへのアクセスは、安全な構文境界によって分離されます：</p>
+      <ul>
+        <li><strong>生ポインタ型 <code>*raw T</code> と <code>unsafe { ... }</code> ブロック</strong>：絶対物理アドレスの再解釈やポインタ演算を許可しますが、参照解決は <code>unsafe { ... }</code> ブロック内でのみ許可されます。所有権推論は生ポインタをスキップし、危険な低層操作が安全なカーネルロジックへ波及するのを防ぎます；</li>
+        <li><strong>揮発性MMIOバリア（Volatile MMIO）</strong>：組み込みの <code>volatile_read</code> および <code>volatile_write</code> により、コンパイラの不要コード削除（DCE）やループ不変量巻き上げ（LICM）を防ぎます；</li>
+        <li><strong>厳密なメモリーレイアウト制御</strong>：<code>@repr("C", align: N)</code>（PML4ページテーブル用の4096バイトアラインなど）および <code>@repr("C", packed)</code>（パケットヘッダ用のパディングなし配置）をサポート；</li>
+        <li><strong>スキャフォールディングとエミュレーション</strong>：<code>xu init --baremetal my_os</code> によりマルチアーキテクチャのカーネル骨格・リンカスクリプト（<code>linker.ld</code>）・Makefileが一発生成され、<code>make qemu</code> で即座に仮想マシン上で起動・デバッグ可能です。</li>
+      </ul>
+    </div>
+  </details>
   <details class="faq-item" id="native-c" data-category="tools">
     <summary><h3>XuはC/C++ネイティブライブラリとどのように相互運用しますか？</h3></summary>
     <div class="faq-answer">
@@ -88,7 +150,7 @@
   <details class="faq-item" id="target-platforms" data-category="tools">
     <summary><h3>XuはどのOSおよびCPUアーキテクチャをサポートしていますか？</h3></summary>
     <div class="faq-answer">
-<p>macOS（ARM64/x64）、Linux（ARM64/x64/LoongArch/RISC-V）、Windows（x64/ARM64）をネイティブサポートしています。</p>
+<p>macOS（ARM64/x64）、Linux（ARM64/x64/LoongArch/RISC-V）、Windows（x64/ARM64）、WebAssembly（WASI）をネイティブサポートしています。また、<code>--profile=freestanding</code> によるベアメタル・OSカーネル開発（x86_64、aarch64、riscv64 ELF）もサポートしています。</p>
     </div>
   </details>
   <details class="faq-item" id="wasm" data-category="lang">

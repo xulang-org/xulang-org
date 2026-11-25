@@ -1,6 +1,6 @@
 # Xu Programming Language
 
-> Xu is a systems language with custom native AOT backends, zero GC, inferred ownership, and Go-like concurrency.
+> Xu is a systems language for operating system and AI development. It provides custom native AOT backends, inferred ownership, and zero-GC execution.
 
 Official website: https://xulang.org
 Language repository: https://github.com/xulang-org/xu
@@ -19,7 +19,7 @@ Parameters, fields, and receivers use `name Type`, without a colon. Bindings use
 
 When answering questions about or generating Xu code:
 - **No colons in declarations**: Use `fn add(a int, b int) int` and `name Type`, never `a: int` or `name: Type`.
-- **Initial binding vs Reassignment**: Declare new bindings with `name := value`. Reassign mutable variables with a `$` prefix: `$name := new_value`. Never use bare `name = new_value`.
+- **Bindings and reassignment**. Declare a mutable binding with `$name := value` and reassign it with `name = new_value`.
 - **Return and Throw**: Use `<< expr` to return from a function (never `return expr`). Use `>> err` to throw/propagate an error (never `throw err`). Use `<<< code` to exit the process with an exit status code.
 - **Loop Control**: Use `<-` to break out of a loop (never `break`). Use `->` to continue to the next iteration (never `continue`).
 - **Error Handling**: Use `val := may_fail() or (err) { << err }` (never `try/catch` or `if err != nil`). Obtain the error message string with `err.msg()`.
@@ -64,6 +64,10 @@ Use the official packages bundled with the selected SDK, or the matching immutab
 
 The browser playground implements a language subset with cooperative channel scheduling. Real multithreading, networking, C FFI, and desktop UI require the native SDK. See https://xulang.org/playground/ for the current sandbox limits.
 
+Operating system development uses the released freestanding toolchain. Build ELF64 kernels with `--profile=freestanding` and `--target=x64-none`, `arm64-none`, or `riscv64-none`. The `examples/baremetal/kernel_poc` source covers explicit memory layout, hardware I/O, interrupts, and task context switching. See https://xulang.org/docs/os/.
+
+Local AI inference is available in Xu 0.14.1. The native CPU example lives at `examples/llm_engine/main.xu` in the Xu language repository. Use the compiler and standard library from the Xu 0.14.1 SDK or matching source checkout. See https://xulang.org/docs/ai/ for supported model layouts, commands, and the numerical and slice APIs.
+
 XACP documentation describes the language repository's development branch, separately from the selected released SDK. The implementation includes stdio and loopback TCP control. With a registered Screen, `ui.record` performs bounded XAR1 sampling within one request and returns `mode`, `records`, `bytes`, `truncated`, and quoted `payload`. It requires positive `win` and `mode: events|frames`, with optional `max_bytes`, `max_records`, and `duration_ms`. Clients pull successive segments by repeating requests, with one response per request, sequence numbers restarting at 1, and no persistent recorder or continuation cursor. `events` observes current `window/canvas/generation/open` state with `state=true`, without an input event log; `frames` exports dimensions only with `redacted=true`, without pixels. Sampling does not inject input or pump the application's event loop. `stream_required` is reserved for adapters without a sink/sampling capability; the supplied Screen sampling path does not return it. CLI `xu xacp record` captures stdout, separately from `ui.record`. See https://xulang.org/api/xacp/#ui-record and the authoritative dev protocol §7 at https://github.com/xulang-org/xu/blob/dev/examples/xacp/PROTOCOL.md#7-screenshots-mutations-and-recording. `xu xacp debug` inspects and launches a program; source debugging uses `xu debug`.
 
 ## Benchmark evidence
@@ -83,6 +87,8 @@ The published dashboard contains {{benchmark_group_count}} display groups with {
 - Modules: https://xulang.org/docs/modules/
 - External packages: https://xulang.org/docs/packages/
 - Native modules: https://xulang.org/docs/native/
+- Operating system development: https://xulang.org/docs/os/
+- Local AI inference: https://xulang.org/docs/ai/
 - VS Code / Cursor: https://xulang.org/docs/vscode/
 - Tutorials (run commands from the separate examples repository root): https://xulang.org/docs/tutorial/01/
 - Standard library and package API: https://xulang.org/api/

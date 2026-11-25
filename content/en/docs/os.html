@@ -1,0 +1,21 @@
+<!--title: Operating system development with Xu-->
+<h1>Operating system development</h1>
+<p class="lead">Use Xu's freestanding profile to build kernel, driver, and firmware code with native AOT compilation. The kernel example covers memory layout, hardware I/O, synchronization, interrupts, and task context switching.</p>
+<p class="banner">Freestanding ELF64 targets are available in the Xu 0.14.0 SDK.</p>
+
+<h2 id="build">Build the kernel example</h2>
+<p>Install the <a href="/download">Xu SDK</a> and run these commands from the root of the <a href="https://github.com/xulang-org/xu/tree/v0.14.0">Xu 0.14.0 source checkout</a>.</p>
+<pre><code>xu build --profile=freestanding --target=x64-none examples/baremetal/kernel_poc/main.xu -o kernel-x64.elf
+xu build --profile=freestanding --target=arm64-none examples/baremetal/kernel_poc/main.xu -o kernel-arm64.elf
+xu build --profile=freestanding --target=riscv64-none examples/baremetal/kernel_poc/main.xu -o kernel-riscv64.elf</code></pre>
+<p>Use <code>file kernel-*.elf</code> to inspect the output architecture. The <a href="https://github.com/xulang-org/xu/tree/v0.14.0/examples/baremetal/kernel_poc">kernel example</a> documents its x86-64 QEMU workflow. Match the boot environment, board support, and hardware setup to the target you intend to run.</p>
+
+<h2 id="hardware">Hardware access and core APIs</h2>
+<p>The freestanding profile builds without host operating system services or libc. Source modules can declare <code>$freestanding</code>. For project and compiler settings, see the <a href="/docs/faq#freestanding-profile">freestanding profile reference</a>.</p>
+<ul>
+  <li>Use <code>*raw T</code> for hardware addresses and <code>unsafe { … }</code> for raw pointer dereferencing. Use <code>volatile_read</code> and <code>volatile_write</code> for memory-mapped I/O. See the <a href="/docs/lang/memory">memory model</a>.</li>
+  <li>Use <code>@repr("C", align: N)</code> or <code>@repr("C", packed)</code> for explicit layout when modeling page tables or hardware descriptors.</li>
+  <li>Use <a href="/api/core/arch"><code>#core/arch</code></a> for architecture-specific control and <a href="/api/core/mem"><code>#core/mem</code></a> for low-level memory operations. <a href="/api/core/alloc"><code>#core/alloc</code></a> defines allocator interfaces.</li>
+  <li>Use <a href="/api/core/sync"><code>#core/sync</code></a> for spinlocks and interrupt guards and <a href="/api/core/task"><code>#core/task</code></a> for task contexts and trap frames.</li>
+</ul>
+<p>For target support and current acceptance coverage, see <a href="/docs/status">implementation status</a>.</p>

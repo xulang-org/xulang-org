@@ -86,5 +86,6 @@ def measured_text(code, slug):
         code = code[:start] + value + code[end:]
     if replacements:
         position = code.index('fn ')
-        code = code[:position] + (REMOVE if 'remove_last(' in code and 'fn remove_last(' not in code else '') + (COUNT if 'codepoints(' in code else '') + HELPERS + '\n' + code[position:]
+        helpers = HELPERS if 'fn demo_text(' not in code else ''
+        code = code[:position] + (REMOVE if 'remove_last(' in code and 'fn remove_last(' not in code else '') + (COUNT if 'codepoints(' in code and 'fn codepoints(' not in code else '') + helpers + '\n' + code[position:]
     return code

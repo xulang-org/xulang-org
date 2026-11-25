@@ -790,3 +790,38 @@ test('mobile presentation receives fresh-run results and cancels follow on sourc
  workers[0].respond(result);assert.equal(calls.at(-1),false,'edited programs cannot reopen stale previews');
  elements['xu-play-run'].click();workers[0].respond({...result,ui:null});assert.equal(calls.at(-1),false);
 });
+
+test('canvas hover cursor, clipboard sync, and paste integrate cleanly with browser events', async () => {
+  let fakeClipboard = null;
+  const {elements, workers, copied, context} = await mount({ui: true});
+  const canvas = elements['xu-play-canvas'];
+  canvas.style = {};
+  context.window.XuPlayCanvas.cursorAt = (_cv, x) => (x < 300 ? 'text' : 'pointer');
+  context.window.XuPlayCanvas.clipboardOf = () => fakeClipboard;
+  elements['xu-play-src'].value = 'widget input';
+  elements['xu-play-run'].click();
+  fakeClipboard = {seq: 1, text: 'hello xu'};
+  workers[0].respond({type: 'result', exit: 0, stdout: 'Value: hello xu', stderr: '', ui: {commands: 'frame', interactive: true, input: true}});
+  await new Promise(setImmediate);
+  assert.deepEqual(copied, ['hello xu']);
+  canvas.listeners.pointermove({clientX: 60, clientY: 80});
+  assert.equal(canvas.style.cursor, 'text');
+  canvas.listeners.pointerdown({clientX: 60, clientY: 80, button: 0, buttons: 1, pointerId: 1, preventDefault(){}});
+  canvas.listeners.pointerup({clientX: 60, clientY: 80, button: 0, buttons: 0, pointerId: 1});
+  workers[0].respond({type: 'result', exit: 0, stdout: 'Value: ok', stderr: '', ui: {commands: 'frame', interactive: true, input: true}});
+  await new Promise(setImmediate);
+  workers[0].respond({type: 'result', exit: 0, stdout: 'Value: ok', stderr: '', ui: {commands: 'frame', interactive: true, input: true}});
+  await new Promise(setImmediate);
+  canvas.listeners.lostpointercapture();
+  assert.equal(canvas.style.cursor, 'text');
+  canvas.listeners.pointermove({clientX: 250, clientY: 80});
+  assert.equal(canvas.style.cursor, 'pointer');
+  canvas.listeners.pointerleave();
+  assert.equal(canvas.style.cursor, '');
+  canvas.listeners.paste({clipboardData: {getData: () => '中!'}, preventDefault(){}});
+  workers[0].respond({type: 'result', exit: 0, stdout: 'Value: 中!', stderr: '', ui: {commands: 'frame', interactive: true, input: true}});
+  await new Promise(setImmediate);
+  canvas.listeners.compositionend({data: '赞'});
+  const sent = workers[0].messages.at(-1).events.slice(-3);
+  assert.deepEqual(Array.from(sent, e => [e.key, e.modifiers]), [[0x4E2D, 16], [33, 16], [0x8D5E, 16]]);
+});

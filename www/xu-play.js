@@ -296,6 +296,13 @@
     var inputMode = false;
     var queuedInputs = [];
     var pointerActive = false;
+    var dragCursor = '';
+    var lastPointerPos = null;
+    var lastClipboardSeq = 0;
+    var clickStreak = 0;
+    var lastDownAt = 0;
+    var lastDownX = -999;
+    var lastDownY = -999;
     button.disabled = true;
 
     function label(stopping) {
@@ -327,10 +334,46 @@
       clicks = [];
       queuedInputs = [];
       inputMode = pointerActive = false;
+      dragCursor = '';
+      lastPointerPos = null;
+      lastClipboardSeq = 0;
+      clickStreak = 0;
       activeSource = null;
       if (panel) panel.hidden = true;
       if (canvas) canvas.setAttribute('aria-disabled', 'true');
       if (canvas) canvas.removeAttribute('data-widget-input');
+      if (canvas && canvas.style) canvas.style.cursor = '';
+    }
+    function fallbackCopyText(value) {
+      if (typeof document === 'undefined' || !document.createElement || !document.body || typeof document.execCommand !== 'function') return;
+      var prev = document.activeElement;
+      var area = document.createElement('textarea');
+      area.value = value;
+      area.setAttribute('readonly', '');
+      if (area.style) {
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        area.style.pointerEvents = 'none';
+      }
+      document.body.appendChild(area);
+      if (area.select) area.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      if (area.parentNode) area.parentNode.removeChild(area);
+      if (prev && typeof prev.focus === 'function') prev.focus({preventScroll: true});
+    }
+    function writeBrowserClipboard(value) {
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        Promise.resolve(navigator.clipboard.writeText(value)).catch(function () { fallbackCopyText(value); });
+        return;
+      }
+      fallbackCopyText(value);
+    }
+    function syncClipboard() {
+      var clip = window.XuPlayCanvas && window.XuPlayCanvas.clipboardOf ? window.XuPlayCanvas.clipboardOf(canvas) : null;
+      if (clip && clip.seq > 0 && clip.seq !== lastClipboardSeq) {
+        lastClipboardSeq = clip.seq;
+        writeBrowserClipboard(clip.text);
+      }
     }
     function showUI(result) {
       interactive = false;
@@ -343,6 +386,7 @@
       var committed = window.XuPlayCanvas.render(canvas, result.ui.commands);
       lastRenderedCommands = committed ? result.ui.commands : null;
       panel.hidden = !committed;
+      if (committed) syncClipboard();
       if (committed && workspace) {
         var previewTab = document.getElementById('xu-play-preview-tab');
         if (previewTab && (!previewTab.getAttribute || previewTab.getAttribute('aria-selected') !== 'true')) previewTab.click();
@@ -352,6 +396,11 @@
       canvas.dataset.widgetInput = String(inputMode && interactive);
       if (select) canvas.dataset.example = select.value;
       if (workspace && workspace.currentExample) canvas.dataset.example = workspace.currentExample;
+      if (canvas.style) {
+        if (!interactive) canvas.style.cursor = '';
+        else if (!inputMode) canvas.style.cursor = 'pointer';
+        else updateCanvasCursor(lastPointerPos);
+      }
       if (uiStatus) uiStatus.textContent = result.ui.interactive
         ? (inputMode ? text('真实控件 · 点击 / Tab 聚焦 · Enter/空格激活 · 方向键调节 · Esc 离开。', 'Real widgets · Click / Tab to focus · Enter/Space to activate · Arrows to adjust · Esc to leave.') : text('点击画布，或聚焦画布后按 Enter 点击中心。', 'Click the canvas, or focus it and press Enter to click its center.'))
         : text('静态画面 · 修改代码后重新运行。', 'Static drawing · Edit the source and run again.');
@@ -601,15 +650,56 @@
       });
       canvas.addEventListener('keydown', function (event) {
         if (inputMode) {
-          var key = inputKey(event.key);
-          if (key) {
+          if (event.isComposing) return;
+          if ((event.ctrlKey || event.metaKey) && !event.altKey && (event.key === 'v' || event.key === 'V')) {
+            if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.readText === 'function') {
+              event.preventDefault();
+              Promise.resolve(navigator.clipboard.readText()).then(function (clipText) {
+                if (clipText) pasteTextIntoCanvas(clipText);
+              }).catch(function () {});
+              return;
+            }
+          }
+          var mapped = inputEventKey(event);
+          if (mapped) {
             if (!(event.ctrlKey || event.metaKey) || ['a','A','c','C','v','V','x','X','z','Z'].includes(event.key)) {
               event.preventDefault();
             }
-            appendInput({kind: 78, key: key, modifiers: inputModifiers(event), repeat: event.repeat ? 1 : 0});
+            appendInput({kind: 78, key: mapped.key, modifiers: mapped.modifiers, repeat: event.repeat ? 1 : 0});
           }
         } else if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); clickAt(320, 180); }
       });
+      canvas.addEventListener('paste', function (event) {
+        if (!inputMode) return;
+        var clip = event.clipboardData && typeof event.clipboardData.getData === 'function' ? event.clipboardData.getData('text/plain') : '';
+        if (clip) {
+          if (event.preventDefault) event.preventDefault();
+          pasteTextIntoCanvas(clip);
+        }
+      });
+      canvas.addEventListener('compositionend', function (event) {
+        if (inputMode && event && event.data) pasteTextIntoCanvas(event.data);
+      });
+      function pasteTextIntoCanvas(value) {
+        if (!inputMode || !value || !ready || activeSource !== currentSource() || (!running && !interactive)) return;
+        var maxEv = (window.XuPlayCanvas && window.XuPlayCanvas.maxEvents) || 100000;
+        var chars = Array.from(String(value));
+        var batch = [];
+        for (var i = 0; i < chars.length && i < 256; i++) {
+          var cp = chars[i].codePointAt(0);
+          if (cp === 13) continue;
+          if (cp === 10) batch.push({kind: 78, key: 258, modifiers: 0, repeat: 0});
+          else if (cp >= 32 && cp <= 1114111) batch.push({kind: 78, key: cp, modifiers: 16, repeat: 0});
+        }
+        var room = Math.max(0, maxEv - clicks.length - queuedInputs.length);
+        if (batch.length > room) batch = batch.slice(0, room);
+        if (!batch.length) return;
+        if (running) queuedInputs = queuedInputs.concat(batch);
+        else {
+          clicks = clicks.concat(batch);
+          execute(true);
+        }
+      }
       function appendInput(input) {
         if (!inputMode || !ready || activeSource !== currentSource() || (!running && !interactive) ||
             clicks.length + queuedInputs.length >= ((window.XuPlayCanvas && window.XuPlayCanvas.maxEvents) || 100000)) return;
@@ -633,32 +723,97 @@
         }
         return 0;
       }
-      function pointerInput(kind, event) {
+      function inputEventKey(event) {
+        var key = inputKey(event.key);
+        var mods = inputModifiers(event);
+        if (key) return {key: key, modifiers: mods};
+        if (typeof event.key === 'string') {
+          var chars = Array.from(event.key);
+          if (chars.length === 1) {
+            var cp = chars[0].codePointAt(0);
+            if (cp > 126 && cp <= 1114111 && !event.ctrlKey && !event.metaKey) {
+              return {key: cp, modifiers: mods | 16};
+            }
+          }
+        }
+        return null;
+      }
+      function canvasPoint(event) {
+        if (!canvas || typeof canvas.getBoundingClientRect !== 'function') return null;
         var bounds = canvas.getBoundingClientRect();
-        if (!bounds.width || !bounds.height) return;
-        appendInput({kind: kind,
+        if (!bounds.width || !bounds.height) return null;
+        return {
           x: Math.max(0, Math.min(639, Math.floor((event.clientX - bounds.left) * 640 / bounds.width))),
-          y: Math.max(0, Math.min(359, Math.floor((event.clientY - bounds.top) * 360 / bounds.height))),
-          button: event.button === 0 ? 1 : event.button === 2 ? 2 : event.button === 1 ? 3 : 0, buttons: event.buttons || 0});
+          y: Math.max(0, Math.min(359, Math.floor((event.clientY - bounds.top) * 360 / bounds.height)))
+        };
+      }
+      function setLastPointer(event) {
+        if (event && typeof event.clientX === 'number' && typeof event.clientY === 'number') {
+          lastPointerPos = {clientX: event.clientX, clientY: event.clientY};
+        }
+      }
+      function updateCanvasCursor(event) {
+        if (!canvas || !canvas.style) return;
+        if (!interactive) { canvas.style.cursor = ''; return; }
+        if (!inputMode) { canvas.style.cursor = 'pointer'; return; }
+        if (pointerActive && dragCursor) { canvas.style.cursor = dragCursor; return; }
+        var pt = event ? canvasPoint(event) : null;
+        var hit = pt && window.XuPlayCanvas && typeof window.XuPlayCanvas.cursorAt === 'function'
+          ? window.XuPlayCanvas.cursorAt(canvas, pt.x, pt.y)
+          : '';
+        canvas.style.cursor = hit || '';
+      }
+      function pointerInput(kind, event, repeatCount) {
+        var pt = canvasPoint(event);
+        if (!pt) return;
+        var payload = {kind: kind,
+          x: pt.x,
+          y: pt.y,
+          button: event.button === 0 ? 1 : event.button === 2 ? 2 : event.button === 1 ? 3 : 0, buttons: event.buttons || 0};
+        if (repeatCount > 1) payload.repeat = repeatCount;
+        appendInput(payload);
       }
       canvas.addEventListener('pointerdown', function (event) {
         if (!inputMode || ![0,1,2].includes(event.button) || (!running && !interactive)) return;
         event.preventDefault();
         if (canvas.focus) canvas.focus({preventScroll: true});
+        setLastPointer(event);
+        var pt = canvasPoint(event);
+        var now = Date.now();
+        if (event.button === 0 && pt && now - lastDownAt <= 450 && Math.abs(pt.x - lastDownX) <= 6 && Math.abs(pt.y - lastDownY) <= 6) {
+          clickStreak = Math.min(3, clickStreak + 1);
+        } else {
+          clickStreak = event.button === 0 ? 1 : 0;
+        }
+        lastDownAt = now;
+        if (pt) { lastDownX = pt.x; lastDownY = pt.y; }
         pointerActive = true;
+        dragCursor = pt && window.XuPlayCanvas && typeof window.XuPlayCanvas.cursorAt === 'function'
+          ? window.XuPlayCanvas.cursorAt(canvas, pt.x, pt.y)
+          : '';
+        updateCanvasCursor(event);
         if (canvas.setPointerCapture) canvas.setPointerCapture(event.pointerId);
-        pointerInput(72, event);
+        pointerInput(72, event, clickStreak);
       });
       canvas.addEventListener('pointermove', function (event) {
+        setLastPointer(event);
+        updateCanvasCursor(event);
         if (inputMode && pointerActive) {
           if (queuedInputs.length && queuedInputs[queuedInputs.length - 1].kind === 74) queuedInputs.pop();
-          pointerInput(74, event);
+          pointerInput(74, event, 0);
         }
       });
       canvas.addEventListener('pointerup', function (event) {
         if (!inputMode || !pointerActive) return;
+        setLastPointer(event);
         pointerActive = false;
-        pointerInput(73, event);
+        dragCursor = '';
+        pointerInput(73, event, 0);
+        updateCanvasCursor(event);
+      });
+      canvas.addEventListener('pointerleave', function () {
+        lastPointerPos = null;
+        if (canvas.style && !pointerActive) canvas.style.cursor = '';
       });
       canvas.addEventListener('contextmenu', function (event) {
         if (inputMode) event.preventDefault();
@@ -676,10 +831,13 @@
           dy: Math.max(-100000, Math.min(100000, event.deltaY * unit))});
       }, {passive: false});
       canvas.addEventListener('pointercancel', function () {
-        if (inputMode && pointerActive) { pointerActive = false; appendInput({kind: 77}); }
+        lastPointerPos = null;
+        if (inputMode && pointerActive) { pointerActive = false; dragCursor = ''; appendInput({kind: 77}); }
+        if (canvas.style) canvas.style.cursor = '';
       });
       canvas.addEventListener('lostpointercapture', function () {
-        if (inputMode && pointerActive) { pointerActive = false; appendInput({kind: 77}); }
+        if (inputMode && pointerActive) { pointerActive = false; dragCursor = ''; appendInput({kind: 77}); }
+        updateCanvasCursor(lastPointerPos);
       });
       canvas.addEventListener('keyup', function (event) {
         if (!inputMode) return;
@@ -688,7 +846,9 @@
       });
       canvas.addEventListener('blur', function (event) {
         if (event && event.relatedTarget === button) return;
-        if (inputMode) { pointerActive = false; appendInput({kind: 77}); }
+        lastPointerPos = null;
+        if (inputMode) { pointerActive = false; dragCursor = ''; appendInput({kind: 77}); }
+        if (canvas.style) canvas.style.cursor = '';
       });
     }
     source.addEventListener('keydown', function (event) {

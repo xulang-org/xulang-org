@@ -2,24 +2,34 @@
 
 <p class="crumb"><a href="/docs/start">문서</a></p>
 <h1>자주 묻는 질문 (FAQ)</h1>
-<p class="banner">Xu 언어 설계, 메모리 모델, AOT 컴파일러, 네이티브 UI, 에디터 지원, 의존성 관리 및 C 네이티브 상호 운용에 관한 핵심 Q&amp;A</p>
+<p class="banner">Xu 언어 설계, 메모리 모델, OS 커널 및 베어메탈 개발, AOT 컴파일러, 네이티브 UI, 에디터 지원, 의존성 관리 및 C 네이티브 상호 운용에 관한 핵심 Q&amp;A</p>
 
 <div class="faq-toolbar" role="search" aria-label="FAQ 검색 및 필터">
   <div class="faq-search-wrap">
     <i class="xi xi-search" aria-hidden="true"></i>
-    <input type="search" class="faq-search-input" id="faq-search" placeholder="질문 또는 키워드 검색 (예: GC, Rust, UI, LSP, XACP)..." aria-label="자주 묻는 질문 검색">
+    <input type="search" class="faq-search-input" id="faq-search" placeholder="질문 또는 키워드 검색 (예: GC, 베어메탈, 커널, UI, LSP, XACP)..." aria-label="자주 묻는 질문 검색">
     <button type="button" class="faq-search-clear" id="faq-search-clear" aria-label="검색 지우기" hidden>&times;</button>
   </div>
   <div class="faq-controls">
-    <span class="faq-count-badge" id="faq-count" aria-live="polite">총 19개 질문</span>
+    <span class="faq-count-badge" id="faq-count" aria-live="polite">총 23개 질문</span>
+    <div class="faq-sort-wrap">
+      <label for="faq-sort" class="faq-sort-label"><i class="xi xi-sort-desc"></i> <span class="faq-sort-text">정렬:</span></label>
+      <select class="faq-sort-select" id="faq-sort" aria-label="FAQ 정렬">
+        <option value="default">기본 추천순</option>
+        <option value="os-first">OS 및 커널 우선</option>
+        <option value="category">카테고리별</option>
+        <option value="title">제목순 (가나다)</option>
+      </select>
+    </div>
     <button type="button" class="faq-btn" id="faq-expand-all"><i class="xi xi-sliders"></i> 모두 펼치기</button>
     <button type="button" class="faq-btn" id="faq-collapse-all"><i class="xi xi-close"></i> 모두 접기</button>
   </div>
 </div>
 
 <div class="faq-categories" role="tablist" aria-label="FAQ 카테고리 필터">
-  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> 전체 (19)</button>
+  <button type="button" class="faq-cat-btn is-active" data-cat="all" role="tab" aria-selected="true"><i class="xi xi-list"></i> 전체 (23)</button>
   <button type="button" class="faq-cat-btn" data-cat="lang" role="tab" aria-selected="false"><i class="xi xi-cpu"></i> 언어 핵심 및 메모리 (8)</button>
+  <button type="button" class="faq-cat-btn" data-cat="os" role="tab" aria-selected="false"><i class="xi xi-chip"></i> 운영체제 및 커널 (4)</button>
   <button type="button" class="faq-cat-btn" data-cat="ui" role="tab" aria-selected="false"><i class="xi xi-monitor"></i> 데스크톱 UI (2)</button>
   <button type="button" class="faq-cat-btn" data-cat="tools" role="tab" aria-selected="false"><i class="xi xi-terminal"></i> 툴체인 및 생태계 (9)</button>
 </div>
@@ -79,6 +89,58 @@
 <p>클래스 상속 대신 '상속보다 조합' 원칙을 채택하여 <code>struct</code>, 확장 메서드, <code>interface</code>를 통해 유연한 다형성을 구현합니다.</p>
     </div>
   </details>
+
+  <details class="faq-item" id="baremetal-support" data-category="os">
+    <summary><h3>Xu는 운영체제 커널 및 베어메탈 펌웨어 개발을 어떻게 지원하나요?</h3></summary>
+    <div class="faq-answer">
+      <p><strong>Xu는 운영체제 마이크로커널, 임베디드 펌웨어 및 하드웨어 디바이스 드라이버 개발을 네이티브로 지원합니다.</strong> 런타임 가비지 컬렉터(GC)에 의존하는 언어나 복잡한 수동 수명(Lifetime) 주석이 필요한 언어와 달리, Xu는 엄격하게 계층화된 시스템 아키텍처를 제공합니다:</p>
+      <ul>
+        <li>일반 시스템 컴포넌트 및 커널 서비스 로직에서는 <strong>암시적 소유권 추론</strong>과 <strong>컴파일 타임 제로 GC 결정론적 소멸</strong>을 유지하여 수동 수명 주석(<code>&lt;'a&gt;</code>) 없이도 안전합니다;</li>
+        <li>최하위 하드웨어 제어(전체 코드의 약 5%)에서는 프리스탠딩(<code>freestanding</code>) 모드, 원시 포인터(<code>*raw T</code>), 휘발성 MMIO 메모리 배리어(<code>volatile_read</code> / <code>volatile_write</code>), 순수 정적 코어 라이브러리(<code>#core</code>)를 통해 마이크로 아키텍처를 정밀하게 제어합니다.</li>
+      </ul>
+      <p>커널 예제 및 명세는 공식 <a href="https://github.com/xulang-org/xu/tree/main/examples/baremetal/kernel_poc">kernel_poc 개념 검증 프로젝트</a> 및 <a href="/blog/xu-0-14-0">Xu 0.14.0 릴리스 노트</a>를 참조하세요.</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="freestanding-profile" data-category="os">
+    <summary><h3>프리스탠딩(Freestanding Profile)이란 무엇이며, 외부 OS 의존성을 어떻게 차단하나요?</h3></summary>
+    <div class="faq-answer">
+      <p>프리스탠딩 프로파일은 컴파일된 실행 파일이 외부 운영체제의 시스템 호출(Syscalls), 동적 링커 및 C 런타임 라이브러리(libc)에 전혀 의존하지 않는 모드입니다. Xu는 세 가지 설정 방식을 제공합니다:</p>
+      <ul>
+        <li><strong>소스코드 레벨</strong>: 소스 파일 첫 줄에 <code>$freestanding</code> 컴파일 태그 선언;</li>
+        <li><strong>프로젝트 매니페스트</strong>: 프로젝트 설정 파일 <code>xu.xun</code>에 <code>profile: freestanding</code> 명시;</li>
+        <li><strong>CLI 컴파일 옵션</strong>: 빌드 시 <code>--profile=freestanding</code> 또는 <code>--no-std</code> 인자 전달.</li>
+      </ul>
+      <p>이 모드를 활성화하면 호스트 OS 런타임과 기본 코루틴 스케줄러가 완전히 제거되며, <strong>1.9 KB ~ 2.4 KB</strong> 크기의 순수 베어메탈 ELF/PE 커널 이미지를 직접 생성합니다.</p>
+    </div>
+  </details>
+
+  <details class="faq-item" id="core-library" data-category="os">
+    <summary><h3>표준 라이브러리가 없는 베어메탈 환경에서 #core는 어떤 하드웨어 추상화를 제공하나요?</h3></summary>
+    <div class="faq-answer">
+      <p>Xu는 시스템 호출과 암시적 메모리 할당이 없는 순수 정적 기반 라이브러리 <code>#core</code>를 제공합니다:</p>
+      <ul>
+        <li><code>#core/arch</code>: CPU 특권 명령(<code>cli</code>, <code>sti</code>, <code>hlt</code>, <code>pause</code>, <code>wfi</code>), 컨트롤 레지스터(CR0/CR2/CR3/CR4, VBAR, SCTLR), 8259A PIC 재매핑, 8254 PIT 타이머 초기화, IDT 게이트 디스크립터 로드(<code>load_idt</code>);</li>
+        <li><code>#core/sync</code>: 인터럽트 안전 스핀락 <code>IrqSpinlock</code> 및 <code>Spinlock</code>, RAII 가드(<code>IrqGuard</code>, <code>SpinGuard</code>)를 통한 스코프 종료 시 결정론적 언락 및 인터럽트 플래그 자동 복원(EFLAGS / PSTATE);</li>
+        <li><code>#core/task</code>: 아키텍처 공통 192바이트 16바이트 정렬 <code>TaskContext</code>, 원자적 하드웨어 컨텍스트 스위칭(<code>switch_context</code>), <code>TrapFrame</code> 예외 스냅샷 및 시스템 호출 디스패치 엔트리;</li>
+        <li><code>#core/virtio</code>: 정적 VirtIO MMIO 드라이버 프레임워크, VirtQueue 디스크립터 링, <code>VirtioBlkDriver</code> 블록 디바이스 및 <code>VirtioNetDriver</code> 가상 네트워크 카드;</li>
+        <li><code>#core/mem</code> &amp; <code>#core/alloc</code>: 제로 할당 메모리 프리미티브(<code>memset</code>/<code>memcpy</code>/<code>memcmp</code>) 및 플러그형 <code>GlobalAlloc</code> 전역 할당자 인터페이스.</li>
+      </ul>
+    </div>
+  </details>
+
+  <details class="faq-item" id="raw-pointers-mmio" data-category="os">
+    <summary><h3>커널에서 물리 메모리 매핑(MMIO)과 원시 포인터 연산을 안전하게 수행하려면 어떻게 하나요?</h3></summary>
+    <div class="faq-answer">
+      <p>하드웨어 레지스터 및 디바이스 메모리 접근은 엄격한 문법적 격리 장치를 통해 처리됩니다:</p>
+      <ul>
+        <li><strong>원시 포인터 타입 <code>*raw T</code> 및 <code>unsafe { ... }</code> 블록</strong>: 절대 물리 주소 재해석과 포인터 산술을 허용하지만, 역참조는 반드시 <code>unsafe { ... }</code> 블록 내에서만 수행되어야 합니다. 소유권 추론은 원시 포인터를 건너뛰므로 위험한 하드웨어 조작이 안전한 커널 로직으로 전파되지 않습니다;</li>
+        <li><strong>휘발성 메모리 배리어(Volatile MMIO)</strong>: 내장 <code>volatile_read</code> 및 <code>volatile_write</code> 원시 연산자를 제공하여 컴파일러 최적화(DCE, LICM)로 인한 메모리 접근 누락이나 재배치를 방지합니다;</li>
+        <li><strong>정밀한 메모리 레이아웃 제어</strong>: <code>@repr("C", align: N)</code>(PML4 페이지 테이블용 4096바이트 정렬 등) 및 <code>@repr("C", packed)</code>(하드웨어 패킷 헤더용 무패딩 배치) 지원;</li>
+        <li><strong>스캐폴딩 및 에뮬레이션</strong>: <code>xu init --baremetal my_os</code> 명령어로 멀티 아키텍처 커널 프로젝트, 링커 스크립트(<code>linker.ld</code>) 및 Makefile을 한 번에 생성하고, <code>make qemu</code>로 QEMU 에뮬레이터에서 즉시 부팅 및 디버깅할 수 있습니다.</li>
+      </ul>
+    </div>
+  </details>
   <details class="faq-item" id="native-c" data-category="tools">
     <summary><h3>Xu는 C/C++ 네이티브 라이브러리와 어떻게 상호 운용하나요?</h3></summary>
     <div class="faq-answer">
@@ -88,7 +150,7 @@
   <details class="faq-item" id="target-platforms" data-category="tools">
     <summary><h3>Xu는 어떤 운영체제 및 CPU 아키텍처를 지원하나요?</h3></summary>
     <div class="faq-answer">
-<p>macOS(Apple Silicon, Intel), Linux(ARM64, x64, LoongArch, RISC-V), Windows(x64, ARM64)를 공식 지원합니다.</p>
+<p>macOS(Apple Silicon, Intel), Linux(ARM64, x64, LoongArch, RISC-V), Windows(x64, ARM64), WebAssembly(WASI)를 공식 지원합니다. 또한 <code>--profile=freestanding</code> 옵션을 통해 베어메탈 및 OS 커널 개발(x86_64, aarch64, riscv64 ELF)을 완벽히 지원합니다.</p>
     </div>
   </details>
   <details class="faq-item" id="wasm" data-category="lang">

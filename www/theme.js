@@ -598,14 +598,16 @@
     var faqItems = faqList.querySelectorAll ? faqList.querySelectorAll('.faq-item') : null;
     if (!faqItems || !faqItems.length) return;
 
-    var isZh = document.documentElement && document.documentElement.lang !== 'en';
+    var docLang = (document.documentElement && document.documentElement.lang) || 'en';
+    var isZh = docLang.indexOf('zh') === 0;
     var activeCategory = 'all';
     var searchQuery = '';
 
     var catLabels = {
-      lang: isZh ? '语言与内存' : 'Language & Memory',
-      ui: isZh ? '原生桌面 UI' : 'Desktop UI',
-      tools: isZh ? '工具链与生态' : 'Toolchain & Ecosystem',
+      lang: isZh ? '语言与内存' : (docLang === 'ja' ? '言語とメモリ' : (docLang === 'ko' ? '언어 및 메모리' : 'Language & Memory')),
+      os: isZh ? '操作系统与内核' : (docLang === 'ja' ? 'OS・カーネル' : (docLang === 'ko' ? '운영체제 및 커널' : 'OS & Kernel')),
+      ui: isZh ? '原生桌面 UI' : (docLang === 'ja' ? 'デスクトップ UI' : (docLang === 'ko' ? '데스크톱 UI' : 'Desktop UI')),
+      tools: isZh ? '工具链与生态' : (docLang === 'ja' ? 'ツールチェーン' : (docLang === 'ko' ? '툴체인 및 생태계' : 'Toolchain & Ecosystem')),
       xacp: isZh ? 'XACP 协议' : 'XACP Protocol'
     };
 
@@ -679,6 +681,80 @@
     var expandAllBtn = document.getElementById('faq-expand-all');
     var collapseAllBtn = document.getElementById('faq-collapse-all');
     var catButtons = document.querySelectorAll('.faq-cat-btn');
+    var sortSelect = document.getElementById('faq-sort');
+    var defaultItems = Array.prototype.slice.call(faqItems);
+
+    function applySort(mode) {
+      var sorted = defaultItems.slice();
+      if (mode === 'os-first') {
+        sorted.sort(function (a, b) {
+          var catA = (a.getAttribute && a.getAttribute('data-category')) === 'os' ? 0 : 1;
+          var catB = (b.getAttribute && b.getAttribute('data-category')) === 'os' ? 0 : 1;
+          if (catA !== catB) return catA - catB;
+          return defaultItems.indexOf(a) - defaultItems.indexOf(b);
+        });
+      } else if (mode === 'category') {
+        var catPriority = { lang: 1, os: 2, ui: 3, tools: 4, xacp: 5 };
+        sorted.sort(function (a, b) {
+          var ca = (a.getAttribute && a.getAttribute('data-category')) || '';
+          var cb = (b.getAttribute && b.getAttribute('data-category')) || '';
+          var pA = catPriority[ca] || 99;
+          var pB = catPriority[cb] || 99;
+          if (pA !== pB) return pA - pB;
+          return defaultItems.indexOf(a) - defaultItems.indexOf(b);
+        });
+      } else if (mode === 'title') {
+        sorted.sort(function (a, b) {
+          var hA = a.querySelector ? a.querySelector('h3') : null;
+          var hB = b.querySelector ? b.querySelector('h3') : null;
+          var tA = (hA ? hA.textContent : '').trim();
+          var tB = (hB ? hB.textContent : '').trim();
+          return tA.localeCompare ? tA.localeCompare(tB, docLang) : (tA > tB ? 1 : (tA < tB ? -1 : 0));
+        });
+      }
+
+      var frag = document.createDocumentFragment();
+      sorted.forEach(function (item) {
+        frag.appendChild(item);
+      });
+      var emptyEl = document.getElementById('faq-empty-state');
+      if (emptyEl && emptyEl.parentNode === faqList) {
+        frag.appendChild(emptyEl);
+      }
+      faqList.appendChild(frag);
+      filterFaq();
+    }
+
+    if (sortSelect) {
+      sortSelect.addEventListener('change', function () {
+        var mode = sortSelect.value || 'default';
+        applySort(mode);
+        try {
+          if (window.history && window.history.replaceState && window.location) {
+            var url = new URL(window.location.href);
+            if (mode === 'default') {
+              url.searchParams.delete('sort');
+            } else {
+              url.searchParams.set('sort', mode);
+            }
+            window.history.replaceState(null, '', url.toString());
+          }
+        } catch (e) {}
+      });
+
+      try {
+        if (window.location && window.location.search) {
+          var match = /[?&]sort=([a-z-]+)/i.exec(window.location.search);
+          if (match && match[1]) {
+            var initialSort = match[1].toLowerCase();
+            if (['default', 'os-first', 'category', 'title'].indexOf(initialSort) !== -1) {
+              sortSelect.value = initialSort;
+              applySort(initialSort);
+            }
+          }
+        }
+      } catch (e) {}
+    }
 
     function filterFaq() {
       var visibleCount = 0;

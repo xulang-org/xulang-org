@@ -11,6 +11,19 @@ from string import Template
 
 ALL_LANGS = ['en', 'zh', 'zh-tw', 'ja', 'ko', 'es', 'fr', 'de', 'ru', 'pt-br']
 
+RESEARCH_LABELS = {
+    'en': ('Research', 'Operating systems', 'AI development'),
+    'zh': ('研发方向', '操作系统研发', 'AI 研发'),
+    'zh-tw': ('研發方向', '作業系統研發', 'AI 研發'),
+    'ja': ('開発分野', 'OS 開発', 'AI 開発'),
+    'ko': ('개발 분야', '운영체제 개발', 'AI 개발'),
+    'es': ('Investigación', 'Sistemas operativos', 'Desarrollo de IA'),
+    'fr': ('Recherche', 'Systèmes d’exploitation', 'Développement IA'),
+    'de': ('Forschung', 'Betriebssysteme', 'KI-Entwicklung'),
+    'ru': ('Исследования', 'Разработка ОС', 'Разработка ИИ'),
+    'pt-br': ('Pesquisa', 'Sistemas operacionais', 'Desenvolvimento de IA'),
+}
+
 DOC_GROUPS = [
     ('xi-bookmark', '起步', 'Start', [
         ('start', '起步', 'Get started'), ('install', '安装', 'Install'),
@@ -368,6 +381,12 @@ def sidebar(route: str, en: bool | str | None = None, xu_version: str = '', root
     doc_labels = DOC_LABELS_LANGS.get(lang, {})
 
     if rest.startswith('/docs/'):
+        research_label, os_label, ai_label = RESEARCH_LABELS[lang]
+        research_prefix = '/zh' if lang in ('zh', 'zh-tw') else ''
+        groups.append(('xi-flask', research_label, [
+            (research_prefix + '/docs/os', os_label),
+            (research_prefix + '/docs/ai', ai_label),
+        ]))
         for icon, zh, english, links in DOC_GROUPS:
             group_title = group_labels.get(zh, english if lang == 'en' else zh)
             group_links = []
@@ -552,10 +571,10 @@ def api_index_presentation(body: str, en: bool) -> str:
                   topic, body, flags=re.DOTALL)
     quick = []
     for path, zh, english in [
-        ('strings', '处理文本', 'Work with text'),
+        ('core/arch', '内核与硬件接口', 'Kernel and hardware APIs'),
+        ('math', '数值计算', 'Numerical computing'),
         ('net/http', '构建 HTTP 服务', 'Build HTTP services'),
         ('ui/widgets', '构建用户界面', 'Build interfaces'),
-        ('database/sql', '访问数据库', 'Query databases'),
     ]:
         link = re.search(r'href="([^"#]*/api/(?:preview/)?' + re.escape(path) + r')"', body)
         if link:
@@ -658,16 +677,17 @@ def get_seo_meta(route: str, title: str, en: bool | str, xu_version: str, body: 
 
     if not bare_path:
         desc = {
-            'zh': "Xu 系统编程语言：零 GC、所有权推断、借用检查、确定性资源释放、内建协程及自研原生 / WebAssembly AOT 后端。",
-            'zh-tw': "Xu 系統程式語言：零 GC、所有權推斷、借用檢查、確定性資源釋放、內建協程及自研原生 / WebAssembly AOT 後端。",
-            'ja': "Xuプログラミング言語：ゼロGC、所有権推論、借用チェッカー、決定論的メモリ解放、組み込みコルーチン、自社開発AOT/WebAssemblyバックエンド。",
-            'ko': "Xu 시스템 프로그래밍 언어: Zero-GC, 소유권 추론, 대여 검사, 결정론적 자원 해제, 내장 코루틴 및 자체 개발 AOT/WebAssembly 백엔드.",
-            'es': "Lenguaje de programación Xu: Zero-GC, propiedad inferida, comprobación de préstamos, liberación determinista, corrutinas y compilador AOT/WASM propio.",
-            'fr': "Langage système Xu : Zero-GC, propriété inférée, vérification d'emprunt, libération déterministe, coroutines intégrées et compilateur AOT/WASM autonome.",
-            'de': "Programmiersprache Xu: Zero-GC, Eigentumsinferenz, Borrow Checking, deterministische Bereinigung, Coroutinen und nativer AOT/WASM-Compiler.",
-            'ru': "Язык системного программирования Xu: zero GC, автоматический вывод владения, проверка заимствований, детерминированное освобождение ресурсов, встроенные корутины и нативный AOT / WebAssembly.",
-            'pt-br': "Linguagem de programação Xu: Zero-GC, propriedade inferida, verificador de empréstimos, desalocação determinística, corrotinas e compilador AOT/WASM próprio."
-        }.get(lang, "Xu systems programming language: zero GC, inferred ownership, borrow checking, deterministic cleanup, built-in coroutines, and custom native/WebAssembly AOT backends.")
+            'en': 'Xu is a systems language for operating system and AI development. Build freestanding kernels and explore local CPU inference with native AOT and inferred ownership.',
+            'zh': 'Xu 是面向操作系统与 AI 研发的系统编程语言。使用原生 AOT 与所有权推断构建裸机内核，探索本地 CPU 推理。',
+            'zh-tw': 'Xu 是面向作業系統與 AI 研發的系統程式語言。使用原生 AOT 與所有權推斷建置裸機核心，探索本機 CPU 推論。',
+            'ja': 'Xu は OS と AI 開発のためのシステム言語です。ネイティブ AOT と所有権推論でベアメタルカーネルを構築し、ローカル CPU 推論を試せます。',
+            'ko': 'Xu는 운영체제와 AI 개발을 위한 시스템 언어입니다. 네이티브 AOT와 소유권 추론으로 베어메탈 커널을 빌드하고 로컬 CPU 추론을 살펴보세요.',
+            'es': 'Xu es un lenguaje de sistemas para desarrollar sistemas operativos e IA. Explora núcleos autónomos e inferencia local en CPU con AOT nativo y propiedad inferida.',
+            'fr': 'Xu est un langage système pour les systèmes d’exploitation et l’IA. Explorez les noyaux autonomes et l’inférence CPU locale avec AOT natif et inférence de propriété.',
+            'de': 'Xu ist eine Systemsprache für Betriebssysteme und KI. Erkunde freistehende Kernel und lokale CPU-Inferenz mit nativem AOT und Eigentumsinferenz.',
+            'ru': 'Xu — системный язык для разработки ОС и ИИ. Собирайте автономные ядра и изучайте локальный инференс на CPU с нативной AOT-компиляцией и выводом владения.',
+            'pt-br': 'Xu é uma linguagem de sistemas para desenvolvimento de sistemas operacionais e IA. Explore núcleos independentes e inferência local em CPU com AOT nativo e propriedade inferida.',
+        }[lang]
     elif bare_path == 'benchmarks':
         desc = (f"{title} — Cross-language runtime, CPU time, peak memory and binary-size measurements across Linux, macOS and Windows."
                 if lang == 'en' else f"{title} — Xu 跨语言运行耗时、CPU 时间、峰值内存与二进制体积实测。")
@@ -680,9 +700,15 @@ def get_seo_meta(route: str, title: str, en: bool | str, xu_version: str, body: 
     elif bare_path == 'docs/start':
         desc = (f"Get started with Xu v{xu_version}: language introduction, environment setup, writing and compiling your first zero-GC program."
                 if lang == 'en' else f"Xu (v{xu_version}) 快速起步：语言介绍、环境配置与第一个零 GC 程序。")
+    elif bare_path == 'docs/os':
+        desc = ('Build a freestanding Xu kernel for x64, ARM64, or RISC-V 64. Explore ELF output, memory-mapped I/O, and core hardware APIs.'
+                if lang == 'en' else '使用 Xu 构建 x64、ARM64 或 RISC-V 64 裸机内核，了解 ELF 产物、内存映射 I/O 与核心硬件 API。')
+    elif bare_path == 'docs/ai':
+        desc = ('Run local models with the Xu development CPU engine. Explore GGUF and Safetensors support, paged KV cache, and compiler tensor optimizations.'
+                if lang == 'en' else '用 Xu 开发版 CPU 引擎运行本地模型，了解 GGUF、Safetensors、分页 KV 缓存与编译器张量优化。')
     elif bare_path.startswith('docs/faq'):
-        desc = ("Xu FAQ: ownership, borrow checking, shared-state synchronization, native/FFI safety boundaries, and toolchain features."
-                if lang == 'en' else "Xu 常见问题：所有权与借用检查、共享状态同步、原生 / FFI 安全边界与工具链特性。")
+        desc = ("Xu FAQ: bare-metal OS & kernel development, ownership, borrow checking, shared-state synchronization, native/FFI safety boundaries, and toolchain features."
+                if lang == 'en' else "Xu 常见问题：操作系统与裸机开发、所有权与借用检查、共享状态同步、原生 / FFI 安全边界与工具链特性。")
     elif bare_path.startswith('docs/tutorial'):
         desc = (f"{title} — Hands-on step-by-step tutorial for the Xu programming language, covering syntax, ownership, concurrency, and real-world networking."
                 if lang == 'en' else f"{title} — Xu 编程语言实战系列教程，系统讲解语法结构、所有权机制、高并发通道与系统级网络编程。")
@@ -709,9 +735,9 @@ def get_seo_meta(route: str, title: str, en: bool | str, xu_version: str, body: 
         desc = f"{title} — Xu Programming Language documentation, guides, and tools."
 
     keywords = (
-        "Xu, Xu programming language, xulang, systems programming, AOT compiler, zero GC, memory safety, RAII, coroutines, channels, WebAssembly"
+        "Xu, xulang, systems programming, operating system development, bare-metal kernels, AI inference, AOT compiler, zero GC, WebAssembly"
         if lang not in ('zh', 'zh-tw') else
-        "Xu, Xu語言, 系統級編程語言, AOT編譯器, 零GC, 內存安全, 所有權模型, 協程, 信道, WebAssembly, 性能評測"
+        "Xu, Xu語言, 系統編程, 作業系統研發, 裸機內核, AI 推理, AOT 編譯器, 零 GC, WebAssembly"
     )
 
     og_type = "website" if bare_path in ('', 'playground', 'benchmarks', 'download', '404') else "article"
@@ -1055,6 +1081,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
     bare_route = rest.rstrip('/')
     dropdown_urls = {}
     active_flags = {}
+    translated_languages = []
 
     for l in ALL_LANGS:
         key = f"url_{l.replace('-', '_')}_rel"
@@ -1067,6 +1094,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
             t_file = bare_route.strip('/') + '.html' if bare_route else 'home.html'
             exists = (root / f'content/{l}' / t_file).is_file()
             if exists:
+                translated_languages.append(l)
                 dropdown_urls[key] = (bare_route or '') + '/' if l == 'en' else f'/{l}' + (bare_route or '') + '/'
             else:
                 dropdown_urls[key] = '/' if l == 'en' else f'/{l}/'
@@ -1086,6 +1114,12 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         other = '/zh' if lang == 'en' else '/'
 
     meta = get_seo_meta(route, title, lang, xu_version, body)
+    alternate_links = [
+        f'<link rel="alternate" hreflang="{IN_LANGUAGES[l]}" href="{meta["url_" + l.replace("-", "_")]}">'
+        for l in translated_languages
+    ]
+    if 'en' in translated_languages:
+        alternate_links.append(f'<link rel="alternate" hreflang="x-default" href="{meta["url_en"]}">')
     template = Template((root / 'templates/page.html').read_text(encoding='utf-8'))
     playground_assets = '<script src="/xu-play.js" defer></script>'
 
@@ -1123,6 +1157,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         version_badge=('' if is_home else f'<span class="badge">v{escape(xu_version)}</span>'),
         footer_identity='XU' if is_home else 'XU v' + escape(xu_version),
         nav=''.join(nav), main=main,
+        alternate_links='\n  '.join(alternate_links),
         search_label=search_label,
         playground_assets=playground_assets,
         page_assets=api_assets + ('<script src="/xu-play-canvas.js" defer></script>'

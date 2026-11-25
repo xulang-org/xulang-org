@@ -1,0 +1,169 @@
+<!--title: Xu 0.14.1 Released: Pure-Xu Local LLM Inference, P4K4 & Paged Attention Fusion, and Cross-Platform Compiler Speedups-->
+<!--summary: Xu 0.14.1 delivers the pure-Xu local LLM inference engine (streaming GGUF Q4_0/Q8_0 P4K4 packing and paged KV cache), opt-in MIR tensor & paged attention fusion kernels, up to 65.3% benchmark speedups from loop/GVN/regalloc optimizations, X25519/TLS 1.3 stdlib gains, and complete macOS ad-hoc signing.-->
+<p class="crumb"><a href="/blog">Blog</a></p>
+<h1>Xu 0.14.1 Released: Pure-Xu Local LLM Inference, P4K4 &amp; Paged Attention Fusion, and Cross-Platform Compiler Speedups</h1>
+<p class="meta"><time datetime="2026-11-25">2026-11-25</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.1">Xu v0.14.1</a></p>
+
+<p>Xu 0.14.1 is officially released! Following 0.14.0's bare-metal OS kernel foundation, Xu 0.14.1 brings major advances in <strong>pure-Xu local AI inference</strong>, <strong>opt-in MIR tensor fusion and core compiler optimizations</strong>, <strong>cryptography/TLS/short-string runtime performance</strong>, and <strong>macOS code-signing reliability</strong>. Every target has passed the six-platform native SDK gate and the complete 72-workload cross-language benchmark suite with zero failures.</p>
+
+<h2>1. Pure-Xu Local LLM Inference (<code>examples/llm_engine/main.xu</code>)</h2>
+<p><code>examples/llm_engine/main.xu</code> demonstrates end-to-end local language-model inference in pure Xu without external inference runtimes:</p>
+<ul>
+  <li><strong>Streaming GGUF Loading &amp; Internal P4K4 Weight Packing</strong>: Loads F32 Safetensors and compatible Llama- and Qwen2-architecture GGUF v2/v3 models, packing Q4_0 and Q8_0 weights in memory into the internal P4K4 layout for grouped GEMV4 and <code>M=12</code> GEMM kernels while keeping GGUF files unchanged on disk;</li>
+  <li><strong>Paged KV Cache &amp; Continuous Batching</strong>: Provides a paged key/value cache and coroutine continuous-batching scheduler for batched prefill and autoregressive decoding;</li>
+  <li><strong>ABI-Safe Standard Library Additions</strong>: Adds <code>slice.reserve(n int)</code>, <code>slice.resize_zero(n int)</code>, and <code>math.float16_to_f32(h int) f32</code> without altering the frozen core runtime ABI.</li>
+</ul>
+
+<h2>2. Opt-In MIR Tensor Fusion &amp; Paged Attention Kernels</h2>
+<p>With <code>XU_TENSOR_FUSION=1</code> (and optional <code>XU_TENSOR_FAST_MATH=1</code>), the compiler lowers eligible Xu numerical loops in optimized native ARM64 and x64 builds:</p>
+<ul>
+  <li><strong>Paged Attention Fusion</strong>: Recognizes paged attention score calculation (<code>__xu_tensor_attn_scores_paged*</code>), scaled softmax (<code>__xu_tensor_softmax_scaled*</code>), and value weighted accumulation (<code>__xu_tensor_attn_vsum_paged*</code>), dispatching to available scalar or ARM64 NEON/DotProd and x86-64 SSE kernels;</li>
+  <li><strong>Quantization &amp; Activation Kernels</strong>: Covers Q4_0/Q8_0 pack/quantization, RMSNorm, RoPE, SwiGLU, argmax, and P4K4/signed grouped matrix operations.</li>
+</ul>
+
+<h2>3. Compiler Optimizer, Standard Library &amp; macOS Signing</h2>
+<ul>
+  <li><strong>Middle-End &amp; Codegen Improvements</strong>: Adds loop constant hoisting (<code>opt_hoist_loop_consts</code>), slice descriptor vs. element-buffer disjointness proofs, loop unrolling and pointer strength reduction, GVN direct-call effect modeling, <code>blk_noreturn</code> liveness pruning with register coalescing, and ARM64 <code>FMADD</code>/<code>FMSUB</code>/<code>TST</code> and x64 <code>TEST</code> lowering;</li>
+  <li><strong>Runtime &amp; Stdlib Speedups</strong>: Accelerates short-string paths, X25519 scalar multiplication, and Montgomery <code>big.exp</code>; completes additional TLS 1.3 handshake combinations; enforces JSON parser node-count bounds;</li>
+  <li><strong>Complete macOS Signing</strong>: macOS SDK binaries and standalone installers ship ad-hoc signed, and the CLI signs temporary Apple Silicon executables generated during native <code>xu run</code> and <code>xu test</code>.</li>
+</ul>
+
+<h2>4. Verified Six-Platform Cross-Language Benchmarks (Run #45679539741)</h2>
+<p>Measured across all 72 canonical workloads on six platforms in <a href="https://github.com/xulang-org/bench/actions/runs/45679539741">xulang-org/bench Actions Run #45679539741</a> (Xu commit <code>f99d40da</code>) against same-platform fastest Clang (O1/O2/O3), fastest rustc (O1/O2/O3), Go build, and Swift -O (ratios &lt; 1.0x mean Xu is faster):</p>
+
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Target Platform</th>
+      <th>Xu / Clang (geomean / median)</th>
+      <th>Xu / Rust (geomean / median)</th>
+      <th>Xu / Go (geomean / median)</th>
+      <th>Xu / Swift (geomean / median)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>Linux ARM64</strong></td>
+      <td><strong>0.713x</strong> / 0.988x (41/70 &le; C)</td>
+      <td><strong>0.676x</strong> / 0.954x (46/72 &le; Rust)</td>
+      <td><strong>0.419x</strong> / 0.584x (65/72)</td>
+      <td><strong>0.293x</strong> / 0.473x (68/68)</td>
+    </tr>
+    <tr>
+      <td><strong>Windows ARM64</strong></td>
+      <td><strong>0.851x</strong> / 0.968x (52/70 &le; C)</td>
+      <td><strong>0.804x</strong> / 0.947x (57/72 &le; Rust)</td>
+      <td><strong>0.613x</strong> / 0.735x (70/72)</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><strong>Linux x64</strong></td>
+      <td><strong>0.886x</strong> / 1.126x</td>
+      <td><strong>0.824x</strong> / 1.079x</td>
+      <td><strong>0.503x</strong> / 0.715x (59/72)</td>
+      <td><strong>0.339x</strong> / 0.540x (56/68)</td>
+    </tr>
+    <tr>
+      <td><strong>Windows x64</strong></td>
+      <td><strong>0.923x</strong> / 1.059x</td>
+      <td><strong>0.883x</strong> / 1.032x</td>
+      <td><strong>0.593x</strong> / 0.745x (66/72)</td>
+      <td>—</td>
+    </tr>
+    <tr>
+      <td><strong>macOS ARM64</strong></td>
+      <td><strong>0.957x</strong> / 1.087x</td>
+      <td><strong>0.888x</strong> / 1.072x</td>
+      <td><strong>0.550x</strong> / 0.714x (61/72)</td>
+      <td><strong>0.422x</strong> / 0.621x (64/70)</td>
+    </tr>
+    <tr>
+      <td><strong>macOS x64</strong></td>
+      <td><strong>1.039x</strong> / 1.185x</td>
+      <td><strong>0.954x</strong> / 1.120x</td>
+      <td><strong>0.648x</strong> / 0.845x (53/72)</td>
+      <td><strong>0.423x</strong> / 0.721x (50/70)</td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<p>Selected workload results on macOS ARM64 (7-sample medians, ms) and improvements over Xu 0.14.0:</p>
+<div class="doc-table-wrap">
+<table>
+  <thead>
+    <tr>
+      <th>Workload (macOS ARM64)</th>
+      <th>Xu v0.14.1</th>
+      <th>Clang (best)</th>
+      <th>rustc (best)</th>
+      <th>Go build</th>
+      <th>Delta vs. 0.14.0</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>array_ops</code></td>
+      <td><strong>7.22 ms</strong></td>
+      <td>6.66 ms</td>
+      <td>8.83 ms</td>
+      <td>26.52 ms</td>
+      <td><strong>-65.3%</strong> (20.82 &rarr; 7.22 ms)</td>
+    </tr>
+    <tr>
+      <td><code>nested_loop</code></td>
+      <td><strong>19.14 ms</strong></td>
+      <td>21.79 ms</td>
+      <td>16.63 ms</td>
+      <td>50.30 ms</td>
+      <td><strong>-61.8%</strong> (50.09 &rarr; 19.14 ms)</td>
+    </tr>
+    <tr>
+      <td><code>match_sum</code></td>
+      <td><strong>10.12 ms</strong></td>
+      <td>16.04 ms</td>
+      <td>7.70 ms</td>
+      <td>53.26 ms</td>
+      <td><strong>-61.5%</strong> (26.27 &rarr; 10.12 ms)</td>
+    </tr>
+    <tr>
+      <td><code>method_sum</code></td>
+      <td><strong>5.52 ms</strong></td>
+      <td>4.13 ms</td>
+      <td>4.70 ms</td>
+      <td>26.75 ms</td>
+      <td><strong>-52.8%</strong> (11.70 &rarr; 5.52 ms)</td>
+    </tr>
+    <tr>
+      <td><code>sieve_primes</code></td>
+      <td><strong>14.64 ms</strong></td>
+      <td>10.49 ms</td>
+      <td>15.56 ms</td>
+      <td>15.31 ms</td>
+      <td><strong>-52.5%</strong> (30.82 &rarr; 14.64 ms)</td>
+    </tr>
+    <tr>
+      <td><code>chan_ping</code></td>
+      <td><strong>12.32 ms</strong></td>
+      <td>—</td>
+      <td>64.65 ms</td>
+      <td>23.92 ms</td>
+      <td>1.94x faster than Go, 5.25x vs. Rust</td>
+    </tr>
+    <tr>
+      <td><code>aes128_encrypt</code> / <code>sha256_chain</code></td>
+      <td><strong>4.81 / 3.52 ms</strong></td>
+      <td>26.24 / 4.05 ms</td>
+      <td>31.77 / 5.26 ms</td>
+      <td>48.26 / 6.48 ms</td>
+      <td><code>aes128_key_setup</code> <strong>-41.9%</strong></td>
+    </tr>
+  </tbody>
+</table>
+</div>
+
+<h2>5. Upgrading &amp; Distribution</h2>
+<p>All 30 official distribution assets and <code>SHA256SUMS</code> for Xu v0.14.1 are published on GitHub Releases. Upgrade the compiler, standard library, and SDK tools together. Existing GGUF files keep their on-disk format and are packed in memory when loaded.</p>
+
+<p><a href="/download">Download Center</a> · <a href="/en/benchmarks">Benchmarks Dashboard</a> · <a href="/en/docs/ai">Local AI Inference Guide</a> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.1">GitHub Release Page</a> · <a href="https://github.com/xulang-org/xu/blob/v0.14.1/RELEASES.md#xu-0141">Full Release Notes</a></p>

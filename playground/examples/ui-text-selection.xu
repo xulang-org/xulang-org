@@ -9,10 +9,46 @@ fn box(x f64, y f64, w f64, h f64) layout.Rect {
     << layout.Rect{x: x, y: y, width: w, height: h}
 }
 
+fn utf8_next(s &string, pos int) int {
+    if pos >= s.len { << s.len }
+    b := s[pos] & 255
+    $w := 1
+    if b >= 240 { w = 4 }
+    else if b >= 224 { w = 3 }
+    else if b >= 194 { w = 2 }
+    if pos + w > s.len { << s.len }
+    << pos + w
+}
+
+fn utf8_prev(s &string, pos int) int {
+    if pos <= 0 { << 0 }
+    $p := pos - 1
+    while p > 0 && (s[p] & 192) == 128 { p -= 1 }
+    << p
+}
+
+fn snap_pos(s &string, pos int) int {
+    if pos <= 0 { << 0 }
+    if pos >= s.len { << s.len }
+    $p := pos
+    while p > 0 && (s[p] & 192) == 128 { p -= 1 }
+    << p
+}
+
+fn is_word_byte(b int) bool {
+    if b >= 48 && b <= 57 { << true }
+    if b >= 65 && b <= 90 { << true }
+    if b >= 97 && b <= 122 { << true }
+    if b == 95 || b >= 128 { << true }
+    << false
+}
+
 fn measure_prefix(context &draw.Context, options &draw.TextOptions, line &string, col int) f64 {
     if col <= 0 { << 0.0 }
     $n := col
     if n > line.len { n = line.len }
+    n = snap_pos(line, n)
+    if n <= 0 { << 0.0 }
     sub := line[0:n]
     shaped := context.layout_text(&sub, options) or >>
     << shaped.metrics.width
@@ -20,10 +56,13 @@ fn measure_prefix(context &draw.Context, options &draw.TextOptions, line &string
 
 fn hit_col(context &draw.Context, options &draw.TextOptions, line &string, rel_x f64) int {
     if rel_x <= 0.0 || line.len == 0 { << 0 }
+    $prev_pos := 0
     $prev_w := 0.0
-    for i in 1:(line.len + 1) {
-        w := measure_prefix(context, options, line, i) or >>
-        if rel_x < (prev_w + w) * 0.5 { << i - 1 }
+    while prev_pos < line.len {
+        next_pos := utf8_next(line, prev_pos)
+        w := measure_prefix(context, options, line, next_pos) or >>
+        if rel_x < (prev_w + w) * 0.5 { << prev_pos }
+        prev_pos = next_pos
         prev_w = w
     }
     << line.len
@@ -35,6 +74,119 @@ fn flat_index(lines &[]string, row int, col int) int {
         pos += lines[i].len + 1
     }
     << pos + col
+}
+
+fn flat_to_prev_char(lines &[]string, pos int) int {
+    if pos <= 0 { << 0 }
+    $base := 0
+    for i in 0:lines.len {
+        line := &lines[i]
+        line_end := base + line.len
+        if pos <= line_end {
+            << base + utf8_prev(line, pos - base)
+        }
+        if pos == line_end + 1 && i + 1 < lines.len { << line_end }
+        base = line_end + 1
+    }
+    << pos - 1
+}
+
+fn flat_to_next_char(lines &[]string, pos int) int {
+    $base := 0
+    for i in 0:lines.len {
+        line := &lines[i]
+        line_end := base + line.len
+        if pos < line_end {
+            << base + utf8_next(line, pos - base)
+        }
+        if pos == line_end && i + 1 < lines.len { << line_end + 1 }
+        base = line_end + 1
+    }
+    << pos
+}
+
+fn prev_word_flat(lines &[]string, pos int) int {
+    if pos <= 0 { << 0 }
+    $base := 0
+    for i in 0:lines.len {
+        line := &lines[i]
+        line_end := base + line.len
+        if pos <= line_end {
+            $col := pos - base
+            if col == 0 && i > 0 { << base - 1 }
+            while col > 0 {
+                p := utf8_prev(line, col)
+                if is_word_byte(line[p] & 255) { <- }
+                col = p
+            }
+            while col > 0 {
+                p := utf8_prev(line, col)
+                if !is_word_byte(line[p] & 255) { <- }
+                col = p
+            }
+            << base + col
+        }
+        base = line_end + 1
+    }
+    << 0
+}
+
+fn next_word_flat(lines &[]string, pos int) int {
+    $base := 0
+    for i in 0:lines.len {
+        line := &lines[i]
+        line_end := base + line.len
+        if pos <= line_end {
+            $col := pos - base
+            if col >= line.len {
+                if i + 1 < lines.len { << line_end + 1 }
+                << line_end
+            }
+            while col < line.len && !is_word_byte(line[col] & 255) { col = utf8_next(line, col) }
+            while col < line.len && is_word_byte(line[col] & 255) { col = utf8_next(line, col) }
+            << base + col
+        }
+        base = line_end + 1
+    }
+    << total_len(lines)
+}
+
+fn select_word_flat(lines &[]string, pos int) []int {
+    $base := 0
+    for i in 0:lines.len {
+        line := &lines[i]
+        line_end := base + line.len
+        if pos <= line_end {
+            if line.len == 0 { << [base, base] }
+            $col := pos - base
+            if col >= line.len { col = utf8_prev(line, line.len) }
+            target := is_word_byte(line[col] & 255)
+            $lo := col
+            $hi := utf8_next(line, col)
+            while lo > 0 {
+                p := utf8_prev(line, lo)
+                if is_word_byte(line[p] & 255) != target { <- }
+                lo = p
+            }
+            while hi < line.len {
+                if is_word_byte(line[hi] & 255) != target { <- }
+                hi = utf8_next(line, hi)
+            }
+            << [base + lo, base + hi]
+        }
+        base = line_end + 1
+    }
+    << [pos, pos]
+}
+
+fn line_bounds_flat(lines &[]string, pos int) []int {
+    $base := 0
+    for i in 0:lines.len {
+        line_end := base + lines[i].len
+        if pos <= line_end { << [base, line_end] }
+        base = line_end + 1
+    }
+    << [0, total_len(lines)]
 }
 
 fn total_len(lines &[]string) int {
@@ -105,7 +257,14 @@ fn insert_char(lines $&[]string, pos int, ch &string) int {
     << 0
 }
 
-fn char_from_key(key int, shift bool) string {
+fn char_from_key(key int, mods int, shift bool) string {
+    if (mods & 16) != 0 {
+        if key < 32 || (key >= 0xD800 && key <= 0xDFFF) || key > 0x10FFFF { << "" }
+        if key < 0x80 { << string_from_byte(key) }
+        if key < 0x800 { << string_from_bytes([0xC0 | (key >> 6), 0x80 | (key & 0x3F)]) }
+        if key < 0x10000 { << string_from_bytes([0xE0 | (key >> 12), 0x80 | ((key >> 6) & 0x3F), 0x80 | (key & 0x3F)]) }
+        << string_from_bytes([0xF0 | (key >> 18), 0x80 | ((key >> 12) & 0x3F), 0x80 | ((key >> 6) & 0x3F), 0x80 | (key & 0x3F)])
+    }
     if key == 32 { << " " }
     if key >= 65 && key <= 90 {
         lower := "abcdefghijklmnopqrstuvwxyz"
@@ -121,13 +280,18 @@ fn char_from_key(key int, shift bool) string {
         if shift { << symbols[idx:idx + 1] }
         << digits[idx:idx + 1]
     }
-    if key == 45 { if shift { << "_" } << "-" }
-    if key == 61 { if shift { << "+" } << "=" }
-    if key == 46 { if shift { << ">" } << "." }
+    if key == 39 { if shift { << "\"" } << "'" }
     if key == 44 { if shift { << "<" } << "," }
+    if key == 45 { if shift { << "_" } << "-" }
+    if key == 46 { if shift { << ">" } << "." }
     if key == 47 { if shift { << "?" } << "/" }
-    if key == 58 || key == 59 { if shift { << ":" } << ";" }
-    if key == 64 { << "@" }
+    if key == 59 { if shift { << ":" } << ";" }
+    if key == 61 { if shift { << "+" } << "=" }
+    if key == 91 { if shift { << "{" } << "[" }
+    if key == 92 { if shift { << "|" } << "\\" }
+    if key == 93 { if shift { << "}" } << "]" }
+    if key == 96 { if shift { << "~" } << "`" }
+    if key >= 33 && key <= 126 { << string_from_byte(key) }
     << ""
 }
 
@@ -135,7 +299,8 @@ fn demo() int {
     identity := playground.canvas_identity()
     context := draw.default_context()
     styles := playground.light_styles()
-    text_opts := draw.text_options(15.0)
+    $text_opts := draw.text_options(15.0)
+    text_opts.family = "mono"
     $lines := ["Xu compiles natively to ARM64, x64, and WASM.", "Zero GC ownership with deterministic RAII drop.", "Drag or press Shift+Arrows, then Ctrl+C to copy."]
     $max_pos := total_len(&lines)
 
@@ -144,10 +309,14 @@ fn demo() int {
     text_y := 106.0
     line_h := 28.0
 
-    $btn_all := widgets.button(&identity, 1, &box(44.0, 214.0, 108.0, 36.0)) or >>
-    $btn_copy := widgets.button(&identity, 2, &box(160.0, 214.0, 96.0, 36.0)) or >>
-    $btn_clear := widgets.button(&identity, 3, &box(264.0, 214.0, 92.0, 36.0)) or >>
-    $btn_del := widgets.button(&identity, 4, &box(364.0, 214.0, 108.0, 36.0)) or >>
+    r_all := box(44.0, 214.0, 124.0, 36.0)
+    r_copy := box(176.0, 214.0, 96.0, 36.0)
+    r_clear := box(280.0, 214.0, 92.0, 36.0)
+    r_del := box(380.0, 214.0, 108.0, 36.0)
+    $btn_all := widgets.button(&identity, 1, &r_all) or >>
+    $btn_copy := widgets.button(&identity, 2, &r_copy) or >>
+    $btn_clear := widgets.button(&identity, 3, &r_clear) or >>
+    $btn_del := widgets.button(&identity, 4, &r_del) or >>
     $lbl_all := widgets.styled_label(&context, &"Select All")
     $lbl_copy := widgets.styled_label(&context, &"Copy")
     $lbl_clear := widgets.styled_label(&context, &"Clear")
@@ -159,6 +328,7 @@ fn demo() int {
     $dragging := false
     $focused := true
     $clipboard := ""
+    $clip_seq := 0
 
     while true {
         event := playground.next_input()
@@ -182,7 +352,10 @@ fn demo() int {
                 lo = hi
                 hi = tmp
             }
-            if hi > lo { clipboard = extract_range(&lines, lo, hi) }
+            if hi > lo {
+                clipboard = extract_range(&lines, lo, hi)
+                clip_seq += 1
+            }
             ->
         }
         if a_clear.kind == widgets.ACTION_ACTIVATE {
@@ -203,9 +376,10 @@ fn demo() int {
                 anchor = lo
                 head = lo
             } else if head > 0 {
-                delete_range($&lines, head - 1, head)
+                prev := flat_to_prev_char(&lines, head)
+                delete_range($&lines, prev, head)
                 max_pos = total_len(&lines)
-                head -= 1
+                head = prev
                 anchor = head
             }
             focused = true
@@ -219,13 +393,25 @@ fn demo() int {
                 if row >= lines.len { row = lines.len - 1 }
                 col := hit_col(&context, &text_opts, &lines[row], event.x - text_x) or >>
                 pos := flat_index(&lines, row, col)
-                if (event.modifiers & ui.MOD_SHIFT) != 0 {
-                    head = pos
+                if event.repeat >= 3 {
+                    span := line_bounds_flat(&lines, pos)
+                    anchor = span[0]
+                    head = span[1]
+                    dragging = false
+                } else if event.repeat == 2 {
+                    span := select_word_flat(&lines, pos)
+                    anchor = span[0]
+                    head = span[1]
+                    dragging = false
                 } else {
-                    anchor = pos
-                    head = pos
+                    if (event.modifiers & ui.MOD_SHIFT) != 0 {
+                        head = pos
+                    } else {
+                        anchor = pos
+                        head = pos
+                    }
+                    dragging = true
                 }
-                dragging = true
                 focused = true
             } else {
                 dragging = false
@@ -240,80 +426,94 @@ fn demo() int {
             dragging = false
         } else if event.kind == ui.EV_KEY_DOWN && focused {
             mod_cmd := (event.modifiers & (ui.MOD_CONTROL | ui.MOD_META)) != 0
+            mod_word := (event.modifiers & (ui.MOD_CONTROL | ui.MOD_ALT)) != 0
+            mod_line := (event.modifiers & ui.MOD_META) != 0
             mod_shift := (event.modifiers & ui.MOD_SHIFT) != 0
-            if mod_cmd && event.key == 65 {
+            mod_text := (event.modifiers & 16) != 0
+            $lo := anchor
+            $hi := head
+            if lo > hi {
+                tmp := lo
+                lo = hi
+                hi = tmp
+            }
+            if !mod_text && mod_cmd && event.key == 65 {
                 anchor = 0
                 head = max_pos
-            } else if mod_cmd && event.key == 67 {
-                $lo := anchor
-                $hi := head
-                if lo > hi {
-                    tmp := lo
-                    lo = hi
-                    hi = tmp
+            } else if !mod_text && mod_cmd && event.key == 67 {
+                if hi > lo {
+                    clipboard = extract_range(&lines, lo, hi)
+                    clip_seq += 1
                 }
-                if hi > lo { clipboard = extract_range(&lines, lo, hi) }
-            } else if event.key == ui.KEY_BACKSPACE {
-                $lo := anchor
-                $hi := head
-                if lo > hi {
-                    tmp := lo
-                    lo = hi
-                    hi = tmp
+            } else if !mod_text && mod_cmd && event.key == 88 {
+                if hi > lo {
+                    clipboard = extract_range(&lines, lo, hi)
+                    clip_seq += 1
+                    delete_range($&lines, lo, hi)
+                    max_pos = total_len(&lines)
+                    anchor = lo
+                    head = lo
                 }
+            } else if !mod_text && event.key == ui.KEY_BACKSPACE {
                 if hi > lo {
                     delete_range($&lines, lo, hi)
                     max_pos = total_len(&lines)
                     anchor = lo
                     head = lo
                 } else if head > 0 {
-                    delete_range($&lines, head - 1, head)
+                    $from := flat_to_prev_char(&lines, head)
+                    if mod_line { from = line_bounds_flat(&lines, head)[0] }
+                    else if mod_word { from = prev_word_flat(&lines, head) }
+                    delete_range($&lines, from, head)
                     max_pos = total_len(&lines)
-                    head -= 1
+                    head = from
                     anchor = head
                 }
-            } else if event.key == ui.KEY_DELETE {
-                $lo := anchor
-                $hi := head
-                if lo > hi {
-                    tmp := lo
-                    lo = hi
-                    hi = tmp
-                }
+            } else if !mod_text && event.key == ui.KEY_DELETE {
                 if hi > lo {
                     delete_range($&lines, lo, hi)
                     max_pos = total_len(&lines)
                     anchor = lo
                     head = lo
                 } else if head < max_pos {
-                    delete_range($&lines, head, head + 1)
+                    $to := flat_to_next_char(&lines, head)
+                    if mod_line { to = line_bounds_flat(&lines, head)[1] }
+                    else if mod_word { to = next_word_flat(&lines, head) }
+                    delete_range($&lines, head, to)
                     max_pos = total_len(&lines)
                     anchor = head
                 }
-            } else if event.key == ui.KEY_ESCAPE {
+            } else if !mod_text && event.key == ui.KEY_ESCAPE {
                 anchor = head
-            } else if event.key == ui.KEY_LEFT {
-                if head > 0 { head -= 1 }
-                if !mod_shift { anchor = head }
-            } else if event.key == ui.KEY_RIGHT {
-                if head < max_pos { head += 1 }
-                if !mod_shift { anchor = head }
-            } else if event.key == ui.KEY_HOME {
+            } else if !mod_text && event.key == ui.KEY_LEFT {
+                if !mod_shift && hi > lo {
+                    head = lo
+                    anchor = lo
+                } else {
+                    if mod_line { head = line_bounds_flat(&lines, head)[0] }
+                    else if mod_word { head = prev_word_flat(&lines, head) }
+                    else if head > 0 { head = flat_to_prev_char(&lines, head) }
+                    if !mod_shift { anchor = head }
+                }
+            } else if !mod_text && event.key == ui.KEY_RIGHT {
+                if !mod_shift && hi > lo {
+                    head = hi
+                    anchor = hi
+                } else {
+                    if mod_line { head = line_bounds_flat(&lines, head)[1] }
+                    else if mod_word { head = next_word_flat(&lines, head) }
+                    else if head < max_pos { head = flat_to_next_char(&lines, head) }
+                    if !mod_shift { anchor = head }
+                }
+            } else if !mod_text && event.key == ui.KEY_HOME {
                 head = 0
                 if !mod_shift { anchor = head }
-            } else if event.key == ui.KEY_END {
+            } else if !mod_text && event.key == ui.KEY_END {
                 head = max_pos
                 if !mod_shift { anchor = head }
-            } else if !mod_cmd && event.key >= 32 && event.key <= 126 {
-                ch := char_from_key(event.key, mod_shift)
+            } else if mod_text || (!mod_cmd && event.key >= 32 && event.key <= 126) {
+                ch := char_from_key(event.key, event.modifiers, mod_shift)
                 if ch.len > 0 {
-                    $lo := anchor
-                    $hi := head
-                    if lo > hi {
-                        tmp := lo
-                        lo = hi
-                        hi = tmp
-                    }
                     if hi > lo {
                         delete_range($&lines, lo, hi)
                         max_pos = total_len(&lines)
@@ -322,7 +522,7 @@ fn demo() int {
                     }
                     insert_char($&lines, head, &ch)
                     max_pos = total_len(&lines)
-                    head += 1
+                    head += ch.len
                     anchor = head
                 }
             }
@@ -341,6 +541,12 @@ fn demo() int {
     $frame := context.new_frame(8192)
     frame.begin() or >>
     frame.clear(styles.background) or >>
+    frame.cursor_rect(text_box.x, text_box.y, text_box.width, text_box.height, "text") or >>
+    frame.cursor_rect(r_all.x, r_all.y, r_all.width, r_all.height, "pointer") or >>
+    frame.cursor_rect(r_copy.x, r_copy.y, r_copy.width, r_copy.height, "pointer") or >>
+    frame.cursor_rect(r_clear.x, r_clear.y, r_clear.width, r_clear.height, "pointer") or >>
+    frame.cursor_rect(r_del.x, r_del.y, r_del.width, r_del.height, "pointer") or >>
+    if clip_seq > 0 { frame.copy_text(clip_seq, &clipboard) or >> }
     frame.fill_rect(28.0, 74.0, 584.0, 232.0, draw.rgb(255, 253, 251)) or >>
     frame.stroke_rect(28.0, 74.0, 584.0, 232.0, draw.rgb(217, 208, 217), 1.0) or >>
     draw.text(32, 20, 20, "#282329", "XUUI  /  Text Selection")

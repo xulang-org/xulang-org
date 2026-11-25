@@ -54,11 +54,61 @@ pub fn (frame $&Frame) line(x1 f64,y1 f64,x2 f64,y2 f64,color Color,width f64) i
     << cmd("line\t" + scalar(x1) + "\t" + scalar(y1) + "\t" + scalar(x2) + "\t" + scalar(y2) + "\t" + color_text(color) + "\t" + scalar(width))
 }
 
-// Browser text host: deterministic single-line monospace metrics. Full native
-// shaping/wrapping/IME is outside this host. Paint uses the same declared width.
+// Browser text host: deterministic single-line metrics with East Asian Wide
+// handling (2 cells) and opt-in monospace runs via TextOptions.family == "mono".
 // VM resources use scalar handles, matching native TextLayout value semantics.
+const LAYOUT_MONO_BIT = 1073741824
+
 fn retain(value &string) int { <<< 1 }
 fn lookup(id int) string { <<< 1 }
+
+fn codepoint_cells(cp int) int {
+    if cp == 0x200D || (cp >= 0xFE00 && cp <= 0xFE0F) || (cp >= 0x0300 && cp <= 0x036F) { << 0 }
+    if (cp >= 0x1100 && cp <= 0x115F) || cp == 0x2329 || cp == 0x232A ||
+       (cp >= 0x2E80 && cp <= 0x303E) || (cp >= 0x3041 && cp <= 0x33FF) ||
+       (cp >= 0x3400 && cp <= 0x4DBF) || (cp >= 0x4E00 && cp <= 0x9FFF) ||
+       (cp >= 0xA000 && cp <= 0xA4CF) || (cp >= 0xAC00 && cp <= 0xD7AF) ||
+       (cp >= 0xF900 && cp <= 0xFAFF) || (cp >= 0xFE10 && cp <= 0xFE19) ||
+       (cp >= 0xFE30 && cp <= 0xFE6F) || (cp >= 0xFF01 && cp <= 0xFF60) ||
+       (cp >= 0xFFE0 && cp <= 0xFFE6) || (cp >= 0x1F300 && cp <= 0x1FAFF) ||
+       (cp >= 0x20000 && cp <= 0x3FFFD) { << 2 }
+    << 1
+}
+
+fn measure_cells_until(value &string, limit int, masked bool) int {
+    $cells := 0
+    $pos := 0
+    while pos < limit {
+        w := utf8.decode_width(value,pos) or >>
+        if masked {
+            cells += 1
+        } else {
+            cp := utf8.decode(value,pos) or >>
+            cells += codepoint_cells(cp)
+        }
+        pos += w
+    }
+    << cells
+}
+
+fn escape_cmd_text(value &string) string {
+    $out := ""
+    $start := 0
+    for i in 0:value.len {
+        b := value[i] & 255
+        if b == 92 || b == 9 || b == 10 || b == 13 {
+            if i > start { out = out + value[start:i] }
+            if b == 92 { out = out + "\\\\" }
+            else if b == 9 { out = out + "\\t" }
+            else if b == 10 { out = out + "\\n" }
+            else { out = out + "\\r" }
+            start = i + 1
+        }
+    }
+    if start < value.len { out = out + value[start:value.len] }
+    << out
+}
+
 pub fn (context &Context) layout_text(value &string,options &TextOptions) TextLayout {
     << context.layout_text_mode(value,options,false) or >>
 }
@@ -67,24 +117,28 @@ pub fn (context &Context) layout_masked_text(value &string,options &TextOptions)
 }
 fn (context &Context) layout_text_mode(value &string,options &TextOptions,masked bool) TextLayout {
     if options.size < 1.0 || options.size > 256.0 || math.is_nan(options.size) { >> errors.new("draw: invalid browser text size") }
-    $cells := 0
-    for i in 0:value.len {
-        c := value[i] & 255
-        if c < 128 || c >= 192 { cells += 1 }
-    }
+    cells := measure_cells_until(value,value.len,masked) or >>
     width := f64(cells) * options.size * 0.6
     height := options.size * 1.25
     metrics := TextMetrics{width: width,height: height,baseline: options.size,lines: 1,ink_x: 0.0,ink_y: 0.0,ink_width: width,ink_height: height}
     // A negative handle marks concealed text; keep the original UTF-8 bytes
     // for caret/selection queries and mask only the emitted paint command.
     $id := retain(value)
+    if options.family == "mono" || options.family == "monospace" { id = id | LAYOUT_MONO_BIT }
     if masked { id = 0 - id }
     << TextLayout{metrics: metrics,id: id,canvas_id: context.canvas_id,generation: context.generation}
 }
-fn layout_source(layout &TextLayout) string {
+fn layout_raw_id(layout &TextLayout) int {
     $id := layout.id
     if id < 0 { id = 0 - id }
-    << lookup(id)
+    << id
+}
+fn layout_is_mono(layout &TextLayout) bool {
+    << (layout_raw_id(layout) & LAYOUT_MONO_BIT) != 0
+}
+fn layout_source(layout &TextLayout) string {
+    raw := layout_raw_id(layout) & (LAYOUT_MONO_BIT - 1)
+    << lookup(raw)
 }
 fn layout_display(layout &TextLayout) string {
     value := layout_source(layout)
@@ -99,7 +153,25 @@ fn layout_display(layout &TextLayout) string {
 pub fn (layout $&TextLayout) dispose() int { << 0 }
 pub fn (frame $&Frame) text_layout(label &TextLayout,x f64,y f64,color Color) int {
     frame.writable() or >>
-    << cmd("layout_text\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(label.metrics.baseline) + "\t" + color_text(color) + "\t" + scalar(label.metrics.width) + "\t" + clean(layout_display(label)))
+    line := "layout_text\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(label.metrics.baseline) + "\t" + color_text(color) + "\t" + scalar(label.metrics.width) + "\t" + clean(layout_display(label))
+    if layout_is_mono(label) {
+        cmd("font\tmono") or >>
+        cmd(line) or >>
+        << cmd("font\tsans")
+    }
+    << cmd(line)
+}
+
+pub fn (frame $&Frame) cursor_rect(x f64,y f64,w f64,h f64,cursor string) int {
+    frame.writable() or >>
+    if w < 0.0 || h < 0.0 || math.is_nan(w) || math.is_nan(h) { >> errors.new("draw: invalid cursor rect") }
+    << cmd("cursor_rect\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(w) + "\t" + scalar(h) + "\t" + clean(cursor))
+}
+
+pub fn (frame $&Frame) copy_text(seq int,value &string) int {
+    frame.writable() or >>
+    if seq < 0 { >> errors.new("draw: invalid clipboard sequence") }
+    << cmd("clipboard\t" + str(seq) + "\t" + escape_cmd_text(value))
 }
 
 // Paths carry only validated geometric commands; Canvas never sees executable
@@ -180,14 +252,28 @@ pub fn (layout &TextLayout) bind_input_transform(input &ui.TextInput,revision in
 pub fn (layout &TextLayout) caret(index int,trailing bool) TextHit {
     value := layout_source(layout)
     if index < 0 || index > value.len { >> errors.new("draw: invalid browser caret index") }
+    masked := layout.id < 0
     $cells := 0
     $position := 0
-    while position < index { position += utf8.decode_width(&value,position) or >>
-        cells += 1 }
+    while position < index {
+        step := utf8.decode_width(&value,position) or >>
+        if masked {
+            cells += 1
+        } else {
+            cells += codepoint_cells(utf8.decode(&value,position) or >>)
+        }
+        position += step
+    }
     if position != index { >> errors.new("draw: caret index must be a UTF-8 boundary") }
     $length := 0
     if index < value.len { length = utf8.decode_width(&value,index) or >> }
-    if trailing && length > 0 { cells += 1 }
+    if trailing && length > 0 {
+        if masked {
+            cells += 1
+        } else {
+            cells += codepoint_cells(utf8.decode(&value,index) or >>)
+        }
+    }
     << TextHit{index: index,length: length,trailing: trailing,inside: true,x: f64(cells) * layout.metrics.baseline * 0.6,y: 0.0,height: layout.metrics.height}
 }
 pub fn (layout &TextLayout) selection_rects(start int,end int) []TextSelectionRect {
