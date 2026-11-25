@@ -1,43 +1,44 @@
 <p align="center">
-  <a href="https://xulang.org">
+  <a href="https://xulang.org/de">
     <picture>
       <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/xulang-org/xulang-org/main/brand/xu-profile-dark.svg">
-      <img src="https://raw.githubusercontent.com/xulang-org/xulang-org/main/brand/xu-profile-light.svg" alt="XU — Native code. Clear intent." width="100%">
+      <img src="https://raw.githubusercontent.com/xulang-org/xulang-org/main/brand/xu-profile-light.svg" alt="XU — Nativer Code. Klare Absicht." width="100%">
     </picture>
   </a>
 </p>
 
-<h1 align="center">Die Programmiersprache Xu</h1>
+<h1 align="center">Die Programmiersprache XU</h1>
 
 <p align="center">
-  Eine Systemsprache mit nativer Kompilierung, Eigentumsmodell und integrierter Nebenläufigkeit.<br><strong>Deterministische Speicherverwaltung. Kein Garbage Collector.</strong>
+  Eine Systemsprache mit nativer Kompilierung, Eigentumsmodell und integrierter Nebenläufigkeit.<br>
+  <strong>Deterministische Speicherverwaltung. Kein Garbage Collector.</strong>
 </p>
 
 <p align="center">
-  <a href="https://xulang.org/playground"><strong>Online-Playground (ohne Installation)</strong></a> &nbsp; · &nbsp;
-  <a href="https://xulang.org/docs/start">Schnellstart in 30 Sekunden</a> &nbsp; · &nbsp;
-  <a href="https://xulang.org/download">Installer herunterladen</a> &nbsp; · &nbsp;
-  <a href="https://github.com/xulang-org/xu">Compiler source</a>
+  <a href="https://xulang.org/de/playground"><strong>Im Browser ausprobieren</strong></a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/de/docs/start">Leitfaden lesen</a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/de/download">XU herunterladen</a> &nbsp; · &nbsp;
+  <a href="https://github.com/xulang-org/xu">Compiler-Quellcode</a>
 </p>
 
 <p align="center">
   <a href="README.md">English</a> / <a href="README.zh-CN.md">简体中文</a> / <a href="README.zh-TW.md">繁體中文</a> / <a href="README.ja.md">日本語</a> / <a href="README.ko.md">한국어</a> / <a href="README.es.md">Español</a> / <a href="README.fr.md">Français</a> / <strong>Deutsch</strong> / <a href="README.ru.md">Русский</a> / <a href="README.pt-BR.md">Português</a>
 </p>
 
-## A small language with a clear flow
+## Eine kompakte Sprache mit klarem Kontrollfluss
 
-XU brings compile-time ownership and borrowing together with lightweight coroutines and typed channels. It compiles ahead of time to native code or WebAssembly, with resource lifetimes managed deterministically.
+XU vereint zur Kompilierzeit geprüfte Ownership- und Borrowing-Regeln mit leichtgewichtigen Koroutinen und typisierten Kanälen. Der Code wird Ahead-of-Time (AOT) in nativen Maschinencode oder WebAssembly kompiliert, während Ressourcenlebensdauern deterministisch verwaltet werden.
 
-| Language choice | What it gives you |
+| Sprachdesign | Was es Ihnen bietet |
 | :--- | :--- |
-| **Ownership, without a GC** | Compile-time move and borrow checks, inferred lifetimes, and deterministic resource cleanup. |
-| **Concurrency in the language** | Start a coroutine with `xu`; exchange values through typed `chan` channels. |
-| **Visible control flow** | `<<` returns a value, `>>` raises an error, and `or (err) { … }` handles it at the call site. |
-| **An integrated toolchain** | Build, run, check, test, format, generate docs, and use language services through `xu`. |
+| **Ownership ohne GC** | Move- und Borrow-Prüfungen zur Kompilierzeit, inferierte Lebensdauern und deterministische Ressourcenfreigabe. |
+| **Nebenläufigkeit in der Sprache** | Starten Sie eine Koroutine mit `xu` und tauschen Sie Werte über typisierte `chan`-Kanäle aus. |
+| **Sichtbarer Kontrollfluss** | `<<` gibt einen Wert zurück, `>>` meldet einen Fehler und `or (err) { … }` behandelt ihn direkt am Aufrufort. |
+| **Integrierte Toolchain** | Bauen, ausführen, prüfen, testen, formatieren, Dokumentation erzeugen und Sprachdienste nutzen – alles über `xu`. |
 
-## Read a little XU
+## Ein wenig XU lesen
 
-Two workers, one channel, and an explicit error path:
+Zwei Worker, ein Kanal und ein expliziter Fehlerpfad:
 
 ```xu
 @main
@@ -65,13 +66,13 @@ fn main() int {
 }
 ```
 
-Save as `main.xu`, then run `xu run main.xu`. It prints `100`.
+Als `main.xu` speichern und `xu run main.xu` ausführen. Die Ausgabe lautet `100`.
 
-`#errors` imports a package. `xu worker(...)` starts a coroutine. The two receives collect the results; if `score` fails, `or (err) { … }` sends a fallback value of `0` and returns from that worker.
+`#errors` importiert ein Paket. `xu worker(...)` startet eine Koroutine. Die beiden Empfangsoperationen sammeln die Ergebnisse; schlägt `score` fehl, sendet `or (err) { … }` den Ersatzwert `0` und beendet diesen Worker.
 
-## Start here
+## Hier starten
 
-Explore the [browser playground](https://xulang.org/playground) without installing anything, or [download the SDK](https://xulang.org/download) for local development. After installation:
+Erkunden Sie den [Browser-Playground](https://xulang.org/de/playground) ganz ohne Installation oder [laden Sie das SDK herunter](https://xulang.org/de/download) für die lokale Entwicklung. Nach der Installation:
 
 ```sh
 xu --version
@@ -79,101 +80,89 @@ xu run main.xu
 xu build main.xu -o hello
 ```
 
-Continue with the [getting started guide](https://xulang.org/docs/start), [language reference](https://xulang.org/docs/lang/syntax), or [runnable examples](https://github.com/xulang-org/examples).
+Lesen Sie weiter im [Einstiegsleitfaden](https://xulang.org/de/docs/start), in der [Sprachreferenz](https://xulang.org/de/docs/lang/syntax) oder in den [ausführbaren Beispielen](https://github.com/xulang-org/examples).
 
-XU is actively evolving in the **0.x series**. See [Releases](https://github.com/xulang-org/xu/releases) for published SDKs and [status and limitations](https://xulang.org/docs/status) for platform and runtime coverage. The [benchmark dashboard](https://xulang.org/benchmarks) records measured workloads, compiler versions, and source provenance.
+XU entwickelt sich aktiv in der **0.x-Reihe** weiter. Unter [Releases](https://github.com/xulang-org/xu/releases) finden Sie veröffentlichte SDKs und unter [Status und Einschränkungen](https://xulang.org/de/docs/status) die Plattform- und Laufzeitabdeckung. Das [Benchmark-Dashboard](https://xulang.org/de/benchmarks) dokumentiert gemessene Workloads, Compilerversionen und Quellenherkunft.
 
-Use [Search API](https://xulang.org/api/) to find a package or jump to a declaration on the current page. Press `/` outside an input to open search; arrows and Enter navigate results, and Escape closes it. The API directory collapses on phones so content stays within reach. Declaration headings are permanent links, and Copy link shares the current page or declaration.
+Verwenden Sie [API durchsuchen](https://xulang.org/api/), um ein Paket zu finden oder direkt zu einer Deklaration auf der aktuellen Seite zu springen. Drücken Sie `/` außerhalb eines Eingabefelds, um die Suche zu öffnen; Pfeiltasten und Enter navigieren durch die Treffer, Escape schließt das Feld. Das API-Verzeichnis klappt auf Mobilgeräten ein, damit der Inhalt erreichbar bleibt. Deklarationsüberschriften sind Permalinks, und „Copy link“ teilt die aktuelle Seite oder Deklaration.
 
-The API index offers common-task shortcuts, topic descriptions, and inline package search across the standard library, UI, and extensions. Package pages start with a declaration explorer: filter by name, purpose, or kind, then jump to the full signature and documentation. Related source examples stay collapsed until opened.
+Der API-Index bietet Schnellzugriffe für häufige Aufgaben, Themenbeschreibungen und direkte Paketsuche über Standardbibliothek, UI und Erweiterungen. Paketseiten beginnen mit einem Deklarations-Explorer: Filtern Sie nach Name, Zweck oder Art und springen Sie direkt zur vollständigen Signatur und Dokumentation. Zugehörige Quellbeispiele bleiben bis zum Öffnen eingeklappt.
 
-## Explore the ecosystem
+## Das Ökosystem entdecken
 
-| Project | Where to go |
+| Projekt | Wohin |
 | :--- | :--- |
-| **Language & compiler** | [xu](https://github.com/xulang-org/xu) — self-hosted compiler, standard library, and CLI tools. |
-| **Learn by running** | [examples](https://github.com/xulang-org/examples) — language basics, concurrency, networking, databases, and UI examples. |
-| **Libraries & integrations** | [packages](https://github.com/xulang-org/packages) — database drivers, messaging, storage, and service integrations. |
-| **Editor support** | [vscode-xu](https://github.com/xulang-org/vscode-xu) — syntax highlighting and XU language services for VS Code and Cursor. |
-| **Performance** | [bench](https://github.com/xulang-org/bench) — cross-language workloads and reproducible benchmark sources. |
-| **Website & documentation** | [xulang-org](https://github.com/xulang-org/xulang-org) — xulang.org, documentation, and the WebAssembly playground. |
+| **Sprache & Compiler** | [xu](https://github.com/xulang-org/xu) — Self-Hosted-Compiler, Standardbibliothek und CLI-Werkzeuge. |
+| **Durch Ausführen lernen** | [examples](https://github.com/xulang-org/examples) — Sprachgrundlagen, Nebenläufigkeit, Netzwerk, Datenbanken und UI-Beispiele. |
+| **Bibliotheken & Integrationen** | [packages](https://github.com/xulang-org/packages) — Datenbanktreiber, Messaging, Speicher und Dienstintegrationen. |
+| **Editor-Unterstützung** | [vscode-xu](https://github.com/xulang-org/vscode-xu) — Syntaxhervorhebung und XU-Sprachdienste für VS Code und Cursor. |
+| **Leistung** | [bench](https://github.com/xulang-org/bench) — sprachübergreifende Workloads und reproduzierbare Benchmark-Quellen. |
+| **Website & Dokumentation** | [xulang-org](https://github.com/xulang-org/xulang-org) — xulang.org, Dokumentation und WebAssembly-Playground. |
 
-## Build XU with us
+## XU gemeinsam weiterentwickeln
 
-Try an example, report a compiler issue, improve the docs, or contribute a library. Start with [compiler issues](https://github.com/xulang-org/xu/issues) or [website issues](https://github.com/xulang-org/xulang-org/issues).
+Probieren Sie ein Beispiel aus, melden Sie einen Compiler-Fehler, verbessern Sie die Dokumentation oder tragen Sie eine Bibliothek bei. Beginnen Sie bei den [Compiler-Issues](https://github.com/xulang-org/xu/issues) oder den [Website-Issues](https://github.com/xulang-org/xulang-org/issues).
 
-Read the [contribution guide](CONTRIBUTING.md) and [shared repository rules](.github/REPOSITORY_RULES.md) before contributing. Maintainers can follow the [GitHub settings checklist](.github/GITHUB_SETTINGS.md).
+Lesen Sie vor einem Beitrag den [Beitragsleitfaden](CONTRIBUTING.md) und die [gemeinsamen Repository-Regeln](.github/REPOSITORY_RULES.md). Maintainer können die [GitHub-Einstellungs-Checkliste](.github/GITHUB_SETTINGS.md) nutzen.
 
-[Website](https://xulang.org) · [GitHub](https://github.com/xulang-org) · [X / @xulang_org](https://x.com/xulang_org) · [MIT license](LICENSE)
+[Website](https://xulang.org/de) · [GitHub](https://github.com/xulang-org) · [X / @xulang_org](https://x.com/xulang_org) · [MIT-Lizenz](LICENSE)
 
 ---
 
 <details>
-<summary><strong>Working on xulang.org</strong> — website build, playground, and deployment</summary>
+<summary><strong>An xulang.org mitarbeiten</strong> — Website-Build, Playground und Deployment</summary>
 
-This profile repository also contains the source for the official website. The site selects the published **XU SDK** identified by `VERSION`; development builds remain separate.
+Dieses Profil-Repository enthält zugleich den Quellcode der offiziellen Website. Die Website wählt das über `VERSION` festgelegte veröffentlichte **XU SDK** aus; Entwicklungs-Builds bleiben getrennt.
 
-### Local build
+### Lokaler Build
 
-Requires **Python 3.10+**, using only the standard library. Static builds and checks run without XU, Node.js, or companion checkouts.
+Erfordert **Python 3.10+** ausschließlich mit der Standardbibliothek. Statische Builds und Tests laufen ohne XU, Node.js oder Geschwister-Checkouts.
 
 ```sh
-make build                       # Build dist/ and verify internal links and assets
-make run                         # Preview at http://127.0.0.1:8080
-make run PORT=18080               # Preview on a custom port
-make check                       # Run the static site regression suite
-make build BASE_PATH=/xulang-org  # Build for a project subpath
-make clean                       # Remove dist/ and build/playground/
+make build                       # dist/ bauen und interne Links sowie Assets prüfen
+make run                         # Vorschau unter http://127.0.0.1:8080
+make run PORT=18080              # Vorschau auf benutzerdefiniertem Port
+make check                       # Regressionstest-Suite der statischen Website ausführen
+make build BASE_PATH=/xulang-org # Build für einen Projekt-Unterpfad
+make clean                       # dist/ und build/playground/ entfernen
 ```
 
-| Path | Purpose |
+| Pfad | Zweck |
 | :--- | :--- |
-| `content/{en,zh}/` | Documentation, tutorials, blog posts, and API content. |
-| `templates/` | Page templates, API guides, and example selections. |
-| `www/` | Styles, scripts, fonts, icons, and static assets. |
-| `playground/typed/` | Browser WebAssembly runtime written in XU. |
-| `scripts/` | Static builder, API generation, and release validation. |
-| `tests/` | Static site, playground, and channel regression coverage. |
-| `brand/` | Brand assets and visual identity guidelines. |
+| `content/{en,zh,...}/` | Dokumentation, Tutorials, Blogbeiträge und API-Inhalte. |
+| `templates/` | Seitenvorlagen, API-Leitfäden und Beispielauswahlen. |
+| `www/` | Stile, Skripte, Schriften, Icons und statische Assets. |
+| `playground/typed/` | In XU geschriebene Browser-WebAssembly-Laufzeit. |
+| `scripts/` | Statischer Builder, API-Generator und Release-Validierung. |
+| `tests/` | Regressionsabdeckung für statische Website, Playground und Kanäle. |
+| `brand/` | Marken-Assets und Richtlinien für die visuelle Identität. |
 
-Generated output goes to the ignored `dist/` and `build/` directories. Content fragments declare titles with `<!--title: ...-->` and render into directory routes such as `docs/start/index.html`.
+Generierte Ausgaben landen in den ignorierten Verzeichnissen `dist/` und `build/`. Inhaltsfragmente deklarieren Titel per `<!--title: ...-->` und werden in Verzeichnisrouten wie `docs/start/index.html` gerendert.
 
-### Shared site metadata
+### Gemeinsame Website-Metadaten
 
-Status package counts come from the generated `content/{en,zh}/api/index.html` inventories. The builder checks that both inventories match and their package pages exist; widget detail pages and preview pages do not contribute to package counts. Refresh the API inventory with the generator when packages change.
+Status-Paketzahlen stammen aus den generierten Inventaren `content/{en,zh}/api/index.html`. Der Builder prüft, dass beide Inventare übereinstimmen und ihre Paketseiten vorhanden sind.
 
-`templates/releases.json` supplies the bilingual release notes, recent release entries on the blog index, and release links in the blog sidebar. Add new releases there, alongside their bilingual blog posts. Earlier historical blog entries remain editorial content. Home banners, header and footer omit the SDK patch identity; download, documentation and API pages retain it. Structured software metadata still identifies the selected SDK accurately.
+`templates/releases.json` speist die Versionshinweise, die jüngsten Release-Einträge im Blog-Index und die Release-Links in der Blog-Seitenleiste. Die manuelle Sprachauswahl wird in `localStorage` und einem einjährigen `SameSite=Lax`-Cookie gespeichert und zusätzlich per `?lang=...` unterstützt. Die Sitemap lässt `lastmod` bewusst aus, damit ein unveränderter Rebuild keine neuen Inhaltsänderungen vortäuscht.
 
-Manual language selection stores `xu-lang=en` or `xu-lang=zh` in localStorage and a one-year SameSite=Lax cookie. LocalStorage is origin-wide; the cookie is scoped to the deployment base path. The language link also includes `?lang=en` or `?lang=zh`, so that visit works with storage blocked. A valid explicit query wins, followed by localStorage, then the cookie. Only the bare English homepage automatically selects Chinese, using the saved choice first and otherwise a Simplified Chinese browser locale. With all storage blocked, later visits without the query use the browser locale again.
+### API-Inhalte und Beispiele
 
-The sitemap deliberately omits `lastmod`. Checkout timestamps and API regeneration times do not establish editorial modification dates; an unchanged rebuild must not imply fresh content. Add dates only when a reliable per-page content history (including shared dependencies) is available.
+LLM-Leitfäden nutzen `templates/llms/*.md`, gemeinsame Website-Beispiele, `VERSION` und `www/benchmarks.json`. Führen Sie `python3 scripts/gen_llms.py` aus, um `www/llms*.txt` zu aktualisieren.
 
-### API content and examples
-
-LLM guides use `templates/llms/*.md`, shared site examples, `VERSION`, and `www/benchmarks.json`. The static build renders them with the selected SDK identity; run `python3 scripts/gen_llms.py` to refresh the checked-in `www/llms*.txt` copies.
-
-Curated prose lives in `templates/api-guides/{en,zh}/`. API generation combines it with declarations from the selected SDK. Examples are imported from the official examples repository at an immutable commit; bundled snapshots in `www/api-examples/` preserve independent local and CI builds.
-
-Function-level explanations live in `templates/api-contracts.json`, keyed by package, receiver type and symbol name. Write both languages with a concrete purpose, parameter meanings and return behavior; use `notes` for boundaries and preconditions, `errors` for failure handling, and `examples` for complete local SDK programs with optional expected `output`. Backticks mark inline code. Type members render as fields or required methods rather than function parameters.
-
-Source-reviewed entries carry `source_sha256` (signature and body) and `package_sha256` (package source files, including private helpers). Generation stops when either differs: review the implementation and update the explanation before refreshing the hashes. Parameter names and authored example fields are also validated before any pages are written. Run function-local examples with the matching native compiler:
+Redaktionelle Texte liegen in `templates/api-guides/{en,zh}/`, Funktionsverträge in `templates/api-contracts.json`. Prüfen Sie funktionslokale Beispiele mit dem passenden nativen Compiler:
 
 ```sh
 python3 scripts/check-api-examples.py --xu /path/to/selected-sdk/bin/xu
 ```
 
-To refresh declarations and examples, select compatible sources in `templates/api-examples.json`, check them with the selected SDK, and supply the examples checkout and its full commit SHA:
+Deklarationen und Beispiele aktualisieren:
 
 ```sh
 make api XU_ROOT=/path/to/selected-sdk XU_PACKAGES_ROOT=/path/to/selected-sdk/packages \
   XU_EXAMPLES_ROOT=../examples XU_EXAMPLES_REF=FULL_EXAMPLES_COMMIT_SHA
 ```
 
-Selected files must match that commit. Without the two examples variables, `make api` reuses and verifies bundled snapshots. Native examples run locally with the SDK.
-
-Multi-file projects bundle their curated `main.xu`, event handlers and style sources together. Each project can be expanded on the API page, including those under “More related examples”; companion files also have individual downloads. The catalog records a project's required SDK when it differs from the website's selected release, so examples that use a development API do not imply that API is available in the selected release.
-
-To update individual projects without replacing other release snapshots, run the generator with the selected release sources and repeat `--examples-project` for each curated directory:
+Einzelne Projekte gezielt aktualisieren, ohne andere Release-Snapshots zu ersetzen:
 
 ```sh
 python3 scripts/gen-api.py --src /path/to/selected-sdk/src --packages /path/to/selected-sdk/packages \
@@ -182,28 +171,23 @@ python3 scripts/gen-api.py --src /path/to/selected-sdk/src --packages /path/to/s
   --examples-project examples/16_ui_webview/style_gallery
 ```
 
-Scoped refreshes preserve other projects' source bytes, checksums and immutable commit references. Register every source file of each updated project in `templates/api-examples.json` before refreshing it.
+### WebAssembly-Playground
 
-### WebAssembly playground
-
-Use the matching SDK and Node.js 22+ to compile and optimize the XU runtime to WebAssembly.
-The lockfile pins the build-time Binaryen optimizer; static-only builds still need only Python.
+Verwenden Sie das passende SDK und Node.js 22+, um die XU-Laufzeit nach WebAssembly zu kompilieren und zu optimieren:
 
 ```sh
-npm ci --ignore-scripts # Install the pinned WASM optimizer
+npm ci --ignore-scripts # Festgelegten WASM-Optimierer installieren
 make wasm XU_ROOT=/path/to/released-sdk
-make check-playground  # Check real WASM execution and examples in Node.js
-make check-chan        # Check native channel examples with XU
-make build             # Bundle the runtime into dist/
+make check-playground   # Echte WASM-Ausführung und Beispiele in Node.js prüfen
+make check-chan         # Native Kanal-Beispiele mit XU prüfen
+make build              # Laufzeit in dist/ bündeln
 ```
 
-The playground runs client-side in the browser. Documentation and the homepage do not preload WASM. The first run downloads and asynchronously compiles the module in the page, then shares it with a worker for instantiation and Xu execution. Compiled code is reused within that page; failed initialization can be retried, and stopping or switching programs cancels the old worker's initialization.
+Der Playground läuft clientseitig im Browser. Dokumentation und Startseite laden kein WASM vorab. Der lineare Speicher startet mit der vom SDK ausgegebenen Größe und kann bis 256 MiB wachsen. `build/playground/build.json` erfasst Größen, Prüfsumme, Optimierereinstellungen und Speichergrenzen.
 
-Linear memory starts at the size emitted by the SDK and can grow to 256 MiB. `build/playground/build.json` records the WASM and gzip sizes, digest, optimizer settings and memory limits. Generated WASM stays in `build/playground/`.
+### Benchmarks und Deployment
 
-### Benchmarks and deployment
-
-To refresh benchmarks, download one complete six-platform Actions run, then run:
+Um Benchmarks zu aktualisieren, laden Sie einen vollständigen Sechs-Plattform-Actions-Lauf herunter und führen aus:
 
 ```sh
 python3 scripts/import-benchmarks.py --artifacts DIR --bench-root PINNED_BENCH_CHECKOUT --commit FULL_SHA --run-id ID --date YYYY-MM-DD
@@ -211,19 +195,15 @@ python3 scripts/sync_all_benches.py --bench-root PINNED_BENCH_CHECKOUT
 python3 scripts/gen-benchmarks.py
 ```
 
-Pin the bench checkout to the artifact identity's `bench_commit`. Import verifies compiler identities, source closure, fixed point, the full registered workload inventory, and stdout. Source export preserves every canonical workload ID and the original source text; it never filters, aliases, or rewrites measured rows. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
-
-The release in `VERSION` drives downloads, the API reference, and the browser runtime. The Pages workflow verifies the published SDK's SHA-256, tests its output, and deploys to GitHub Pages on pushes to `main`.
+Die Version in `VERSION` steuert Downloads, API-Referenz und Browser-Laufzeit. Der Pages-Workflow prüft die SHA-256-Prüfsumme des veröffentlichten SDKs, testet dessen Ausgabe und deployt bei Pushes auf `main` zu GitHub Pages.
 
 </details>
 
-### UI API and examples
+### UI-API und Beispiele
 
-The [UI guide](content/en/docs/ui.html) and [Chinese guide](content/zh/docs/ui.html) document the official Xu SDK selected in `VERSION`. All six packages — `ui`, `ui/draw`, `ui/layout`, `ui/chart`, `ui/widgets` and `ui/webview` — appear in the released API navigation. Former UI preview URLs redirect to the corresponding released pages while preserving declaration anchors.
+Der [englische UI-Leitfaden](content/en/docs/ui.html) und der [chinesische Leitfaden](content/zh/docs/ui.html) dokumentieren das in `VERSION` gewählte offizielle Xu SDK. Alle sechs Pakete — `ui`, `ui/draw`, `ui/layout`, `ui/chart`, `ui/widgets` und `ui/webview` — erscheinen in der veröffentlichten API-Navigation.
 
-Handwritten release guides live in `templates/api-guides/{en,zh}/ui*`; semantic contracts and field descriptions live in `templates/api-contracts.json`. Run `make api` with the selected release SDK to regenerate declarations. The curated source catalog includes drawing, layout, editors, desktop services, windows, WebView requests, styles and the extended controls gallery. Each example links to its immutable complete project and a checksum-verified source download.
-
-For a future unreleased API, the generator still supports an explicit development preview without changing the selected release:
+Für eine künftige unveröffentlichte API unterstützt der Generator weiterhin eine explizite Entwicklungsvorschau, ohne das gewählte Release zu ändern:
 
 ```sh
 python3 scripts/gen-api.py --src /path/to/development-sdk/src --preview --package ui
@@ -231,35 +211,8 @@ make build
 make check
 ```
 
-Preview guides and contracts use `templates/api-guides/{en,zh}/preview/ui*` and `templates/api-preview-contracts.json`. An explicitly generated preview carries its development SDK version and source SHA-256 and takes precedence over legacy redirects. Release builds continue to use the selected official SDK and bundled example snapshots.
+Der Browser-Playground enthält eine [dreiseitige Steuerelement-Galerie](https://xulang.org/de/playground?example=ui-gallery), in der gemeinsame Desktop-Xu-Logik in WASM auf Canvas gerendert wird. Siehe den [Leitfaden zum Browser-UI-Build](playground/README.md) für Quellsynchronisation, unterstützte APIs, Tastatursteuerung und Replay-Grenzen.
 
-The browser playground includes a [three-page control gallery](https://xulang.org/playground?example=ui-gallery):
-shared desktop Xu logic covers basic controls, Radio, ListBox, Scroll, Tabs,
-StyledLabel, Card, Badge, Progress and a display-only Editor in WASM. Canvas
-renders their paint commands. The gallery's Editor is display-only; native text editing and IME remain unavailable. The shapes and click-counter demos
-remain available. See [the browser UI build guide](playground/README.md) for
-source synchronization, supported APIs, keyboard controls, and replay limits.
+Die Widgets-Dokumentation folgt **API → UI → Widgets → Komponente** mit 46 interaktiven Komponentenseiten, deren Quellen in `playground/examples/widget-*.xu` liegen und per `python3 scripts/gen-widget-examples.py` veröffentlicht werden.
 
-The Widgets documentation follows **API → UI → Widgets → component**, with 46
-component pages in each language. `templates/widgets.json` owns the categories,
-usage notes and experience descriptions. `scripts/gen-widgets.py` combines this
-catalog with released declarations and adds focused native setup fragments.
-It runs automatically after release API generation. Use `--check` to verify
-that checked-in pages are current.
-
-All 46 component experiences execute editable Xu/WASM examples. Their sources
-live in `playground/examples/widget-*.xu` and are published by
-`python3 scripts/gen-widget-examples.py`. Some demonstrate composed or bounded
-behavior: DatePicker is a date strip, WebView is a placeholder, TaskButton does
-not start a background task, and text fields support basic key editing rather
-than native selection, clipboard or IME. Each experience describes its scope;
-running Xu does not establish full desktop component support.
-
-The [browser UI guide](https://xulang.org/docs/ui/#browser-playground) covers
-ComboBox candidates, MultiSelect checkboxes, Popover preferences and Modal focus
-handling. The workspace and preview use the pinned XUUI design reference, with
-cinnabar focus boundaries and vertically aligned control labels. On phones,
-Files, Editor, Preview and Output are separate views. Fit scales the canvas;
-100% with Pan lets users inspect a large canvas, and Pan must be disabled to
-interact with its controls.
-
+Der [Browser-UI-Leitfaden](https://xulang.org/de/docs/ui/#browser-playground) behandelt ComboBox-Kandidaten, MultiSelect-Checkboxen, Popover-Einstellungen und Modal-Fokusbehandlung.

@@ -15,14 +15,14 @@
 </p>
 
 <p align="center">
-  <a href="https://xulang.org/zh-tw-tw/playground"><strong>線上體驗</strong></a> &nbsp; · &nbsp;
-  <a href="https://xulang.org/zh-tw-tw/docs/start">閱讀指南</a> &nbsp; · &nbsp;
-  <a href="https://xulang.org/zh-tw-tw/download">下載 XU</a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/zh-tw/playground"><strong>線上體驗</strong></a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/zh-tw/docs/start">閱讀指南</a> &nbsp; · &nbsp;
+  <a href="https://xulang.org/zh-tw/download">下載 XU</a> &nbsp; · &nbsp;
   <a href="https://github.com/xulang-org/xu">編譯器原始碼</a>
 </p>
 
 <p align="center">
-  <a href="README.md">English</a> / <strong>简体中文</strong> / <strong>繁體中文</strong> / <a href="README.ja.md">日本語</a> / <a href="README.ko.md">한국어</a> / <a href="README.es.md">Español</a> / <a href="README.fr.md">Français</a> / <a href="README.de.md">Deutsch</a> / <a href="README.ru.md">Русский</a> / <a href="README.pt-BR.md">Português</a>
+  <a href="README.md">English</a> / <a href="README.zh-CN.md">简体中文</a> / <strong>繁體中文</strong> / <a href="README.ja.md">日本語</a> / <a href="README.ko.md">한국어</a> / <a href="README.es.md">Español</a> / <a href="README.fr.md">Français</a> / <a href="README.de.md">Deutsch</a> / <a href="README.ru.md">Русский</a> / <a href="README.pt-BR.md">Português</a>
 </p>
 
 ## 簡潔的語言，清晰的流向
@@ -72,7 +72,7 @@ fn main() int {
 
 ## 從這裡開始
 
-無需安裝，直接開啟 [瀏覽器演練場](https://xulang.org/zh-tw-tw/playground)；也可以 [下載 SDK](https://xulang.org/zh-tw-tw/download)，在本地開發。安裝後執行：
+無需安裝，直接開啟 [瀏覽器演練場](https://xulang.org/zh-tw/playground)；也可以 [下載 SDK](https://xulang.org/zh-tw/download)，在本地開發。安裝後執行：
 
 ```sh
 xu --version
@@ -80,11 +80,11 @@ xu run main.xu
 xu build main.xu -o hello
 ```
 
-接著閱讀 [入門指南](https://xulang.org/zh-tw-tw/docs/start)、[語言參考](https://xulang.org/zh-tw-tw/docs/lang/syntax)，或執行 [官方示例](https://github.com/xulang-org/examples)。
+接著閱讀 [入門指南](https://xulang.org/zh-tw/docs/start)、[語言參考](https://xulang.org/zh-tw/docs/lang/syntax)，或執行 [官方示例](https://github.com/xulang-org/examples)。
 
-XU 正在 **0.x 階段**持續演進。已釋出 SDK 見 [Releases](https://github.com/xulang-org/xu/releases)，平臺與執行時覆蓋見 [限制與現狀](https://xulang.org/zh-tw-tw/docs/status)。[基準看板](https://xulang.org/zh-tw-tw/benchmarks) 保留實測負載、編譯器版本與原始碼來源。
+XU 正在 **0.x 階段**持續演進。已釋出 SDK 見 [Releases](https://github.com/xulang-org/xu/releases)，平臺與執行時覆蓋見 [限制與現狀](https://xulang.org/zh-tw/docs/status)。[基準看板](https://xulang.org/zh-tw/benchmarks) 保留實測負載、編譯器版本與原始碼來源。
 
-開啟 [API 文件](https://xulang.org/zh-tw-tw/api/)，使用「搜尋 API」查詢包或直達本頁宣告。在輸入框外按 `/` 開啟搜尋，方向鍵和 Enter 操作結果，Escape 關閉。手機上目錄預設收起，便於直接閱讀正文；宣告標題可直達對應位置，「複製連結」可分享當前頁面或宣告。
+開啟 [API 文件](https://xulang.org/zh/api/)，使用「搜尋 API」查詢包或直達本頁宣告。在輸入框外按 `/` 開啟搜尋，方向鍵和 Enter 操作結果，Escape 關閉。手機上目錄預設收起，便於直接閱讀正文；宣告標題可直達對應位置，「複製連結」可分享當前頁面或宣告。
 
 API 索引提供常用任務入口、主題用途說明和頁內包搜尋，可按標準庫、UI、擴充套件包篩選。包詳情頂部提供「宣告速覽」，按名稱、用途或宣告型別篩選，再跳轉到完整簽名與說明；相關原始碼示例預設摺疊，按需展開。
 
@@ -220,7 +220,7 @@ make check
 
 預覽指南與契約位於 `templates/api-guides/{en,zh-tw}/preview/ui*` 和 `templates/api-preview-contracts.json`。顯式生成的預覽標明開發 SDK 版本與原始碼 SHA-256，並優先於舊 URL 重定向。正式建置繼續使用選定的正式 SDK 與已有示例快照。
 
-瀏覽器演練場提供[三頁控制元件畫廊](https://xulang.org/zh-tw-tw/playground?example=ui-gallery)：
+瀏覽器演練場提供[三頁控制元件畫廊](https://xulang.org/zh-tw/playground?example=ui-gallery)：
 基礎控制元件、Radio、ListBox、Scroll、Tabs、StyledLabel、Card、Badge、Progress 與只展示的只讀 Editor
 在 WASM 中執行同步自桌面的 Xu 控制元件邏輯，Canvas 呈現繪圖命令；畫廊中的 Editor 僅供展示，原生文字編輯與 IME 尚未接入。原有形狀與文字、點選計數器示例繼續保留。
 [瀏覽器 UI 架構與建置說明](playground/README.md)列出了原始碼同步、支援介面、鍵盤操作與重放限制。
@@ -229,4 +229,4 @@ Widgets 文件按 **API → UI → Widgets → 元件** 組織，中英文各有
 
 46 個元件體驗均執行可編輯的 Xu/WASM 示例，原始碼位於 `playground/examples/widget-*.xu`，由 `python3 scripts/gen-widget-examples.py` 釋出。部分體驗使用組合或受限實現：DatePicker 展示日期條，WebView 為佔位示例，TaskButton 不啟動後臺任務，文字欄位僅支援基本按鍵編輯，不提供原生選區、剪貼簿或 IME。各體驗註明能力邊界；執行 Xu 不代表完整桌面元件已經移植。
 
-[瀏覽器 UI 使用指南](https://xulang.org/zh-tw-tw/docs/ui/#browser-playground)說明了 ComboBox 候選選單、MultiSelect 勾選、Popover 偏好設定與 Modal 焦點操作。工作區與預覽遵循固定的 XUUI 設計參考，使用硃紅色焦點邊界，並對齊控制元件文字。手機上透過「檔案」「編輯」「預覽」「輸出」切換檢視；「適應視窗」縮放畫布，「100%」配合「平移」檢視大畫布，關閉平移後即可操作控制元件。
+[瀏覽器 UI 使用指南](https://xulang.org/zh-tw/docs/ui/#browser-playground)說明了 ComboBox 候選選單、MultiSelect 勾選、Popover 偏好設定與 Modal 焦點操作。工作區與預覽遵循固定的 XUUI 設計參考，使用硃紅色焦點邊界，並對齊控制元件文字。手機上透過「檔案」「編輯」「預覽」「輸出」切換檢視；「適應視窗」縮放畫布，「100%」配合「平移」檢視大畫布，關閉平移後即可操作控制元件。
