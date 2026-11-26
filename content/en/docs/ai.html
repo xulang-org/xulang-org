@@ -16,7 +16,7 @@
       <div class="step-badge">1</div>
       <div class="step-body">
         <div class="step-name"><code>#tensor</code> Storage &amp; Primitives</div>
-        <div class="step-meta"><code>F16</code>, <code>BF16</code>, four <code>FP8</code> formats, GGML <code>Q4_0</code>/<code>Q8_0</code> blocks, strided views, and 12 pure-Xu ops in <code>src/tensor/ops.xu</code></div>
+        <div class="step-meta"><code>F16</code>, <code>BF16</code>, four <code>FP8</code> formats, GGML <code>Q4_0</code>/<code>Q8_0</code>/<code>Q4_K</code>/<code>Q6_K</code> blocks, strided views, and 20 pure-Xu ops in <code>src/tensor/ops.xu</code></div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
@@ -32,7 +32,7 @@
       <div class="step-badge">3</div>
       <div class="step-body">
         <div class="step-name">Local Engine &amp; OpenAI <code>serve</code></div>
-        <div class="step-meta"><code>llm_engine</code> runs <code>GGUF</code>/<code>Safetensors</code>, quantized KV caches, BPE merges, top-p/repeat-penalty sampling, and <code>/v1/chat/completions</code></div>
+        <div class="step-meta"><code>llm_engine</code> runs mixed <code>Q4_K_M</code> <code>GGUF</code>/<code>Safetensors</code>, <code>qk_norm</code>, ChatML, quantized KV, and multi-slot continuous batching with Prefix KV Cache</div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
@@ -40,14 +40,14 @@
       <div class="step-badge">4</div>
       <div class="step-body">
         <div class="step-name">Metal GPU &amp; Vector Ecosystem</div>
-        <div class="step-meta"><code>metal</code> GPU shaders (GEMM/GEMM-NT, RMSNorm, Softmax, SwiGLU, Add) plus <code>qdrant</code>, <code>milvus</code>, <code>chroma</code>, and <code>XACP</code></div>
+        <div class="step-meta"><code>metal</code> single-<code>Batch</code> GPU compute, concurrent readers, <code>F16Matrix</code> &amp; fused <code>Q4Matrix</code> GEMV, plus <code>qdrant</code>, <code>milvus</code>, <code>chroma</code>, and <code>XACP</code></div>
       </div>
     </div>
   </div>
 </div>
 
 <h2 id="run">Build and run the local LLM engine</h2>
-<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> is a self-contained Transformer inference engine supporting <strong>Safetensors</strong> and <strong>GGUF v3</strong> (<code>F32</code>, <code>F16</code>, <code>BF16</code>, <code>FP8 E4M3</code>, <code>Q4_0</code>, <code>Q8_0</code> weights plus packed <code>p4k4</code> weight layouts). It uses <code>#tensor</code> for mixed-precision weight arenas and compact paged KV caches (<code>--kv-dtype f32|f16|bf16|fp8_e4m3fn</code>), supports arbitrary hidden dimensions past 2048, decodes GPT-2 byte-level tokens and <code>tokenizer.ggml.merges</code> BPE merges, and embeds a concurrent <code>#net/http</code> OpenAI-compatible server.</p>
+<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> is a self-contained Transformer inference engine supporting <strong>Safetensors</strong> and <strong>GGUF v2/v3</strong> (mixed-quantization <code>Q4_K_M</code> with <code>Q4_K</code>/<code>Q6_K</code>, plus <code>F32</code>, <code>F16</code>, <code>BF16</code>, <code>FP8 E4M3</code>, <code>Q4_0</code>, <code>Q8_0</code>, and <code>p4k4</code> layouts). It supports Qwen3/Gemma2 per-head <code>qk_norm</code>, ChatML auto-templating (<code>&lt;|im_start|&gt;</code>/<code>&lt;|im_end|&gt;</code>), compact paged KV caches (<code>--kv-dtype f32|f16|bf16|fp8_e4m3fn</code>), hidden dimensions beyond 2048, GPT-2 byte tokens and BPE merges, and a multi-slot continuous-batching <code>#net/http</code> OpenAI server with Prefix KV Cache reuse and live <code>/health</code> telemetry.</p>
 <pre><code>XU_TENSOR_FUSION=1 XU_TENSOR_FAST_MATH=1 ./bin/xu build examples/llm_engine/main.xu -o llm_engine
 
 # Verify sequential vs continuous-batching parity with FP8 KV cache
@@ -82,8 +82,8 @@
     </tr>
     <tr>
       <td>Strided views &amp; blocks</td>
-      <td><code>TensorView</code>, <code>MatrixView</code>, <code>Q4Block</code>, <code>Q8Block</code>, <code>read_q4_0</code>, <code>read_q8_0</code></td>
-      <td>Row/column/slice zero-copy shape indexing &amp; bounds-checked GGML 32-weight block decoding</td>
+      <td><code>TensorView</code>, <code>MatrixView</code>, <code>Q4Block</code>, <code>Q8Block</code>, <code>Q4KBlock</code>, <code>Q6KBlock</code>, <code>read_q4_k</code>, <code>read_q6_k</code></td>
+      <td>Row/column/slice zero-copy indexing, GGML 32-value &amp; 256-value K-quant block decoding, and zero-alloc <code>dot_f32</code></td>
     </tr>
     <tr>
       <td>Vector &amp; similarity ops</td>
@@ -150,30 +150,28 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
 </ul>
 
 <h2 id="gpu-metal">GPU compute via <code>packages/metal</code></h2>
-<p>For Apple Silicon GPUs, the official <a href="https://github.com/xulang-org/packages"><code>packages/metal</code></a> module provides explicit binary32 GPU matrix buffers (<code>F32Matrix</code>), Metal Performance Shaders matrix multiplications, and compiled Metal compute shaders synchronized with non-blocking <code>Fence</code> handles and compile-time borrow + runtime shape/alias/device checks:</p>
+<p>For Apple Silicon GPUs, the official <a href="https://github.com/xulang-org/packages"><code>packages/metal</code></a> (<code>v1.3.0</code>) module provides <code>F32Matrix</code>, <code>F16Matrix</code> (<code>MPSDataTypeFloat16</code>), and raw GGML <code>Q4Matrix</code> (<code>matrix_q4_0</code>) buffers, read/write lock separation for concurrent readers, and multi-op <code>Batch</code> command encoding synchronized with non-blocking <code>Fence</code> handles and compile-time borrow + runtime shape/alias/device guards:</p>
 <pre><code>@main
 metal #"github.com/xulang-org/packages/metal"
 #errors
 
-fn gpu_ffn_step(d &amp;metal.Device, x &amp;metal.F32Matrix, w &amp;metal.F32Matrix,
-                w_gate &amp;metal.F32Matrix, w_up &amp;metal.F32Matrix) metal.F32Matrix {
+fn gpu_ffn_batch(d &amp;metal.Device, x &amp;metal.F32Matrix, w &amp;metal.F32Matrix,
+                 w_gate &amp;metal.Q4Matrix, w_up &amp;metal.Q4Matrix) metal.F32Matrix {
     $normed := d.matrix_f32(x.rows(), x.columns()) >>>
-    f_rms := metal.rmsnorm_f32($&amp;normed, x, w, 0.00001) >>>
-    _ := f_rms.wait() >>>
-
     $g := d.matrix_f32(x.rows(), w_gate.rows()) >>>
     $u := d.matrix_f32(x.rows(), w_up.rows()) >>>
-    f_g := metal.gemm_f32_nt($&amp;g, &amp;normed, w_gate) >>>
-    f_u := metal.gemm_f32_nt($&amp;u, &amp;normed, w_up) >>>
-    _ := f_g.wait() >>>
-    _ := f_u.wait() >>>
-
     $out := d.matrix_f32(x.rows(), w_gate.rows()) >>>
-    f_sw := metal.swiglu_f32($&amp;out, &amp;g, &amp;u) >>>
-    _ := f_sw.wait() >>>
+
+    $b := d.begin_batch() >>>
+    _ := b.rmsnorm_f32($&amp;normed, x, w, 0.00001) >>>
+    _ := b.gemv_q4_0_f32($&amp;g, &amp;normed, w_gate) >>>
+    _ := b.gemv_q4_0_f32($&amp;u, &amp;normed, w_up) >>>
+    _ := b.swiglu_f32($&amp;out, &amp;g, &amp;u) >>>
+    $f := b.commit() >>>
+    _ := f.wait() >>>
     << out
 }</code></pre>
-<p>Available GPU matrix ops in <code>metal/matrix_f32.xu</code> (full Transformer block coverage): <code>gemm_f32</code> ($A B$), <code>gemm_f32_nt</code> ($A B^T$), <code>rmsnorm_f32</code>, <code>layernorm_f32</code>, <code>softmax_f32</code>, <code>gelu_f32</code>, <code>swiglu_f32</code>, <code>add_f32</code>, <code>mul_f32</code>, <code>scale_f32</code>, <code>rope_f32</code>, and <code>causal_attention_f32</code>.</p>
+<p>Available GPU ops across standalone dispatches and <code>Batch</code> methods: <code>gemm_f32</code>, <code>gemm_f32_nt</code>, <code>rmsnorm_f32</code>, <code>layernorm_f32</code>, <code>softmax_f32</code>, <code>gelu_f32</code>, <code>swiglu_f32</code>, <code>add_f32</code>, <code>mul_f32</code>, <code>scale_f32</code>, <code>rope_f32</code>, <code>causal_attention_f32</code>, <code>gemm_f16</code>, <code>gemm_f16_nt</code>, <code>f16_to_f32</code>, <code>f32_to_f16</code>, and fused <code>gemv_q4_0_f32</code> ($x \cdot \mathrm{dequant}(W)^T$ computed on-the-fly in GPU registers).</p>
 
 <h2 id="verification">Verify and measure inference</h2>
 <pre><code># Pure-Xu compiler MIR &amp; tensor primitive suites
