@@ -17,7 +17,7 @@ fn main() int {
     }
 
     println("1. Elasticsearch ping response: true")
-    info := es.info() or (err) {
+    info := es.info() >>> (err) {
         println("Info failed: " + err.msg())
         << 1
     }
@@ -26,11 +26,11 @@ fn main() int {
     // 3. Create Index
     index_name := "xu_articles"
     if es.index_exists(index_name + "") {
-        es.delete_index(index_name + "") or (err) {
+        es.delete_index(index_name + "") >>> (err) {
             << 1
         }
     }
-    create_ok := es.create_index(index_name + "", "{}") or (err) {
+    create_ok := es.create_index(index_name + "", "{}") >>> (err) {
         println("Create index failed: " + err.msg())
         << 1
     }
@@ -38,44 +38,44 @@ fn main() int {
 
     // 4. Index Document
     doc_1 := "{\"title\": \"Xu Programming Language Unleashed\", \"tag\": \"systems\", \"views\": 2048}"
-    idx_res := es.index_doc(index_name + "", "1", doc_1) or (err) {
+    idx_res := es.index_doc(index_name + "", "1", doc_1) >>> (err) {
         println("Index doc failed: " + err.msg())
         << 1
     }
     println("4. Indexed doc 1: " + idx_res)
 
     doc_2 := "{\"title\": \"Building Fast Microservices with Xu and NATS\", \"tag\": \"cloud\", \"views\": 4096}"
-    es.index_doc(index_name + "", "2", doc_2) or (err) {
+    es.index_doc(index_name + "", "2", doc_2) >>> (err) {
         << 1
     }
     println("5. Indexed doc 2 successfully.")
 
     // 5. Refresh index
-    es.refresh(index_name + "") or (err) {
+    es.refresh(index_name + "") >>> (err) {
         << 1
     }
 
     // 6. Get Document
-    fetched := es.get_doc(index_name + "", "1") or (err) {
+    fetched := es.get_doc(index_name + "", "1") >>> (err) {
         println("Get doc failed: " + err.msg())
         << 1
     }
     println("6. Fetched doc 1: " + fetched)
 
     // 7. Search Match
-    search_res := es.search_match(index_name + "", "title", "Xu") or (err) {
+    search_res := es.search_match(index_name + "", "title", "Xu") >>> (err) {
         println("Search failed: " + err.msg())
         << 1
     }
     println("7. Search match 'Xu' total hits: " + str(search_res.total))
 
     // 8. Delete Document & Index
-    del_doc_ok := es.delete_doc(index_name + "", "1") or (err) {
+    del_doc_ok := es.delete_doc(index_name + "", "1") >>> (err) {
         << 1
     }
     println("8. Delete doc 1 ok=" + str(del_doc_ok))
 
-    del_idx_ok := es.delete_index(index_name + "") or (err) {
+    del_idx_ok := es.delete_index(index_name + "") >>> (err) {
         << 1
     }
     println("9. Delete index ok=" + str(del_idx_ok))
@@ -119,19 +119,19 @@ fn verify_elasticsearch_pool() {
     println("   Testing delegated operations via pool...")
     pool_idx := "xu_pool_docs"
     pool_doc := "{\"name\": \"PoolWorker\", \"stars\": 99}"
-    p.index_doc(pool_idx + "", "100", pool_doc + "") or (err) {
+    p.index_doc(pool_idx + "", "100", pool_doc + "") >>> (err) {
         println("   [FAIL] Pool index_doc error: " + err.msg())
         <<
     }
     println("   [PASS] Pool index_doc succeeded.")
 
-    doc_got := p.get_doc(pool_idx + "", "100") or (err) {
+    doc_got := p.get_doc(pool_idx + "", "100") >>> (err) {
         println("   [FAIL] Pool get_doc error: " + err.msg())
         <<
     }
     println("   Retrieved via pool: " + doc_got)
 
-    p.delete_doc(pool_idx + "", "100") or (err) {
+    p.delete_doc(pool_idx + "", "100") >>> (err) {
         println("   [FAIL] Pool delete_doc error: " + err.msg())
         <<
     }

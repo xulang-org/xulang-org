@@ -11,14 +11,14 @@ fn demo_resp_encoding() {
 
 fn demo_value_types() {
     v_str := redis.str_value("PONG")
-    s := v_str.as_string() or (err) {
+    s := v_str.as_string() >>> (err) {
         println("as_string failed: " + err.msg())
         <<
     }
     println("Value string: " + s)
 
     v_int := redis.int_value(10086)
-    n := v_int.as_int() or (err) {
+    n := v_int.as_int() >>> (err) {
         println("as_int failed: " + err.msg())
         <<
     }
@@ -35,22 +35,22 @@ fn demo_url_parsing() {
 
 fn redis_pool_worker(id int, addr string, idle chan int, done chan int) {
     p := redis.Pool{addr: addr, auth: "", db: 0, idle: idle, max_idle: 5}
-    $c := p.get() or (err) {
+    $c := p.get() >>> (err) {
         println("worker " + str(id) + " get failed: " + err.msg())
         done <- -id
         <<
     }
     key := "xu_coro_key_" + str(id)
     val := "val_" + str(id)
-    c.set(key + "", val + "") or (err) {
+    c.set(key + "", val + "") >>> (err) {
         done <- -id
         <<
     }
-    got := c.get(key + "") or (err) {
+    got := c.get(key + "") >>> (err) {
         done <- -id
         <<
     }
-    c.del(key + "") or (err) {
+    c.del(key + "") >>> (err) {
         <<
     }
     fd := c.fd
@@ -72,63 +72,63 @@ fn main() int {
 
     url := "redis://127.0.0.1:6379/0"
     println("Connecting to Redis via URL " + url + "...")
-    $client := redis.open_url(url + "") or (err) {
+    $client := redis.open_url(url + "") >>> (err) {
         println("Connection via URL failed: " + err.msg())
         << 1
     }
 
-    res_ping := client.ping() or (err) {
+    res_ping := client.ping() >>> (err) {
         println("PING failed: " + err.msg())
         << 1
     }
     println("1. PING response: " + res_ping)
 
     // String & Counter
-    client.set("xu_greeting", "Hello from Xu Language!") or (err) {
+    client.set("xu_greeting", "Hello from Xu Language!") >>> (err) {
         println("SET failed: " + err.msg())
         << 1
     }
-    greeting := client.get("xu_greeting") or (err) {
+    greeting := client.get("xu_greeting") >>> (err) {
         println("GET failed: " + err.msg())
         << 1
     }
     println("2. GET xu_greeting: " + greeting)
 
-    client.set("xu_counter", "10") or (err) {
+    client.set("xu_counter", "10") >>> (err) {
         println("SET counter failed: " + err.msg())
         << 1
     }
-    new_c := client.incr("xu_counter") or (err) {
+    new_c := client.incr("xu_counter") >>> (err) {
         println("INCR failed: " + err.msg())
         << 1
     }
     println("3. INCR xu_counter: " + str(new_c))
 
     // Hash
-    client.hset("xu_hash", "author", "DeepMind Pair") or (err) {
+    client.hset("xu_hash", "author", "DeepMind Pair") >>> (err) {
         println("HSET failed: " + err.msg())
         << 1
     }
-    author := client.hget("xu_hash", "author") or (err) {
+    author := client.hget("xu_hash", "author") >>> (err) {
         println("HGET failed: " + err.msg())
         << 1
     }
     println("4. HGET xu_hash.author: " + author)
 
     // List
-    client.del("xu_list") or (err) {
+    client.del("xu_list") >>> (err) {
         << 1
     }
-    client.rpush("xu_list", "alpha") or (err) {
+    client.rpush("xu_list", "alpha") >>> (err) {
         << 1
     }
-    client.rpush("xu_list", "beta") or (err) {
+    client.rpush("xu_list", "beta") >>> (err) {
         << 1
     }
-    client.rpush("xu_list", "gamma") or (err) {
+    client.rpush("xu_list", "gamma") >>> (err) {
         << 1
     }
-    items := client.lrange("xu_list", 0, -1) or (err) {
+    items := client.lrange("xu_list", 0, -1) >>> (err) {
         println("LRANGE failed: " + err.msg())
         << 1
     }
@@ -140,36 +140,36 @@ fn main() int {
     }
 
     // Batch operations: MSET & MGET
-    mset_res := client.mset(["xu_m1", "val1", "xu_m2", "val2", "xu_m3", "val3"]) or (err) {
+    mset_res := client.mset(["xu_m1", "val1", "xu_m2", "val2", "xu_m3", "val3"]) >>> (err) {
         println("MSET failed: " + err.msg())
         << 1
     }
-    mvals := client.mget(["xu_m1", "xu_m2", "xu_m3"]) or (err) {
+    mvals := client.mget(["xu_m1", "xu_m2", "xu_m3"]) >>> (err) {
         println("MGET failed: " + err.msg())
         << 1
     }
     println("6. MSET/MGET: len=" + str(mvals.len) + ", m1=" + mvals[0] + ", m2=" + mvals[1] + ", m3=" + mvals[2])
 
     // Sorted Set (ZSet)
-    client.del("xu_leaderboard") or (err) {
+    client.del("xu_leaderboard") >>> (err) {
         << 1
     }
-    client.zadd("xu_leaderboard", 100.5, "Alice") or (err) {
+    client.zadd("xu_leaderboard", 100.5, "Alice") >>> (err) {
         << 1
     }
-    client.zadd("xu_leaderboard", 95.0, "Bob") or (err) {
+    client.zadd("xu_leaderboard", 95.0, "Bob") >>> (err) {
         << 1
     }
-    client.zadd("xu_leaderboard", 120.0, "Charlie") or (err) {
+    client.zadd("xu_leaderboard", 120.0, "Charlie") >>> (err) {
         << 1
     }
-    zcard := client.zcard("xu_leaderboard") or (err) {
+    zcard := client.zcard("xu_leaderboard") >>> (err) {
         << 1
     }
-    zscore := client.zscore("xu_leaderboard", "Alice") or (err) {
+    zscore := client.zscore("xu_leaderboard", "Alice") >>> (err) {
         << 1
     }
-    zleaders := client.zrange("xu_leaderboard", 0, -1) or (err) {
+    zleaders := client.zrange("xu_leaderboard", 0, -1) >>> (err) {
         << 1
     }
     println("7. ZSET: card=" + str(zcard) + ", Alice score=" + zscore + ", members=" + zleaders[0] + "," + zleaders[1] + "," + zleaders[2])
@@ -180,7 +180,7 @@ fn main() int {
     pipe.set("xu_pipe_b", "pipe_val_b")
     pipe.get("xu_pipe_a")
     pipe.incr("xu_pipe_c")
-    pipe_results := client.exec_pipeline($&pipe) or (err) {
+    pipe_results := client.exec_pipeline($&pipe) >>> (err) {
         println("Pipeline exec failed: " + err.msg())
         << 1
     }
@@ -191,7 +191,7 @@ fn main() int {
     println("   - cmd 3 (INCR): " + str(pipe_results[3].int_val))
 
     // Cleanup
-    del_cnt := client.del("xu_greeting") or (err) {
+    del_cnt := client.del("xu_greeting") >>> (err) {
         << 1
     }
     println("9. Cleaned up xu_greeting (del count=" + str(del_cnt) + ")")
@@ -200,12 +200,12 @@ fn main() int {
 
     // Test Pool with URL, Reuse & Concurrency
     pool := redis.new_pool_url("redis://127.0.0.1:6379/0", 5)
-    $p_conn := pool.get() or (err) {
+    $p_conn := pool.get() >>> (err) {
         println("Pool get failed: " + err.msg())
         << 1
     }
     fd_first := p_conn.fd
-    pool_ping := p_conn.ping() or (err) {
+    pool_ping := p_conn.ping() >>> (err) {
         println("Pool ping failed: " + err.msg())
         << 1
     }
@@ -214,7 +214,7 @@ fn main() int {
     println("11. Pool connection returned successfully.")
 
     // Verify Pool Connection REUSE: second get should give the exact same fd
-    $p_conn2 := pool.get() or (err) {
+    $p_conn2 := pool.get() >>> (err) {
         println("Pool second get failed: " + err.msg())
         << 1
     }
@@ -226,7 +226,7 @@ fn main() int {
     }
 
     // Concurrent borrow another connection
-    $p_conn3 := pool.get() or (err) {
+    $p_conn3 := pool.get() >>> (err) {
         println("Pool third get failed: " + err.msg())
         << 1
     }
@@ -234,10 +234,10 @@ fn main() int {
     if fd_second != fd_third {
         println("13. [PASS] Pool Multi-connection concurrency verified! (fd2=" + str(fd_second) + " != fd3=" + str(fd_third) + ")")
     }
-    p_conn3.set("pool_concurrent_test", "ok") or (err) {
+    p_conn3.set("pool_concurrent_test", "ok") >>> (err) {
         << 1
     }
-    got_c := p_conn2.get("pool_concurrent_test") or (err) {
+    got_c := p_conn2.get("pool_concurrent_test") >>> (err) {
         << 1
     }
     println("14. [PASS] Concurrent connection cross-query verified: got=" + got_c)

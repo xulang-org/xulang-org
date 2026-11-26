@@ -5,7 +5,7 @@ rabbitmq #github.com/xulang-org/packages/rabbitmq
 
 fn verify_rabbitmq_basic() {
     println("--- 1. Testing RabbitMQ Client AMQP 0-9-1 Basic Operations ---")
-    $client := rabbitmq.open("127.0.0.1", 5672, "guest", "guest", "/") or (err) {
+    $client := rabbitmq.open("127.0.0.1", 5672, "guest", "guest", "/") >>> (err) {
         println("   [FAIL] RabbitMQ connect failed: " + err.msg())
         <<
     }
@@ -13,7 +13,7 @@ fn verify_rabbitmq_basic() {
 
     // 1. Declare Queue
     queue_name := "xu_test_queue"
-    client.declare_queue(queue_name + "", true) or (err) {
+    client.declare_queue(queue_name + "", true) >>> (err) {
         println("   [FAIL] declare_queue failed: " + err.msg())
         client.close()
         <<
@@ -23,7 +23,7 @@ fn verify_rabbitmq_basic() {
     // 2. Publish Message
     msg := "Antigravity RabbitMQ AMQP test message from Xu Language!"
     println("   Publishing message to queue '" + queue_name + "'...")
-    client.publish("", queue_name + "", msg + "") or (err) {
+    client.publish("", queue_name + "", msg + "") >>> (err) {
         println("   [FAIL] publish failed: " + err.msg())
         client.close()
         <<
@@ -32,7 +32,7 @@ fn verify_rabbitmq_basic() {
 
     // 3. Get / Consume Message
     println("   Consuming message via Basic.Get...")
-    got := client.get(queue_name + "", true) or (err) {
+    got := client.get(queue_name + "", true) >>> (err) {
         println("   [FAIL] get failed: " + err.msg())
         client.close()
         <<
@@ -53,7 +53,7 @@ fn verify_rabbitmq_pool() {
     $p := rabbitmq.open_pool("127.0.0.1", 5672, "guest", "guest", "/", 5)
 
     // 1. Connection Reuse Test
-    $c1 := p.get() or (err) {
+    $c1 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c1: " + err.msg())
         <<
     }
@@ -61,7 +61,7 @@ fn verify_rabbitmq_pool() {
     println("   Borrow 1 fd: " + str(fd1))
     p.put(c1)
 
-    $c2 := p.get() or (err) {
+    $c2 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c2: " + err.msg())
         <<
     }
@@ -74,7 +74,7 @@ fn verify_rabbitmq_pool() {
     }
 
     // 2. Multi-connection concurrent borrow
-    $c3 := p.get() or (err) {
+    $c3 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c3: " + err.msg())
         <<
     }
@@ -91,20 +91,20 @@ fn verify_rabbitmq_pool() {
     // 3. Delegated operations via pool
     println("   Testing delegated operations via pool...")
     pool_queue := "xu_pool_queue"
-    p.declare_queue(pool_queue + "", true) or (err) {
+    p.declare_queue(pool_queue + "", true) >>> (err) {
         println("   [FAIL] Pool declare_queue failed: " + err.msg())
         <<
     }
     println("   [PASS] Pool declared queue: " + pool_queue)
 
     pool_msg := "Pooled rabbitmq message payload from Xu"
-    p.publish("", pool_queue + "", pool_msg + "") or (err) {
+    p.publish("", pool_queue + "", pool_msg + "") >>> (err) {
         println("   [FAIL] Pool publish failed: " + err.msg())
         <<
     }
     println("   [PASS] Pool published message.")
 
-    got_pool := p.get_message(pool_queue + "", true) or (err) {
+    got_pool := p.get_message(pool_queue + "", true) >>> (err) {
         println("   [FAIL] Pool get_message failed: " + err.msg())
         <<
     }

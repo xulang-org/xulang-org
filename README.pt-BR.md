@@ -33,7 +33,7 @@ XU une propriedade e empréstimo verificados em tempo de compilação com corrot
 | :--- | :--- |
 | **Propriedade sem GC** | Verificações de movimentação e empréstimo em compilação, lifetimes inferidos e limpeza determinística de recursos. |
 | **Concorrência na linguagem** | Inicie uma corrotina com `xu`; troque valores por canais `chan` tipados. |
-| **Fluxo de controle visível** | `<<` retorna um valor, `>>` lança um erro e `or (err) { … }` o trata no ponto de chamada. |
+| **Fluxo de controle visível** | `<<` retorna um valor, `>>>` lança um erro e `>>> (err) { … }` o trata no ponto de chamada. |
 | **Toolchain integrada** | Compile, execute, verifique, teste, formate, gere documentação e use serviços de linguagem por meio de `xu`. |
 
 ## Leia um pouco de XU
@@ -45,12 +45,12 @@ Dois trabalhadores, um canal e um caminho explícito de erro:
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >> errors.new("empty name") }
+    if name.len == 0 { >>> errors.new("empty name") }
     << name.len * 10
 }
 
 fn worker(name string, results chan int) {
-    value := score(name) or (err) {
+    value := score(name) >>> (err) {
         results <- 0
         <<
     }
@@ -68,7 +68,7 @@ fn main() int {
 
 Salve como `main.xu` e execute `xu run main.xu`. A saída será `100`.
 
-`#errors` importa um pacote. `xu worker(...)` inicia uma corrotina. As duas recepções coletam os resultados; se `score` falhar, `or (err) { … }` envia um valor reserva de `0` e encerra esse trabalhador.
+`#errors` importa um pacote. `xu worker(...)` inicia uma corrotina. As duas recepções coletam os resultados; se `score` falhar, `>>> (err) { … }` envia um valor reserva de `0` e encerra esse trabalhador.
 
 ## Comece aqui
 

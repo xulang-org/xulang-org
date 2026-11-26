@@ -8,14 +8,14 @@ fn route(request webview.InvokeRequest) string {
         target := ui.CanvasEvent{window_id: request.window_id,canvas_id: request.window_id,generation: request.generation}
         options := ui.RequestOptions{timeout_ms: 2000}
         script := "document.title"
-        result := ui.webview_request_wait(&target,ui.REQUEST_WEBVIEW_EVAL,&script,&options) or (err) { << "failed: " + err.msg() }
+        result := ui.webview_request_wait(&target,ui.REQUEST_WEBVIEW_EVAL,&script,&options) >>> (err) { << "failed: " + err.msg() }
         if result.status != ui.REQUEST_COMPLETED { << "status: " + str(result.status) }
         << result.value + ""
     }
     << request.payload + ""
 }
 fn ipc(emit_ch chan string,ech chan ui.Event) {
-    webview.bind_ipc_requests_www(":mem:",route,emit_ch,ech) or (err) { eprintln(err.msg())
+    webview.bind_ipc_requests_www(":mem:",route,emit_ch,ech) >>> (err) { eprintln(err.msg())
         << }
 }
 fn events(ech chan ui.Event,emit_ch chan string) {
@@ -29,13 +29,13 @@ fn run() int {
     ech := chan ui.Event{cap: 1024}
     emit_ch := chan string{cap: 64}
     $app := ui.new_app_events(ech)
-    webview.stage_www_root(":mem:") or >>
+    webview.stage_www_root(":mem:") >>>
     xu ipc(emit_ch,ech)
     xu events(ech,emit_ch)
     $window := app.new_window(ui.WindowOpts{title: "Xu UI / WebView Request Lifecycle",width: 880,height: 640})
     $browser := webview.attach($&window)
-    browser.load_url(webview.app_scheme_url()) or >>
-    << app.run() or >>
+    browser.load_url(webview.app_scheme_url()) >>>
+    << app.run() >>>
 }
-fn main() int { << run() or (err) { eprintln(err.msg())
+fn main() int { << run() >>> (err) { eprintln(err.msg())
     << 1 } }

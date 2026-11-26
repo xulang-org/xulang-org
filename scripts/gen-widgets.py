@@ -15,7 +15,7 @@ START, END = '<!--widget-directory:start-->', '<!--widget-directory:end-->'
 def native_source(c):
     """Small Screen setup fragments; complete lifecycle is in the linked workshop."""
     if c['slug'] == 'toast-host':
-        return '#ui/widgets\n\nfn notifications() widgets.ToastHost {\n    $host := widgets.toast_host()\n    value := widgets.notice(&"Workspace saved")\n    host.enqueue(&value) or >>\n    << host\n}'
+        return '#ui/widgets\n\nfn notifications() widgets.ToastHost {\n    $host := widgets.toast_host()\n    value := widgets.notice(&"Workspace saved")\n    host.enqueue(&value) >>>\n    << host\n}'
     args = {
         'styled-label': '"Make room for ideas.",20.0,false', 'button': '"Save"',
         'icon-button': '"www/logo.png","Favorite"', 'input': '"Xu workspace"',
@@ -52,15 +52,15 @@ def native_source(c):
     if slug == 'color-picker':
         imports.append('#ui/draw')
     if slug in ('popover', 'tooltip'):
-        setup += ['anchor := screen.button("Preferences") or >>',
-                  'screen.place(anchor,24.0,24.0,180.0,40.0) or >>']
+        setup += ['anchor := screen.button("Preferences") >>>',
+                  'screen.place(anchor,24.0,24.0,180.0,40.0) >>>']
     if slug in ('menu', 'context-menu', 'split-button', 'button-group'):
         factory = 'button_group_item' if slug == 'button-group' else 'menu_item'
         setup.append(f'items := [widgets.{factory}(1,"Save"),widgets.{factory}(2,"Export")]')
-    setup.append(f'id := screen.{c["factory"]}({args[slug]}) or >>')
+    setup.append(f'id := screen.{c["factory"]}({args[slug]}) >>>')
     # Overlays are positioned by Screen relative to their anchor or window.
     if slug not in ('popover', 'tooltip', 'modal'):
-        setup.append('screen.place(id,24.0,24.0,320.0,80.0) or >>')
+        setup.append('screen.place(id,24.0,24.0,320.0,80.0) >>>')
     setup.append('<< id')
     return '\n'.join(imports) + '\n\nfn configure(screen $&widgets.Screen) int {\n    ' + '\n    '.join(setup) + '\n}'
 

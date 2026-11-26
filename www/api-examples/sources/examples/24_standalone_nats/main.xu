@@ -8,12 +8,12 @@ fn main() int {
     addr := "127.0.0.1:4222"
     println("Connecting to NATS at " + addr + "...")
 
-    $nc := nats.connect(addr + "") or (err) {
+    $nc := nats.connect(addr + "") >>> (err) {
         println("Connection to NATS failed: " + err.msg())
         << 1
     }
 
-    ping_ok := nc.ping() or (err) {
+    ping_ok := nc.ping() >>> (err) {
         println("Ping failed: " + err.msg())
         << 1
     }
@@ -21,7 +21,7 @@ fn main() int {
 
     // 2. Subscribe to subject
     topic := "xu.events"
-    sub := nc.subscribe(topic + "") or (err) {
+    sub := nc.subscribe(topic + "") >>> (err) {
         println("Subscribe failed: " + err.msg())
         << 1
     }
@@ -29,14 +29,14 @@ fn main() int {
 
     // 3. Publish a message
     payload := "Hello NATS from Xu Programming Language!"
-    nc.publish(topic + "", payload + "") or (err) {
+    nc.publish(topic + "", payload + "") >>> (err) {
         println("Publish failed: " + err.msg())
         << 1
     }
     println("3. Published payload: " + payload)
 
     // 4. Receive the message
-    msg := nc.next_msg() or (err) {
+    msg := nc.next_msg() >>> (err) {
         println("Receive failed: " + err.msg())
         << 1
     }
@@ -46,24 +46,24 @@ fn main() int {
     println("   - Data: " + msg.data)
 
     // 5. Test Queue Group (load-balanced worker queue)
-    q_sub := nc.queue_subscribe("xu.tasks", "workers") or (err) {
+    q_sub := nc.queue_subscribe("xu.tasks", "workers") >>> (err) {
         println("Queue subscribe failed: " + err.msg())
         << 1
     }
     println("5. Queue Group subscribed: xu.tasks -> workers (sid=" + q_sub.sid + ")")
 
-    nc.publish("xu.tasks", "task_payload_123") or (err) {
+    nc.publish("xu.tasks", "task_payload_123") >>> (err) {
         << 1
     }
-    q_msg := nc.next_msg() or (err) {
+    q_msg := nc.next_msg() >>> (err) {
         << 1
     }
     println("6. Queue Group received task: " + q_msg.data)
 
-    nc.unsubscribe(sub) or (err) {
+    nc.unsubscribe(sub) >>> (err) {
         << 1
     }
-    nc.unsubscribe(q_sub) or (err) {
+    nc.unsubscribe(q_sub) >>> (err) {
         << 1
     }
     nc.close()
@@ -71,19 +71,19 @@ fn main() int {
     // 7. NATS Connection Pool Deep Verification
     println("7. Testing NATS Connection Pool with Reuse & Concurrency...")
     pool := nats.open_pool("127.0.0.1:4222", 5)
-    $c1 := pool.get() or (err) {
+    $c1 := pool.get() >>> (err) {
         println("Pool get c1 failed: " + err.msg())
         << 1
     }
     fd_first := c1.fd
-    c1_ok := c1.ping() or (err) {
+    c1_ok := c1.ping() >>> (err) {
         << 1
     }
     println("   Pool c1 ping: " + str(c1_ok) + " (fd=" + str(fd_first) + ")")
     pool.put(c1)
 
     // Verify Pool Connection REUSE
-    $c2 := pool.get() or (err) {
+    $c2 := pool.get() >>> (err) {
         println("Pool get c2 failed: " + err.msg())
         << 1
     }
@@ -95,7 +95,7 @@ fn main() int {
     }
 
     // Concurrent borrow another connection
-    $c3 := pool.get() or (err) {
+    $c3 := pool.get() >>> (err) {
         println("Pool get c3 failed: " + err.msg())
         << 1
     }
@@ -105,7 +105,7 @@ fn main() int {
     }
 
     // Pool Direct Publish
-    pool.publish("pool.notify", "notification from nats pool") or (err) {
+    pool.publish("pool.notify", "notification from nats pool") >>> (err) {
         << 1
     }
     println("   [PASS] NATS Pool direct publish succeeded.")

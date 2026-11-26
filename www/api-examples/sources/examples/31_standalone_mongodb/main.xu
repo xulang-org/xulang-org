@@ -5,7 +5,7 @@ mongodb #github.com/xulang-org/packages/mongodb
 
 fn verify_mongodb_hello() {
     println("--- 1. Testing MongoDB Hello Handshake ---")
-    $client := mongodb.open("127.0.0.1:27017") or (err) {
+    $client := mongodb.open("127.0.0.1:27017") >>> (err) {
         println("   [FAIL] Connect error: " + err.msg())
         <<
     }
@@ -20,7 +20,7 @@ fn verify_mongodb_hello() {
 
 fn verify_mongodb_crud() {
     println("\n--- 2. Testing MongoDB Document CRUD ---")
-    $client := mongodb.open("127.0.0.1:27017") or (err) {
+    $client := mongodb.open("127.0.0.1:27017") >>> (err) {
         println("   [FAIL] Connect error: " + err.msg())
         <<
     }
@@ -38,7 +38,7 @@ fn verify_mongodb_crud() {
     doc = doc + mongodb.bson_string("role", "AI Assistant")
     doc = doc + mongodb.bson_int32("stars", 100)
 
-    client.insert_one(db_name + "", col_name + "", doc) or (err) {
+    client.insert_one(db_name + "", col_name + "", doc) >>> (err) {
         println("   [FAIL] Insert failed: " + err.msg())
         client.close()
         <<
@@ -47,7 +47,7 @@ fn verify_mongodb_crud() {
 
     // 3. Find first document string field
     println("   Querying document field 'role'...")
-    role := client.find_first_string(db_name + "", col_name + "", "role") or (err) {
+    role := client.find_first_string(db_name + "", col_name + "", "role") >>> (err) {
         println("   [FAIL] Query failed: " + err.msg())
         client.close()
         <<
@@ -72,7 +72,7 @@ fn verify_mongodb_pool() {
     $p := mongodb.open_pool("127.0.0.1:27017", 5)
 
     // 1. Connection Reuse Test
-    $c1 := p.get() or (err) {
+    $c1 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c1: " + err.msg())
         <<
     }
@@ -80,7 +80,7 @@ fn verify_mongodb_pool() {
     println("   Borrow 1 fd: " + str(fd1))
     p.put(c1)
 
-    $c2 := p.get() or (err) {
+    $c2 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c2: " + err.msg())
         <<
     }
@@ -93,7 +93,7 @@ fn verify_mongodb_pool() {
     }
 
     // 2. Multi-connection concurrent borrow
-    $c3 := p.get() or (err) {
+    $c3 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c3: " + err.msg())
         <<
     }
@@ -113,13 +113,13 @@ fn verify_mongodb_pool() {
 
     $doc := mongodb.bson_string("name", "PoolWorker")
     doc = doc + mongodb.bson_string("dept", "CoreEngine")
-    p.insert_one("xu_test_db", "pool_users", doc) or (err) {
+    p.insert_one("xu_test_db", "pool_users", doc) >>> (err) {
         println("   [FAIL] Pool insert_one error: " + err.msg())
         <<
     }
     println("   [PASS] Pool delegated insert_one succeeded.")
 
-    dept := p.find_first_string("xu_test_db", "pool_users", "dept") or (err) {
+    dept := p.find_first_string("xu_test_db", "pool_users", "dept") >>> (err) {
         println("   [FAIL] Pool find_first_string error: " + err.msg())
         <<
     }

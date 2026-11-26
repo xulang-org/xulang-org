@@ -6,31 +6,31 @@
 demo #"github.com/xulang-org/examples/ui_demo"
 
 fn scene(events chan ui.Event) int {
-    ready := demo.ready(events) or >>
+    ready := demo.ready(events) >>>
     if ready.kind == ui.EV_EXIT{ << 0}
-    $screen := widgets.screen(&ready) or >>
-    screen.resize(1180.0, 900.0) or(err) {screen.dispose()
-        >> err}
-    screen.set_min_size(920, 780) or(err) {screen.dispose()
-        >> err}
-    $model := create($&screen) or(err) {screen.dispose()
-        >> err}
-    workshop_loop(events, $&model, $&screen) or(err) {screen.dispose()
-        >> err}
+    $screen := widgets.screen(&ready) >>>
+    screen.resize(1180.0, 900.0) >>> (err) {screen.dispose()
+        >>> err}
+    screen.set_min_size(920, 780) >>> (err) {screen.dispose()
+        >>> err}
+    $model := create($&screen) >>> (err) {screen.dispose()
+        >>> err}
+    workshop_loop(events, $&model, $&screen) >>> (err) {screen.dispose()
+        >>> err}
     screen.dispose()
     << 0
 }
 
-fn worker(events chan ui.Event) {scene(events) or(err) {demo.fail(err.msg())
+fn worker(events chan ui.Event) {scene(events) >>> (err) {demo.fail(err.msg())
         << }}
 
 fn launch() int {
-    $app := demo.app("XUUI / Component Workshop", 1180, 900) or >>
+    $app := demo.app("XUUI / Component Workshop", 1180, 900) >>>
     xu worker(app.event_ch)
-    << app.run() or >>
+    << app.run() >>>
 }
 
-fn main() int { << launch() or(err) {eprintln(err.msg())
+fn main() int { << launch() >>> (err) {eprintln(err.msg())
         << 1}}
 
 fn next_event(events chan ui.Event, deadline time.Instant) ui.Event{
@@ -45,44 +45,44 @@ fn next_event(events chan ui.Event, deadline time.Instant) ui.Event{
 }
 
 fn workshop_loop(events chan ui.Event, model $&Workshop, screen $&widgets.Screen) int {
-    model.apply_locale(screen) or >>
-    screen.set_text(model.title, "XUUI  /  Field") or >>
-    model.configure_controls(screen) or >>
+    model.apply_locale(screen) >>>
+    screen.set_text(model.title, "XUUI  /  Field") >>>
+    model.configure_controls(screen) >>>
     model.controls_dirty = false
-    model.apply_appearance(screen) or >>
+    model.apply_appearance(screen) >>>
     model.appearance_dirty = false
-    $dispatcher := register_events(& * model, & * screen) or >>
-    model.layout(screen) or >>
+    $dispatcher := register_events(& * model, & * screen) >>>
+    model.layout(screen) >>>
     while screen.is_open() {
-        register_notice_events(& * screen, $&dispatcher) or >>
+        register_notice_events(& * screen, $&dispatcher) >>>
         now := time.instant()
-        model.work(screen, now) or >>
-        if model.controls_dirty{model.configure_controls(screen) or >>
+        model.work(screen, now) >>>
+        if model.controls_dirty{model.configure_controls(screen) >>>
             model.controls_dirty = false}
-        if model.appearance_dirty{model.apply_appearance(screen) or >>
+        if model.appearance_dirty{model.apply_appearance(screen) >>>
             model.appearance_dirty = false}
-        model.apply_page_options(screen) or >>
-        model.layout(screen) or >>
-        $deadline := screen.advance(now) or >>
+        model.apply_page_options(screen) >>>
+        model.layout(screen) >>>
+        $deadline := screen.advance(now) >>>
         $timed_actions := false
         for action in screen.take_actions() {
-            _ := dispatcher.dispatch_or_fallback(&action, model, screen) or >>
+            _ := dispatcher.dispatch_or_fallback(&action, model, screen) >>>
             timed_actions = true
         }
         // Reconcile timer-driven values/styles before computing the next wait.
         if timed_actions{ -> }
-        _ := screen.render() or >>
+        _ := screen.render() >>>
         if model.running &&(deadline.is_zero() || model.deadline.before(deadline)) {deadline = model.deadline}
-        event := next_event(events, deadline) or >>
-        $actions := screen.event(&event) or >>
+        event := next_event(events, deadline) >>>
+        $actions := screen.event(&event) >>>
         $count := 0
         while screen.is_open() && count < 128 {pending := ui.poll_chan(events)
             if pending.kind == ui.EV_NONE{ <- }
-            more := screen.event(&pending) or >>
+            more := screen.event(&pending) >>>
             for action in more{actions.push(action)}
             count += 1}
-        for action in actions{register_notice_events(& * screen, $&dispatcher) or >>
-            _ := dispatcher.dispatch_or_fallback(&action, model, screen) or >> }
+        for action in actions{register_notice_events(& * screen, $&dispatcher) >>>
+            _ := dispatcher.dispatch_or_fallback(&action, model, screen) >>> }
     }
     << 0
 }

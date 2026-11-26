@@ -13,7 +13,7 @@ fn verify_clickhouse_basic() {
 
     // DDL: Create table
     println("   Creating table 'xu_metrics'...")
-    ch.exec("CREATE TABLE IF NOT EXISTS xu_metrics (id UInt64, service String, latency Float64) ENGINE = Memory") or (err) {
+    ch.exec("CREATE TABLE IF NOT EXISTS xu_metrics (id UInt64, service String, latency Float64) ENGINE = Memory") >>> (err) {
         println("   [FAIL] Create table error: " + err.msg())
         <<
     }
@@ -21,7 +21,7 @@ fn verify_clickhouse_basic() {
 
     // DML: Insert records
     println("   Inserting records...")
-    ch.insert("xu_metrics", "(1, 'order_service', 24.5), (2, 'user_service', 12.0), (3, 'order_service', 35.5)") or (err) {
+    ch.insert("xu_metrics", "(1, 'order_service', 24.5), (2, 'user_service', 12.0), (3, 'order_service', 35.5)") >>> (err) {
         println("   [FAIL] Insert error: " + err.msg())
         <<
     }
@@ -29,14 +29,14 @@ fn verify_clickhouse_basic() {
 
     // Query: Aggregation
     println("   Running aggregation query...")
-    res := ch.query("SELECT service, count(), avg(latency) FROM xu_metrics GROUP BY service ORDER BY service") or (err) {
+    res := ch.query("SELECT service, count(), avg(latency) FROM xu_metrics GROUP BY service ORDER BY service") >>> (err) {
         println("   [FAIL] Query error: " + err.msg())
         <<
     }
     println("   Query Results (TSV):\n" + res)
 
     // Cleanup: Drop table
-    ch.exec("DROP TABLE IF EXISTS xu_metrics") or (err) {
+    ch.exec("DROP TABLE IF EXISTS xu_metrics") >>> (err) {
         println("   [FAIL] Drop table error: " + err.msg())
         <<
     }
@@ -73,15 +73,15 @@ fn verify_clickhouse_pool() {
 
     // 3. Delegated Queries & Execution via Pool
     println("   Testing delegated operations via pool...")
-    p.exec("CREATE TABLE IF NOT EXISTS xu_pool_events (id UInt64, name String) ENGINE = Memory") or (err) {
+    p.exec("CREATE TABLE IF NOT EXISTS xu_pool_events (id UInt64, name String) ENGINE = Memory") >>> (err) {
         println("   [FAIL] Pool create table error: " + err.msg())
         <<
     }
-    p.exec("INSERT INTO xu_pool_events VALUES (101, 'login'), (102, 'checkout')") or (err) {
+    p.exec("INSERT INTO xu_pool_events VALUES (101, 'login'), (102, 'checkout')") >>> (err) {
         println("   [FAIL] Pool insert error: " + err.msg())
         <<
     }
-    rows := p.query_tsv("SELECT id, name FROM xu_pool_events ORDER BY id") or (err) {
+    rows := p.query_tsv("SELECT id, name FROM xu_pool_events ORDER BY id") >>> (err) {
         println("   [FAIL] Pool query_tsv error: " + err.msg())
         <<
     }
@@ -94,7 +94,7 @@ fn verify_clickhouse_pool() {
         println("   [FAIL] Row count mismatch!")
     }
 
-    p.exec("DROP TABLE IF EXISTS xu_pool_events") or (err) {
+    p.exec("DROP TABLE IF EXISTS xu_pool_events") >>> (err) {
         println("   [FAIL] Pool drop table error: " + err.msg())
         <<
     }

@@ -183,12 +183,12 @@ test('tutorial 05 error handling and interface method dispatch', async () => {
 #errors
 fn read_name(ok bool) string {
     if !ok {
-        >> errors.new("empty name")
+        >>> errors.new("empty name")
     }
     << "ada"
 }
 fn load_or_fallback(ok bool) string {
-    << read_name(ok) or (err) {
+    << read_name(ok) >>> (err) {
         println(err.msg())
         << "fallback"
     }

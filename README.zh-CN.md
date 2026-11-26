@@ -33,7 +33,7 @@ XU 将编译期所有权与借用检查、轻量协程和强类型信道结合�
 | :--- | :--- |
 | **所有权，无 GC** | 编译期检查移动与借用，推导生命周期，确定性回收资源。 |
 | **语言内置并发** | 用 `xu` 启动协程，通过强类型 `chan` 信道传递值。 |
-| **看得见的控制流** | `<<` 返回、`>>` 抛错，`or (err) { … }` 在调用处处理错误。 |
+| **看得见的控制流** | `<<` 返回、`>>>` 抛错，`>>> (err) { … }` 在调用处处理错误。 |
 | **集成的工具链** | 通过 `xu` 完成构建、运行、检查、测试、格式化、文档生成与语言服务。 |
 
 ## 读一段 XU
@@ -45,12 +45,12 @@ XU 将编译期所有权与借用检查、轻量协程和强类型信道结合�
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >> errors.new("empty name") }
+    if name.len == 0 { >>> errors.new("empty name") }
     << name.len * 10
 }
 
 fn worker(name string, results chan int) {
-    value := score(name) or (err) {
+    value := score(name) >>> (err) {
         results <- 0
         <<
     }
@@ -68,7 +68,7 @@ fn main() int {
 
 保存为 `main.xu`，执行 `xu run main.xu`，输出 `100`。
 
-`#errors` 导入包，`xu worker(...)` 启动协程，两次信道接收汇总结果。若 `score` 失败，`or (err) { … }` 会发送兜底值 `0`，然后结束当前工作协程。
+`#errors` 导入包，`xu worker(...)` 启动协程，两次信道接收汇总结果。若 `score` 失败，`>>> (err) { … }` 会发送兜底值 `0`，然后结束当前工作协程。
 
 ## 从这里开始
 

@@ -48,7 +48,7 @@ fn (c $&Chart) label(key int,value &string,frame $&draw.Frame,b &layout.Rect,sty
     text.align_y = 0.5
     text.palette.foreground = color
     cache := $&c.labels
-    << cache.paint_text(key,value,frame,b,styles,&text,0) or >>
+    << cache.paint_text(key,value,frame,b,styles,&text,0) >>>
 }
 
 // Upstream: src/ui/widgets/chart_paint.xu
@@ -60,55 +60,55 @@ fn (c $&Chart) paint_axes(frame $&draw.Frame,styles &Styles,style &ControlStyle)
     for i in 0:ticks + 1 {
         fraction := f64(i) / f64(ticks)
         y := b.y + b.height * fraction
-        if c.appearance.grid { frame.line(b.x,y,b.x + b.width,y,fade_color(style.palette.border,0.55),1.0) or >> }
-        value := c.number(d.y_max - (d.y_max - d.y_min) * fraction) or >>
+        if c.appearance.grid { frame.line(b.x,y,b.x + b.width,y,fade_color(style.palette.border,0.55),1.0) >>> }
+        value := c.number(d.y_max - (d.y_max - d.y_min) * fraction) >>>
         label_bounds := layout.Rect{x: outer.x + 8.0,y: y - 14.0 * styles.text_scale,width: math.max(0.0,b.x - outer.x - 18.0),height: 28.0 * styles.text_scale}
-        c.label(10 + i,&value,frame,&label_bounds,styles,style.palette.muted,1.0) or >>
+        c.label(10 + i,&value,frame,&label_bounds,styles,style.palette.muted,1.0) >>>
     }
     count := max_int(2,min_int(ticks,int(b.width / (80.0 * styles.text_scale * styles.density))))
     for i in 0:count + 1 {
         fraction := f64(i) / f64(count)
         x := b.x + b.width * fraction
-        value := c.number(d.x_min + (d.x_max - d.x_min) * fraction) or >>
+        value := c.number(d.x_min + (d.x_max - d.x_min) * fraction) >>>
         width := math.min(160.0 * styles.text_scale,b.width / f64(count))
         $left := x - width * 0.5
         left = math.max(outer.x + 4.0,math.min(outer.x + outer.width - width - 4.0,left))
         label_bounds := layout.Rect{x: left,y: b.y + b.height + 8.0 * styles.density,width: width,height: 24.0 * styles.text_scale * styles.density}
-        c.label(24 + i,&value,frame,&label_bounds,styles,style.palette.muted,0.5) or >>
+        c.label(24 + i,&value,frame,&label_bounds,styles,style.palette.muted,0.5) >>>
     }
-    frame.line(b.x,b.y + b.height,b.x + b.width,b.y + b.height,style.palette.border,1.0) or >>
+    frame.line(b.x,b.y + b.height,b.x + b.width,b.y + b.height,style.palette.border,1.0) >>>
     << 0
 }
 
 // Upstream: src/ui/widgets/chart_paint.xu
 fn (c $&Chart) paint_content(frame $&draw.Frame,styles &Styles) int {
-    c.apply_styles(styles) or >>
+    c.apply_styles(styles) >>>
     style := c.style_or(styles)
     b := c.bounds()
-    style_box(frame,&b,&style,styles.density,c.control.visual_state() & (STATE_FOCUSED | STATE_DISABLED | STATE_READ_ONLY)) or >>
-    frame.clip_rect(b.x,b.y,b.width,b.height) or >>
-    c.paint_legend(frame,styles,&style) or >>
+    style_box(frame,&b,&style,styles.density,c.control.visual_state() & (STATE_FOCUSED | STATE_DISABLED | STATE_READ_ONLY)) >>>
+    frame.clip_rect(b.x,b.y,b.width,b.height) >>>
+    c.paint_legend(frame,styles,&style) >>>
     $count := 0
     for i in 0:c.data.len { if c.datum_visible(i) { count = count + 1 } }
     $targets := 0
-    for s in c.series { if c.series_visible(s.id) or >> { for p in s.points {
+    for s in c.series { if c.series_visible(s.id) >>> { for p in s.points {
         if !c.donut() || p.y > 0.0 { targets = targets + 1 } } } }
     if targets == 0 && (count == 0 || (c.donut() && c.donut_total() <= 0.0)) {
         $empty := c.appearance.empty_text + ""
-        if empty.len == 0 { empty = c.locale.text(TEXT_NO_RECORDS) or >> }
+        if empty.len == 0 { empty = c.locale.text(TEXT_NO_RECORDS) >>> }
         plot := c.plot_bounds()
-        c.label(90,&empty,frame,&plot,styles,style.palette.muted,0.5) or >>
+        c.label(90,&empty,frame,&plot,styles,style.palette.muted,0.5) >>>
         << 0
     }
-    if !c.donut() { c.paint_axes(frame,styles,&style) or >> }
-    frame.push() or >>
-    frame.clip_rect(c.plot.x,c.plot.y,c.plot.width,c.plot.height) or >>
-    if c.donut() { c.paint_donut(frame,styles) or >> }
-    else { c.paint_cartesian(frame,styles) or >>
-        c.paint_highlight(frame,styles,&style) or >> }
-    frame.pop() or >>
-    tooltip := style.with_opacity(c.emphasis.value()) or >>
-    c.paint_tooltip(frame,styles,&tooltip) or >>
+    if !c.donut() { c.paint_axes(frame,styles,&style) >>> }
+    frame.push() >>>
+    frame.clip_rect(c.plot.x,c.plot.y,c.plot.width,c.plot.height) >>>
+    if c.donut() { c.paint_donut(frame,styles) >>> }
+    else { c.paint_cartesian(frame,styles) >>>
+        c.paint_highlight(frame,styles,&style) >>> }
+    frame.pop() >>>
+    tooltip := style.with_opacity(c.emphasis.value()) >>>
+    c.paint_tooltip(frame,styles,&tooltip) >>>
     << 0
 }
 
@@ -119,11 +119,11 @@ fn (c $&Chart) paint_legend(frame $&draw.Frame,styles &Styles,style &ControlStyl
         $opacity := 1.0
         if !c.series_is_visible(i) { opacity = 0.4 }
         color := fade_color(c.series_color(i,styles),opacity)
-        frame.set_fill(color) or >>
-        frame.circle(b.x + 6.0 * styles.density,b.y + b.height * 0.5,4.0 * styles.density) or >>
+        frame.set_fill(color) >>>
+        frame.circle(b.x + 6.0 * styles.density,b.y + b.height * 0.5,4.0 * styles.density) >>>
         label_bounds := layout.Rect{x: b.x + 18.0 * styles.density,y: b.y,width: math.max(0.0,b.width - 24.0 * styles.density),height: b.height}
         name := c.series[i].name + ""
-        c.label(40 + i,&name,frame,&label_bounds,styles,fade_color(style.palette.foreground,opacity),0.0) or >>
+        c.label(40 + i,&name,frame,&label_bounds,styles,fade_color(style.palette.foreground,opacity),0.0) >>>
     }
     << 0
 }
@@ -140,8 +140,8 @@ fn (c $&Chart) paint_tooltip(frame $&draw.Frame,styles &Styles,style &ControlSty
     si := c.series_index(series_id)
     $title := c.series[si].name + ""
     if point_label.len > 0 { title = point_label }
-    x_text := c.number(point_x) or >>
-    y_text := c.number(point_y) or >>
+    x_text := c.number(point_x) >>>
+    y_text := c.number(point_y) >>>
     $value := x_text + c.appearance.x_unit + "  ·  " + y_text + c.appearance.y_unit
     if c.donut() { value = y_text + c.appearance.y_unit }
     b := c.bounds()
@@ -155,8 +155,8 @@ fn (c $&Chart) paint_tooltip(frame $&draw.Frame,styles &Styles,style &ControlSty
     donut := c.donut()
     plot := c.plot
     cache := $&c.labels
-    title_size := cache.measure(80,&title,styles,&text) or >>
-    value_size := cache.measure(81,&value,styles,&text) or >>
+    title_size := cache.measure(80,&title,styles,&text) >>>
+    value_size := cache.measure(81,&value,styles,&text) >>>
     width := math.min(math.max(title_size.width,value_size.width) + 28.0,b.width - 16.0)
     height := title_size.height + value_size.height + 26.0
     if donut {
@@ -169,11 +169,11 @@ fn (c $&Chart) paint_tooltip(frame $&draw.Frame,styles &Styles,style &ControlSty
     $panel_style := style.clone()
     panel_style.radius = 7.0
     panel_style.shadow_blur = 10.0
-    style_box(frame,&panel,&panel_style,styles.density,0) or >>
+    style_box(frame,&panel,&panel_style,styles.density,0) >>>
     title_bounds := layout.Rect{x: x + 14.0,y: y + 8.0,width: math.max(0.0,width - 28.0),height: title_size.height}
     value_bounds := layout.Rect{x: x + 14.0,y: y + title_size.height + 14.0,width: math.max(0.0,width - 28.0),height: value_size.height}
-    c.label(80,&title,frame,&title_bounds,styles,style.palette.foreground,0.0) or >>
-    c.label(81,&value,frame,&value_bounds,styles,style.palette.muted,0.0) or >>
+    c.label(80,&title,frame,&title_bounds,styles,style.palette.foreground,0.0) >>>
+    c.label(81,&value,frame,&value_bounds,styles,style.palette.muted,0.0) >>>
     << 0
 }
 
@@ -186,8 +186,8 @@ fn (c $&Chart) set_hot(index int) int {
     duration := c.motion.hover
     reduced := c.reduced
     emphasis := $&c.emphasis
-    emphasis.snap(0.0) or >>
-    emphasis.retarget(1.0,now,duration,reduced) or >>
+    emphasis.snap(0.0) >>>
+    emphasis.retarget(1.0,now,duration,reduced) >>>
     << 0
 }
 
@@ -337,7 +337,7 @@ fn (c &Chart) legend_hit(x f64,y f64) int {
 
 // Upstream: src/ui/widgets/chart_paint.xu
 fn (c &Chart) number(value f64) string {
-    raw := strconv.format_float(value,102,c.appearance.precision) or >>
+    raw := strconv.format_float(value,102,c.appearance.precision) >>>
     << c.locale.number(raw,false)
 }
 
@@ -346,7 +346,7 @@ fn (c &Chart) paint_cartesian(frame $&draw.Frame,styles &Styles) int {
     for si in 0:c.series.len { s := &c.series[si]
         if !c.series_is_visible(si) { -> }
         color := c.series_color(si,styles)
-        $path := draw.new_path(32768) or >>
+        $path := draw.new_path(32768) >>>
         $count := 0
         $previous := ChartCoordinate{x: 0.0,y: 0.0}
         $first := ChartCoordinate{x: 0.0,y: 0.0}
@@ -358,7 +358,7 @@ fn (c &Chart) paint_cartesian(frame $&draw.Frame,styles &Styles) int {
             position := ChartCoordinate{x: math.max(0.0 - 100000000.0,math.min(100000000.0,raw.x)),y: math.max(0.0 - 100000000.0,math.min(100000000.0,raw.y))}
             if s.kind == CHART_BAR {
                 b := c.bar_bounds(i)
-                rounded_fill(frame,&b,math.min(3.0,b.width * 0.2),fade_color(color,p.opacity)) or >>
+                rounded_fill(frame,&b,math.min(3.0,b.width * 0.2),fade_color(color,p.opacity)) >>>
             } else if s.kind == CHART_SCATTER || (p.target_opacity == 0.0 && s.kind != CHART_BAR) {
                 if s.kind != CHART_SCATTER && count > 0 {
                     $start := previous
@@ -366,35 +366,35 @@ fn (c &Chart) paint_cartesian(frame $&draw.Frame,styles &Styles) int {
                     if position.x > start.x {
                         zero := c.data_position(0.0,0.0)
                         baseline := math.max(c.plot.y,math.min(c.plot.y + c.plot.height,zero.y))
-                        chart_exit_segment(frame,&start,&position,baseline,s.smooth,s.kind == CHART_AREA,s.line_width * styles.density,fade_color(color,p.opacity),fade_color(color,p.opacity * c.appearance.area_opacity)) or >>
+                        chart_exit_segment(frame,&start,&position,baseline,s.smooth,s.kind == CHART_AREA,s.line_width * styles.density,fade_color(color,p.opacity),fade_color(color,p.opacity * c.appearance.area_opacity)) >>>
                         exit_previous = position
                         has_exit_previous = true
                     }
                 }
-                if c.plot.contains(position.x,position.y) { frame.set_fill(fade_color(color,p.opacity * 0.8)) or >>
-                    frame.circle(position.x,position.y,math.max(1.0,s.symbol_size) * styles.density) or >> }
+                if c.plot.contains(position.x,position.y) { frame.set_fill(fade_color(color,p.opacity * 0.8)) >>>
+                    frame.circle(position.x,position.y,math.max(1.0,s.symbol_size) * styles.density) >>> }
             } else {
-                if count == 0 { path.move_to(position.x,position.y) or >>
+                if count == 0 { path.move_to(position.x,position.y) >>>
                     first = position }
                 else if s.smooth { mid := (previous.x + position.x) * 0.5
-                    path.cubic_to(mid,previous.y,mid,position.y,position.x,position.y) or >> }
-                else { path.line_to(position.x,position.y) or >> }
+                    path.cubic_to(mid,previous.y,mid,position.y,position.x,position.y) >>> }
+                else { path.line_to(position.x,position.y) >>> }
                 count = count + 1
                 previous = position
-                if s.points.len <= 128 && s.symbol_size > 0.0 && c.plot.contains(position.x,position.y) { frame.set_fill(fade_color(color,p.opacity)) or >>
-                    frame.circle(position.x,position.y,s.symbol_size * styles.density) or >> }
+                if s.points.len <= 128 && s.symbol_size > 0.0 && c.plot.contains(position.x,position.y) { frame.set_fill(fade_color(color,p.opacity)) >>>
+                    frame.circle(position.x,position.y,s.symbol_size * styles.density) >>> }
             }
         }
         if count > 0 {
             stroke := draw.stroke_options(s.line_width * styles.density)
-            frame.stroke_path(&path,color,&stroke) or >>
+            frame.stroke_path(&path,color,&stroke) >>>
             if s.kind == CHART_AREA {
                 zero := c.data_position(0.0,0.0)
                 baseline := math.max(c.plot.y,math.min(c.plot.y + c.plot.height,zero.y))
-                path.line_to(previous.x,baseline) or >>
-                path.line_to(first.x,baseline) or >>
-                path.close() or >>
-                frame.fill_path(&path,fade_color(color,c.appearance.area_opacity),draw.FILL_NONZERO) or >>
+                path.line_to(previous.x,baseline) >>>
+                path.line_to(first.x,baseline) >>>
+                path.close() >>>
+                frame.fill_path(&path,fade_color(color,c.appearance.area_opacity),draw.FILL_NONZERO) >>>
             }
         }
     }
@@ -417,14 +417,14 @@ fn (c &Chart) paint_donut(frame $&draw.Frame,styles &Styles) int {
         steps := max_int(2,int(math.ceil(sweep * radius / 4.0)))
         $outer_radius := radius
         if i == c.hot || i == c.selected { outer_radius = radius + 5.0 * c.emphasis.value() }
-        $path := draw.new_path(4096) or >>
-        path.move_to(cx + math.cos(angle) * outer_radius,cy + math.sin(angle) * outer_radius) or >>
+        $path := draw.new_path(4096) >>>
+        path.move_to(cx + math.cos(angle) * outer_radius,cy + math.sin(angle) * outer_radius) >>>
         for step in 1:steps + 1 { a := angle + sweep * f64(step) / f64(steps)
-            path.line_to(cx + math.cos(a) * outer_radius,cy + math.sin(a) * outer_radius) or >> }
+            path.line_to(cx + math.cos(a) * outer_radius,cy + math.sin(a) * outer_radius) >>> }
         for step in 0:steps + 1 { a := angle + sweep * (1.0 - f64(step) / f64(steps))
-            path.line_to(cx + math.cos(a) * inner,cy + math.sin(a) * inner) or >> }
-        path.close() or >>
-        frame.fill_path(&path,fade_color(c.series_color(i,styles),p.opacity),draw.FILL_NONZERO) or >>
+            path.line_to(cx + math.cos(a) * inner,cy + math.sin(a) * inner) >>> }
+        path.close() >>>
+        frame.fill_path(&path,fade_color(c.series_color(i,styles),p.opacity),draw.FILL_NONZERO) >>>
         angle = angle + sweep
     }
     << 0
@@ -439,14 +439,14 @@ fn (c &Chart) paint_highlight(frame $&draw.Frame,styles &Styles,style &ControlSt
     position := c.data_position(p.x,p.y)
     if !c.plot.contains(position.x,position.y) { << 0 }
     color := c.series_color(c.series_index(p.series),styles)
-    if c.appearance.crosshair { frame.line(position.x,c.plot.y,position.x,c.plot.y + c.plot.height,fade_color(style.palette.muted,0.5),1.0) or >>
-        frame.line(c.plot.x,position.y,c.plot.x + c.plot.width,position.y,fade_color(style.palette.muted,0.25),1.0) or >> }
-    frame.set_fill(fade_color(color,0.12 + c.emphasis.value() * 0.08)) or >>
-    frame.circle(position.x,position.y,(6.0 + 4.0 * c.emphasis.value()) * styles.density) or >>
-    frame.set_fill(style.palette.normal) or >>
-    frame.circle(position.x,position.y,5.0 * styles.density) or >>
-    frame.set_fill(color) or >>
-    frame.circle(position.x,position.y,3.0 * styles.density) or >>
+    if c.appearance.crosshair { frame.line(position.x,c.plot.y,position.x,c.plot.y + c.plot.height,fade_color(style.palette.muted,0.5),1.0) >>>
+        frame.line(c.plot.x,position.y,c.plot.x + c.plot.width,position.y,fade_color(style.palette.muted,0.25),1.0) >>> }
+    frame.set_fill(fade_color(color,0.12 + c.emphasis.value() * 0.08)) >>>
+    frame.circle(position.x,position.y,(6.0 + 4.0 * c.emphasis.value()) * styles.density) >>>
+    frame.set_fill(style.palette.normal) >>>
+    frame.circle(position.x,position.y,5.0 * styles.density) >>>
+    frame.set_fill(color) >>>
+    frame.circle(position.x,position.y,3.0 * styles.density) >>>
     << 0
 }
 
@@ -485,16 +485,16 @@ fn chart_copy_domain(d &ChartDomain) ChartDomain {
 fn chart_exit_segment(frame $&draw.Frame,start &ChartCoordinate,end &ChartCoordinate,baseline f64,
     smooth bool,area bool,width f64,color draw.Color,fill draw.Color) int {
     $path := draw.new_path(256)
-    path.move_to(start.x,start.y) or >>
+    path.move_to(start.x,start.y) >>>
     if smooth { mid := (start.x + end.x) * 0.5
-        path.cubic_to(mid,start.y,mid,end.y,end.x,end.y) or >> }
-    else { path.line_to(end.x,end.y) or >> }
+        path.cubic_to(mid,start.y,mid,end.y,end.x,end.y) >>> }
+    else { path.line_to(end.x,end.y) >>> }
     stroke := draw.stroke_options(width)
-    frame.stroke_path(&path,color,&stroke) or >>
-    if area { path.line_to(end.x,baseline) or >>
-        path.line_to(start.x,baseline) or >>
-        path.close() or >>
-        frame.fill_path(&path,fill,draw.FILL_NONZERO) or >> }
+    frame.stroke_path(&path,color,&stroke) >>>
+    if area { path.line_to(end.x,baseline) >>>
+        path.line_to(start.x,baseline) >>>
+        path.close() >>>
+        frame.fill_path(&path,fill,draw.FILL_NONZERO) >>> }
     << 0
 }
 
@@ -514,24 +514,24 @@ fn chart_number(n f64) bool { << chart_finite(n) && math.abs(n) <= 1000000000000
 
 // Upstream: src/ui/widgets/chart_data.xu
 fn chart_validate_series(series &[]ChartSeries) int {
-    if series.len > CHART_MAX_SERIES { >> errors.new("widgets: too many chart series") }
+    if series.len > CHART_MAX_SERIES { >>> errors.new("widgets: too many chart series") }
     $count := 0
     for i in 0:series.len { s := &series[i]
         if s.id <= 0 || s.id > 2147483647 || s.kind < CHART_LINE || s.kind > CHART_DONUT || s.name.len > 256 ||
            !chart_finite(s.line_width) || s.line_width < 0.5 || s.line_width > 12.0 || !chart_finite(s.symbol_size) || s.symbol_size < 0.0 || s.symbol_size > 24.0 {
-            >> errors.new("widgets: invalid chart series") }
-        if s.kind == CHART_DONUT && series.len != 1 { >> errors.new("widgets: a donut chart requires one series") }
-        for j in 0:i { if series[j].id == s.id { >> errors.new("widgets: duplicate chart series id") } }
+            >>> errors.new("widgets: invalid chart series") }
+        if s.kind == CHART_DONUT && series.len != 1 { >>> errors.new("widgets: a donut chart requires one series") }
+        for j in 0:i { if series[j].id == s.id { >>> errors.new("widgets: duplicate chart series id") } }
         $ids := map[int]bool{}
         $previous_x := 0.0 - 1000000000001.0
         for p in s.points {
             if p.id <= 0 || p.id > 2147483647 || ids.has(p.id) || !chart_number(p.x) || !chart_number(p.y) || p.label.len > 256 || (s.kind == CHART_DONUT && p.y < 0.0) {
-                >> errors.new("widgets: invalid or duplicate chart point") }
-            if s.kind <= CHART_BAR && p.x <= previous_x { >> errors.new("widgets: line, area and bar points require increasing x coordinates") }
+                >>> errors.new("widgets: invalid or duplicate chart point") }
+            if s.kind <= CHART_BAR && p.x <= previous_x { >>> errors.new("widgets: line, area and bar points require increasing x coordinates") }
             previous_x = p.x
             ids[p.id] = true
             count = count + 1
-            if count > CHART_MAX_POINTS { >> errors.new("widgets: chart point limit exceeded") }
+            if count > CHART_MAX_POINTS { >>> errors.new("widgets: chart point limit exceeded") }
         }
     }
     << 0
@@ -544,7 +544,7 @@ fn copy_scalar_style(style &ScalarControlStyle) ScalarControlStyle {
 
 // Upstream: src/ui/widgets/screen_controls.xu
 fn screen_controls_pop(frame $&draw.Frame) {
-    frame.pop() or (err) { << }
+    frame.pop() >>> (err) { << }
 }
 
 // Upstream: src/ui/widgets/chart_data.xu
@@ -666,7 +666,7 @@ pub fn (b &Button) clone() Button {
 
 // Upstream: src/ui/widgets/chart_paint.xu
 pub fn (c $&Chart) apply_styles(styles &Styles) int {
-    styles.validate() or >>
+    styles.validate() >>>
     b := c.bounds()
     d := styles.density
     scale := styles.text_scale
@@ -681,9 +681,9 @@ pub fn (c $&Chart) apply_styles(styles &Styles) int {
         domain := c.visible_domain()
         for i in 0:2 { $value := domain.y_min
             if i == 1 { value = domain.y_max }
-            label := c.number(value) or >>
+            label := c.number(value) >>>
             cache := $&c.labels
-            size := cache.measure(i,&label,styles,&text) or >>
+            size := cache.measure(i,&label,styles,&text) >>>
             left = math.max(left,size.width + 24.0 * d) }
         bottom = (22.0 + 16.0 * scale) * d
     }
@@ -726,7 +726,7 @@ pub fn (c $&Chart) input(event &ui.InputEvent) Action {
     if event.kind == ui.EV_POINTER_CANCEL { c.cancel()
         << no_action(c.id(),c.needs_paint()) }
     if !c.is_enabled() { << no_action(c.id(),c.needs_paint()) }
-    if event.time_ns > 0 { c.now = time.instant_from_ns(event.time_ns) or >> }
+    if event.time_ns > 0 { c.now = time.instant_from_ns(event.time_ns) >>> }
     $action := no_action(c.id(),c.needs_paint())
     writable := !c.control.read_only
     if event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_ENTER {
@@ -746,10 +746,10 @@ pub fn (c $&Chart) input(event &ui.InputEvent) Action {
             }
         } else {
             next := c.hit_index(event.x,event.y)
-            if next != c.hot { c.set_hot(next) or >>
+            if next != c.hot { c.set_hot(next) >>>
                 action.kind = ACTION_CHART_HOVER }
         }
-    } else if event.kind == ui.EV_POINTER_LEAVE && !c.dragging { if c.hot >= 0 { c.set_hot(-1) or >>
+    } else if event.kind == ui.EV_POINTER_LEAVE && !c.dragging { if c.hot >= 0 { c.set_hot(-1) >>>
         action.kind = ACTION_CHART_HOVER } }
     else if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && c.bounds().contains(event.x,event.y) {
         action.request_focus = true
@@ -769,7 +769,7 @@ pub fn (c $&Chart) input(event &ui.InputEvent) Action {
     } else if event.kind == ui.EV_POINTER_UP && event.button == ui.BUTTON_LEFT && writable {
         if c.armed <= -100 { legend := 0 - 100 - c.armed
             if legend == c.legend_hit(event.x,event.y) && legend < c.series.len { id := c.series[legend].id
-                c.set_series_visible(id,!c.series_is_visible(legend)) or >>
+                c.set_series_visible(id,!c.series_is_visible(legend)) >>>
                 action.kind = ACTION_CHART_LEGEND
                 action.value = f64(id) }
             action.consumed = true }
@@ -788,7 +788,7 @@ pub fn (c $&Chart) input(event &ui.InputEvent) Action {
         action.consumed = true
     } else if event.kind == ui.EV_KEY_DOWN && c.control.focused {
         if event.key == ui.KEY_ESCAPE { if writable { c.selected = -1 }
-            c.set_hot(-1) or >>
+            c.set_hot(-1) >>>
             action.kind = ACTION_CHART_SELECT
             action.consumed = true }
         else if writable && (event.key == ui.KEY_HOME || event.key == 48) { c.reset_viewport()
@@ -808,7 +808,7 @@ pub fn (c $&Chart) input(event &ui.InputEvent) Action {
             modulus := max_int(1,c.data.len)
             if modulus > 0 {
                 for attempt in 0:c.data.len { index = (index + direction + c.data.len) % modulus
-                    if c.datum_visible(index) && c.data[index].target_opacity > 0.0 { c.set_hot(index) or >>
+                    if c.datum_visible(index) && c.data[index].target_opacity > 0.0 { c.set_hot(index) >>>
                         <- } }
             }
             action.kind = ACTION_CHART_HOVER
@@ -825,11 +825,11 @@ pub fn (c $&Chart) input(event &ui.InputEvent) Action {
 
 // Upstream: src/ui/widgets/chart_paint.xu
 pub fn (c $&Chart) paint_styled(frame $&draw.Frame,styles &Styles) int {
-    if c.control.closed { >> errors.new("widgets: chart is disposed") }
-    frame.push() or >>
-    c.paint_content(frame,styles) or (err) { screen_controls_pop(frame)
-        >> err }
-    frame.pop() or >>
+    if c.control.closed { >>> errors.new("widgets: chart is disposed") }
+    frame.push() >>>
+    c.paint_content(frame,styles) >>> (err) { screen_controls_pop(frame)
+        >>> err }
+    frame.pop() >>>
     << 0
 }
 
@@ -846,8 +846,8 @@ pub fn (c $&Chart) set_focus(value bool) { item := $&c.control
 
 // Upstream: src/ui/widgets/chart.xu
 pub fn (c $&Chart) set_series(series &[]ChartSeries) int {
-    if c.control.closed { >> errors.new("widgets: chart is disposed") }
-    chart_validate_series(series) or >>
+    if c.control.closed { >>> errors.new("widgets: chart is disposed") }
+    chart_validate_series(series) >>>
     selection := c.selection()
     $old := map[string]int{}
     for i in 0:c.data.len { p := &c.data[i]
@@ -900,8 +900,8 @@ pub fn (c $&Chart) set_series(series &[]ChartSeries) int {
     now := c.now
     reduced := c.reduced || c.motion.change.is_zero()
     timeline := $&c.animation
-    timeline.play(now,reduced) or >>
-    _ := c.apply_animation() or >>
+    timeline.play(now,reduced) >>>
+    _ := c.apply_animation() >>>
     c.control.dirty = true
     << 0
 }
@@ -909,7 +909,7 @@ pub fn (c $&Chart) set_series(series &[]ChartSeries) int {
 // Upstream: src/ui/widgets/chart_input.xu
 pub fn (c $&Chart) set_series_visible(series_id int,visible bool) int {
     index := c.series_index(series_id)
-    if index < 0 { >> errors.new("widgets: chart series is unavailable") }
+    if index < 0 { >>> errors.new("widgets: chart series is unavailable") }
     bit := 1 << index
     if visible { c.disabled_series = c.disabled_series & (0 - 1 - bit) }
     else { c.disabled_series = c.disabled_series | bit }
@@ -924,17 +924,17 @@ pub fn (c $&Chart) set_series_visible(series_id int,visible bool) int {
 pub fn (c $&Chart) tick(styles &Styles,now time.Instant,reduced bool) bool {
     c.now = now
     c.reduced = reduced
-    c.apply_styles(styles) or >>
+    c.apply_styles(styles) >>>
     disabled := !c.control.enabled
     timeline := $&c.animation
     if timeline.stamp.is_zero() && timeline.is_running() { timeline.stamp = now }
-    _ := timeline.advance(now,reduced || disabled) or >>
-    $changed := c.apply_animation() or >>
+    _ := timeline.advance(now,reduced || disabled) >>>
+    $changed := c.apply_animation() >>>
     duration := c.motion.hover
     emphasis := $&c.emphasis
     before := emphasis.value()
-    emphasis.retarget(1.0,now,duration,reduced) or >>
-    _ := emphasis.advance(now) or >>
+    emphasis.retarget(1.0,now,duration,reduced) >>>
+    _ := emphasis.advance(now) >>>
     if before != emphasis.value() { changed = true }
     if changed { c.control.dirty = true }
     << changed
@@ -975,7 +975,7 @@ pub fn (c &Chart) selection() ChartHit { << c.datum_hit(c.selected) }
 // Upstream: src/ui/widgets/chart_input.xu
 pub fn (c &Chart) series_visible(series_id int) bool {
     index := c.series_index(series_id)
-    if index < 0 { >> errors.new("widgets: chart series is unavailable") }
+    if index < 0 { >>> errors.new("widgets: chart series is unavailable") }
     << c.series_is_visible(index)
 }
 
@@ -997,7 +997,7 @@ pub fn (c &Chart) visible_domain() ChartDomain {
 // Upstream: src/ui/widgets/chart_data.xu
 pub fn (d &ChartDomain) validate() int {
     if !chart_number(d.x_min) || !chart_number(d.x_max) || !chart_number(d.y_min) || !chart_number(d.y_max) ||
-       d.x_max - d.x_min < 0.000000001 || d.y_max - d.y_min < 0.000000001 { >> errors.new("widgets: invalid chart domain") }
+       d.x_max - d.x_min < 0.000000001 || d.y_max - d.y_min < 0.000000001 { >>> errors.new("widgets: invalid chart domain") }
     << 0
 }
 
@@ -1013,7 +1013,7 @@ pub fn (options &AnimationOptions) validate() int {
     if options.duration.nanoseconds() <= 0 || options.duration.nanoseconds() > 3600 * time.second() ||
        options.delay.is_negative() || options.delay.nanoseconds() > 3600 * time.second() ||
        options.iterations < 0 || options.iterations > 10000 || (math.is_nan(options.rate) || math.is_inf(options.rate)) || options.rate <= 0.0 || options.rate > 16.0 ||
-       options.curve < EASE_LINEAR || options.curve > EASE_IN_QUINT { >> errors.new("widgets: invalid animation options") }
+       options.curve < EASE_LINEAR || options.curve > EASE_IN_QUINT { >>> errors.new("widgets: invalid animation options") }
     << 0
 }
 
@@ -1027,7 +1027,7 @@ pub fn (s &ChartSeries) clone() ChartSeries {
 
 // Upstream: src/ui/widgets/animation.xu
 pub fn animation_controller(options &AnimationOptions) AnimationController {
-    options.validate() or >>
+    options.validate() >>>
     << AnimationController{options: AnimationOptions{duration: options.duration,delay: options.delay,
         iterations: options.iterations,alternate: options.alternate,curve: options.curve,rate: options.rate},
         state: ANIMATION_IDLE,phase: 0.0,delay_left: 0.0,direction: 1.0,stamp: time.zero_instant()}
@@ -1041,11 +1041,11 @@ pub fn animation_options() AnimationOptions {
 
 // Upstream: src/ui/widgets/chart.xu
 pub fn chart(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect) Chart {
-    control := button(identity,id,bounds) or >>
-    domain := chart_domain(0.0,1.0,0.0,1.0) or >>
+    control := button(identity,id,bounds) >>>
+    domain := chart_domain(0.0,1.0,0.0,1.0) >>>
     options := animation_options()
     << Chart{control: control,series: []ChartSeries{},disabled_series: 0,data: []ChartDatum{},bar_steps: []f64{},appearance: chart_appearance(),locale: locale_default(),
-        labels: text_cache(context),animation: animation_controller(&options) or >>,motion: motion_spec(),emphasis: tween(0.0) or >>,
+        labels: text_cache(context),animation: animation_controller(&options) >>>,motion: motion_spec(),emphasis: tween(0.0) >>>,
         domain: domain,from_domain: domain,target_domain: domain,fixed_domain: false,viewport: domain,plot: copy_rect(bounds),
         legend_boxes: []layout.Rect{},hot: -1,selected: -1,armed: -1,dragging: false,moved: false,drag_x: 0.0,drag_y: 0.0,
         drag_view: domain,now: time.zero_instant(),reduced: false}
@@ -1061,7 +1061,7 @@ pub fn chart_appearance() ChartAppearance {
 // Upstream: src/ui/widgets/chart_data.xu
 pub fn chart_domain(x_min f64,x_max f64,y_min f64,y_max f64) ChartDomain {
     d := ChartDomain{x_min: x_min,x_max: x_max,y_min: y_min,y_max: y_max}
-    d.validate() or >>
+    d.validate() >>>
     << d
 }
 

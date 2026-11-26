@@ -37,7 +37,7 @@ fn (t $&Toast) update_pause(now time.Instant) int {
         if paused {
             t.remaining = t.expires.since(now)
             if t.remaining.is_negative() { t.remaining = time.duration(0) }
-        } else { expires := now.add(t.remaining) or >>
+        } else { expires := now.add(t.remaining) >>>
             t.expires = expires }
     }
     t.paused = paused
@@ -62,16 +62,16 @@ pub const NOTICE_NORMAL = 0
 
 // Upstream: src/ui/widgets/toast_host.xu
 pub fn (host $&ToastHost) enqueue(value &Notice) int {
-    validate_table_text(&value.text) or >>
-    validate_table_text(&value.action) or >>
-    validate_table_text(&value.key) or >>
-    if value.lifetime.is_negative() || value.priority < NOTICE_NORMAL || value.priority > NOTICE_IMPORTANT { >> errors.new("widgets: invalid notification") }
+    validate_table_text(&value.text) >>>
+    validate_table_text(&value.action) >>>
+    validate_table_text(&value.key) >>>
+    if value.lifetime.is_negative() || value.priority < NOTICE_NORMAL || value.priority > NOTICE_IMPORTANT { >>> errors.new("widgets: invalid notification") }
     if value.key.len > 0 { for i in 0:host.pending.len { if host.pending[i].key == value.key {
         token := host.pending[i].token
         content := clone_notice(value)
         host.pending[i] = notice_record(token,&content)
         << token } } }
-    if host.pending.len >= host.capacity || host.serial == 2147483647 { >> errors.new("widgets: notification queue is full") }
+    if host.pending.len >= host.capacity || host.serial == 2147483647 { >>> errors.new("widgets: notification queue is full") }
     host.serial += 1
     token := host.serial
     content := clone_notice(value)
@@ -82,7 +82,7 @@ pub fn (host $&ToastHost) enqueue(value &Notice) int {
 
 // Upstream: src/ui/widgets/toast_host.xu
 pub fn (host $&ToastHost) set_capacity(capacity int) int {
-    if capacity < 1 || capacity > 64 || capacity < host.pending.len { >> errors.new("widgets: invalid notification capacity") }
+    if capacity < 1 || capacity > 64 || capacity < host.pending.len { >>> errors.new("widgets: invalid notification capacity") }
     host.capacity = capacity
     << 0
 }
@@ -104,8 +104,8 @@ pub fn (t $&Toast) dismiss(now time.Instant,reduced_motion bool) int {
     duration := t.motion.exit
     curve := t.motion.exit_easing()
     fade := $&t.fade
-    fade.retarget_unit(0.0,current,duration,reduced_motion) or >>
-    << fade.set_curve(curve) or >>
+    fade.retarget_unit(0.0,current,duration,reduced_motion) >>>
+    << fade.set_curve(curve) >>>
 }
 
 // Upstream: src/ui/widgets/toast.xu
@@ -114,11 +114,11 @@ pub fn (t $&Toast) input(event &ui.InputEvent) Action {
     pointer := (event.kind >= ui.EV_POINTER_DOWN && event.kind <= ui.EV_POINTER_CANCEL) || event.kind == ui.EV_POINTER_SCROLL
     inside := t.bounds_val.contains(event.x,event.y)
     if !t.is_open() { << overlay_action(t.id_val,false,t.dirty,pointer && inside) }
-    observed := time.instant_from_ns(event.time_ns) or >>
+    observed := time.instant_from_ns(event.time_ns) >>>
     now := t.observe(observed)
     if t.timeout_active && !t.paused && !now.before(t.expires) {
         reduced := t.reduced
-        t.dismiss(now,reduced) or >>
+        t.dismiss(now,reduced) >>>
         << overlay_action(t.id_val,true,t.dirty,pointer && inside)
     }
     hit := t.close_bounds().contains(event.x,event.y)
@@ -126,12 +126,12 @@ pub fn (t $&Toast) input(event &ui.InputEvent) Action {
     $changed := false
     if event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_ENTER || event.kind == ui.EV_POINTER_LEAVE {
         t.hovered = event.kind != ui.EV_POINTER_LEAVE && t.bounds_val.contains(event.x,event.y)
-        t.update_pause(now) or >>
+        t.update_pause(now) >>>
     } else if event.kind == ui.EV_POINTER_CANCEL {
         t.hovered = false
         t.focused = false
         t.armed = false
-        t.update_pause(now) or >>
+        t.update_pause(now) >>>
     } else if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT && hit {
         t.armed = true
         t.dirty = true
@@ -146,7 +146,7 @@ pub fn (t $&Toast) input(event &ui.InputEvent) Action {
         changed = true
     }
     if changed { reduced := t.reduced
-        t.dismiss(now,reduced) or >> }
+        t.dismiss(now,reduced) >>> }
     << overlay_action(t.id_val,changed,t.dirty,consumed)
 }
 
@@ -156,15 +156,15 @@ pub fn (t $&Toast) set_focus(focused bool,now time.Instant) int {
     next := focused && t.is_open()
     if t.focused != next { t.dirty = true }
     t.focused = next
-    << t.update_pause(current) or >>
+    << t.update_pause(current) >>>
 }
 
 // Upstream: src/ui/widgets/toast.xu
 pub fn (t $&Toast) show(now time.Instant,lifetime time.Duration,reduced_motion bool) int {
-    if lifetime.is_negative() { >> errors.new("widgets: negative toast lifetime") }
+    if lifetime.is_negative() { >>> errors.new("widgets: negative toast lifetime") }
     if !t.enabled { << 0 }
     current := t.observe(now)
-    expires := current.add(lifetime) or >>
+    expires := current.add(lifetime) >>>
     t.expires = expires
     t.remaining = lifetime
     t.timeout_active = !lifetime.is_zero()
@@ -176,8 +176,8 @@ pub fn (t $&Toast) show(now time.Instant,lifetime time.Duration,reduced_motion b
     duration := t.motion.enter
     curve := t.motion.curve
     fade := $&t.fade
-    fade.retarget_unit(1.0,current,duration,reduced_motion) or >>
-    fade.set_curve(curve) or >>
+    fade.retarget_unit(1.0,current,duration,reduced_motion) >>>
+    fade.set_curve(curve) >>>
     << 0
 }
 
@@ -186,7 +186,7 @@ pub fn (t $&Toast) tick(now time.Instant,reduced_motion bool) bool {
     current := t.observe(now)
     $changed := false
     if t.is_open() && t.timeout_active && !t.paused && !current.before(t.expires) {
-        t.dismiss(current,reduced_motion) or >>
+        t.dismiss(current,reduced_motion) >>>
         changed = true
     }
     before := t.fade.value()
@@ -194,8 +194,8 @@ pub fn (t $&Toast) tick(now time.Instant,reduced_motion bool) bool {
     if t.is_open() { target = 1.0 }
     t.reduced = reduced_motion
     fade := $&t.fade
-    if reduced_motion { fade.retarget(target,current,time.duration(0),true) or >> }
-    else { _ := fade.advance(current) or >> }
+    if reduced_motion { fade.retarget(target,current,time.duration(0),true) >>> }
+    else { _ := fade.advance(current) >>> }
     if before != t.fade.value() { changed = true }
     if changed { t.dirty = true }
     << changed
@@ -216,7 +216,7 @@ pub fn (t &Toast) is_visible() bool { << t.enabled && (t.opened || t.fade.value(
 
 // Upstream: src/ui/widgets/toast.xu
 pub fn (t &Toast) next_tick(now time.Instant) time.Instant {
-    next := overlay_next_tick(t.fade.is_animating(),now) or >>
+    next := overlay_next_tick(t.fade.is_animating(),now) >>>
     if t.is_open() && t.timeout_active && !t.paused && (next.is_zero() || t.expires.before(next)) { << t.expires }
     << next
 }
@@ -227,19 +227,19 @@ pub fn (t &Toast) opacity() f64 { << t.fade.value() }
 // Upstream: src/ui/widgets/toast.xu
 pub fn (t &Toast) paint_styled(frame $&draw.Frame,label $&StyledLabel,styles &Styles) int {
     if !t.is_visible() { << 0 }
-    c := t.style_or(styles).with_opacity(t.opacity()) or >>
-    paint_box_styled(frame,&t.bounds_val,styles,&c,0) or >>
+    c := t.style_or(styles).with_opacity(t.opacity()) >>>
+    paint_box_styled(frame,&t.bounds_val,styles,&c,0) >>>
     close := t.close_bounds()
     text := layout.Rect{x: t.bounds_val.x,y: t.bounds_val.y,width: math.max(0.0,t.bounds_val.width - close.width),height: t.bounds_val.height}
     base := t.style_or(styles)
-    paint_overlay_label(frame,label,&text,styles,&base,t.opacity(),false) or >>
+    paint_overlay_label(frame,label,&text,styles,&base,t.opacity(),false) >>>
     ink := c.resolve(0).foreground
     mid_x := close.x + close.width * 0.5
     mid_y := close.y + close.height * 0.5
     half := math.min(4.0,close.width * 0.2)
-    frame.line(mid_x - half,mid_y - half,mid_x + half,mid_y + half,ink,1.5) or >>
-    frame.line(mid_x + half,mid_y - half,mid_x - half,mid_y + half,ink,1.5) or >>
-    if t.focused { frame.stroke_rect(close.x + 3.0,close.y + 3.0,math.max(0.0,close.width - 6.0),math.max(0.0,close.height - 6.0),c.resolve(0).focus,1.0) or >> }
+    frame.line(mid_x - half,mid_y - half,mid_x + half,mid_y + half,ink,1.5) >>>
+    frame.line(mid_x + half,mid_y - half,mid_x - half,mid_y + half,ink,1.5) >>>
+    if t.focused { frame.stroke_rect(close.x + 3.0,close.y + 3.0,math.max(0.0,close.width - 6.0),math.max(0.0,close.height - 6.0),c.resolve(0).focus,1.0) >>> }
     << 0
 }
 
@@ -256,9 +256,9 @@ pub fn notice(text &string) Notice {
 
 // Upstream: src/ui/widgets/toast.xu
 pub fn toast(identity &ui.CanvasEvent,id int,bounds &layout.Rect) Toast {
-    if !valid_identity(identity) || id <= 0 { >> errors.new("widgets: invalid toast identity") }
-    validate_bounds(bounds) or >>
-    fade := tween(0.0) or >>
+    if !valid_identity(identity) || id <= 0 { >>> errors.new("widgets: invalid toast identity") }
+    validate_bounds(bounds) >>>
+    fade := tween(0.0) >>>
     << Toast{identity: copy_identity(identity),id_val: id,bounds_val: copy_rect(bounds),opened: false,enabled: true,
         hovered: false,focused: false,paused: false,armed: false,timeout_active: false,remaining: time.duration(0),
         expires: time.zero_instant(),clock: time.zero_instant(),custom: empty_scalar_style(),motion: motion_spec(),fade: fade,reduced: false,dirty: true}

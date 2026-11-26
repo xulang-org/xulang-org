@@ -6,87 +6,87 @@
 demo #"github.com/xulang-org/examples/ui_demo"
 
 fn paint(context &draw.Context,frame $&draw.Frame,input &ui.TextInput) int {
-    state := input.snapshot() or >>
+    state := input.snapshot() >>>
     value := state.display_value()
     println("Text revision: " + str(state.revision) + " / display bytes: " + str(value.len))
     options := draw.text_options(28.0)
-    $text := context.layout_text(&value,&options) or >>
-    text.bind_input(input,state.revision,44.0,180.0) or >>
-    frame.begin() or >>
-    frame.set_bg(demo.background()) or >>
-    demo.text(context,frame,28.0,28.0,14.0,demo.accent(),"04 / NATIVE TEXT INPUT") or >>
-    demo.text(context,frame,28.0,60.0,28.0,demo.ink(),"Type in your own language.") or >>
-    demo.text(context,frame,28.0,112.0,15.0,demo.muted(),"Use an IME, arrows, Shift+arrows and Backspace. Click to move the caret.") or >>
-    frame.fill_rect(28.0,160.0,790.0,86.0,draw.rgb(26,37,50)) or >>
-    anchor := text.caret(state.display_anchor(),false) or >>
-    caret := text.caret(state.display_focus(),false) or >>
+    $text := context.layout_text(&value,&options) >>>
+    text.bind_input(input,state.revision,44.0,180.0) >>>
+    frame.begin() >>>
+    frame.set_bg(demo.background()) >>>
+    demo.text(context,frame,28.0,28.0,14.0,demo.accent(),"04 / NATIVE TEXT INPUT") >>>
+    demo.text(context,frame,28.0,60.0,28.0,demo.ink(),"Type in your own language.") >>>
+    demo.text(context,frame,28.0,112.0,15.0,demo.muted(),"Use an IME, arrows, Shift+arrows and Backspace. Click to move the caret.") >>>
+    frame.fill_rect(28.0,160.0,790.0,86.0,draw.rgb(26,37,50)) >>>
+    anchor := text.caret(state.display_anchor(),false) >>>
+    caret := text.caret(state.display_focus(),false) >>>
     if state.display_anchor() != state.display_focus() && anchor.y == caret.y {
-        frame.fill_rect(44.0 + math.min(anchor.x,caret.x),180.0 + caret.y,math.abs(caret.x - anchor.x),caret.height,draw.rgba(78,205,196,80)) or >>
+        frame.fill_rect(44.0 + math.min(anchor.x,caret.x),180.0 + caret.y,math.abs(caret.x - anchor.x),caret.height,draw.rgba(78,205,196,80)) >>>
     }
-    frame.text_layout(&text,44.0,180.0,demo.ink()) or >>
-    frame.fill_rect(44.0 + caret.x,180.0 + caret.y,1.5,caret.height,demo.accent()) or >>
+    frame.text_layout(&text,44.0,180.0,demo.ink()) >>>
+    frame.fill_rect(44.0 + caret.x,180.0 + caret.y,1.5,caret.height,demo.accent()) >>>
     if state.composing {
-        demo.text(context,frame,28.0,280.0,17.0,demo.accent(),"Composing: " + state.preedit) or >>
+        demo.text(context,frame,28.0,280.0,17.0,demo.accent(),"Composing: " + state.preedit) >>>
     } else {
-        demo.text(context,frame,28.0,280.0,17.0,demo.muted(),"Committed text / no active preedit") or >>
+        demo.text(context,frame,28.0,280.0,17.0,demo.muted(),"Committed text / no active preedit") >>>
     }
-    demo.text(context,frame,28.0,324.0,14.0,demo.muted(),"Revision " + str(state.revision) + " / anchor byte " + str(state.anchor) + " / focus byte " + str(state.focus)) or >>
-    demo.text(context,frame,28.0,360.0,14.0,demo.muted(),"Selection uses UTF-8 byte offsets. Escape ends the session and closes the window.") or >>
-    frame.present_wait() or >>
-    text.dispose() or >>
+    demo.text(context,frame,28.0,324.0,14.0,demo.muted(),"Revision " + str(state.revision) + " / anchor byte " + str(state.anchor) + " / focus byte " + str(state.focus)) >>>
+    demo.text(context,frame,28.0,360.0,14.0,demo.muted(),"Selection uses UTF-8 byte offsets. Escape ends the session and closes the window.") >>>
+    frame.present_wait() >>>
+    text.dispose() >>>
     << 0
 }
 fn scene(ech chan ui.Event) int {
-    ready := demo.ready(ech) or >>
+    ready := demo.ready(ech) >>>
     if ready.kind == ui.EV_EXIT { << 0 }
-    identity := ui.canvas_of(&ready) or >>
-    context := draw.context_of(&ready) or >>
+    identity := ui.canvas_of(&ready) >>>
+    context := draw.context_of(&ready) >>>
     seed := "你好，Xu 👩‍💻 · café"
     caret := ui.TextInputRect{x: 44.0,y: 180.0,width: 2.0,height: 36.0}
     options := ui.text_input_options(&seed,caret)
-    $input := ui.start_text_input(identity.canvas_id,identity.generation,&options) or >>
+    $input := ui.start_text_input(identity.canvas_id,identity.generation,&options) >>>
     $frame := context.new_frame(4096)
-    paint(&context,$&frame,&input) or >>
+    paint(&context,$&frame,&input) >>>
     while true {
         event := demo.next(ech)
         if event.kind == ui.EV_EXIT || event.kind == ui.EV_CANVAS_CLOSED { <- }
         if event.window_id != identity.window_id { -> }
         $dirty := event.kind == ui.EV_CANVAS_METRICS
         if event.kind >= ui.EV_TEXT_COMMIT && event.kind <= ui.EV_TEXT_SURROUNDING_DELETE {
-            edit := ui.text_edit_of(&event) or >>
+            edit := ui.text_edit_of(&event) >>>
             if edit.input.id == input.id {
                 if event.kind == ui.EV_TEXT_INPUT_ENDED || event.kind == ui.EV_TEXT_INPUT_FAILED { <- }
                 dirty = true
             }
         }
         if ui.is_input_event(event.kind) {
-            pointer := ui.input_of(&event) or >>
+            pointer := ui.input_of(&event) >>>
             if pointer.generation != identity.generation { -> }
-            if pointer.kind == ui.EV_KEY_DOWN && pointer.key == ui.KEY_ESCAPE { demo.quit() or >> }
+            if pointer.kind == ui.EV_KEY_DOWN && pointer.key == ui.KEY_ESCAPE { demo.quit() >>> }
             bounds := layout.Rect{x: 28.0,y: 160.0,width: 790.0,height: 86.0}
             if pointer.kind == ui.EV_POINTER_DOWN && pointer.button == ui.BUTTON_LEFT && bounds.contains(pointer.x,pointer.y) {
-                state := input.snapshot() or >>
+                state := input.snapshot() >>>
                 // The native editor owns preedit; do not overwrite an active composition.
                 if !state.composing {
-                    hit := input.hit_test(state.revision,pointer.x,pointer.y) or >>
+                    hit := input.hit_test(state.revision,pointer.x,pointer.y) >>>
                     index := hit.byte_index()
-                    _ := input.update(state.revision,&state.value,index,index,&caret) or >>
+                    _ := input.update(state.revision,&state.value,index,index,&caret) >>>
                     dirty = true
                 }
             }
         }
-        if dirty { paint(&context,$&frame,&input) or >> }
+        if dirty { paint(&context,$&frame,&input) >>> }
     }
     frame.dispose()
-    input.stop() or (err) { << 0 }
+    input.stop() >>> (err) { << 0 }
     << 0
 }
-fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
+fn worker(ech chan ui.Event) { scene(ech) >>> (err) { demo.fail(err.msg())
     << } }
 fn launch() int {
-    $app := demo.app("Xu UI / Native Text Input",860,430) or >>
+    $app := demo.app("Xu UI / Native Text Input",860,430) >>>
     xu worker(app.event_ch)
-    << app.run() or >>
+    << app.run() >>>
 }
-fn main() int { << launch() or (err) { eprintln(err.msg())
+fn main() int { << launch() >>> (err) { eprintln(err.msg())
     << 1 } }

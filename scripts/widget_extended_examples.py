@@ -136,7 +136,7 @@ fn measure_prefix(context &draw.Context,options &draw.TextOptions,text &string,p
     n = snap_pos(text,n)
     if n <= 0 { << 0.0 }
     sub := text[0:n]
-    shaped := context.layout_text(&sub,options) or >>
+    shaped := context.layout_text(&sub,options) >>>
     << shaped.metrics.width
 }
 fn hit_pos(context &draw.Context,options &draw.TextOptions,text &string,rel_x f64) int {
@@ -145,7 +145,7 @@ fn hit_pos(context &draw.Context,options &draw.TextOptions,text &string,rel_x f6
     $prev_w := 0.0
     while prev_pos < text.len {
         next_pos := utf8_next(text,prev_pos)
-        w := measure_prefix(context,options,text,next_pos) or >>
+        w := measure_prefix(context,options,text,next_pos) >>>
         if rel_x < (prev_w + w) * 0.5 { << prev_pos }
         prev_pos = next_pos
         prev_w = w
@@ -153,7 +153,7 @@ fn hit_pos(context &draw.Context,options &draw.TextOptions,text &string,rel_x f6
     << text.len
 }
 fn compute_scroll(context &draw.Context,options &draw.TextOptions,text &string,head int,view_w f64,cur_scroll f64) f64 {
-    caret_px := measure_prefix(context,options,text,head) or >>
+    caret_px := measure_prefix(context,options,text,head) >>>
     $sx := cur_scroll
     if caret_px - sx > view_w - 6.0 { sx = caret_px - (view_w - 6.0) }
     if caret_px - sx < 0.0 { sx = caret_px }
@@ -273,22 +273,22 @@ fn paint_edit_line(frame $&draw.Frame,context &draw.Context,options &draw.TextOp
     if sel_pad < 2.0 { sel_pad = 2.0 }
     $caret_pad := (line_h - 20.0) * 0.5
     if caret_pad < 2.0 { caret_pad = 2.0 }
-    frame.push() or >>
-    frame.clip_rect(clip_x,clip_y,clip_w,clip_h) or >>
+    frame.push() >>>
+    frame.clip_rect(clip_x,clip_y,clip_w,clip_h) >>>
     if focused && hi > lo {
-        x0 := text_x - scroll_x + (measure_prefix(context,options,text,lo) or >>)
-        x1 := text_x - scroll_x + (measure_prefix(context,options,text,hi) or >>)
-        frame.fill_rect(x0,top + sel_pad,x1 - x0,line_h - sel_pad * 2.0,draw.rgba(225,29,72,56)) or >>
+        x0 := text_x - scroll_x + (measure_prefix(context,options,text,lo) >>>)
+        x1 := text_x - scroll_x + (measure_prefix(context,options,text,hi) >>>)
+        frame.fill_rect(x0,top + sel_pad,x1 - x0,line_h - sel_pad * 2.0,draw.rgba(225,29,72,56)) >>>
     }
     if text.len > 0 {
-        shaped := context.layout_text(text,options) or >>
-        frame.text_layout(&shaped,text_x - scroll_x,top + (line_h - shaped.metrics.height) * 0.5,ink) or >>
+        shaped := context.layout_text(text,options) >>>
+        frame.text_layout(&shaped,text_x - scroll_x,top + (line_h - shaped.metrics.height) * 0.5,ink) >>>
     }
     if focused {
-        cx := text_x - scroll_x + (measure_prefix(context,options,text,head) or >>)
-        frame.line(cx,top + caret_pad,cx,top + line_h - caret_pad,draw.rgb(225,29,72),1.5) or >>
+        cx := text_x - scroll_x + (measure_prefix(context,options,text,head) >>>)
+        frame.line(cx,top + caret_pad,cx,top + line_h - caret_pad,draw.rgb(225,29,72),1.5) >>>
     }
-    frame.pop() or >>
+    frame.pop() >>>
     << 0
 }
 '''
@@ -341,7 +341,7 @@ EXTENDED_CASES = {
                 dragging = false
             } else if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
                 focused = true
-                pos := hit_pos(&context,&edit_opts,&text,px - text_x + scroll_x) or >>
+                pos := hit_pos(&context,&edit_opts,&text,px - text_x + scroll_x) >>>
                 if event.repeat >= 3 {
                     anchor = 0
                     head = text.len
@@ -360,14 +360,14 @@ EXTENDED_CASES = {
                         head = pos
                     }
                 }
-                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
             } else {
                 focused = false
                 dragging = false
             }
         } else if event.kind == 74 && dragging {
-            head = hit_pos(&context,&edit_opts,&text,event.x - text_x + scroll_x) or >>
-            scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+            head = hit_pos(&context,&edit_opts,&text,event.x - text_x + scroll_x) >>>
+            scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
         } else if event.kind == 73 {
             dragging = false
         }
@@ -378,37 +378,37 @@ EXTENDED_CASES = {
                 if focused {
                     anchor = 0
                     head = text.len
-                    scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                    scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
                 }
             } else if focused {
-                handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,96,32,true) or >>
-                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,96,32,true) >>>
+                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
             }
         }
     }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
     if text.len > 0 {
-        frame.cursor_rect(bounds.x,bounds.y,clear_box.x - bounds.x,bounds.height,"text") or >>
-        frame.cursor_rect(clear_box.x,clear_box.y,clear_box.width,clear_box.height,"pointer") or >>
+        frame.cursor_rect(bounds.x,bounds.y,clear_box.x - bounds.x,bounds.height,"text") >>>
+        frame.cursor_rect(clear_box.x,clear_box.y,clear_box.width,clear_box.height,"pointer") >>>
     } else {
-        frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") or >>
+        frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") >>>
     }
-    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) or >> }
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) >>> }
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  Field")
     draw.text(32,48,12,"#6d626e","单行字段预览：支持光标定位、选区复制粘贴、词级删除及空值校验。")
 
-    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) >>>
     is_invalid := text.len == 0
     if is_invalid {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(184,33,56),1.5) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(184,33,56),1.5) >>>
     } else if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) >>>
     } else {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) >>>
     }
 
     bx := int(bounds.x)
@@ -418,8 +418,8 @@ EXTENDED_CASES = {
 
     // Floating notch and label sized dynamically to label text
     notch_text := "Project name 项目名称 *"
-    notch_lbl := context.layout_text(&notch_text,&draw.text_options(12.0)) or >>
-    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,notch_lbl.metrics.width + 8.0,14.0,draw.rgb(255,253,251)) or >>
+    notch_lbl := context.layout_text(&notch_text,&draw.text_options(12.0)) >>>
+    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,notch_lbl.metrics.width + 8.0,14.0,draw.rgb(255,253,251)) >>>
     if is_invalid {
         draw.text(bx + 16,by - 6,12,"#b82138","Project name 项目名称 *")
     } else if focused {
@@ -431,15 +431,15 @@ EXTENDED_CASES = {
     // Inside box: prefix, value, selection, caret, clear icon
     draw.text(bx + 16,by + 16,15,"#6d626e","xu / ")
     if text.len > 0 || focused {
-        paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y,bounds.height,text_x - 2.0,bounds.y + 2.0,view_w + 8.0,bounds.height - 4.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) or >>
+        paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y,bounds.height,text_x - 2.0,bounds.y + 2.0,view_w + 8.0,bounds.height - 4.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) >>>
     } else {
         draw.text(bx + 52,by + 16,15,"#857987","输入项目名称...")
     }
     if text.len > 0 {
         cx := clear_box.x + 16.0
         cy := clear_box.y + 16.0
-        frame.line(cx - 5.0,cy - 5.0,cx + 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) or >>
-        frame.line(cx + 5.0,cy - 5.0,cx - 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) or >>
+        frame.line(cx - 5.0,cy - 5.0,cx + 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) >>>
+        frame.line(cx + 5.0,cy - 5.0,cx - 5.0,cy + 5.0,draw.rgb(133,121,135),1.5) >>>
     }
 
     // Helper text & counter below
@@ -458,11 +458,11 @@ EXTENDED_CASES = {
     if is_invalid { message = "Field: empty (invalid)" }
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''
@@ -505,7 +505,7 @@ fn main() int {
             just_copied = false
             if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
                 focused = true
-                pos := hit_pos(&context,&edit_opts,&text,px - text_x + scroll_x) or >>
+                pos := hit_pos(&context,&edit_opts,&text,px - text_x + scroll_x) >>>
                 if event.repeat >= 3 {
                     anchor = 0
                     head = text.len
@@ -524,14 +524,14 @@ fn main() int {
                         head = pos
                     }
                 }
-                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
             } else {
                 focused = false
                 dragging = false
             }
         } else if event.kind == 74 && dragging {
-            head = hit_pos(&context,&edit_opts,&text,event.x - text_x + scroll_x) or >>
-            scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+            head = hit_pos(&context,&edit_opts,&text,event.x - text_x + scroll_x) >>>
+            scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
         } else if event.kind == 73 {
             dragging = false
         }
@@ -542,29 +542,29 @@ fn main() int {
                 if focused {
                     anchor = 0
                     head = text.len
-                    scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                    scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
                 }
             } else if focused {
-                handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,256,120,true) or >>
-                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,256,120,true) >>>
+                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
             }
         }
     }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") or >>
-    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) or >> }
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") >>>
+    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) >>> }
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  FieldArea")
     draw.text(32,48,12,"#6d626e","浏览器字段预览：支持选区拖拽、复制粘贴、词级删除及 Unicode 计数。")
 
-    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) >>>
     if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) >>>
     } else {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) >>>
     }
 
     bx := int(bounds.x)
@@ -574,15 +574,15 @@ fn main() int {
 
     // Floating notch and label sized dynamically to label text
     notch_text := "Build notes 构建说明 *"
-    notch_lbl := context.layout_text(&notch_text,&draw.text_options(12.0)) or >>
-    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,notch_lbl.metrics.width + 8.0,14.0,draw.rgb(255,253,251)) or >>
+    notch_lbl := context.layout_text(&notch_text,&draw.text_options(12.0)) >>>
+    frame.fill_rect(bounds.x + 12.0,bounds.y - 7.0,notch_lbl.metrics.width + 8.0,14.0,draw.rgb(255,253,251)) >>>
     if focused {
         draw.text(bx + 16,by - 6,12,"#282329","Build notes 构建说明 *")
     } else {
         draw.text(bx + 16,by - 6,12,"#6d626e","Build notes 构建说明 *")
     }
 
-    paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y + 12.0,24.0,bounds.x + 2.0,bounds.y + 8.0,bounds.width - 4.0,bounds.height - 12.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) or >>
+    paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y + 12.0,24.0,bounds.x + 2.0,bounds.y + 8.0,bounds.width - 4.0,bounds.height - 12.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) >>>
     draw.text(bx + 12,by + 42,14,"#6d626e","完整多行编辑请使用桌面 SDK。")
 
     if just_copied {
@@ -596,11 +596,11 @@ fn main() int {
     message := "FieldArea: " + str(chars) + " characters"
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''
@@ -643,7 +643,7 @@ fn main() int {
             just_copied = false
             if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
                 focused = true
-                pos := hit_pos(&context,&edit_opts,&text,px - text_x + scroll_x) or >>
+                pos := hit_pos(&context,&edit_opts,&text,px - text_x + scroll_x) >>>
                 if event.repeat >= 3 {
                     anchor = 0
                     head = text.len
@@ -662,14 +662,14 @@ fn main() int {
                         head = pos
                     }
                 }
-                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
             } else {
                 focused = false
                 dragging = false
             }
         } else if event.kind == 74 && dragging {
-            head = hit_pos(&context,&edit_opts,&text,event.x - text_x + scroll_x) or >>
-            scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+            head = hit_pos(&context,&edit_opts,&text,event.x - text_x + scroll_x) >>>
+            scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
         } else if event.kind == 73 {
             dragging = false
         }
@@ -680,21 +680,21 @@ fn main() int {
                 if focused {
                     anchor = 0
                     head = text.len
-                    scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                    scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
                 }
             } else if focused {
-                handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,96,0,true) or >>
-                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) or >>
+                handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,96,0,true) >>>
+                scroll_x = compute_scroll(&context,&edit_opts,&text,head,view_w,scroll_x) >>>
             }
         }
     }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") or >>
-    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) or >> }
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") >>>
+    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) >>> }
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  Input")
     draw.text(32,48,12,"#6d626e","浏览器输入预览：支持拖拽选中、双击选词、Ctrl/Cmd+A/C/X/V 及退格删词。")
 
@@ -702,15 +702,15 @@ fn main() int {
     by := int(bounds.y)
     draw.text(bx,by - 24,14,"#282329","User email 用户邮箱 *")
 
-    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) >>>
     if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) >>>
     } else {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) >>>
     }
 
     if text.len > 0 || focused {
-        paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y,bounds.height,bounds.x + 2.0,bounds.y + 2.0,bounds.width - 4.0,bounds.height - 4.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) or >>
+        paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y,bounds.height,bounds.x + 2.0,bounds.y + 2.0,bounds.width - 4.0,bounds.height - 4.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) >>>
     } else {
         draw.text(bx + 14,by + 13,15,"#857987","you@domain.com")
     }
@@ -723,11 +723,11 @@ fn main() int {
     message := "Value: " + text
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''
@@ -770,7 +770,7 @@ fn main() int {
             just_copied = false
             if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
                 focused = true
-                pos := hit_pos(&context,&edit_opts,&line1,px - text_x + scroll_x) or >>
+                pos := hit_pos(&context,&edit_opts,&line1,px - text_x + scroll_x) >>>
                 if event.repeat >= 3 {
                     anchor = 0
                     head = line1.len
@@ -789,14 +789,14 @@ fn main() int {
                         head = pos
                     }
                 }
-                scroll_x = compute_scroll(&context,&edit_opts,&line1,head,view_w,scroll_x) or >>
+                scroll_x = compute_scroll(&context,&edit_opts,&line1,head,view_w,scroll_x) >>>
             } else {
                 focused = false
                 dragging = false
             }
         } else if event.kind == 74 && dragging {
-            head = hit_pos(&context,&edit_opts,&line1,event.x - text_x + scroll_x) or >>
-            scroll_x = compute_scroll(&context,&edit_opts,&line1,head,view_w,scroll_x) or >>
+            head = hit_pos(&context,&edit_opts,&line1,event.x - text_x + scroll_x) >>>
+            scroll_x = compute_scroll(&context,&edit_opts,&line1,head,view_w,scroll_x) >>>
         } else if event.kind == 73 {
             dragging = false
         }
@@ -807,29 +807,29 @@ fn main() int {
                 if focused {
                     anchor = 0
                     head = line1.len
-                    scroll_x = compute_scroll(&context,&edit_opts,&line1,head,view_w,scroll_x) or >>
+                    scroll_x = compute_scroll(&context,&edit_opts,&line1,head,view_w,scroll_x) >>>
                 }
             } else if focused {
-                handle_edit_key(&event,$&line1,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,200,0,true) or >>
-                scroll_x = compute_scroll(&context,&edit_opts,&line1,head,view_w,scroll_x) or >>
+                handle_edit_key(&event,$&line1,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,200,0,true) >>>
+                scroll_x = compute_scroll(&context,&edit_opts,&line1,head,view_w,scroll_x) >>>
             }
         }
     }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") or >>
-    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) or >> }
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") >>>
+    if clip_seq > 0 { frame.copy_text(clip_seq,&clipboard) >>> }
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  TextArea")
     draw.text(32,48,12,"#6d626e","浏览器多行预览：首行支持拖拽选中、复制粘贴与光标同步；完整编辑请用桌面 SDK。")
 
-    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) >>>
     if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) >>>
     } else {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) >>>
     }
 
     bx := int(bounds.x)
@@ -837,7 +837,7 @@ fn main() int {
     bw := int(bounds.width)
     bh := int(bounds.height)
 
-    paint_edit_line($&frame,&context,&edit_opts,&line1,text_x,bounds.y + 12.0,24.0,bounds.x + 2.0,bounds.y + 6.0,bounds.width - 4.0,28.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) or >>
+    paint_edit_line($&frame,&context,&edit_opts,&line1,text_x,bounds.y + 12.0,24.0,bounds.x + 2.0,bounds.y + 6.0,bounds.width - 4.0,28.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) >>>
     draw.text(bx + 12,by + 40,15,"#282329","桌面 SDK 提供选区、剪贴板与输入法。")
     draw.text(bx + 12,by + 64,15,"#6d626e","👨‍👩‍👧‍👦 family · emoji 与多语言")
 
@@ -852,11 +852,11 @@ fn main() int {
     message := "Lines: 3 | Characters: " + str(total_chars)
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''
@@ -903,9 +903,9 @@ fn demo() int {
     check_bounds := box(428.0,114.0,140.0,42.0)
     text_x := bounds.x + 12.0
     view_w := bounds.width - 24.0
-    $check := widgets.checkbox(&identity,2,&check_bounds,false) or >>
+    $check := widgets.checkbox(&identity,2,&check_bounds,false) >>>
     $check_lbl := widgets.styled_label(&context,&"显示密码")
-    $focus := widgets.focus_group(&identity,[1,2]) or >>
+    $focus := widgets.focus_group(&identity,[1,2]) >>>
     $show_pwd := false
     $text := "Xu-Secret-2026!"
     $focused := false
@@ -932,8 +932,8 @@ fn demo() int {
             py := event.y
             if px >= bounds.x && px <= bounds.x + bounds.width && py >= bounds.y && py <= bounds.y + bounds.height {
                 focused = true
-                focus.focus(1) or >>
-                dpos := hit_pos(&context,&edit_opts,&display,px - text_x + scroll_x) or >>
+                focus.focus(1) >>>
+                dpos := hit_pos(&context,&edit_opts,&display,px - text_x + scroll_x) >>>
                 $pos := dpos
                 if !show_pwd { pos = cp_to_byte_index(&text,dpos / 3) }
                 if event.repeat >= 3 || (!show_pwd && event.repeat == 2) {
@@ -961,14 +961,14 @@ fn demo() int {
                 }
             }
         } else if event.kind == 74 && dragging {
-            dpos := hit_pos(&context,&edit_opts,&display,event.x - text_x + scroll_x) or >>
+            dpos := hit_pos(&context,&edit_opts,&display,event.x - text_x + scroll_x) >>>
             if show_pwd { head = dpos }
             else { head = cp_to_byte_index(&text,dpos / 3) }
         } else if event.kind == 73 {
             dragging = false
         }
         if event.kind == 78 && focused && event.key != 257 {
-            handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,48,0,false) or >>
+            handle_edit_key(&event,$&text,$&anchor,$&head,$&clipboard,$&clip_seq,$&just_copied,$&focused,48,0,false) >>>
             if !focused { focus.clear() }
         }
         nav := focus.input(&event)
@@ -981,7 +981,7 @@ fn demo() int {
         check.set_focus(focus.current() == 2)
         if !nav.consumed {
             act := check.input(&event)
-            if act.request_focus { focus.focus(2) or >> }
+            if act.request_focus { focus.focus(2) >>> }
             if act.kind == widgets.ACTION_CHANGE { show_pwd = check.value() }
         }
         $cur_display := text
@@ -990,16 +990,16 @@ fn demo() int {
             cur_display = mask_bullets(&text)
             dhead = byte_to_cp_index(&text,head) * 3
         }
-        scroll_x = compute_scroll(&context,&edit_opts,&cur_display,dhead,view_w,scroll_x) or >>
+        scroll_x = compute_scroll(&context,&edit_opts,&cur_display,dhead,view_w,scroll_x) >>>
     }
 
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") or >>
-    frame.cursor_rect(check_bounds.x,check_bounds.y,check_bounds.width,check_bounds.height,"pointer") or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.cursor_rect(bounds.x,bounds.y,bounds.width,bounds.height,"text") >>>
+    frame.cursor_rect(check_bounds.x,check_bounds.y,check_bounds.width,check_bounds.height,"pointer") >>>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  PasswordInput")
     draw.text(32,48,12,"#6d626e","浏览器密码预览：支持光标定位、选区删词与显隐切换；完整编辑请用 SDK。")
 
@@ -1007,23 +1007,23 @@ fn demo() int {
     by := int(bounds.y)
     draw.text(bx,by - 24,14,"#282329","Password 密码 *")
 
-    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) or >>
+    frame.fill_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(255,255,255)) >>>
     if focused {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,styles.input.palette.focus,2.0) >>>
     } else {
-        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) or >>
+        frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,draw.rgb(133,121,135),1.0) >>>
     }
 
     if show_pwd {
-        paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y,bounds.height,bounds.x + 2.0,bounds.y + 2.0,bounds.width - 4.0,bounds.height - 4.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) or >>
+        paint_edit_line($&frame,&context,&edit_opts,&text,text_x,bounds.y,bounds.height,bounds.x + 2.0,bounds.y + 2.0,bounds.width - 4.0,bounds.height - 4.0,scroll_x,anchor,head,focused,draw.rgb(40,35,41)) >>>
     } else {
         bullets := mask_bullets(&text)
         danchor := byte_to_cp_index(&text,anchor) * 3
         dhead := byte_to_cp_index(&text,head) * 3
-        paint_edit_line($&frame,&context,&edit_opts,&bullets,text_x,bounds.y,bounds.height,bounds.x + 2.0,bounds.y + 2.0,bounds.width - 4.0,bounds.height - 4.0,scroll_x,danchor,dhead,focused,draw.rgb(40,35,41)) or >>
+        paint_edit_line($&frame,&context,&edit_opts,&bullets,text_x,bounds.y,bounds.height,bounds.x + 2.0,bounds.y + 2.0,bounds.width - 4.0,bounds.height - 4.0,scroll_x,danchor,dhead,focused,draw.rgb(40,35,41)) >>>
     }
 
-    check.paint_styled($&frame,$&check_lbl,&styles) or >>
+    check.paint_styled($&frame,$&check_lbl,&styles) >>>
     draw.text(bx,by + int(bounds.height) + 8,12,"#6d626e","显隐切换保留内容与光标 · 禁止复制剪切密码")
     $message := "Password: masked (" + str(text.len) + " chars)"
     if show_pwd {
@@ -1031,11 +1031,11 @@ fn demo() int {
     }
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''
@@ -1058,10 +1058,10 @@ fn demo() int {
     theme := playground.light_theme()
     styles := playground.light_styles()
     bounds := box(48.0,114.0,48.0,48.0)
-    $control := widgets.button(&identity,1,&bounds) or >>
+    $control := widgets.button(&identity,1,&bounds) >>>
     $label := widgets.styled_label(&context,&"★")
     $favorited := false
-    $focus := widgets.focus_group(&identity,[1]) or >>
+    $focus := widgets.focus_group(&identity,[1]) >>>
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -1069,17 +1069,17 @@ fn demo() int {
         control.set_focus(focus.current() == 1)
         if nav.consumed { -> }
         act := control.input(&event)
-        if act.request_focus { focus.focus(1) or >> }
+        if act.request_focus { focus.focus(1) >>> }
         if act.kind == widgets.ACTION_ACTIVATE { favorited = !favorited }
     }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  IconButton")
     draw.text(32,48,12,"#6d626e","独立点击目标与动作名称；点击或 Enter 切换收藏。")
-    control.paint_styled($&frame,$&label,&styles) or >>
+    control.paint_styled($&frame,$&label,&styles) >>>
     $status_text := "Favorite 收藏项目"
     if favorited {
         status_text = "Favorited 已收藏"
@@ -1089,11 +1089,11 @@ fn demo() int {
     message := "Favorited: " + str(favorited)
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''
@@ -1117,9 +1117,9 @@ fn demo() int {
     styles := playground.light_styles()
     bounds := box(48.0,114.0,220.0,44.0)
     label_text := "Build project 构建"
-    $control := widgets.task_button(&context,&identity,1,&bounds,&label_text) or >>
+    $control := widgets.task_button(&context,&identity,1,&bounds,&label_text) >>>
     $running := false
-    $focus := widgets.focus_group(&identity,[1]) or >>
+    $focus := widgets.focus_group(&identity,[1]) >>>
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -1127,25 +1127,25 @@ fn demo() int {
         control.set_focus(focus.current() == 1)
         if nav.consumed { -> }
         act := control.input(&event)
-        if act.request_focus { focus.focus(1) or >> }
+        if act.request_focus { focus.focus(1) >>> }
         if act.kind == widgets.ACTION_ACTIVATE {
             running = !running
             if running {
-                control.begin(1,time.zero_instant()) or >>
+                control.begin(1,time.zero_instant()) >>>
                 control.set_progress(1,0.45)
             } else {
-                control.reset() or >>
+                control.reset() >>>
             }
         }
     }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  TaskButton")
     draw.text(32,48,12,"#6d626e","任务按钮：支持空闲、运行中进度动画与完成反馈。")
-    control.paint_styled($&frame,&styles) or >>
+    control.paint_styled($&frame,&styles) >>>
     $sub_val := "点击预览运行状态，再次点击恢复空闲"
     if running {
         sub_val = "任务执行中 (45%) · 桌面 SDK 提供异步任务调度"
@@ -1157,11 +1157,11 @@ fn demo() int {
     }
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''
@@ -1188,11 +1188,11 @@ fn demo() int {
     context := draw.default_context()
     styles := playground.light_styles()
     bounds := box(48.0,210.0,160.0,42.0)
-    $btn := widgets.button(&identity,1,&bounds) or >>
+    $btn := widgets.button(&identity,1,&bounds) >>>
     $lbl := widgets.styled_label(&context,&"Stop 停止")
     spinner_bounds := box(52.0,104.0,36.0,36.0)
-    $spin := widgets.spinner(&spinner_bounds) or >>
-    $focus := widgets.focus_group(&identity,[1]) or >>
+    $spin := widgets.spinner(&spinner_bounds) >>>
+    $focus := widgets.focus_group(&identity,[1]) >>>
     $running := true
     $ticks := 0
     while true {
@@ -1202,37 +1202,37 @@ fn demo() int {
         btn.set_focus(focus.current() == 1)
         if nav.consumed { -> }
         act := btn.input(&event)
-        if act.request_focus { focus.focus(1) or >> }
+        if act.request_focus { focus.focus(1) >>> }
         if act.kind == widgets.ACTION_ACTIVATE {
             running = !running
             spin.set_running(running)
             ticks += 1
             if running {
-                spin.tick(time.instant_from_ns(ticks * 112500000) or >>, false)
+                spin.tick(time.instant_from_ns(ticks * 112500000) >>>, false)
             }
         }
     }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  Spinner")
     draw.text(32,48,12,"#6d626e","加载指示器：展示任务进行中的旋转圆点动效。")
-    spin.paint_styled($&frame,&styles) or >>
+    spin.paint_styled($&frame,&styles) >>>
     if !running { lbl = widgets.styled_label(&context,&"Start 开始") }
     draw.text(104,114,16,"#282329","Loading assets… 正在加载")
-    btn.paint_styled($&frame,$&lbl,&styles) or >>
+    btn.paint_styled($&frame,$&lbl,&styles) >>>
     draw.text(48,172,12,"#6d626e","标准组件加载指示器 · 遵循 xu-ui-design")
     $message := "Spinner: running (period: 900ms)"
     if !running { message = "Spinner: stopped" }
     draw.text(32,326,13,"#6d626e",message + "")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''

@@ -20,28 +20,28 @@ fn (t $&Tooltip) update_trigger(now time.Instant) int {
         t.suppressed = false
         reduced := t.panel.reduced
         panel := $&t.panel
-        << panel.close(now,reduced) or >>
+        << panel.close(now,reduced) >>>
     }
     if t.blocked {
         t.pending = false
         panel := $&t.panel
-        << panel.close(now,true) or >>
+        << panel.close(now,true) >>>
     }
     if t.suppressed { << 0 }
     if t.focused {
         t.pending = false
         reduced := t.panel.reduced
         panel := $&t.panel
-        << panel.open(now,reduced) or >>
+        << panel.open(now,reduced) >>>
     }
     if t.delay.is_zero() {
         reduced := t.panel.reduced
         panel := $&t.panel
-        << panel.open(now,reduced) or >>
+        << panel.open(now,reduced) >>>
     }
     if !t.panel.is_open() && !t.pending {
         t.entered = now
-        t.show_at = now.add(t.delay) or >>
+        t.show_at = now.add(t.delay) >>>
         t.pending = true
     }
     << 0
@@ -49,10 +49,10 @@ fn (t $&Tooltip) update_trigger(now time.Instant) int {
 
 // Upstream: src/ui/widgets/overlays.xu
 pub fn (p $&Popover) set_motion(spec &MotionSpec) int {
-    spec.validate() or >>
+    spec.validate() >>>
     p.motion = MotionSpec{hover: spec.hover,press: spec.press,change: spec.change,enter: spec.enter,exit: spec.exit,curve: spec.curve}
     fade := $&p.fade
-    fade.set_curve(spec.curve) or >>
+    fade.set_curve(spec.curve) >>>
     << 0
 }
 
@@ -64,8 +64,8 @@ pub fn (p $&Popover) tick(now time.Instant,reduced_motion bool) bool {
     before := p.fade.value()
     p.reduced = reduced_motion
     fade := $&p.fade
-    if reduced_motion { fade.retarget(next,now,time.duration(0),true) or >> }
-    else { _ := fade.advance(now) or >> }
+    if reduced_motion { fade.retarget(next,now,time.duration(0),true) >>> }
+    else { _ := fade.advance(now) >>> }
     changed := before != p.fade.value()
     if changed { p.dirty = true }
     << changed
@@ -75,36 +75,36 @@ pub fn (p $&Popover) tick(now time.Instant,reduced_motion bool) bool {
 pub fn (p &Popover) id() int { << p.id_val }
 
 // Upstream: src/ui/widgets/overlays.xu
-pub fn (p &Popover) next_tick(now time.Instant) time.Instant { << overlay_next_tick(p.fade.is_animating(),now) or >> }
+pub fn (p &Popover) next_tick(now time.Instant) time.Instant { << overlay_next_tick(p.fade.is_animating(),now) >>> }
 
 // Upstream: src/ui/widgets/tooltip.xu
 pub fn (t $&Tooltip) dismiss(now time.Instant,reduced_motion bool) int {
     t.pending = false
     t.suppressed = true
     panel := $&t.panel
-    << panel.close(now,reduced_motion) or >>
+    << panel.close(now,reduced_motion) >>>
 }
 
 // Upstream: src/ui/widgets/tooltip.xu
 pub fn (t $&Tooltip) input(event &ui.InputEvent) Action {
     if !belongs(&t.panel.identity,event) || !t.panel.enabled { << no_action(t.id(),t.needs_paint()) }
-    now := time.instant_from_ns(event.time_ns) or >>
+    now := time.instant_from_ns(event.time_ns) >>>
     if event.kind == ui.EV_POINTER_CANCEL {
         t.hovered = false
         t.focused = false
         t.pending = false
         t.suppressed = false
         panel := $&t.panel
-        panel.close(now,true) or >>
+        panel.close(now,true) >>>
     } else if event.kind == ui.EV_POINTER_DOWN || event.kind == ui.EV_POINTER_SCROLL {
-        if t.hovered || t.focused || t.pending || t.is_open() { t.dismiss(now,t.panel.reduced) or >> }
+        if t.hovered || t.focused || t.pending || t.is_open() { t.dismiss(now,t.panel.reduced) >>> }
     } else if event.kind == ui.EV_POINTER_MOVE || event.kind == ui.EV_POINTER_ENTER || event.kind == ui.EV_POINTER_LEAVE {
         hot := event.kind != ui.EV_POINTER_LEAVE && t.panel.anchor.contains(event.x,event.y)
         if t.hovered != hot { t.hovered = hot
-            t.update_trigger(now) or >> }
+            t.update_trigger(now) >>> }
     } else if event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_ESCAPE && (t.is_open() || t.pending) {
         reduced := t.panel.reduced
-        t.dismiss(now,reduced) or >>
+        t.dismiss(now,reduced) >>>
         << overlay_action(t.id(),true,t.needs_paint(),true)
     }
     << no_action(t.id(),t.needs_paint())
@@ -112,9 +112,9 @@ pub fn (t $&Tooltip) input(event &ui.InputEvent) Action {
 
 // Upstream: src/ui/widgets/tooltip.xu
 pub fn (t $&Tooltip) set_delay(delay time.Duration) int {
-    if delay.is_negative() || delay.nanoseconds() > time.minute() { >> errors.new("widgets: invalid tooltip delay") }
+    if delay.is_negative() || delay.nanoseconds() > time.minute() { >>> errors.new("widgets: invalid tooltip delay") }
     t.delay = delay
-    if t.pending { t.show_at = t.entered.add(delay) or >> }
+    if t.pending { t.show_at = t.entered.add(delay) >>> }
     << 0
 }
 
@@ -122,32 +122,32 @@ pub fn (t $&Tooltip) set_delay(delay time.Duration) int {
 pub fn (t $&Tooltip) set_focus(focused bool,now time.Instant) int {
     if t.focused == focused { << 0 }
     t.focused = focused && t.panel.enabled
-    << t.update_trigger(now) or >>
+    << t.update_trigger(now) >>>
 }
 
 // Upstream: src/ui/widgets/tooltip.xu
 pub fn (t $&Tooltip) set_geometry(anchor &layout.Rect,size &layout.Size,viewport &layout.Rect) int {
-    _ := anchored_overlay_bounds(anchor,size,viewport) or >>
+    _ := anchored_overlay_bounds(anchor,size,viewport) >>>
     anchor_changed := !overlay_same_rect(anchor,&t.panel.anchor)
     if anchor_changed {
         t.hovered = false
         t.pending = false
         t.suppressed = false
         if !t.focused { panel := $&t.panel
-            panel.close(time.zero_instant(),true) or >> }
+            panel.close(time.zero_instant(),true) >>> }
     }
     panel := $&t.panel
-    << panel.set_geometry(anchor,size,viewport) or >>
+    << panel.set_geometry(anchor,size,viewport) >>>
 }
 
 // Upstream: src/ui/widgets/tooltip.xu
 pub fn (t $&Tooltip) set_motion(spec &MotionSpec) int { panel := $&t.panel
-    << panel.set_motion(spec) or >> }
+    << panel.set_motion(spec) >>> }
 
 // Upstream: src/ui/widgets/tooltip.xu
 pub fn (t $&Tooltip) set_placement(placement &OverlayPlacement) int {
     panel := $&t.panel
-    << panel.set_placement(placement) or >>
+    << panel.set_placement(placement) >>>
 }
 
 // Upstream: src/ui/widgets/tooltip.xu
@@ -159,11 +159,11 @@ pub fn (t $&Tooltip) tick(now time.Instant,reduced_motion bool) bool {
         if (t.hovered || t.focused) && !t.suppressed && !t.blocked && t.panel.enabled {
             opened = true
             panel := $&t.panel
-            panel.open(now,reduced_motion) or >>
+            panel.open(now,reduced_motion) >>>
         }
     }
     panel := $&t.panel
-    changed := panel.tick(now,reduced_motion) or >>
+    changed := panel.tick(now,reduced_motion) >>>
     << opened || changed
 }
 
@@ -184,10 +184,10 @@ pub fn (t &Tooltip) needs_paint() bool { << t.panel.needs_paint() }
 
 // Upstream: src/ui/widgets/tooltip.xu
 pub fn (t &Tooltip) next_tick(now time.Instant) time.Instant {
-    next := t.panel.next_tick(now) or >>
+    next := t.panel.next_tick(now) >>>
     if t.pending {
         $deadline := t.show_at
-        if deadline.is_zero() { deadline = now.add(time.duration(1)) or >> }
+        if deadline.is_zero() { deadline = now.add(time.duration(1)) >>> }
         if next.is_zero() || deadline.before(next) { << deadline }
     }
     << next
@@ -201,18 +201,18 @@ pub fn (t &Tooltip) paint_styled(frame $&draw.Frame,label $&StyledLabel,styles &
     if !t.is_visible() { << 0 }
     bounds := t.bounds()
     c := t.panel.style_or(styles)
-    << paint_overlay_label(frame,label,&bounds,styles,&c,t.opacity(),true) or >>
+    << paint_overlay_label(frame,label,&bounds,styles,&c,t.opacity(),true) >>>
 }
 
 // Upstream: src/ui/widgets/tooltip.xu
 pub fn tooltip(identity &ui.CanvasEvent,id int,anchor &layout.Rect,size &layout.Size,viewport &layout.Rect) Tooltip {
-    $panel := popover(identity,id,anchor,size,viewport) or >>
+    $panel := popover(identity,id,anchor,size,viewport) >>>
     $placement := overlay_placement()
     placement.side = OVERLAY_TOP
     placement.align = OVERLAY_CENTER
-    panel.set_placement(&placement) or >>
+    panel.set_placement(&placement) >>>
     << Tooltip{panel: panel,hovered: false,focused: false,suppressed: false,blocked: false,pending: false,entered: time.zero_instant(),
-        show_at: time.zero_instant(),delay: time.milliseconds(500) or >>}
+        show_at: time.zero_instant(),delay: time.milliseconds(500) >>>}
 }
 
 // Upstream: src/ui/widgets/tooltip.xu

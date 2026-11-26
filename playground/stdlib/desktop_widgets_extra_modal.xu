@@ -18,20 +18,20 @@ pub fn (m $&Modal) close(now time.Instant,reduced_motion bool) int {
     m.close_armed = false
     m.dirty = true
     panel := $&m.panel
-    << panel.close(now,reduced_motion) or >>
+    << panel.close(now,reduced_motion) >>>
 }
 
 // Upstream: src/ui/widgets/overlays.xu
 pub fn (m $&Modal) input(event &ui.InputEvent) Action {
     if !belongs(&m.identity,event) || !m.blocks_input() { << no_action(m.id_val,m.needs_paint()) }
     if !m.is_open() { << overlay_action(m.id_val,false,m.needs_paint(),true) }
-    now := time.instant_from_ns(event.time_ns) or >>
+    now := time.instant_from_ns(event.time_ns) >>>
     reduced := m.panel.reduced
     escape := event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_ESCAPE
     inside := m.bounds().contains(event.x,event.y)
     close_hit := m.close_bounds().contains(event.x,event.y)
     outside := event.kind == ui.EV_POINTER_DOWN && !inside && m.outside_close
-    if escape || outside { m.close(now,reduced) or >>
+    if escape || outside { m.close(now,reduced) >>>
         << overlay_action(m.id_val,true,m.needs_paint(),true) }
     if event.kind == ui.EV_KEY_DOWN && event.key == ui.KEY_TAB {
         if m.order.len > 0 {
@@ -51,7 +51,7 @@ pub fn (m $&Modal) input(event &ui.InputEvent) Action {
     if event.kind == ui.EV_POINTER_UP && event.button == ui.BUTTON_LEFT && m.close_armed {
         m.close_armed = false
         m.dirty = true
-        if close_hit { m.close(now,reduced) or >> }
+        if close_hit { m.close(now,reduced) >>> }
         << overlay_action(m.id_val,close_hit,true,true)
     }
     << overlay_action(m.id_val,false,m.needs_paint(),!m.allows_content(event))
@@ -59,7 +59,7 @@ pub fn (m $&Modal) input(event &ui.InputEvent) Action {
 
 // Upstream: src/ui/widgets/overlays.xu
 pub fn (m $&Modal) open(now time.Instant,reduced_motion bool,restore_focus int) int {
-    if restore_focus < 0 { >> errors.new("widgets: invalid restore focus") }
+    if restore_focus < 0 { >>> errors.new("widgets: invalid restore focus") }
     if !m.is_visible() {
         m.restore_id = restore_focus
         m.focus_index = -1
@@ -69,7 +69,7 @@ pub fn (m $&Modal) open(now time.Instant,reduced_motion bool,restore_focus int) 
     m.close_armed = false
     m.dirty = true
     panel := $&m.panel
-    << panel.open(now,reduced_motion) or >>
+    << panel.open(now,reduced_motion) >>>
 }
 
 // Upstream: src/ui/widgets/overlays.xu
@@ -77,7 +77,7 @@ pub fn (m $&Modal) set_content_focus(id int) int {
     for i in 0:m.order.len { if m.order[i] == id { m.focus_index = i
         m.dirty = true
         << 0 } }
-    >> errors.new("widgets: focus target is outside modal")
+    >>> errors.new("widgets: focus target is outside modal")
 }
 
 // Upstream: src/ui/widgets/overlays.xu
@@ -85,11 +85,11 @@ pub fn (m $&Modal) set_dismiss_on_outside(enabled bool) { m.outside_close = enab
 
 // Upstream: src/ui/widgets/overlays.xu
 pub fn (m $&Modal) set_focus_order(ids &[]int) int {
-    if ids.len > 256 { >> errors.new("widgets: too many modal focus targets") }
+    if ids.len > 256 { >>> errors.new("widgets: too many modal focus targets") }
     $order := []int{}
     for id in ids {
-        if id <= 0 || id == m.id_val { >> errors.new("widgets: invalid modal focus target") }
-        for previous in order { if previous == id { >> errors.new("widgets: duplicate modal focus target") } }
+        if id <= 0 || id == m.id_val { >>> errors.new("widgets: invalid modal focus target") }
+        for previous in order { if previous == id { >>> errors.new("widgets: duplicate modal focus target") } }
         order.push(id)
     }
     current := m.focused_id()
@@ -151,25 +151,25 @@ pub fn (m &Modal) opacity() f64 { << m.panel.opacity() }
 pub fn (m &Modal) paint_styled(frame $&draw.Frame,styles &Styles) int {
     if !m.is_visible() { << 0 }
     v := m.viewport
-    frame.fill_rect(v.x,v.y,v.width,v.height,draw.rgba(0,0,0,int(105.0 * m.opacity()))) or >>
-    m.panel.paint_styled(frame,styles) or >>
+    frame.fill_rect(v.x,v.y,v.width,v.height,draw.rgba(0,0,0,int(105.0 * m.opacity()))) >>>
+    m.panel.paint_styled(frame,styles) >>>
     b := m.close_bounds()
-    c := m.panel.style_or(styles).with_opacity(m.opacity()) or >>
+    c := m.panel.style_or(styles).with_opacity(m.opacity()) >>>
     ink := c.resolve(0).foreground
     mid_x := b.x + b.width * 0.5
     mid_y := b.y + b.height * 0.5
     half := math.min(4.0,b.width * 0.2)
-    frame.line(mid_x - half,mid_y - half,mid_x + half,mid_y + half,ink,1.5) or >>
-    frame.line(mid_x + half,mid_y - half,mid_x - half,mid_y + half,ink,1.5) or >>
+    frame.line(mid_x - half,mid_y - half,mid_x + half,mid_y + half,ink,1.5) >>>
+    frame.line(mid_x + half,mid_y - half,mid_x - half,mid_y + half,ink,1.5) >>>
     << 0
 }
 
 // Upstream: src/ui/widgets/overlays.xu
 pub fn modal(identity &ui.CanvasEvent,id int,bounds &layout.Rect,viewport &layout.Rect) Modal {
-    validate_bounds(bounds) or >>
+    validate_bounds(bounds) >>>
     size := layout.Size{width: bounds.width,height: bounds.height}
     anchor := layout.Rect{x: bounds.x,y: bounds.y - 6.0,width: 0.0,height: 0.0}
-    panel := popover(identity,id,&anchor,&size,viewport) or >>
+    panel := popover(identity,id,&anchor,&size,viewport) >>>
     << Modal{identity: copy_identity(identity),id_val: id,panel: panel,viewport: copy_rect(viewport),order: []int{},focus_index: -1,
         restore_id: 0,restore_pending: false,outside_close: false,close_armed: false,dirty: true}
 }

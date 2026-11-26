@@ -14,9 +14,9 @@
 
 // Upstream: src/ui/widgets/color_picker.xu
 fn (picker $&ColorPicker) place_channels() int {
-    for i in 0:4 { b := picker.channel_bounds(i) or >>
+    for i in 0:4 { b := picker.channel_bounds(i) >>>
         $channel := picker.channels[i]
-        channel.set_bounds(&b) or >>
+        channel.set_bounds(&b) >>>
         picker.channels[i] = channel }
     << 0
 }
@@ -26,7 +26,7 @@ fn (picker $&ColorPicker) swatch_input(event &ui.InputEvent) Action {
     if picker.control.read_only { << no_action(picker.id(),false) }
     colors := picker.swatch_colors()
     $hit := -1
-    for i in 0:colors.len { b := picker.swatch_bounds(i) or >>
+    for i in 0:colors.len { b := picker.swatch_bounds(i) >>>
         if b.contains(event.x,event.y) { hit=i } }
     $choose := -1
     if event.kind==ui.EV_POINTER_DOWN && event.button==ui.BUTTON_LEFT && hit>=0 { picker.swatch_armed=hit
@@ -36,7 +36,7 @@ fn (picker $&ColorPicker) swatch_input(event &ui.InputEvent) Action {
         picker.swatch_armed=-1
     }
     if event.kind==ui.EV_KEY_DOWN && picker.control.focused && (event.modifiers&ui.MOD_ALT)!=0 && event.key>=49 && event.key<=56 { choose=event.key-49 }
-    if choose>=0 && choose<colors.len { picker.set_value(colors[choose]) or >>
+    if choose>=0 && choose<colors.len { picker.set_value(colors[choose]) >>>
         << Action{kind:ACTION_CHANGE,id:picker.id(),needs_paint:true,request_focus:true,consumed:true,value:f64(picker.value().value())} }
     << no_action(picker.id(),false)
 }
@@ -44,11 +44,11 @@ fn (picker $&ColorPicker) swatch_input(event &ui.InputEvent) Action {
 // Upstream: src/ui/widgets/color_precision.xu
 fn (picker &ColorPicker) paint_swatches(frame $&draw.Frame,styles &Styles,c &ControlStyle) int {
     colors := picker.swatch_colors()
-    for i in 0:colors.len { b := picker.swatch_bounds(i) or >>
+    for i in 0:colors.len { b := picker.swatch_bounds(i) >>>
         inset := 3.0*styles.density
         square := layout.Rect{x:b.x+inset,y:b.y+inset,width:math.max(0.0,b.width-inset*2.0),height:math.max(0.0,b.height-inset*2.0)}
-        rounded_fill(frame,&square,3.0*styles.density,colors[i]) or >>
-        if colors[i].value()==picker.value().value() { rounded_stroke(frame,&square,3.0*styles.density,c.palette.foreground,2.0) or >> }
+        rounded_fill(frame,&square,3.0*styles.density,colors[i]) >>>
+        if colors[i].value()==picker.value().value() { rounded_stroke(frame,&square,3.0*styles.density,c.palette.foreground,2.0) >>> }
     }
     << 0
 }
@@ -86,19 +86,19 @@ pub const TEXT_RED = 26
 
 // Upstream: src/ui/widgets/color_picker.xu
 pub fn (picker $&ColorPicker) apply_styles(styles &Styles) int {
-    styles.validate() or >>
+    styles.validate() >>>
     c := picker.style_or(styles)
     options := styles.text_options(&c)
     height := math.max(32.0 * styles.density,options.size * 1.5 + 8.0 * styles.density)
     pad := 10.0 * styles.density
     $label_w := math.max(22.0 * styles.density,options.size * 1.5)
-    for i in 0:4 { text := picker.locale.text(TEXT_RED+i) or >>
+    for i in 0:4 { text := picker.locale.text(TEXT_RED+i) >>>
         cache := $&picker.labels
-        size := cache.measure(100+i,&text,styles,&c) or >>
+        size := cache.measure(100+i,&text,styles,&c) >>>
         label_w = math.max(label_w,size.width + 8.0 * styles.density) }
     value := picker.locale.integer(255)
     cache := $&picker.labels
-    value_size := cache.measure(104,&value,styles,&c) or >>
+    value_size := cache.measure(104,&value,styles,&c) >>>
     value_w := math.max(36.0 * styles.density,value_size.width + 8.0 * styles.density)
     preview_h := math.max(36.0 * styles.density,options.size * 2.0)
     if height != picker.row_h || pad != picker.pad || label_w != picker.label_w || value_w != picker.value_w || preview_h != picker.preview_h {
@@ -108,7 +108,7 @@ pub fn (picker $&ColorPicker) apply_styles(styles &Styles) int {
         picker.value_w = value_w
         picker.preview_h = preview_h
         picker.control.dirty = true
-        picker.place_channels() or >>
+        picker.place_channels() >>>
     }
     << 0
 }
@@ -132,11 +132,11 @@ pub fn (picker $&ColorPicker) input(event &ui.InputEvent) Action {
     if !belongs(&picker.control.identity,event) || !picker.is_enabled() { << no_action(id,picker.needs_paint()) }
     if event.kind == ui.EV_POINTER_CANCEL { picker.set_focus(false)
         << no_action(id,true) }
-    swatch_action := picker.swatch_input(event) or >>
+    swatch_action := picker.swatch_input(event) >>>
     if swatch_action.consumed { << swatch_action }
     $request_focus := false
     if event.kind == ui.EV_POINTER_DOWN && event.button == ui.BUTTON_LEFT {
-        for i in 0:4 { b := picker.channel_bounds(i) or >>
+        for i in 0:4 { b := picker.channel_bounds(i) >>>
             if b.contains(event.x,event.y) { picker.active = i
                 picker.set_focus(true)
                 request_focus = true } }
@@ -167,27 +167,27 @@ pub fn (picker $&ColorPicker) input(event &ui.InputEvent) Action {
 pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) int {
     d := styles.density
     if !picker.labels.ready || picker.row_h <= 0.0 || picker.pad != 10.0 * d {
-        picker.apply_styles(styles) or >>
+        picker.apply_styles(styles) >>>
     }
     $c := picker.style_or(styles)
     b := picker.bounds()
     state := picker.control.visual_state()
-    style_box(frame,&b,&c,d,state) or >>
+    style_box(frame,&b,&c,d,state) >>>
     p := picker.preview_bounds()
     // An opaque swatch fully covers the transparency grid.
     if (picker.value().value() & 255) < 255 {
         for row in 0:4 { for col in 0:16 {
             $ink := draw.rgb(232,235,240)
             if (row + col) % 2 == 1 { ink = draw.rgb(179,187,199) }
-            frame.fill_rect(p.x + f64(col) * p.width / 16.0,p.y + f64(row) * p.height / 4.0,p.width / 16.0,p.height / 4.0,ink) or >>
+            frame.fill_rect(p.x + f64(col) * p.width / 16.0,p.y + f64(row) * p.height / 4.0,p.width / 16.0,p.height / 4.0,ink) >>>
         } }
     }
-    frame.fill_rect(p.x,p.y,p.width,p.height,picker.value()) or >>
-    frame.stroke_rect(p.x,p.y,p.width,p.height,c.resolve(state).border,1.0) or >>
-    c.padding = layout.insets(0.0) or >>
+    frame.fill_rect(p.x,p.y,p.width,p.height,picker.value()) >>>
+    frame.stroke_rect(p.x,p.y,p.width,p.height,c.resolve(state).border,1.0) >>>
+    c.padding = layout.insets(0.0) >>>
     c.align_x = 0.0
     c.align_y = 0.5
-    names := [picker.locale.text(TEXT_RED) or >>,picker.locale.text(TEXT_GREEN) or >>,picker.locale.text(TEXT_BLUE) or >>,picker.locale.text(TEXT_ALPHA) or >>]
+    names := [picker.locale.text(TEXT_RED) >>>,picker.locale.text(TEXT_GREEN) >>>,picker.locale.text(TEXT_BLUE) >>>,picker.locale.text(TEXT_ALPHA) >>>]
     $slider_style := styles.slider_style()
     slider_style.palette.invalid = c.palette.invalid
     base_accent := slider_style.palette.accent
@@ -218,8 +218,8 @@ pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) in
         track := layout.Rect{x: ch_x + s_left,y: track_y,width: s_inner_w,height: track_h}
         ch_state := channel.visual_state()
         resolved := slider_style.resolve(ch_state)
-        rounded_fill(frame,&track,track_r,resolved.background) or >>
-        rounded_stroke(frame,&track,track_r,resolved.border,s_border_w) or >>
+        rounded_fill(frame,&track,track_r,resolved.background) >>>
+        rounded_stroke(frame,&track,track_r,resolved.border,s_border_w) >>>
         cx := track.x + thumb * 0.5 + usable * channel.ratio()
         $accent := base_accent
         if i == 0 { accent = draw.rgb(224,73,86) }
@@ -228,30 +228,30 @@ pub fn (picker $&ColorPicker) paint_styled(frame $&draw.Frame,styles &Styles) in
         if channel.invalid { accent = slider_style.palette.invalid }
         if !channel.is_enabled() { accent = slider_style.palette.muted }
         active := layout.Rect{x: track.x,y: track_y,width: math.max(0.0,cx - track.x),height: track_h}
-        rounded_fill(frame,&active,track_r,accent) or >>
+        rounded_fill(frame,&active,track_r,accent) >>>
         knob := layout.Rect{x: cx - thumb * 0.5,y: ch_y + s_top + (s_inner_h - thumb) * 0.5,width: thumb,height: thumb}
-        rounded_fill(frame,&knob,knob_r,slider_style.palette.on_accent) or >>
+        rounded_fill(frame,&knob,knob_r,slider_style.palette.on_accent) >>>
         single_focus := (ch_state & STATE_FOCUSED) != 0 && (ch_state & STATE_DISABLED) == 0 && slider_style.focus_inset == 0.0 && slider_style.focus_width > 0.0 && (resolved.focus.value() & 255) > 0
-        if !single_focus { rounded_stroke(frame,&knob,knob_r,resolved.border,s_border_w) or >> }
-        else { rounded_stroke(frame,&knob,knob_r,resolved.focus,s_focus_w) or >> }
+        if !single_focus { rounded_stroke(frame,&knob,knob_r,resolved.border,s_border_w) >>> }
+        else { rounded_stroke(frame,&knob,knob_r,resolved.focus,s_focus_w) >>> }
         if (ch_state & STATE_FOCUSED) != 0 && (ch_state & STATE_DISABLED) == 0 && !single_focus {
             focus_rect := layout.Rect{x: knob.x - s_focus_inset,y: knob.y - s_focus_inset,width: thumb + s_focus_inset * 2.0,height: thumb + s_focus_inset * 2.0}
-            rounded_stroke(frame,&focus_rect,knob_r + s_focus_inset,resolved.focus,s_focus_w) or >>
+            rounded_stroke(frame,&focus_rect,knob_r + s_focus_inset,resolved.focus,s_focus_w) >>>
         }
         channel.painted()
         picker.channels[i] = channel
-        value := picker.locale.integer(picker.channel(i) or >>)
+        value := picker.locale.integer(picker.channel(i) >>>)
         label_b := layout.Rect{x: label_x,y: ch_y,width: picker.label_w,height: row_h}
         value_b := layout.Rect{x: value_x,y: ch_y,width: picker.value_w,height: row_h}
         text := names[i]
         index := i * 2
         labels := $&picker.labels
-        labels.paint_text(index,&text,frame,&label_b,styles,&c,state) or >>
+        labels.paint_text(index,&text,frame,&label_b,styles,&c,state) >>>
         c.align_x = 1.0
-        labels.paint_text(index + 1,&value,frame,&value_b,styles,&c,state) or >>
+        labels.paint_text(index + 1,&value,frame,&value_b,styles,&c,state) >>>
         c.align_x = 0.0
     }
-    picker.paint_swatches(frame,styles,&c) or >>
+    picker.paint_swatches(frame,styles,&c) >>>
     picker.control.dirty = false
     << 0
 }
@@ -269,16 +269,16 @@ pub fn (picker $&ColorPicker) remember() {
 // Upstream: src/ui/widgets/color_picker.xu
 pub fn (picker $&ColorPicker) set_bounds(bounds &layout.Rect) int {
     control := $&picker.control
-    control.set_bounds(bounds) or >>
-    << picker.place_channels() or >>
+    control.set_bounds(bounds) >>>
+    << picker.place_channels() >>>
 }
 
 // Upstream: src/ui/widgets/color_picker.xu
 pub fn (picker $&ColorPicker) set_channel(index int,value int) int {
-    if picker.control.closed { >> errors.new("widgets: color picker is disposed") }
-    if index < 0 || index > 3 || value < 0 || value > 255 { >> errors.new("widgets: RGBA channel must be 0..255") }
+    if picker.control.closed { >>> errors.new("widgets: color picker is disposed") }
+    if index < 0 || index > 3 || value < 0 || value > 255 { >>> errors.new("widgets: RGBA channel must be 0..255") }
     $channel := picker.channels[index]
-    channel.set_value(f64(value)) or >>
+    channel.set_value(f64(value)) >>>
     picker.channels[index] = channel
     picker.control.dirty = true
     << 0
@@ -296,7 +296,7 @@ pub fn (picker $&ColorPicker) set_focus(focused bool) {
 
 // Upstream: src/ui/widgets/color_picker.xu
 pub fn (picker $&ColorPicker) set_value(value draw.Color) int {
-    for i in 0:4 { picker.set_channel(i,color_channel(value,i)) or >> }
+    for i in 0:4 { picker.set_channel(i,color_channel(value,i)) >>> }
     << 0
 }
 
@@ -305,13 +305,13 @@ pub fn (picker &ColorPicker) bounds() layout.Rect { << picker.control.bounds() }
 
 // Upstream: src/ui/widgets/color_picker.xu
 pub fn (picker &ColorPicker) channel(index int) int {
-    if index < 0 || index > 3 { >> errors.new("widgets: RGBA channel index out of range") }
+    if index < 0 || index > 3 { >>> errors.new("widgets: RGBA channel index out of range") }
     << int(picker.channels[index].value())
 }
 
 // Upstream: src/ui/widgets/color_picker.xu
 pub fn (picker &ColorPicker) channel_bounds(index int) layout.Rect {
-    if index < 0 || index > 3 { >> errors.new("widgets: RGBA channel index out of range") }
+    if index < 0 || index > 3 { >>> errors.new("widgets: RGBA channel index out of range") }
     b := picker.bounds()
     y := b.y + picker.pad * 2.0 + picker.preview_h + f64(index) * picker.row_h
     height := math.min(picker.row_h,math.max(0.0,b.y + b.height - picker.pad - y))
@@ -356,7 +356,7 @@ pub fn (picker &ColorPicker) style_or(styles &Styles) ControlStyle {
 // Upstream: src/ui/widgets/color_precision.xu
 pub fn (picker &ColorPicker) swatch_bounds(index int) layout.Rect {
     colors := picker.swatch_colors()
-    if index<0 || index>=colors.len { >> errors.new("widgets: invalid color swatch") }
+    if index<0 || index>=colors.len { >>> errors.new("widgets: invalid color swatch") }
     b := picker.bounds()
     available := math.max(0.0,b.width-picker.pad*2.0)
     width := math.min(32.0,available/f64(max_int(1,colors.len)))
@@ -371,7 +371,7 @@ pub fn (picker &ColorPicker) value() draw.Color {
 
 // Upstream: src/ui/widgets/controls_basic.xu
 pub fn (s $&Slider) set_style(style &ControlStyle) int {
-    validate_control(style) or >>
+    validate_control(style) >>>
     next := unpack_scalar_style(&pack_scalar_style(style))
     if !s.custom.active || !control_equal(&unpack_scalar_style(&s.custom),&next) { s.dirty = true }
     s.custom = pack_scalar_style(style)
@@ -380,16 +380,16 @@ pub fn (s $&Slider) set_style(style &ControlStyle) int {
 
 // Upstream: src/ui/widgets/color_picker.xu
 pub fn color_picker(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,value draw.Color) ColorPicker {
-    if !context.matches_canvas(identity) { >> errors.new("widgets: color picker context mismatch") }
-    control := button(identity,id,bounds) or >>
+    if !context.matches_canvas(identity) { >>> errors.new("widgets: color picker context mismatch") }
+    control := button(identity,id,bounds) >>>
     $channels := []Slider{}
     for i in 0:4 {
-        $channel := slider(identity,id,bounds,0.0,255.0,f64(color_channel(value,i))) or >>
-        channel.set_step(1.0) or >>
+        $channel := slider(identity,id,bounds,0.0,255.0,f64(color_channel(value,i))) >>>
+        channel.set_step(1.0) >>>
         channels.push(channel)
     }
     $picker := ColorPicker{locale: locale_default(),control: control,channels: channels,labels: text_cache(context),active: 0,palette: []draw.Color{},recent: []draw.Color{},swatch_armed: -1,show_swatches: false,row_h: 36.0,pad: 10.0,preview_h: 40.0,label_w: 24.0,value_w: 36.0}
-    picker.set_bounds(bounds) or >>
+    picker.set_bounds(bounds) >>>
     << picker
 }
 

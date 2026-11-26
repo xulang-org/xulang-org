@@ -94,23 +94,23 @@ fn probe() int {
     context := draw.default_context()
     options := draw.text_options(16.0)
     secret := "hunter2"
-    plain := context.layout_text(&secret,&options) or >>
-    masked := context.layout_masked_text(&secret,&options) or >>
+    plain := context.layout_text(&secret,&options) >>>
+    masked := context.layout_masked_text(&secret,&options) >>>
     assert(masked.metrics.width == plain.metrics.width)
     assert(masked.metrics.height == plain.metrics.height)
-    hit := masked.caret(3,false) or >>
-    reference := plain.caret(3,false) or >>
+    hit := masked.caret(3,false) >>>
+    reference := plain.caret(3,false) >>>
     assert(hit.index == 3)
     assert(hit.x == reference.x)
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.text_layout(&masked,0.0,0.0,draw.rgb(255,255,255)) or >>
-    frame.present() or >>
+    frame.begin() >>>
+    frame.text_layout(&masked,0.0,0.0,draw.rgb(255,255,255)) >>>
+    frame.present() >>>
     println("masked layout ok")
     << 0
 }
 fn main() int {
-    << probe() or (err) { eprintln(err.msg())
+    << probe() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 `;
@@ -127,20 +127,20 @@ fn paint() int {
     context := draw.default_context()
     value := "a中🙂"
     options := draw.text_options(10.0)
-    masked := context.layout_masked_text(&value,&options) or >>
-    hit := masked.caret(4,false) or >>
+    masked := context.layout_masked_text(&value,&options) >>>
+    hit := masked.caret(4,false) >>>
     println(int(masked.metrics.width))
     println(int(hit.x))
     println(hit.index)
-    selection := masked.selection_rects(1,8) or >>
+    selection := masked.selection_rects(1,8) >>>
     println(int(selection[0].width))
     $frame := context.new_frame(16)
-    frame.begin() or >>
-    frame.text_layout(&masked,0.0,0.0,draw.rgb(255,255,255)) or >>
-    frame.present() or >>
+    frame.begin() >>>
+    frame.text_layout(&masked,0.0,0.0,draw.rgb(255,255,255)) >>>
+    frame.present() >>>
     << 0
 }
-fn main() int { paint() or (err) { eprintln(err.msg())
+fn main() int { paint() >>> (err) { eprintln(err.msg())
     << 1 }
     << 0
 }`);

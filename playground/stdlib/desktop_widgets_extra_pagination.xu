@@ -18,7 +18,7 @@ fn (p $&Pagination) ensure_hover_motions() int {
     if p.hover_motions.len >= count { << 0 }
     for i in p.hover_motions.len:count {
         $motion := paint_transition()
-        motion.set_spec(&p.motion) or >>
+        motion.set_spec(&p.motion) >>>
         p.hover_motions.push(motion) }
     << 0
 }
@@ -79,11 +79,11 @@ fn (p &Pagination) slot_state(i int) int {
 
 // Upstream: src/ui/widgets/pagination.xu
 pub fn (p $&Pagination) apply_styles(styles &Styles) int {
-    styles.validate() or >>
+    styles.validate() >>>
     c := p.style_or(styles)
     text := p.locale.integer(max_int(1,p.pages))
     cache := $&p.labels
-    size := cache.measure(100,&text,styles,&c) or >>
+    size := cache.measure(100,&text,styles,&c) >>>
     d := styles.density
     width := math.max(44.0 * d,math.max(p.appearance.min_item_width * d,size.width + (c.padding.left + c.padding.right) * d))
     height := math.max(44.0 * d,math.max(c.min_height * d,size.height + (c.padding.top + c.padding.bottom) * d))
@@ -162,35 +162,35 @@ pub fn (p $&Pagination) input(input &ui.InputEvent) Action {
 
 // Upstream: src/ui/widgets/pagination.xu
 pub fn (p $&Pagination) paint_styled(frame $&draw.Frame,styles &Styles) int {
-    if p.control.closed { >> errors.new("widgets: pagination is disposed") }
-    p.apply_styles(styles) or >>
+    if p.control.closed { >>> errors.new("widgets: pagination is disposed") }
+    p.apply_styles(styles) >>>
     c := p.style_or(styles)
-    p.ensure_hover_motions() or >>
+    p.ensure_hover_motions() >>>
     count := p.slot_count()
     for i in 0:count {
         b := p.item_bounds(i)
         page := p.slot_page(i)
         state := p.slot_state(i)
         $transition := p.hover_motions[i]
-        animated := transition.style(&c,state,p.now,p.reduced) or >>
+        animated := transition.style(&c,state,p.now,p.reduced) >>>
         p.hover_motions[i] = transition
         selected := i > 0 && i < count - 1 && page == p.current
         if selected {
             scale := 0.98 + 0.02 * p.emphasis.value()
             cx := b.x + b.width * 0.5
             cy := b.y + b.height * 0.5
-            frame.push() or >>
-            frame.translate(cx,cy) or >>
-            frame.scale(scale,scale) or >>
-            frame.translate(0.0-cx,0.0-cy) or >> }
-        style_box(frame,&b,&animated,styles.density,state) or >>
+            frame.push() >>>
+            frame.translate(cx,cy) >>>
+            frame.scale(scale,scale) >>>
+            frame.translate(0.0-cx,0.0-cy) >>> }
+        style_box(frame,&b,&animated,styles.density,state) >>>
         $text := p.locale.integer(page + 1)
         if i == 0 { text = "‹" }
         else if i == count - 1 { text = "›" }
         else if page == -2 { text = "…" }
         cache := $&p.labels
-        cache.paint_text(i,&text,frame,&b,styles,&animated,state) or >>
-        if selected { frame.pop() or >> }
+        cache.paint_text(i,&text,frame,&b,styles,&animated,state) >>>
+        if selected { frame.pop() >>> }
     }
     << 0
 }
@@ -244,11 +244,11 @@ pub fn (p &Pagination) style_or(styles &Styles) ControlStyle {
 // Upstream: src/ui/widgets/pagination.xu
 pub fn pagination(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,pages int,current int) Pagination {
     if pages < 0 || pages > 1000000000 || current < -1 || current >= pages || (pages == 0 && current != -1) || (pages > 0 && current < 0) {
-        >> errors.new("widgets: invalid pagination range")
+        >>> errors.new("widgets: invalid pagination range")
     }
-    if !context.matches_canvas(identity) { >> errors.new("widgets: pagination context mismatch") }
-    control := button(identity,id,bounds) or >>
-    << Pagination{hover_motions: []PaintTransition{},emphasis: tween(1.0) or >>,motion: motion_spec(),observed_page: current,now: time.zero_instant(),reduced: true,total_items: -1,page_size: 0,item_width: 36.0,item_height: 36.0,item_gap: 6.0,appearance: pagination_appearance(),locale: locale_default(),control: control,pages: pages,current: current,hot: -1,armed: -1,labels: text_cache(context)}
+    if !context.matches_canvas(identity) { >>> errors.new("widgets: pagination context mismatch") }
+    control := button(identity,id,bounds) >>>
+    << Pagination{hover_motions: []PaintTransition{},emphasis: tween(1.0) >>>,motion: motion_spec(),observed_page: current,now: time.zero_instant(),reduced: true,total_items: -1,page_size: 0,item_width: 36.0,item_height: 36.0,item_gap: 6.0,appearance: pagination_appearance(),locale: locale_default(),control: control,pages: pages,current: current,hot: -1,armed: -1,labels: text_cache(context)}
 }
 
 // Upstream: src/ui/widgets/pagination_data.xu

@@ -14,17 +14,17 @@ fn main() int {
     }
 
     $db := sql.open(mysql.driver(), dsn)
-    db.ping() or (err) {
+    db.ping() >>> (err) {
         println("MySQL ping failed")
         println(err.msg())
         << 1
     }
 
-    db.exec("DROP TABLE IF EXISTS xu_people") or (err) {
+    db.exec("DROP TABLE IF EXISTS xu_people") >>> (err) {
         println(err.msg())
         << 1
     }
-    db.exec("CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)") or (err) {
+    db.exec("CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)") >>> (err) {
         println(err.msg())
         << 1
     }
@@ -34,7 +34,7 @@ fn main() int {
         1,
         "Ada",
         true
-    ) or (err) {
+    ) >>> (err) {
         println(err.msg())
         << 1
     }
@@ -42,17 +42,17 @@ fn main() int {
 
     $insert_person := db.prepare(
         "INSERT INTO xu_people (id, name, active) VALUES (?, ?, ?)"
-    ) or (err) {
+    ) >>> (err) {
         println(err.msg())
         << 1
     }
-    insert_person.exec(2, "Lin", true) or (err) {
+    insert_person.exec(2, "Lin", true) >>> (err) {
         println(err.msg())
         << 1
     }
     insert_person.close()
 
-    $tx := db.begin() or (err) {
+    $tx := db.begin() >>> (err) {
         println(err.msg())
         << 1
     }
@@ -61,21 +61,21 @@ fn main() int {
         3,
         "Grace",
         true
-    ) or (err) {
+    ) >>> (err) {
         println(err.msg())
         << 1
     }
-    tx.commit() or (err) {
+    tx.commit() >>> (err) {
         println(err.msg())
         << 1
     }
 
-    $rows := db.query("SELECT id, name FROM xu_people ORDER BY id") or (err) {
+    $rows := db.query("SELECT id, name FROM xu_people ORDER BY id") >>> (err) {
         println(err.msg())
         << 1
     }
     while rows.next() {
-        values := rows.take() or (err) {
+        values := rows.take() >>> (err) {
             println(err.msg())
             << 1
         }
@@ -90,13 +90,13 @@ fn main() int {
     rows.close()
 
     row := db.query_row("SELECT name FROM xu_people WHERE id = ?", 2)
-    values := row.take() or (err) {
+    values := row.take() >>> (err) {
         println(err.msg())
         << 1
     }
     println("selected=" + (values[0] as string))
 
-    db.close() or (err) {
+    db.close() >>> (err) {
         println(err.msg())
         << 1
     }

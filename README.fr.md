@@ -33,7 +33,7 @@ XU réunit la propriété et l'emprunt vérifiés à la compilation avec des cor
 | :--- | :--- |
 | **Propriété sans GC** | Vérification des déplacements et emprunts à la compilation, durées de vie inférées et nettoyage déterministe des ressources. |
 | **Concurrence intégrée** | Lancez une coroutine avec `xu` ; échangez des valeurs via des canaux `chan` typés. |
-| **Flux de contrôle visible** | `<<` renvoie une valeur, `>>` lève une erreur et `or (err) { … }` la gère au point d'appel. |
+| **Flux de contrôle visible** | `<<` renvoie une valeur, `>>>` lève une erreur et `>>> (err) { … }` la gère au point d'appel. |
 | **Chaîne d'outils intégrée** | Compilez, exécutez, vérifiez, testez, formatez, générez la documentation et utilisez le serveur de langage via `xu`. |
 
 ## Lire un peu de XU
@@ -45,12 +45,12 @@ Deux travailleurs, un canal et un chemin d'erreur explicite :
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >> errors.new("empty name") }
+    if name.len == 0 { >>> errors.new("empty name") }
     << name.len * 10
 }
 
 fn worker(name string, results chan int) {
-    value := score(name) or (err) {
+    value := score(name) >>> (err) {
         results <- 0
         <<
     }
@@ -68,7 +68,7 @@ fn main() int {
 
 Enregistrez sous `main.xu`, puis exécutez `xu run main.xu`. Le programme affiche `100`.
 
-`#errors` importe un paquet. `xu worker(...)` démarre une coroutine. Les deux réceptions collectent les résultats ; si `score` échoue, `or (err) { … }` envoie une valeur de repli `0` et quitte ce travailleur.
+`#errors` importe un paquet. `xu worker(...)` démarre une coroutine. Les deux réceptions collectent les résultats ; si `score` échoue, `>>> (err) { … }` envoie une valeur de repli `0` et quitte ce travailleur.
 
 ## Commencer ici
 

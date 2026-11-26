@@ -33,7 +33,7 @@ XU 將編譯期所有權與借用檢查、輕量協程和強型別通道結合�
 | :--- | :--- |
 | **所有權，無 GC** | 編譯期檢查移動與借用，推導生命週期，確定性回收資源。 |
 | **語言內建併發** | 用 `xu` 啟動協程，透過強型別 `chan` 通道傳遞值。 |
-| **看得見的控制流** | `<<` 返回、`>>` 拋錯，`or (err) { … }` 在呼叫處處理錯誤。 |
+| **看得見的控制流** | `<<` 返回、`>>>` 拋錯，`>>> (err) { … }` 在呼叫處處理錯誤。 |
 | **整合的工具鏈** | 透過 `xu` 完成建置、執行、檢查、測試、格式化、文件生成與語言服務。 |
 
 ## 讀一段 XU
@@ -45,12 +45,12 @@ XU 將編譯期所有權與借用檢查、輕量協程和強型別通道結合�
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >> errors.new("empty name") }
+    if name.len == 0 { >>> errors.new("empty name") }
     << name.len * 10
 }
 
 fn worker(name string, results chan int) {
-    value := score(name) or (err) {
+    value := score(name) >>> (err) {
         results <- 0
         <<
     }
@@ -68,7 +68,7 @@ fn main() int {
 
 儲存為 `main.xu`，執行 `xu run main.xu`，輸出 `100`。
 
-`#errors` 匯入包，`xu worker(...)` 啟動協程，兩次通道接收匯總結果。若 `score` 失敗，`or (err) { … }` 會傳送兜底值 `0`，然後結束當前工作協程。
+`#errors` 匯入包，`xu worker(...)` 啟動協程，兩次通道接收匯總結果。若 `score` 失敗，`>>> (err) { … }` 會傳送兜底值 `0`，然後結束當前工作協程。
 
 ## 從這裡開始
 

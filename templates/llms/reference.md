@@ -117,10 +117,10 @@ The API catalog at https://xulang.org/api/ is generated from the selected releas
 #net
 
 fn run_tcp_server() {
-    ln := net.listen_on("tcp", "127.0.0.1:8080") or (err) { << }
-    c := ln.accept() or (err) { << }
-    buf := c.read(4096) or (err) { << }
-    c.write(&buf) or (err) { << }
+    ln := net.listen_on("tcp", "127.0.0.1:8080") >>> (err) { << }
+    c := ln.accept() >>> (err) { << }
+    buf := c.read(4096) >>> (err) { << }
+    c.write(&buf) >>> (err) { << }
 }
 ```
 

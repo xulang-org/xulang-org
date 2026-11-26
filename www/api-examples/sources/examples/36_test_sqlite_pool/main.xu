@@ -6,7 +6,7 @@ sqlite #github.com/xulang-org/packages/sqlite
 #errors
 
 fn remove_if_exists(p string) {
-    os.remove(p) or (e) {
+    os.remove(p) >>> (e) {
         <<
     }
 }
@@ -18,14 +18,14 @@ fn verify_sqlite_pool_deep() {
     $db := sqlite.open_pool(db_file + "", 5, 2)
 
     // 1. Ping
-    db.ping() or (err) {
+    db.ping() >>> (err) {
         println("   [FAIL] SQLite pool ping failed: " + err.msg())
         <<
     }
     println("   [PASS] SQLite Pool ping succeeded.")
 
     // 2. Schema
-    db.exec("CREATE TABLE pool_items (id INTEGER PRIMARY KEY, title TEXT, value INT);") or (err) {
+    db.exec("CREATE TABLE pool_items (id INTEGER PRIMARY KEY, title TEXT, value INT);") >>> (err) {
         println("   [FAIL] Create table failed: " + err.msg())
         <<
     }
@@ -34,7 +34,7 @@ fn verify_sqlite_pool_deep() {
     // 3. Sequential & Concurrent Inserts through Pool
     $i := 1
     while i <= 5 {
-        db.exec("INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);", i, "item_" + str(i), i * 10) or (err) {
+        db.exec("INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);", i, "item_" + str(i), i * 10) >>> (err) {
             println("   [FAIL] Insert failed at item " + str(i) + ": " + err.msg())
             <<
         }
@@ -43,13 +43,13 @@ fn verify_sqlite_pool_deep() {
     println("   [PASS] 5 items inserted through SQLite connection pool.")
 
     // 4. Query through Pool
-    $rows := db.query("SELECT id, title, value FROM pool_items ORDER BY id ASC;") or (err) {
+    $rows := db.query("SELECT id, title, value FROM pool_items ORDER BY id ASC;") >>> (err) {
         println("   [FAIL] Query failed: " + err.msg())
         <<
     }
     $count := 0
     while rows.next() {
-        vals := rows.take() or (err) {
+        vals := rows.take() >>> (err) {
             <<
         }
         count = count + 1
@@ -58,11 +58,11 @@ fn verify_sqlite_pool_deep() {
     println("   [PASS] SQLite Pool query verified: retrieved " + str(count) + " rows.")
 
     // 5. Close Pool
-    db.close() or (err) {
+    db.close() >>> (err) {
         println("   [FAIL] Close failed: " + err.msg())
         <<
     }
-    os.remove(db_file + "") or (e) {
+    os.remove(db_file + "") >>> (e) {
         <<
     }
     println("   [PASS] SQLite Pool closed cleanly.")

@@ -109,18 +109,18 @@ fn verify_postgres_pool() {
     dsn := "postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"
     $pool := postgres.open_pool(dsn + "", 5, 2)
 
-    pool.ping() or (err) {
+    pool.ping() >>> (err) {
         println("   [FAIL] Pool ping error: " + err.msg())
         <<
     }
     println("   [PASS] Postgres Pool ping succeeded.")
 
     // 1. DDL
-    pool.exec("DROP TABLE IF EXISTS xu_pool_users;") or (err) {
+    pool.exec("DROP TABLE IF EXISTS xu_pool_users;") >>> (err) {
         println("   [FAIL] Drop table error: " + err.msg())
         <<
     }
-    pool.exec("CREATE TABLE xu_pool_users (id INTEGER PRIMARY KEY, name VARCHAR(50), balance INTEGER);") or (err) {
+    pool.exec("CREATE TABLE xu_pool_users (id INTEGER PRIMARY KEY, name VARCHAR(50), balance INTEGER);") >>> (err) {
         println("   [FAIL] Create table error: " + err.msg())
         <<
     }
@@ -129,7 +129,7 @@ fn verify_postgres_pool() {
     // 2. Concurrency / multiple inserts
     $i := 1
     while i <= 5 {
-        pool.exec("INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);", i, "User_" + str(i), i * 100) or (err) {
+        pool.exec("INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);", i, "User_" + str(i), i * 100) >>> (err) {
             println("   [FAIL] Insert row error: " + err.msg())
             <<
         }
@@ -138,13 +138,13 @@ fn verify_postgres_pool() {
     println("   [PASS] Concurrently inserted 5 rows across pooled connections.")
 
     // 3. Query
-    $rows := pool.query("SELECT id, name, balance FROM xu_pool_users ORDER BY id;") or (err) {
+    $rows := pool.query("SELECT id, name, balance FROM xu_pool_users ORDER BY id;") >>> (err) {
         println("   [FAIL] Pool query error: " + err.msg())
         <<
     }
     $count := 0
     while rows.next() {
-        vals := rows.take() or (err) {
+        vals := rows.take() >>> (err) {
             println("   [FAIL] rows.take error: " + err.msg())
             <<
         }
@@ -162,26 +162,26 @@ fn verify_postgres_pool() {
     }
 
     // 4. Transaction via Pool
-    $tx := pool.begin() or (err) {
+    $tx := pool.begin() >>> (err) {
         println("   [FAIL] Pool begin tx error: " + err.msg())
         <<
     }
-    tx.exec("INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);", 6, "User_6", 600) or (err) {
+    tx.exec("INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);", 6, "User_6", 600) >>> (err) {
         println("   [FAIL] Tx insert error: " + err.msg())
         <<
     }
-    tx.commit() or (err) {
+    tx.commit() >>> (err) {
         println("   [FAIL] Tx commit error: " + err.msg())
         <<
     }
     println("   [PASS] Transaction committed via pool.")
 
     // 5. Cleanup & Close
-    pool.exec("DROP TABLE IF EXISTS xu_pool_users;") or (err) {
+    pool.exec("DROP TABLE IF EXISTS xu_pool_users;") >>> (err) {
         println("   [FAIL] Cleanup table error: " + err.msg())
         <<
     }
-    pool.close() or (err) {
+    pool.close() >>> (err) {
         println("   [FAIL] Pool close error: " + err.msg())
         <<
     }

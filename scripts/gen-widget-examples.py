@@ -90,11 +90,11 @@ fn demo() int {
     theme := playground.light_theme()
     styles := playground.light_styles()
 '''
-SUFFIX = '''    frame.present() or >>
+SUFFIX = '''    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''
@@ -122,7 +122,7 @@ def source(name, slug, description=''):
     elif kind == 'divider':
         bounds = 'box(48.0,120.0,544.0,20.0)'
 
-    code = PREFIX + f'    bounds := {bounds}\n    $control := widgets.{constructor}' + ('' if kind == 'styled-label' else ' or >>') + '\n'
+    code = PREFIX + f'    bounds := {bounds}\n    $control := widgets.{constructor}' + ('' if kind == 'styled-label' else ' >>>') + '\n'
     if not static:
         labels = {'button': 'Count +1 / 计数 +1', 'checkbox': 'Receive updates / 接收更新',
                   'switch': 'Live preview / 实时预览', 'radio': 'Stable / 稳定版',
@@ -131,12 +131,12 @@ def source(name, slug, description=''):
     if kind in ('button', 'label'):
         code += '    $styled := widgets.styled_label(&context,&"' + labels[slug] + '")\n'
     if kind in ('tabs', 'list', 'scroll'):
-        code += '    $labels := []draw.TextLayout{}\n    for value in ["Overview","Activity","Settings"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) or >>\n        labels.push(shaped) }\n'
+        code += '    $labels := []draw.TextLayout{}\n    for value in ["Overview","Activity","Settings"] { shaped := context.layout_text(&value,&draw.text_options(16.0)) >>>\n        labels.push(shaped) }\n'
     if not interactive and not static:
-        code += '    $trigger := widgets.button(&identity,2,&box(48.0,260.0,240.0,40.0)) or >>\n'
+        code += '    $trigger := widgets.button(&identity,2,&box(48.0,260.0,240.0,40.0)) >>>\n'
         code += '    $trigger_label := widgets.styled_label(&context,&"' + labels[slug] + '")\n'
     focus_id = 1 if interactive else 2
-    event_code = f'    $focus := widgets.focus_group(&identity,[{focus_id}]) or >>\n'
+    event_code = f'    $focus := widgets.focus_group(&identity,[{focus_id}]) >>>\n'
     event_code += '''    while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
@@ -144,11 +144,11 @@ def source(name, slug, description=''):
 '''
     focus_control = 'control' if interactive else 'trigger'
     event_code += f'        {focus_control}.set_focus(focus.current() == {focus_id})\n        if navigation.consumed {{ -> }}\n'
-    event_code += f'        action := {focus_control}.input(&event)' + (' or >>' if kind in ('list', 'scroll') else '') + '\n'
-    event_code += f'        if action.request_focus {{ focus.focus({focus_id}) or >> }}\n'
+    event_code += f'        action := {focus_control}.input(&event)' + (' >>>' if kind in ('list', 'scroll') else '') + '\n'
+    event_code += f'        if action.request_focus {{ focus.focus({focus_id}) >>> }}\n'
     event_code += '        if action.kind == widgets.ACTION_ACTIVATE { count += 1 }\n'
     if kind == 'progress':
-        event_code += '        if action.kind == widgets.ACTION_ACTIVATE { control.set_value(f64(count % 11) / 10.0) or >> }\n'
+        event_code += '        if action.kind == widgets.ACTION_ACTIVATE { control.set_value(f64(count % 11) / 10.0) >>> }\n'
     if not static:
         code += event_code + '    }\n'
     if static:
@@ -164,34 +164,34 @@ def source(name, slug, description=''):
         message = '"Offset: " + str(int(control.offset()))'
     else:
         message = '"Count: " + str(count)'
-    code += '    $frame := context.new_frame(8192)\n    frame.begin() or >>\n    frame.clear(styles.background) or >>\n'
-    code += '    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>\n'
-    code += '    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>\n'
+    code += '    $frame := context.new_frame(8192)\n    frame.begin() >>>\n    frame.clear(styles.background) >>>\n'
+    code += '    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>\n'
+    code += '    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>\n'
     code += f'    draw.text(32,22,20,"#282329","XUUI  /  {name}")\n'
     code += f'    draw.text(32,48,12,"#6d626e","{description}")\n'
     if kind == 'badge':
-        code += '    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) or >>\n    control.paint($&frame,&badge_label,&theme) or >>\n'
+        code += '    badge_label := context.layout_text(&str(count),&draw.text_options(16.0)) >>>\n    control.paint($&frame,&badge_label,&theme) >>>\n'
     elif kind in ('button', 'label'):
-        code += '    control.paint_styled($&frame,$&styled,&styles) or >>\n'
+        code += '    control.paint_styled($&frame,$&styled,&styles) >>>\n'
     elif kind in ('slider', 'progress'):
-        code += '    control.paint_styled($&frame,&styles) or >>\n'
+        code += '    control.paint_styled($&frame,&styles) >>>\n'
     elif kind in ('tabs', 'list'):
-        code += '    control.paint($&frame,&labels,&theme) or >>\n'
+        code += '    control.paint($&frame,&labels,&theme) >>>\n'
     elif kind == 'scroll':
-        code += '''    control.begin($&frame) or >>
+        code += '''    control.begin($&frame) >>>
     for i in 0:9 { text := labels[i % 3]
-        frame.text_layout(&text,12.0,12.0 + f64(i) * 42.0,theme.foreground) or >> }
-    control.end($&frame) or >>
-    if focus.current() == 1 { frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,theme.focus,2.0) or >> }
+        frame.text_layout(&text,12.0,12.0 + f64(i) * 42.0,theme.foreground) >>> }
+    control.end($&frame) >>>
+    if focus.current() == 1 { frame.stroke_rect(bounds.x,bounds.y,bounds.width,bounds.height,theme.focus,2.0) >>> }
 '''
     elif kind == 'styled-label':
-        code += '    control.paint_text_styled($&frame,&bounds,&styles,&styles.button,0) or >>\n'
+        code += '    control.paint_text_styled($&frame,&bounds,&styles,&styles.button,0) >>>\n'
     else:
-        code += '    control.paint($&frame,&theme) or >>\n'
+        code += '    control.paint($&frame,&theme) >>>\n'
     if kind == 'card':
         code += '    draw.text(64,124,18,"#282329","Workspace configuration")\n    draw.text(64,158,13,"#6d626e","Header, body and footer keep distinct spacing.")\n'
     if not interactive and not static:
-        code += '    trigger.paint_styled($&frame,$&trigger_label,&styles) or >>\n'
+        code += '    trigger.paint_styled($&frame,$&trigger_label,&styles) >>>\n'
     code += '    draw.text(32,326,13,"#6d626e",' + message + ')\n    println(' + message + ')\n'
     return code + SUFFIX, initial + '\n'
 

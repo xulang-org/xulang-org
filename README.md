@@ -33,7 +33,7 @@ XU brings compile-time ownership and borrowing together with lightweight corouti
 | :--- | :--- |
 | **Ownership, without a GC** | Compile-time move and borrow checks, inferred lifetimes, and deterministic resource cleanup. |
 | **Concurrency in the language** | Start a coroutine with `xu`; exchange values through typed `chan` channels. |
-| **Visible control flow** | `<<` returns a value, `>>` raises an error, and `or (err) { … }` handles it at the call site. |
+| **Visible control flow** | `<<` returns a value, `>>>` raises an error, and `>>> (err) { … }` (or `>>>`) handles it at the call site. |
 | **An integrated toolchain** | Build, run, check, test, format, generate docs, and use language services through `xu`. |
 
 ## Read a little XU
@@ -45,12 +45,12 @@ Two workers, one channel, and an explicit error path:
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >> errors.new("empty name") }
+    if name.len == 0 { >>> errors.new("empty name") }
     << name.len * 10
 }
 
 fn worker(name string, results chan int) {
-    value := score(name) or (err) {
+    value := score(name) >>> (err) {
         results <- 0
         <<
     }
@@ -68,7 +68,7 @@ fn main() int {
 
 Save as `main.xu`, then run `xu run main.xu`. It prints `100`.
 
-`#errors` imports a package. `xu worker(...)` starts a coroutine. The two receives collect the results; if `score` fails, `or (err) { … }` sends a fallback value of `0` and returns from that worker.
+`#errors` imports a package. `xu worker(...)` starts a coroutine. The two receives collect the results; if `score` fails, `>>> (err) { … }` sends a fallback value of `0` and returns from that worker.
 
 ## Start here
 

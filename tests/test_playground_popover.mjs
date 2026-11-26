@@ -72,27 +72,27 @@ fn probe() int {
     viewport := layout.Rect{x: 0.0,y: 0.0,width: 640.0,height: 360.0}
     anchor := layout.Rect{x: 560.0,y: 112.0,width: 32.0,height: 40.0}
     size := layout.Size{width: 344.0,height: 216.0}
-    $panel := widgets.popover(&identity,10,&anchor,&size,&viewport) or >>
+    $panel := widgets.popover(&identity,10,&anchor,&size,&viewport) >>>
     $placement := widgets.overlay_placement()
     placement.side = widgets.OVERLAY_RIGHT
-    panel.set_placement(&placement) or >>
+    panel.set_placement(&placement) >>>
     right := panel.bounds()
     assert(right.x + right.width < anchor.x)
     assert(right.x >= viewport.x && right.y + right.height <= 360.0)
     bottom_anchor := layout.Rect{x: 100.0,y: 304.0,width: 120.0,height: 40.0}
     placement.side = widgets.OVERLAY_BOTTOM
-    panel.set_placement(&placement) or >>
-    panel.set_geometry(&bottom_anchor,&size,&viewport) or >>
+    panel.set_placement(&placement) >>>
+    panel.set_geometry(&bottom_anchor,&size,&viewport) >>>
     bottom := panel.bounds()
     assert(bottom.y + bottom.height < bottom_anchor.y)
     tiny_viewport := layout.Rect{x: 20.0,y: 20.0,width: 44.0,height: 44.0}
-    panel.set_geometry(&anchor,&size,&tiny_viewport) or >>
+    panel.set_geometry(&anchor,&size,&tiny_viewport) >>>
     tiny := panel.bounds()
     assert(tiny.x == 20.0 && tiny.y == 20.0 && tiny.width == 44.0 && tiny.height == 44.0)
     println("popover placement passed")
     << 0
 }
-fn main() int { << probe() or (err) { eprintln(err.msg())
+fn main() int { << probe() >>> (err) { eprintln(err.msg())
     << 1 } }
 `);
   assert.equal(result.exit,0,result.stderr);
