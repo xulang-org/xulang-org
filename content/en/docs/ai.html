@@ -1,7 +1,7 @@
 ---
 ---
 <h1>AI development and local inference</h1>
-<p class="lead">Build pure-Xu AI systems end-to-end without external C/C++ inference bindings: low-precision <code>#tensor</code> storage &amp; numerical primitives, compiler MIR SIMD tensor fusion (ARM64 NEON/SDOT &amp; x86-64 SSE2/AVX2), the <code>examples/llm_engine/main.xu</code> inference engine with OpenAI-compatible HTTP serving, Metal GPU compute, and pure-Xu vector database drivers.</p>
+<p class="lead">Build pure-Xu AI systems end-to-end without external C/C++ inference bindings: low-precision <code>#tensor</code> storage &amp; numerical primitives, compiler MIR SIMD tensor fusion (ARM64 NEON/SDOT &amp; x86-64 SSE2/SSSE3), the <code>examples/llm_engine/main.xu</code> inference engine with OpenAI-compatible HTTP serving, Metal GPU compute, and pure-Xu <code>openai</code>, <code>mcp</code>, and vector database packages.</p>
 
 <div class="doc-process-flow">
   <div class="flow-header">
@@ -16,7 +16,7 @@
       <div class="step-badge">1</div>
       <div class="step-body">
         <div class="step-name"><code>#tensor</code> Storage &amp; Primitives</div>
-        <div class="step-meta"><code>F16</code>, <code>BF16</code>, four <code>FP8</code> formats, GGML <code>Q4_0</code>/<code>Q8_0</code>/<code>Q4_K</code>/<code>Q6_K</code> blocks, strided views, and 20 pure-Xu ops in <code>src/tensor/ops.xu</code></div>
+        <div class="step-meta"><code>F16</code>, <code>BF16</code>, four <code>FP8</code> formats, GGML <code>Q4_0</code>/<code>Q5_0</code>/<code>Q8_0</code>/<code>Q4_K</code>/<code>Q6_K</code> blocks, strided <code>TensorView</code>, and 20 pure-Xu ops</div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
@@ -24,7 +24,7 @@
       <div class="step-badge">2</div>
       <div class="step-body">
         <div class="step-name">Compiler MIR Tensor Fusion</div>
-        <div class="step-meta"><code>XU_TENSOR_FUSION=1</code> lowers pure-Xu loops directly to ARM64 NEON/SDOT &amp; x86-64 SSE2/AVX2 kernels including <code>vmul</code> &amp; paged attention</div>
+        <div class="step-meta"><code>--tensor-fusion</code> / <code>XU_TENSOR_FUSION=1</code> lowers pure-Xu loops directly to ARM64 NEON/SDOT &amp; x86-64 SSE2/SSSE3 kernels (<code>vsub</code>/<code>vmul</code>, <code>gemm4x8_q8_0_p4k4</code>, paged attention)</div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
@@ -32,40 +32,43 @@
       <div class="step-badge">3</div>
       <div class="step-body">
         <div class="step-name">Local Engine &amp; OpenAI <code>serve</code></div>
-        <div class="step-meta"><code>llm_engine</code> runs mixed <code>Q4_K_M</code> <code>GGUF</code>/<code>Safetensors</code>, <code>qk_norm</code>, ChatML, quantized KV, and multi-slot continuous batching with Prefix KV Cache</div>
+        <div class="step-meta"><code>llm_engine</code> runs mixed <code>Q4_K_M</code>/<code>Q5_0</code>/<code>Q8_0</code> <code>GGUF</code> &amp; <code>Safetensors</code>, SentencePiece/BPE, ChatML/Llama-3/Gemma/Mistral templates, batched ARM64 decode &amp; SSE cancel</div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
     <div class="flow-step-card flow-step-highlight">
       <div class="step-badge">4</div>
       <div class="step-body">
-        <div class="step-name">Metal GPU &amp; Vector Ecosystem</div>
-        <div class="step-meta"><code>metal</code> single-<code>Batch</code> GPU compute, concurrent readers, <code>F16Matrix</code> &amp; fused <code>Q4Matrix</code> GEMV, plus <code>qdrant</code>, <code>milvus</code>, <code>chroma</code>, and <code>XACP</code></div>
+        <div class="step-name">Metal GPU &amp; Agent/Vector Ecosystem</div>
+        <div class="step-meta"><code>metal</code> <code>v1.4.0</code> GPU decode (<code>Q8Matrix</code>/<code>Q4KMatrix</code>, <code>qk_norm_f32</code>, <code>attention_decode_f32</code>), plus pure-Xu <code>openai</code>, <code>mcp</code>, <code>qdrant</code>, <code>milvus</code>, <code>chroma</code>, and <code>XACP</code></div>
       </div>
     </div>
   </div>
 </div>
 
 <h2 id="run">Build and run the local LLM engine</h2>
-<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> is a self-contained Transformer inference engine supporting <strong>Safetensors</strong> and <strong>GGUF v2/v3</strong> (mixed-quantization <code>Q4_K_M</code> with <code>Q4_K</code>/<code>Q6_K</code>, plus <code>F32</code>, <code>F16</code>, <code>BF16</code>, <code>FP8 E4M3</code>, <code>Q4_0</code>, <code>Q8_0</code>, and <code>p4k4</code> layouts). It supports Qwen3/Gemma2 per-head <code>qk_norm</code>, ChatML auto-templating (<code>&lt;|im_start|&gt;</code>/<code>&lt;|im_end|&gt;</code>), compact paged KV caches (<code>--kv-dtype f32|f16|bf16|fp8_e4m3fn</code>), hidden dimensions beyond 2048, GPT-2 byte tokens and BPE merges, and a multi-slot continuous-batching <code>#net/http</code> OpenAI server with Prefix KV Cache reuse and live <code>/health</code> telemetry.</p>
-<pre><code>XU_TENSOR_FUSION=1 XU_TENSOR_FAST_MATH=1 ./bin/xu build examples/llm_engine/main.xu -o llm_engine
+<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> is a self-contained Transformer inference engine supporting <strong>Safetensors</strong> and <strong>GGUF v2/v3</strong> (mixed-quantization <code>Q4_K_M</code> with <code>Q4_K</code>/<code>Q6_K</code>, plus <code>F32</code>, <code>F16</code>, <code>BF16</code>, <code>FP8 E4M3</code>, <code>Q4_0</code>, <code>Q5_0</code>, <code>Q8_0</code>, and zero-copy compacted weights / <code>p4k4</code> layouts), reading GGUF metadata (<code>rope_freq_scale</code>, <code>logit_softcap</code>, tokenizer model/architecture, and chat templates). It supports Qwen3/Gemma2 per-head <code>qk_norm</code>, auto-detected chat templates (<strong>ChatML</strong>, <strong>Llama-3</strong>, <strong>Gemma</strong>, <strong>Mistral</strong>) with multi-EOS stopping, compact paged KV caches (<code>--kv-dtype f32|f16|bf16|fp8_e4m3fn</code>), hidden dimensions beyond 2048, SentencePiece (<code>▁</code> / <code>&lt;0xHH&gt;</code>) + GPT-2 pre-tokenization &amp; BPE merges, $O(L)$ sampling (<code>top_k</code>, <code>top_p</code>, <code>--min-p</code>, <code>--repeat-penalty</code>, <code>--presence-penalty</code>, <code>--frequency-penalty</code>), and a multi-slot continuous-batching <code>#net/http</code> OpenAI server with batched ARM64 decode, SSE client-disconnect cancellation, Prefix KV Cache reuse, batch <code>/v1/embeddings</code>, <code>stream_options.include_usage</code>, CORS preflight, <code>--api-key</code> auth, and <code>--max-slots</code>.</p>
+<pre><code>./bin/xu build --tensor-fusion --tensor-fast-math examples/llm_engine/main.xu -o llm_engine
+# (or XU_TENSOR_FUSION=1 XU_TENSOR_FAST_MATH=1 ./bin/xu build ...)
 
 # Verify sequential vs continuous-batching parity with FP8 KV cache
 ./llm_engine verify model.gguf --kv-dtype fp8_e4m3fn
 
-# Generate text with BPE merges, nucleus sampling, and repeat penalty
+# Generate text with BPE merges, min-p / top-p sampling, and penalties
 ./llm_engine generate model.gguf "Hi Paris" 64 700 40 \
-  --kv-dtype f16 --top-p 900 --repeat-penalty 1100 --seed 42
+  --kv-dtype f16 --top-p 900 --min-p 50 --repeat-penalty 1100 \
+  --presence-penalty 100 --frequency-penalty 50 --seed 42
 
 # Start an OpenAI-compatible HTTP server (/health, /v1/models, /v1/completions, /v1/chat/completions, /v1/embeddings)
-# Supports SSE streaming ("stream": true) and custom "stop" sequences
-./llm_engine serve model.gguf 127.0.0.1:8080 --kv-dtype bf16</code></pre>
+# Supports SSE streaming ("stream": true, "stream_options": {"include_usage": true}), batch embeddings, CORS, and Bearer auth
+./llm_engine serve model.gguf 127.0.0.1:8080 --kv-dtype bf16 --max-slots 4 --api-key secret</code></pre>
 <p>Supported CLI flags across modes:</p>
 <ul>
   <li><code>--ctx &lt;N&gt;</code> — override maximum sequence length / context window.</li>
   <li><code>--kv-dtype &lt;f32|f16|bf16|fp8_e4m3fn|fp8_e5m2|fp8_e4m3fnuz|fp8_e5m2fnuz&gt;</code> — choose paged KV-cache storage precision (halving or quartering KV memory).</li>
-  <li><code>--top-p &lt;milli&gt;</code>, <code>--repeat-penalty &lt;milli&gt;</code>, <code>--seed &lt;int&gt;</code> — deterministic nucleus filtering and repetition penalty controls (<code>1000</code> = <code>1.0</code>).</li>
-  <li><code>--ignore-eos</code> — continue generation past <code>eos_token_id</code> for fixed-length evaluation.</li>
+  <li><code>--top-p &lt;milli&gt;</code>, <code>--min-p &lt;milli&gt;</code>, <code>--repeat-penalty &lt;milli&gt;</code>, <code>--presence-penalty &lt;milli&gt;</code>, <code>--frequency-penalty &lt;milli&gt;</code>, <code>--seed &lt;int&gt;</code> — deterministic filtering and repetition/presence/frequency penalties (<code>1000</code> = <code>1.0</code>; unbounded <code>top_k</code> supported).</li>
+  <li><code>--max-slots &lt;N&gt;</code>, <code>--api-key &lt;K&gt;</code> — configure concurrent continuous-batching scheduler slots and optional Bearer authentication (excluding <code>/health</code>) in <code>serve</code> mode.</li>
+  <li><code>--ignore-eos</code> — continue generation past EOS stop tokens for fixed-length evaluation.</li>
 </ul>
 
 <h2 id="tensor-ops"><code>#tensor</code> module &amp; numerical primitives</h2>
@@ -82,13 +85,13 @@
     </tr>
     <tr>
       <td>Strided views &amp; blocks</td>
-      <td><code>TensorView</code>, <code>MatrixView</code>, <code>Q4Block</code>, <code>Q8Block</code>, <code>Q4KBlock</code>, <code>Q6KBlock</code>, <code>read_q4_k</code>, <code>read_q6_k</code></td>
-      <td>Row/column/slice zero-copy indexing, GGML 32-value &amp; 256-value K-quant block decoding, and zero-alloc <code>dot_f32</code></td>
+      <td><code>TensorView</code> (<code>reshape</code>, <code>permute</code>, <code>read_f32_bytes</code>, <code>write_f32_bytes</code>), <code>Q4Block</code>, <code>Q5Block</code>, <code>Q8Block</code>, <code>Q4KBlock</code>, <code>Q6KBlock</code>, <code>dot_q4_k_bytes_f32</code>, <code>dot_q6_k_bytes_f32</code>, <code>dot_q8_0_bytes_f32</code>, <code>dot_q5_0_bytes_f32</code></td>
+      <td>Zero-copy strided reshape/permute &amp; byte-backed views, GGML 32-value &amp; 256-value K-quant decoding, and zero-alloc byte dot products</td>
     </tr>
     <tr>
       <td>Vector &amp; similarity ops</td>
       <td><code>dot_f32</code>, <code>axpy_f32</code>, <code>vadd_f32</code>, <code>vsub_f32</code>, <code>vmul_f32</code>, <code>vscale_f32</code>, <code>l2_normalize_f32</code>, <code>cosine_similarity_f32</code>, <code>argmax_f32</code></td>
-      <td>Offsetted dot products, FMA accumulation, Hadamard ops, L2 normalization, cosine similarity, and argmax</td>
+      <td>Offsetted dot products, FMA accumulation, Hadamard add/sub/mul ops, L2 normalization, cosine similarity, and argmax</td>
     </tr>
     <tr>
       <td>Transformer &amp; quant ops</td>
@@ -116,7 +119,7 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
 }</code></pre>
 
 <h2 id="tensor-fusion">Compiler options &amp; MIR tensor fusion</h2>
-<p>When building with <code>XU_TENSOR_FUSION=1</code>, the compiler's MIR tensor-lowering pass pattern-matches idiomatic pure-Xu numerical loops (including the primitives in <code>#tensor</code> and custom kernels in user code) and lowers them directly into hand-tuned <strong>ARM64 NEON / SDOT</strong> and <strong>x86-64 SSE2 / AVX2</strong> runtime kernels, while keeping the frozen C/runtime ABI unchanged:</p>
+<p>When building with <code>--tensor-fusion</code> (or <code>XU_TENSOR_FUSION=1</code>), the compiler's MIR tensor-lowering pass pattern-matches idiomatic pure-Xu numerical loops (including the primitives in <code>#tensor</code> and custom kernels in user code) and lowers them directly into hand-tuned <strong>ARM64 NEON / SDOT</strong> and <strong>x86-64 SSE2 / SSSE3</strong> runtime kernels, while keeping the frozen C/runtime ABI unchanged:</p>
 <table>
   <thead>
     <tr><th>Kernel family</th><th>MIR runtime symbol(s)</th><th>Hardware instructions</th></tr>
@@ -124,8 +127,8 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
   <tbody>
     <tr>
       <td>Vector ops</td>
-      <td><code>__xu_tensor_dot_f32</code>, <code>__xu_tensor_axpy_f32</code>, <code>__xu_tensor_vadd_inplace_f32</code>, <code>__xu_tensor_vmul_f32</code></td>
-      <td>ARM64 NEON <code>fmul.4s</code>/<code>fmla.4s</code>; x64 SSE2 <code>mulps</code>/<code>addps</code></td>
+      <td><code>__xu_tensor_dot_f32</code>, <code>__xu_tensor_axpy_f32</code>, <code>__xu_tensor_vadd_inplace_f32</code>, <code>__xu_tensor_vsub_f32</code>, <code>__xu_tensor_vmul_f32</code></td>
+      <td>ARM64 NEON <code>fmul.4s</code>/<code>fmla.4s</code>/<code>fsub.4s</code>; x64 SSE2 <code>mulps</code>/<code>addps</code>/<code>subps</code></td>
     </tr>
     <tr>
       <td>Norms &amp; activation</td>
@@ -135,7 +138,7 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
     <tr>
       <td>Dense &amp; quantized GEMV/GEMM</td>
       <td><code>__xu_tensor_gemv4_f32</code>, <code>__xu_tensor_gemm4x4_f32</code>, <code>__xu_tensor_gemv4_q4_0_p4k4_signed_f16_q8_0_f32</code>, <code>__xu_tensor_gemm4x8_q8_0_p4k4_f16_q8_0_f32</code></td>
-      <td>4×8 tiled microkernels with ARM64 <code>sdot.4s</code> &amp; x64 FMA</td>
+      <td>4×8 tiled microkernels with ARM64 <code>sdot.4s</code> &amp; x64 SSE2/SSSE3 parity</td>
     </tr>
     <tr>
       <td>Paged attention &amp; RoPE</td>
@@ -145,12 +148,12 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
   </tbody>
 </table>
 <ul>
-  <li><code>XU_TENSOR_FUSION=1</code> — enable pattern-matched SIMD / quantized matrix lowering (verified bit-exact in <code>fusion-strict</code> mode).</li>
-  <li><code>XU_TENSOR_FAST_MATH=1</code> — unlock fast reassociated reductions, fast exponential approximations, and unrolled <code>sdot</code> pipelines.</li>
+  <li><code>--tensor-fusion</code> / <code>XU_TENSOR_FUSION=1</code> — enable pattern-matched SIMD / quantized matrix lowering (verified bit-exact in <code>fusion-strict</code> mode).</li>
+  <li><code>--tensor-fast-math</code> / <code>XU_TENSOR_FAST_MATH=1</code> — unlock fast reassociated reductions, fast exponential approximations, and unrolled <code>sdot</code> pipelines.</li>
 </ul>
 
 <h2 id="gpu-metal">GPU compute via <code>packages/metal</code></h2>
-<p>For Apple Silicon GPUs, the official <a href="https://github.com/xulang-org/packages"><code>packages/metal</code></a> (<code>v1.3.0</code>) module provides <code>F32Matrix</code>, <code>F16Matrix</code> (<code>MPSDataTypeFloat16</code>), and raw GGML <code>Q4Matrix</code> (<code>matrix_q4_0</code>) buffers, read/write lock separation for concurrent readers, and multi-op <code>Batch</code> command encoding synchronized with non-blocking <code>Fence</code> handles and compile-time borrow + runtime shape/alias/device guards:</p>
+<p>For Apple Silicon GPUs, the official <a href="https://github.com/xulang-org/packages"><code>packages/metal</code></a> (<code>v1.4.0</code>) module provides <code>F32Matrix</code>, <code>F16Matrix</code> (<code>MPSDataTypeFloat16</code>), raw byte uploads (<code>write_bytes</code>), and quantized buffers — <code>Q4Matrix</code> (<code>matrix_q4_0</code>), <code>Q8Matrix</code> (<code>matrix_q8_0</code>), and <code>Q4KMatrix</code> (<code>matrix_q4_k</code>) — with limits raised to <code>262,144</code> per dimension / <code>536,870,912</code> cells, read/write lock separation for concurrent readers, and multi-op <code>Batch</code> command encoding synchronized with non-blocking <code>Fence</code> handles and compile-time borrow + runtime shape/alias/device guards:</p>
 <pre><code>@main
 metal #"github.com/xulang-org/packages/metal"
 #errors
@@ -171,7 +174,7 @@ fn gpu_ffn_batch(d &amp;metal.Device, x &amp;metal.F32Matrix, w &amp;metal.F32Ma
     _ := f.wait() >>>
     << out
 }</code></pre>
-<p>Available GPU ops across standalone dispatches and <code>Batch</code> methods: <code>gemm_f32</code>, <code>gemm_f32_nt</code>, <code>rmsnorm_f32</code>, <code>layernorm_f32</code>, <code>softmax_f32</code>, <code>gelu_f32</code>, <code>swiglu_f32</code>, <code>add_f32</code>, <code>mul_f32</code>, <code>scale_f32</code>, <code>rope_f32</code>, <code>causal_attention_f32</code>, <code>gemm_f16</code>, <code>gemm_f16_nt</code>, <code>f16_to_f32</code>, <code>f32_to_f16</code>, and fused <code>gemv_q4_0_f32</code> ($x \cdot \mathrm{dequant}(W)^T$ computed on-the-fly in GPU registers).</p>
+<p>Available GPU ops across standalone dispatches and <code>Batch</code> methods: <code>gemm_f32</code>, <code>gemm_f32_nt</code>, <code>rmsnorm_f32</code>, <code>layernorm_f32</code>, <code>softmax_f32</code>, <code>gelu_f32</code>, <code>swiglu_f32</code>, <code>add_f32</code>, <code>mul_f32</code>, <code>scale_f32</code>, <code>rope_f32</code>, <code>qk_norm_f32</code>, <code>kv_cache_append_f32</code>, <code>attention_decode_f32</code>, <code>causal_attention_f32</code>, <code>embedding_f32</code>, <code>argmax_f32</code>, <code>gemm_f16</code>, <code>gemm_f16_nt</code>, <code>f16_to_f32</code>, <code>f32_to_f16</code>, and fused quantized GEMV kernels (<code>gemv_q4_0_f32</code>, <code>gemv_q8_0_f32</code>, <code>gemv_q4_k_f32</code>) computing $x \cdot \mathrm{dequant}(W)^T$ on-the-fly in GPU registers for full end-to-end GPU Transformer decoding.</p>
 
 <h2 id="verification">Verify and measure inference</h2>
 <pre><code># Pure-Xu compiler MIR &amp; tensor primitive suites
@@ -179,14 +182,15 @@ python3 scripts/test_tensor_opt.py --compiler bin/xu
 python3 scripts/test_tensor_types.py --compiler bin/xu
 python3 scripts/test_llm_engine.py --compiler bin/xu
 
-# Packages Metal GPU vs CPU parity tests (from packages/)
+# Packages Metal GPU &amp; OpenAI/MCP parity tests (from packages/)
 XU_ROOT=../xu python3 metal/native/build.py --target macos-arm64
-XU=../xu/bin/xu python3 -m unittest tests/test_metal_ai.py -v</code></pre>
-<p>Every test verifies numerical parity against independent Python references, confirms paged KV cache block reclamation (<code>kv_free_after</code>), and exercises HTTP <code>/health</code>, <code>/v1/models</code>, <code>/v1/completions</code>, and <code>/v1/chat/completions</code> endpoints. Multi-architecture compiler and kernel timings live on <a href="/benchmarks">Benchmarks</a>.</p>
+XU_ROOT=../xu XU=../xu/bin/xu python3 -m unittest tests/test_metal_ai.py tests/test_openai_mcp.py -v</code></pre>
+<p>Every test verifies numerical parity against independent Python references, confirms paged KV cache block reclamation (<code>kv_free_after</code>), and exercises HTTP <code>/health</code>, <code>/v1/models</code>, <code>/v1/completions</code>, <code>/v1/chat/completions</code>, and batch <code>/v1/embeddings</code> endpoints (including SSE client-disconnect cancellation, CORS, and Bearer auth). Multi-architecture compiler and kernel timings live on <a href="/benchmarks">Benchmarks</a>.</p>
 
-<h2 id="ecosystem">Vector databases &amp; agent automation (XACP)</h2>
-<p>Beyond tensor kernels and local inference, the Xu ecosystem includes pure-Xu client packages and built-in compiler protocols for complete AI applications:</p>
+<h2 id="ecosystem">OpenAI SDK, MCP, vector databases &amp; agent automation</h2>
+<p>Beyond tensor kernels and local inference, the Xu ecosystem includes pure-Xu client/server packages and built-in compiler protocols for complete AI applications:</p>
 <ul>
+  <li><strong>OpenAI &amp; MCP (<a href="/docs/packages">packages</a>):</strong> <code>github.com/xulang-org/packages/openai</code> provides a typed pure-Xu OpenAI-compatible client (<code>list_models</code>, <code>chat</code>, <code>chat_stream</code> / <code>chat_stream_chan</code> SSE streaming, tool calling, and <code>embeddings</code>), while <code>github.com/xulang-org/packages/mcp</code> implements Model Context Protocol JSON-RPC 2.0 (<code>2025-03-26</code>) for both stdio servers and Streamable HTTP JSON/SSE clients (<code>tools</code>, <code>resources</code>, <code>prompts</code>).</li>
   <li><strong>Vector databases (<a href="/docs/packages">packages</a>):</strong> native Xu clients for <code>qdrant</code>, <code>milvus</code>, and <code>chroma</code> over HTTP/gRPC transports, enabling RAG pipelines compiled into a single static binary.</li>
   <li><strong>Agent automation (<a href="/docs/cli#xacp">XACP</a> &amp; <a href="/api/xacp"><code>#xacp</code> API</a>):</strong> structured capability introspection, bounded event/frame recording, and audited UI interaction for local desktop applications built with Xu.</li>
 </ul>
