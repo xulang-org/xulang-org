@@ -12,7 +12,7 @@ fn verify_etcd_kv() {
 
     // 1. Put KV
     println("   Writing key: " + key)
-    client.put(key + "", val + "") or (err) {
+    client.put(key + "", val + "") >>> (err) {
         println("   [FAIL] etcd put error: " + err.msg())
         <<
     }
@@ -20,7 +20,7 @@ fn verify_etcd_kv() {
 
     // 2. Get KV
     println("   Reading key: " + key)
-    got := client.get(key + "") or (err) {
+    got := client.get(key + "") >>> (err) {
         println("   [FAIL] etcd get error: " + err.msg())
         <<
     }
@@ -33,7 +33,7 @@ fn verify_etcd_kv() {
 
     // 3. Delete KV
     println("   Deleting key: " + key)
-    client.delete(key + "") or (err) {
+    client.delete(key + "") >>> (err) {
         println("   [FAIL] etcd delete error: " + err.msg())
         <<
     }
@@ -46,7 +46,7 @@ fn verify_etcd_lease() {
 
     // Grant lease: 60 seconds
     println("   Granting 60s lease...")
-    lease_id := client.lease_grant(60) or (err) {
+    lease_id := client.lease_grant(60) >>> (err) {
         println("   [FAIL] lease_grant error: " + err.msg())
         <<
     }
@@ -56,14 +56,14 @@ fn verify_etcd_lease() {
     service_key := "/discovery/nodes/node-1"
     service_addr := "192.168.1.100:8080"
     println("   Registering node with lease: " + service_key)
-    client.put_with_lease(service_key + "", service_addr + "", lease_id) or (err) {
+    client.put_with_lease(service_key + "", service_addr + "", lease_id) >>> (err) {
         println("   [FAIL] put_with_lease error: " + err.msg())
         <<
     }
     println("   [PASS] Service registered with lease.")
 
     // Verify retrieval
-    got := client.get(service_key + "") or (err) {
+    got := client.get(service_key + "") >>> (err) {
         println("   [FAIL] get leased key error: " + err.msg())
         <<
     }
@@ -71,7 +71,7 @@ fn verify_etcd_lease() {
 
     // Revoke lease
     println("   Revoking lease...")
-    client.lease_revoke(lease_id) or (err) {
+    client.lease_revoke(lease_id) >>> (err) {
         println("   [FAIL] lease_revoke error: " + err.msg())
         <<
     }
@@ -110,11 +110,11 @@ fn verify_etcd_pool() {
     println("   Testing delegated operations via pool...")
     pool_key := "/pool/service/worker-1"
     pool_val := "status=online;threads=16"
-    p.put(pool_key + "", pool_val + "") or (err) {
+    p.put(pool_key + "", pool_val + "") >>> (err) {
         println("   [FAIL] pool.put error: " + err.msg())
         <<
     }
-    got_val := p.get_key(pool_key + "") or (err) {
+    got_val := p.get_key(pool_key + "") >>> (err) {
         println("   [FAIL] pool.get_key error: " + err.msg())
         <<
     }
@@ -125,7 +125,7 @@ fn verify_etcd_pool() {
         println("   [FAIL] Pool delegated get mismatch!")
     }
 
-    p.delete(pool_key + "") or (err) {
+    p.delete(pool_key + "") >>> (err) {
         println("   [FAIL] pool.delete error: " + err.msg())
         <<
     }

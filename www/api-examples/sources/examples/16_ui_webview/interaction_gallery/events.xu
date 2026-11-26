@@ -5,20 +5,20 @@
 #time
 
 fn search_changed(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
-    query := screen.text_value(m.search) or(err) { << err.msg()}
-    screen.set_tree_filter(m.tree, query) or(err) { << err.msg()}
+    query := screen.text_value(m.search) >>> (err) { << err.msg()}
+    screen.set_tree_filter(m.tree, query) >>> (err) { << err.msg()}
     << ""
 }
 fn name_changed(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
-    screen.set_field_invalid(m.name, false) or(err) { << err.msg()}
+    screen.set_field_invalid(m.name, false) >>> (err) { << err.msg()}
     << ""
 }
 fn node_action(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
-    _ := screen.notify("Node action · " + str(int(action.value))) or(err) { << err.msg()}
+    _ := screen.notify("Node action · " + str(int(action.value))) >>> (err) { << err.msg()}
     << ""
 }
 fn slider_committed(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
-    screen.set_text(m.message, "Slider committed · " + str(int(action.value))) or(err) { << err.msg()}
+    screen.set_text(m.message, "Slider committed · " + str(int(action.value))) >>> (err) { << err.msg()}
     << ""
 }
 fn toggle_controls(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
@@ -28,7 +28,7 @@ fn toggle_controls(m $&Model, screen $&widgets.Screen, action &widgets.Action) s
 fn queue_notice(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
     $notice := widgets.notice(&"Saved a local configuration")
     notice.action = "Undo"
-    _ := screen.enqueue_notice(&notice) or(err) { << err.msg()}
+    _ := screen.enqueue_notice(&notice) >>> (err) { << err.msg()}
     << ""
 }
 fn choose_theme(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
@@ -57,47 +57,47 @@ fn choose_failure(m $&Model, screen $&widgets.Screen, action &widgets.Action) st
 }
 fn start_task(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
     if m.running{ << ""}
-    name := screen.text_value(m.name) or(err) { << err.msg()}
-    if name.len == 0 {screen.set_field_invalid(m.name, true) or(err) { << err.msg()}
-        screen.focus(m.name) or(err) { << err.msg()}
+    name := screen.text_value(m.name) >>> (err) { << err.msg()}
+    if name.len == 0 {screen.set_field_invalid(m.name, true) >>> (err) { << err.msg()}
+        screen.focus(m.name) >>> (err) { << err.msg()}
         << ""}
     m.task_id = m.task_id + 1
     m.completed = 0
     m.checksum = 0
     m.running = true
     m.next_work = time.instant()
-    screen.begin_task(m.task, m.task_id) or(err) { << err.msg()}
+    screen.begin_task(m.task, m.task_id) >>> (err) { << err.msg()}
     << ""
 }
 fn cancel_task(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
     if !m.running{ << ""}
-    _ := screen.complete_task(m.task, m.task_id, widgets.TASK_CANCELLED) or(err) { << err.msg()}
+    _ := screen.complete_task(m.task, m.task_id, widgets.TASK_CANCELLED) >>> (err) { << err.msg()}
     m.running = false
-    screen.set_text(m.message, "Task cancelled. Completed work remains " + str(m.completed) + "/48.") or(err) { << err.msg()}
+    screen.set_text(m.message, "Task cancelled. Completed work remains " + str(m.completed) + "/48.") >>> (err) { << err.msg()}
     << ""
 }
 fn notice_action(m $&Model, screen $&widgets.Screen, action &widgets.Action) string {
-    screen.set_text(m.message, "Notification action · " + str(int(action.value))) or(err) { << err.msg()}
+    screen.set_text(m.message, "Notification action · " + str(int(action.value))) >>> (err) { << err.msg()}
     << ""
 }
 fn register_actions(m &Model, screen &widgets.Screen) widgets.ActionDispatcher#Model, widgets.Screen, widgets.Action{
     $d := widgets.action_dispatcher(m, screen)
-    d.on(m.search, widgets.ACTION_CHANGE, search_changed) or >>
-    d.on(m.name, widgets.ACTION_CHANGE, name_changed) or >>
-    d.on(m.tree, widgets.ACTION_ITEM_ACTION, node_action) or >>
-    d.on(m.extras[5], widgets.ACTION_COMMIT, slider_committed) or >>
-    d.on(m.controls_page, widgets.ACTION_ACTIVATE, toggle_controls) or >>
-    d.on(m.extras[19], widgets.ACTION_ACTIVATE, queue_notice) or >>
-    d.on(m.theme, widgets.ACTION_ACTIVATE, choose_theme) or >>
-    d.on(m.guides, widgets.ACTION_ACTIVATE, choose_guides) or >>
-    d.on(m.density, widgets.ACTION_ACTIVATE, choose_density) or >>
-    d.on(m.effects, widgets.ACTION_ACTIVATE, choose_motion) or >>
-    d.on(m.failure, widgets.ACTION_ACTIVATE, choose_failure) or >>
-    d.on(m.task, widgets.ACTION_ACTIVATE, start_task) or >>
-    d.on(m.cancel, widgets.ACTION_ACTIVATE, cancel_task) or >>
+    d.on(m.search, widgets.ACTION_CHANGE, search_changed) >>>
+    d.on(m.name, widgets.ACTION_CHANGE, name_changed) >>>
+    d.on(m.tree, widgets.ACTION_ITEM_ACTION, node_action) >>>
+    d.on(m.extras[5], widgets.ACTION_COMMIT, slider_committed) >>>
+    d.on(m.controls_page, widgets.ACTION_ACTIVATE, toggle_controls) >>>
+    d.on(m.extras[19], widgets.ACTION_ACTIVATE, queue_notice) >>>
+    d.on(m.theme, widgets.ACTION_ACTIVATE, choose_theme) >>>
+    d.on(m.guides, widgets.ACTION_ACTIVATE, choose_guides) >>>
+    d.on(m.density, widgets.ACTION_ACTIVATE, choose_density) >>>
+    d.on(m.effects, widgets.ACTION_ACTIVATE, choose_motion) >>>
+    d.on(m.failure, widgets.ACTION_ACTIVATE, choose_failure) >>>
+    d.on(m.task, widgets.ACTION_ACTIVATE, start_task) >>>
+    d.on(m.cancel, widgets.ACTION_ACTIVATE, cancel_task) >>>
     << d
 }
 fn register_notices(screen &widgets.Screen, d $&widgets.ActionDispatcher#Model, widgets.Screen, widgets.Action) int {
-    for id in screen.notice_ids() {d.on(id, widgets.ACTION_NOTICE_ACTION, notice_action) or >> }
+    for id in screen.notice_ids() {d.on(id, widgets.ACTION_NOTICE_ACTION, notice_action) >>> }
     << 0
 }

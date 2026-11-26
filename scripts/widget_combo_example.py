@@ -64,10 +64,10 @@ fn demo() int {
     bounds := box(48.0,110.0,400.0,42.0)
     options := ["Workspace 工作区","History 历史","Output 输出"]
     initial := choices(&options,&"",0)
-    $menu := widgets.menu(&context,&identity,1,&bounds,"",&initial,widgets.MENU_DROPDOWN,0) or >>
-    menu.set_style(&styles.input) or >>
-    menu.set_viewport(&box(28.0,70.0,584.0,240.0)) or >>
-    $focus := widgets.focus_group(&identity,[1]) or >>
+    $menu := widgets.menu(&context,&identity,1,&bounds,"",&initial,widgets.MENU_DROPDOWN,0) >>>
+    menu.set_style(&styles.input) >>>
+    menu.set_viewport(&box(28.0,70.0,584.0,240.0)) >>>
+    $focus := widgets.focus_group(&identity,[1]) >>>
     $text := "Workspace 工作区"
     $selected := 0
     while true {
@@ -93,38 +93,38 @@ fn demo() int {
         if changed {
             selected = -1
             filtered := choices(&options,&text,selected)
-            menu.set_items(&filtered) or >>
-            menu.open_at(bounds.x,bounds.y,false) or >>
+            menu.set_items(&filtered) >>>
+            menu.open_at(bounds.x,bounds.y,false) >>>
         } else if !editing {
             was_open := menu.is_open()
-            action := menu.input(&event) or >>
-            if action.request_focus { focus.focus(1) or >> }
+            action := menu.input(&event) >>>
+            if action.request_focus { focus.focus(1) >>> }
             if (action.kind == widgets.ACTION_ACTIVATE || action.kind == widgets.ACTION_CHANGE) && action.value >= 1.0 && action.value <= 3.0 {
                 selected = int(action.value)-1
                 text = options[selected]
                 all := choices(&options,&"",selected)
-                menu.set_items(&all) or >>
+                menu.set_items(&all) >>>
             } else if !was_open && menu.is_open() {
                 all := choices(&options,&"",selected)
-                menu.set_items(&all) or >>
-                menu.open_at(bounds.x,bounds.y,false) or >>
+                menu.set_items(&all) >>>
+                menu.open_at(bounds.x,bounds.y,false) >>>
             }
         }
         if event.kind == ui.EV_POINTER_DOWN && !bounds.contains(event.x,event.y) && !menu.is_open() { focus.clear() }
         menu.set_focus(focus.current() == 1)
-        _ := menu.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>
+        _ := menu.tick(&styles,time.instant_from_ns(event.time_ns) >>>,true) >>>
     }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.cursor_rect(bounds.x,bounds.y,bounds.width-44.0,bounds.height,"text") or >>
-    frame.cursor_rect(bounds.x+bounds.width-44.0,bounds.y,44.0,bounds.height,"pointer") or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,styles.input.palette.normal) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.cursor_rect(bounds.x,bounds.y,bounds.width-44.0,bounds.height,"text") >>>
+    frame.cursor_rect(bounds.x+bounds.width-44.0,bounds.y,44.0,bounds.height,"pointer") >>>
+    frame.fill_rect(28.0,70.0,584.0,240.0,styles.input.palette.normal) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,styles.button.palette.border,1.0) >>>
     draw.text(32,22,20,"#282329","XUUI  /  ComboBox")
     draw.text(32,48,12,"#6d626e","展开候选项；方向键、Enter 选择，Escape 关闭。")
     draw.text(48,86,14,"#282329","Environment 环境选择")
-    menu.paint_styled($&frame,&styles) or >>
+    menu.paint_styled($&frame,&styles) >>>
     $display := text+""
     if focus.current() == 1 { display = display+"│" }
     $label := widgets.styled_label(&context,&display)
@@ -135,15 +135,15 @@ fn demo() int {
     content := box(bounds.x+12.0,bounds.y,bounds.width-56.0,bounds.height)
     $state := 0
     if focus.current() == 1 { state = widgets.STATE_FOCUSED }
-    label.paint_text_styled($&frame,&content,&styles,&field,state) or >>
+    label.paint_text_styled($&frame,&content,&styles,&field,state) >>>
     draw.text(48,174,12,"#6d626e","输入基本字符筛选；中文选项可直接选择。")
-    menu.paint_popup_styled($&frame,&styles) or >>
+    menu.paint_popup_styled($&frame,&styles) >>>
     message := "Selected: "+text
     draw.text(32,326,13,"#6d626e",message+"")
     println(message)
-    frame.present() or >>
+    frame.present() >>>
     << 0
 }
-fn main() int { << demo() or (err) { eprintln(err.msg())
+fn main() int { << demo() >>> (err) { eprintln(err.msg())
     << 1 } }
 '''

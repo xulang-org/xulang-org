@@ -39,7 +39,7 @@ fn write_http(fd int, status int, ctype string, body string) int {
     out = out + "Connection: close\r\n"
     out = out + "\r\n"
     out = out + body
-    &lt;&lt; net.conn_write(fd, &amp;out) or (err) { &gt;&gt; err }
+    &lt;&lt; net.conn_write(fd, &amp;out) &gt;&gt;&gt; (err) { &gt;&gt;&gt; err }
 }
 
 fn index_page() string {
@@ -60,10 +60,10 @@ fn index_page() string {
 
 fn handle(fd int) {
     $req := http.new_request()
-    req.read(fd) or (err) {
+    req.read(fd) &gt;&gt;&gt; (err) {
         msg := err.msg()
-        write_http(fd, 400, "text/plain; charset=utf-8", msg) or (e2) { &lt;&lt; }
-        net.conn_close(fd) or (e3) { &lt;&lt; }
+        write_http(fd, 400, "text/plain; charset=utf-8", msg) &gt;&gt;&gt; (e2) { &lt;&lt; }
+        net.conn_close(fd) &gt;&gt;&gt; (e3) { &lt;&lt; }
         &lt;&lt;
     }
     method := req.method()
@@ -71,49 +71,49 @@ fn handle(fd int) {
     path := path_only(raw_path)
     if path == "/" || path == "/index.html" {
         page := index_page()
-        write_http(fd, 200, "text/html; charset=utf-8", page) or (err) { &lt;&lt; }
-        net.conn_close(fd) or (err) { &lt;&lt; }
+        write_http(fd, 200, "text/html; charset=utf-8", page) &gt;&gt;&gt; (err) { &lt;&lt; }
+        net.conn_close(fd) &gt;&gt;&gt; (err) { &lt;&lt; }
         &lt;&lt;
     }
     if path == "/hello" {
         body := "hello, xu\n"
-        write_http(fd, 200, "text/plain; charset=utf-8", body) or (err) { &lt;&lt; }
-        net.conn_close(fd) or (err) { &lt;&lt; }
+        write_http(fd, 200, "text/plain; charset=utf-8", body) &gt;&gt;&gt; (err) { &lt;&lt; }
+        net.conn_close(fd) &gt;&gt;&gt; (err) { &lt;&lt; }
         &lt;&lt;
     }
     if path == "/health" {
         body := "ok\n"
-        write_http(fd, 200, "text/plain; charset=utf-8", body) or (err) { &lt;&lt; }
-        net.conn_close(fd) or (err) { &lt;&lt; }
+        write_http(fd, 200, "text/plain; charset=utf-8", body) &gt;&gt;&gt; (err) { &lt;&lt; }
+        net.conn_close(fd) &gt;&gt;&gt; (err) { &lt;&lt; }
         &lt;&lt;
     }
     if path == "/echo" {
         if method != "POST" &amp;&amp; method != "PUT" {
             body := "method not allowed\n"
-            write_http(fd, 405, "text/plain; charset=utf-8", body) or (err) { &lt;&lt; }
-            net.conn_close(fd) or (err) { &lt;&lt; }
+            write_http(fd, 405, "text/plain; charset=utf-8", body) &gt;&gt;&gt; (err) { &lt;&lt; }
+            net.conn_close(fd) &gt;&gt;&gt; (err) { &lt;&lt; }
             &lt;&lt;
         }
         echo := req.body()
-        write_http(fd, 200, "text/plain; charset=utf-8", echo) or (err) { &lt;&lt; }
-        net.conn_close(fd) or (err) { &lt;&lt; }
+        write_http(fd, 200, "text/plain; charset=utf-8", echo) &gt;&gt;&gt; (err) { &lt;&lt; }
+        net.conn_close(fd) &gt;&gt;&gt; (err) { &lt;&lt; }
         &lt;&lt;
     }
     miss := "not found: " + path + "\n"
-    write_http(fd, 404, "text/plain; charset=utf-8", miss) or (err) { &lt;&lt; }
-    net.conn_close(fd) or (err) { &lt;&lt; }
+    write_http(fd, 404, "text/plain; charset=utf-8", miss) &gt;&gt;&gt; (err) { &lt;&lt; }
+    net.conn_close(fd) &gt;&gt;&gt; (err) { &lt;&lt; }
 }
 
 fn main() int {
     $s := http.new_server()
-    s.listen("127.0.0.1:18080") or (err) {
+    s.listen("127.0.0.1:18080") &gt;&gt;&gt; (err) {
         println(err.msg())
         &lt;&lt; 1
     }
     println("http://127.0.0.1:18080")
     $running := true
     while running {
-        fd := s.accept() or (err) {
+        fd := s.accept() &gt;&gt;&gt; (err) {
             -&gt;
         }
         handle(fd)

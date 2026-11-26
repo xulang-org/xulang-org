@@ -21,58 +21,58 @@ struct Model{
 }
 fn (model $&Model) input(id int, kind int, event &ui.InputEvent) widgets.Action{
     if id == model.title_id{control := $&model.title
-        << control.route(kind, event) or >> }
+        << control.route(kind, event) >>> }
     if id == model.body_id{control := $&model.body
-        << control.route(kind, event) or >> }
+        << control.route(kind, event) >>> }
     << widgets.Action{kind: 0, id: id, needs_paint: false, request_focus: false, consumed: false, value: 0.0}
 }
 fn (model $&Model) paint(id int, bounds &layout.Rect, frame $&draw.Frame) bool {
-    model.draw_node(id, frame) or(err) {eprintln(err.msg())
+    model.draw_node(id, frame) >>> (err) {eprintln(err.msg())
         << false}
     << true
 }
 fn (model $&Model) draw_node(id int,frame $&draw.Frame) int {
     styles := model.styles.clone()
     if id == model.title_id { control := $&model.title
-        control.paint_styled(frame,&styles) or >> }
+        control.paint_styled(frame,&styles) >>> }
     else if id == model.body_id { control := $&model.body
-        control.paint_styled(frame,&styles) or >> }
+        control.paint_styled(frame,&styles) >>> }
     else if id == model.header {
-        demo.text(&model.context,frame,0.0,0.0,24.0,tokens.text(model.dark),"Writing desk") or >>
-        demo.text(&model.context,frame,0.0,34.0,14.0,tokens.muted(model.dark),"XUUI design standard · native text and menu controls") or >>
-        demo.text(&model.context,frame,0.0,62.0,14.0,tokens.muted(model.dark),"Tab / Shift+Tab · drag selection · copy / cut / paste · arrows / Home / End") or >>
+        demo.text(&model.context,frame,0.0,0.0,24.0,tokens.text(model.dark),"Writing desk") >>>
+        demo.text(&model.context,frame,0.0,34.0,14.0,tokens.muted(model.dark),"XUUI design standard · native text and menu controls") >>>
+        demo.text(&model.context,frame,0.0,62.0,14.0,tokens.muted(model.dark),"Tab / Shift+Tab · drag selection · copy / cut / paste · arrows / Home / End") >>>
     } else if id == model.footer {
-        demo.text(&model.context,frame,0.0,0.0,14.0,tokens.brand(model.dark),"Changes: " + str(model.changes) + "  |  " + model.status) or >>
-        demo.text(&model.context,frame,0.0,27.0,14.0,tokens.muted(model.dark),"Use the Document menu: toggle editing, reset, query screens. Escape quits.") or >>
+        demo.text(&model.context,frame,0.0,0.0,14.0,tokens.brand(model.dark),"Changes: " + str(model.changes) + "  |  " + model.status) >>>
+        demo.text(&model.context,frame,0.0,27.0,14.0,tokens.muted(model.dark),"Use the Document menu: toggle editing, reset, query screens. Escape quits.") >>>
     }
     << 0
 }
 fn (model $&Model) place(view $&widgets.View) int {
     title := $&model.title
-    widgets.place_editor(view, title) or >>
+    widgets.place_editor(view, title) >>>
     body := $&model.body
-    widgets.place_editor(view, body) or >>
+    widgets.place_editor(view, body) >>>
     << 0
 }
 fn (model $&Model) native_event(event &ui.Event) bool {
     title := $&model.title
-    first := title.event(event) or >>
+    first := title.event(event) >>>
     body := $&model.body
-    second := body.event(event) or >>
+    second := body.event(event) >>>
     << first.kind == widgets.ACTION_CHANGE || second.kind == widgets.ACTION_CHANGE
 }
 fn (model $&Model) editing(on bool) int {
     title := $&model.title
-    title.enable(on) or >>
+    title.enable(on) >>>
     body := $&model.body
-    body.enable(on) or >>
+    body.enable(on) >>>
     << 0
 }
 fn (model $&Model) reset() int {
     title := $&model.title
-    title.set_value(&"Untitled note") or >>
+    title.set_value(&"Untitled note") >>>
     body := $&model.body
-    body.set_value(&"Write here.\n你好，Xu。\n\nSelection and IME are native; layout and painting stay in the retained View.") or >>
+    body.set_value(&"Write here.\n你好，Xu。\n\nSelection and IME are native; layout and painting stay in the retained View.") >>>
     << 0
 }
 fn menus(window &ui.Window,enabled bool,dark bool) int {
@@ -92,48 +92,48 @@ fn menus(window &ui.Window,enabled bool,dark bool) int {
     unavailable.enabled = false
     entries.push(unavailable)
     entries.push(ui.menu_check("dark-theme","Dark appearance",0,dark))
-    << window.set_menu_entries(entries) or >>
+    << window.set_menu_entries(entries) >>>
 }
 fn scene(ech chan ui.Event) int {
-    ready := demo.ready(ech) or >>
+    ready := demo.ready(ech) >>>
     if ready.kind == ui.EV_EXIT{ << 0}
-    identity := ui.canvas_of(&ready) or >>
-    context := draw.context_of(&ready) or >>
+    identity := ui.canvas_of(&ready) >>>
+    context := draw.context_of(&ready) >>>
     window := ui.Window{id: identity.window_id, generation: identity.generation, title: "", width: 0, height: 0, content_kind: ui.CONTENT_DRAW, content_backend_id: identity.canvas_id, closed: 0}
-    menus(&window, true, false) or >>
+    menus(&window, true, false) >>>
     host := widgets.Host{context: context, identity: identity}
     $column := layout.box_style(layout.BOX_COLUMN)
-    column.padding = layout.insets(24.0) or >>
+    column.padding = layout.insets(24.0) >>>
     column.gap = 16.0
     column.cross_alignment = layout.CROSS_STRETCH
-    $view := host.view(&column, tokens.canvas(false)) or >>
+    $view := host.view(&column, tokens.canvas(false)) >>>
     leaf := layout.box_style(layout.BOX_LEAF)
-    header := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 88.0}) or >>
-    title_id := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 44.0}) or >>
-    body_id := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 260.0}) or >>
-    footer := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 72.0}) or >>
-    for id in[header, title_id, body_id, footer] {view.set_boundary(id, true) or >> }
-    for id in[title_id, body_id] {view.set_input(id, true, true) or >> }
+    header := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 88.0}) >>>
+    title_id := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 44.0}) >>>
+    body_id := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 260.0}) >>>
+    footer := view.add(view.root(), &leaf, &layout.Size{width: 500.0, height: 72.0}) >>>
+    for id in[header, title_id, body_id, footer] {view.set_boundary(id, true) >>> }
+    for id in[title_id, body_id] {view.set_input(id, true, true) >>> }
     empty := layout.Rect{x: 0.0, y: 0.0, width: 0.0, height: 0.0}
-    $model := Model{title: widgets.input(&context, &identity, title_id, &empty, &"Untitled note") or >>,
-        body: widgets.text_area(&context, &identity, body_id, &empty, &"Write here.\n你好，Xu。\n\nSelection and IME are native; layout and painting stay in the retained View.") or >>,
+    $model := Model{title: widgets.input(&context, &identity, title_id, &empty, &"Untitled note") >>>,
+        body: widgets.text_area(&context, &identity, body_id, &empty, &"Write here.\n你好，Xu。\n\nSelection and IME are native; layout and painting stay in the retained View.") >>>,
         context: context, styles: tokens.editor_styles(false), dark: false, header: header, title_id: title_id, body_id: body_id, footer: footer, changes: 0, status: "Ready"}
     $dispatcher := widgets.action_dispatcher(&model, &view)
-    dispatcher.on(title_id, widgets.ACTION_SUBMIT, submit_title) or >>
+    dispatcher.on(title_id, widgets.ACTION_SUBMIT, submit_title) >>>
     $width := 820.0
     $height := 620.0
     $enabled := true
     options := ui.RequestOptions{timeout_ms: 5000}
-    $screens := window.screens_async(&options) or >>
+    $screens := window.screens_async(&options) >>>
     $event := ui.Event{kind: ui.EV_NONE, window_id: 0, menu_id: "", width: 0, height: 0}
     // Native text snapshots already carry the latest revision. Drain queued
     // edits before painting so a key burst cannot fill the frame queue.
     while true {
         if event.kind == ui.EV_NONE{
-            constraints := layout.tight(width, height) or >>
-            _ := view.layout(&constraints) or >>
-            model.place($&view) or >>
-            submitted := widgets.present($&view, &constraints, $&model) or >>
+            constraints := layout.tight(width, height) >>>
+            _ := view.layout(&constraints) >>>
+            model.place($&view) >>>
+            submitted := widgets.present($&view, &constraints, $&model) >>>
             if submitted{
                 first := $&model.title
                 first.painted()
@@ -145,53 +145,53 @@ fn scene(ech chan ui.Event) int {
         if event.kind == ui.EV_EXIT{ <- }
         if event.window_id != identity.window_id{event = ui.poll_chan(ech)
             -> }
-        if event.kind == ui.EV_CANVAS_METRICS{metrics := ui.metrics_of(&event) or >>
+        if event.kind == ui.EV_CANVAS_METRICS{metrics := ui.metrics_of(&event) >>>
             width = metrics.width
             height = metrics.height}
-        actions := widgets.dispatch_event($&view, &event, $&model) or >>
-        if model.native_event(&event) or >> {model.changes = model.changes + 1
-            view.mark_paint(footer) or >> }
-        for action in actions{_ := dispatcher.dispatch(&action, $&model, $&view) or >> }
+        actions := widgets.dispatch_event($&view, &event, $&model) >>>
+        if model.native_event(&event) >>> {model.changes = model.changes + 1
+            view.mark_paint(footer) >>> }
+        for action in actions{_ := dispatcher.dispatch(&action, $&model, $&view) >>> }
         if event.kind == ui.EV_MENU_CLICKED{
-            if event.menu_id == "reset" {model.reset() or >> }
+            if event.menu_id == "reset" {model.reset() >>> }
             if event.menu_id == "editing" {enabled = !enabled
-                model.editing(enabled) or >>
-                for id in[title_id, body_id] {view.set_input(id, enabled, enabled) or >> }
-                menus(&window, enabled, model.dark) or >> }
+                model.editing(enabled) >>>
+                for id in[title_id, body_id] {view.set_input(id, enabled, enabled) >>> }
+                menus(&window, enabled, model.dark) >>> }
             if event.menu_id == "dark-theme" {
                 model.dark = !model.dark
                 model.styles = tokens.editor_styles(model.dark)
                 view.set_background(tokens.canvas(model.dark))
-                for id in [header,title_id,body_id,footer] { view.mark_paint(id) or >> }
-                menus(&window,enabled,model.dark) or >>
+                for id in [header,title_id,body_id,footer] { view.mark_paint(id) >>> }
+                menus(&window,enabled,model.dark) >>>
             }
             if event.menu_id == "screens" {screens.cancel()
-                screens = window.screens_async(&options) or >> }
+                screens = window.screens_async(&options) >>> }
         }
-        if event.kind == ui.EV_REQUEST{result := ui.request_of(&event) or >>
+        if event.kind == ui.EV_REQUEST{result := ui.request_of(&event) >>>
             if result.matches(&screens) && result.status == ui.REQUEST_COMPLETED{
-                displays := ui.screen_result(&result) or >>
+                displays := ui.screen_result(&result) >>>
                 model.status = str(displays.len) + " display(s)"
                 for display in displays{println("Screen: " + display.name + " / " + str(int(display.bounds.width)) + " x " + str(int(display.bounds.height)) + " / scale " + str(int(display.scale_x)))
                     if display.current{model.status = display.name + " · " + str(int(display.bounds.width)) + " x " + str(int(display.bounds.height))}}
-                view.mark_paint(footer) or >>
+                view.mark_paint(footer) >>>
             }
         }
         if event.kind == ui.EV_CANVAS_CLOSED || event.kind == ui.EV_CLOSED{ <- }
-        if ui.is_input_event(event.kind) {input := ui.input_of(&event) or >>
-            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE{demo.quit() or >> }}
+        if ui.is_input_event(event.kind) {input := ui.input_of(&event) >>>
+            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE{demo.quit() >>> }}
         event = ui.poll_chan(ech)
     }
     screens.cancel()
     view.dispose()
     << 0
 }
-fn worker(ech chan ui.Event) {scene(ech) or(err) {demo.fail(err.msg())
+fn worker(ech chan ui.Event) {scene(ech) >>> (err) {demo.fail(err.msg())
         << }}
 fn main() int {
-    $app := demo.app("Xu UI / Writing Desk", 820, 620) or(err) {eprintln(err.msg())
+    $app := demo.app("Xu UI / Writing Desk", 820, 620) >>> (err) {eprintln(err.msg())
         << 1}
     xu worker(app.event_ch)
-    << app.run() or(err) {eprintln(err.msg())
+    << app.run() >>> (err) {eprintln(err.msg())
         << 1}
 }

@@ -33,7 +33,7 @@ XU combina la propiedad y el préstamo verificados en tiempo de compilación con
 | :--- | :--- |
 | **Propiedad sin GC** | Verificación de movimientos y préstamos en compilación, tiempos de vida inferidos y limpieza determinista de recursos. |
 | **Concurrencia en el lenguaje** | Inicia una corrutina con `xu`; intercambia valores mediante canales `chan` tipados. |
-| **Flujo de control visible** | `<<` devuelve un valor, `>>` lanza un error y `or (err) { … }` lo gestiona en el punto de llamada. |
+| **Flujo de control visible** | `<<` devuelve un valor, `>>>` lanza un error y `>>> (err) { … }` lo gestiona en el punto de llamada. |
 | **Cadena de herramientas integrada** | Compila, ejecuta, verifica, prueba, formatea, genera documentación y utiliza el servidor de lenguaje mediante `xu`. |
 
 ## Lee un poco de XU
@@ -45,12 +45,12 @@ Dos trabajadores, un canal y una ruta de error explícita:
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >> errors.new("empty name") }
+    if name.len == 0 { >>> errors.new("empty name") }
     << name.len * 10
 }
 
 fn worker(name string, results chan int) {
-    value := score(name) or (err) {
+    value := score(name) >>> (err) {
         results <- 0
         <<
     }
@@ -68,7 +68,7 @@ fn main() int {
 
 Guárdalo como `main.xu` y ejecuta `xu run main.xu`. Imprime `100`.
 
-`#errors` importa un paquete. `xu worker(...)` inicia una corrutina. Las dos recepciones recogen los resultados; si `score` falla, `or (err) { … }` envía un valor alternativo de `0` y sale de esa corrutina.
+`#errors` importa un paquete. `xu worker(...)` inicia una corrutina. Las dos recepciones recogen los resultados; si `score` falla, `>>> (err) { … }` envía un valor alternativo de `0` y sale de esa corrutina.
 
 ## Empieza aquí
 

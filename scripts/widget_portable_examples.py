@@ -60,79 +60,79 @@ fn demo() int {
         code += '    items := [widgets.button_group_item(1,"Design"),widgets.button_group_item(2,"Develop"),widgets.button_group_item(3,"Review")]\n'
     elif slug in ('menu', 'context-menu', 'split-button'):
         code += '    items := [widgets.menu_item(1,"Save"),widgets.menu_item(2,"Export"),widgets.menu_item(3,"Duplicate")]\n'
-    code += '    $control := widgets.' + constructor + ' or >>\n    $last := 0\n'
+    code += '    $control := widgets.' + constructor + ' >>>\n    $last := 0\n'
     if slug == 'stepper':
         code = code.replace('    styles := playground.light_styles()', '    $styles := playground.light_styles()')
         code += '    styles.input.indicator_size = 44.0\n'
     if slug == 'button-group':
         code += '    last = 1\n'
     if slug in ('menu', 'context-menu', 'split-button'):
-        code += '    control.set_viewport(&box(0.0,0.0,640.0,360.0)) or >>\n'
+        code += '    control.set_viewport(&box(0.0,0.0,640.0,360.0)) >>>\n'
     if slug == 'table':
         code += '''    for i in 0:3 { value := options[i]
-        control.set_cell(i,0,&value) or >>
+        control.set_cell(i,0,&value) >>>
         number := str(12 - i * 3)
-        control.set_cell(i,1,&number) or >> }
-    control.set_sort_kind(1,widgets.TABLE_SORT_NUMBER) or >>
-    control.set_local_sort(true) or >>
+        control.set_cell(i,1,&number) >>> }
+    control.set_sort_kind(1,widgets.TABLE_SORT_NUMBER) >>>
+    control.set_local_sort(true) >>>
 '''
     if slug == 'chart':
         code += '''    $series := widgets.chart_series(1,"Workspace",widgets.CHART_BAR)
     series.points = [widgets.chart_point(1,1.0,12.0),widgets.chart_point(2,2.0,8.0),widgets.chart_point(3,3.0,5.0)]
-    control.set_series(&[series]) or >>
-    _ := control.tick(&styles,time.instant_from_ns(1) or >>,true) or >>
+    control.set_series(&[series]) >>>
+    _ := control.tick(&styles,time.instant_from_ns(1) >>>,true) >>>
 '''
     styled = paint in ('styled', 'styled-options', 'styled-label')
     # These two controls calculate geometry during construction/painting.
     apply = styled and slug not in ('radio-group',)
     if apply:
-        code += '    control.apply_styles(&styles) or >>\n'
-    code += '''    $focus := widgets.focus_group(&identity,[1]) or >>
+        code += '    control.apply_styles(&styles) >>>\n'
+    code += '''    $focus := widgets.focus_group(&identity,[1]) >>>
     while true {
         event := playground.next_input()
         if event.kind == 0 { <- }
         navigation := focus.input(&event)
         control.set_focus(focus.current() == 1)
         if navigation.consumed { -> }
-        action := control.input(&event) or >>
-        if action.request_focus { focus.focus(1) or >> }
+        action := control.input(&event) >>>
+        if action.request_focus { focus.focus(1) >>> }
         if action.kind == widgets.ACTION_ACTIVATE { last = int(action.value) }
 '''
     if slug == 'button-group':
         code += '        if action.kind == widgets.ACTION_CHANGE { last = int(action.value) }\n'
     if slug in ('menu', 'context-menu', 'split-button'):
-        code += '        _ := control.tick(&styles,time.instant_from_ns(event.time_ns) or >>,true) or >>\n'
+        code += '        _ := control.tick(&styles,time.instant_from_ns(event.time_ns) >>>,true) >>>\n'
     code += '''    }
     $frame := context.new_frame(8192)
-    frame.begin() or >>
-    frame.clear(styles.background) or >>
-    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) or >>
-    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) or >>
+    frame.begin() >>>
+    frame.clear(styles.background) >>>
+    frame.fill_rect(28.0,70.0,584.0,240.0,draw.rgb(255,253,251)) >>>
+    frame.stroke_rect(28.0,70.0,584.0,240.0,draw.rgb(217,208,217),1.0) >>>
 '''
     code += f'    draw.text(32,22,20,"#282329","XUUI  /  {name}")\n'
     code += f'    draw.text(32,48,12,"#6d626e","{description}")\n'
     if paint == 'styled-label':
-        code += '    value := str(int(control.value()))\n    $label := widgets.styled_label(&context,&value)\n    control.paint_styled($&frame,$&label,&styles) or >>\n'
+        code += '    value := str(int(control.value()))\n    $label := widgets.styled_label(&context,&value)\n    control.paint_styled($&frame,$&label,&styles) >>>\n'
     elif paint == 'styled-options':
-        code += '    selected_index := control.selected()\n    $selected_label := widgets.styled_label(&context,&options[selected_index])\n    control.paint_styled($&frame,$&selected_label,&styles) or >>\n'
-        code += '    control.paint_popup_box_styled($&frame,&styles) or >>\n    for i in 0:options.len {\n        $option := widgets.styled_label(&context,&options[i])\n        control.paint_option_styled($&frame,i,$&option,&styles) or >>\n    }\n'
+        code += '    selected_index := control.selected()\n    $selected_label := widgets.styled_label(&context,&options[selected_index])\n    control.paint_styled($&frame,$&selected_label,&styles) >>>\n'
+        code += '    control.paint_popup_box_styled($&frame,&styles) >>>\n    for i in 0:options.len {\n        $option := widgets.styled_label(&context,&options[i])\n        control.paint_option_styled($&frame,i,$&option,&styles) >>>\n    }\n'
     else:
-        code += '    control.paint_styled($&frame,&styles) or >>\n'
+        code += '    control.paint_styled($&frame,&styles) >>>\n'
     if slug in ('menu', 'context-menu', 'split-button', 'multi-select'):
-        code += '    control.paint_popup_styled($&frame,&styles) or >>\n'
+        code += '    control.paint_popup_styled($&frame,&styles) >>>\n'
     if slug == 'split-view':
         code += '''    panes := control.layout()
-    frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(246,243,239)) or >>
-    frame.stroke_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(217,208,217),1.0) or >>
-    frame.fill_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(238,234,231)) or >>
-    frame.stroke_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(217,208,217),1.0) or >>
+    frame.fill_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(246,243,239)) >>>
+    frame.stroke_rect(panes.first.x,panes.first.y,panes.first.width,panes.first.height,draw.rgb(217,208,217),1.0) >>>
+    frame.fill_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(238,234,231)) >>>
+    frame.stroke_rect(panes.second.x,panes.second.y,panes.second.width,panes.second.height,draw.rgb(217,208,217),1.0) >>>
 '''
     code += f'    message := {summary}\n    draw.text(32,326,13,"#6d626e",message + "")\n    println(message)\n'
-    code += '''    frame.present() or >>
+    code += '''    frame.present() >>>
     << 0
 }
 fn main() int {
-    << demo() or (err) { eprintln(err.msg())
+    << demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 '''

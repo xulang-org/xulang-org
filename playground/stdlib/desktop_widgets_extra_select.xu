@@ -55,7 +55,7 @@ fn (sel &Select) popup_hit_bounds() layout.Rect {
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (sel $&Select) apply_styles(styles &Styles) int {
-    styles.validate() or >>
+    styles.validate() >>>
     c := sel.style_or(styles)
     pad := (c.padding.top + c.padding.bottom) * 0.5 * styles.density
     if sel.popup_density != styles.density || sel.popup_padding != pad {
@@ -240,22 +240,22 @@ pub fn (sel &Select) option_bounds(index int,styles &Styles) layout.Rect {
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (sel &Select) paint(frame $&draw.Frame,labels &[]draw.TextLayout,theme &Theme) int {
     b := sel.bounds
-    frame.push() or >>
-    frame.clip_rect(b.x,b.y,b.width,b.height) or >>
+    frame.push() >>>
+    frame.clip_rect(b.x,b.y,b.width,b.height) >>>
     $fill := theme.normal
     if !sel.is_enabled() { fill = theme.disabled }
     else if sel.hovered || sel.open_state { fill = theme.hovered }
-    frame.fill_rect(b.x,b.y,b.width,b.height,fill) or >>
+    frame.fill_rect(b.x,b.y,b.width,b.height,fill) >>>
     if sel.selected_val >= 0 && sel.selected_val < labels.len {
         lbl := labels[sel.selected_val]
-        frame.text_layout(&lbl,b.x + 10.0,b.y + (b.height - lbl.metrics.height) * 0.5,theme.foreground) or >>
+        frame.text_layout(&lbl,b.x + 10.0,b.y + (b.height - lbl.metrics.height) * 0.5,theme.foreground) >>>
     }
     cx := b.x + b.width - 16.0
     cy := b.y + b.height * 0.5
-    frame.line(cx - 4.0,cy - 2.0,cx,cy + 2.0,theme.foreground,2.0) or >>
-    frame.line(cx,cy + 2.0,cx + 4.0,cy - 2.0,theme.foreground,2.0) or >>
-    if sel.focused { focus_ring(frame,&b,theme.focus) or >> }
-    frame.pop() or >>
+    frame.line(cx - 4.0,cy - 2.0,cx,cy + 2.0,theme.foreground,2.0) >>>
+    frame.line(cx,cy + 2.0,cx + 4.0,cy - 2.0,theme.foreground,2.0) >>>
+    if sel.focused { focus_ring(frame,&b,theme.focus) >>> }
+    frame.pop() >>>
     << 0
 }
 
@@ -266,7 +266,7 @@ pub fn (sel &Select) paint_option_styled(frame $&draw.Frame,index int,label $&St
     if sel.is_group(index) { c.inherit_font = false
         c.font = copy_font(&styles.font)
         c.font.weight = 600 }
-    _ := label.measure_styled(styles,&c) or >>
+    _ := label.measure_styled(styles,&c) >>>
     d := styles.density
     left := c.padding.left * d
     shaped := label.layouts[0]
@@ -277,19 +277,19 @@ pub fn (sel &Select) paint_option_styled(frame $&draw.Frame,index int,label $&St
     if index == sel.hovered_opt { row_state = row_state | STATE_HOVERED }
     resolved := c.resolve(row_state)
     if row_state != 0 {
-        rounded_fill(frame,&row,math.max(2.0,(c.radius - 2.0) * d),resolved.background) or >>
+        rounded_fill(frame,&row,math.max(2.0,(c.radius - 2.0) * d),resolved.background) >>>
     }
-    frame.push() or >>
-    frame.clip_rect(row.x,row.y,math.max(0.0,row.width-24.0*d),row.height) or >>
+    frame.push() >>>
+    frame.clip_rect(row.x,row.y,math.max(0.0,row.width-24.0*d),row.height) >>>
     if label.value.len > 0 {
         ty := row.y + (row.height - shaped.metrics.height) * 0.5
-        frame.text_layout(&shaped,row.x + left,ty,resolved.foreground) or >>
+        frame.text_layout(&shaped,row.x + left,ty,resolved.foreground) >>>
     }
-    frame.pop() or >>
+    frame.pop() >>>
     if index==sel.selected_val { x := row.x+row.width-14.0*d
         y := row.y+row.height*0.5
-        frame.line(x-4.0*d,y,x-1.0*d,y+3.0*d,resolved.foreground,1.5*d) or >>
-        frame.line(x-1.0*d,y+3.0*d,x+5.0*d,y-4.0*d,resolved.foreground,1.5*d) or >> }
+        frame.line(x-4.0*d,y,x-1.0*d,y+3.0*d,resolved.foreground,1.5*d) >>>
+        frame.line(x-1.0*d,y+3.0*d,x+5.0*d,y-4.0*d,resolved.foreground,1.5*d) >>> }
     << 0
 }
 
@@ -301,19 +301,19 @@ pub fn (sel &Select) paint_popup_box_styled(frame $&draw.Frame,styles &Styles) i
     pop := sel.popup_bounds(styles)
     $pop_style := c.clone()
     pop_style.focus_width = 0.0
-    style_box(frame,&pop,&pop_style,d,0) or >>
+    style_box(frame,&pop,&pop_style,d,0) >>>
     << 0
 }
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (sel &Select) paint_styled(frame $&draw.Frame,label $&StyledLabel,styles &Styles) int {
     c := sel.style_or(styles)
-    _ := label.measure_styled(styles,&c) or >>
+    _ := label.measure_styled(styles,&c) >>>
     b := sel.bounds
     d := styles.density
     state := sel.visual_state()
     resolved := c.resolve(state)
-    style_box(frame,&b,&c,d,state) or >>
+    style_box(frame,&b,&c,d,state) >>>
     left := c.padding.left * d
     top := c.padding.top * d
     right := c.padding.right * d
@@ -322,23 +322,23 @@ pub fn (sel &Select) paint_styled(frame $&draw.Frame,label $&StyledLabel,styles 
     avail_h := math.max(0.0,b.height - top - c.padding.bottom * d)
     if label.value.len > 0 {
         shaped := label.layouts[0]
-        frame.push() or >>
-        frame.clip_rect(b.x + left,b.y + top,avail_w,avail_h) or >>
+        frame.push() >>>
+        frame.clip_rect(b.x + left,b.y + top,avail_w,avail_h) >>>
         tx := b.x + left + (avail_w - shaped.metrics.width) * c.align_x
         ty := b.y + top + (avail_h - shaped.metrics.height) * c.align_y
-        frame.text_layout(&shaped,tx,ty,resolved.foreground) or >>
-        frame.pop() or >>
+        frame.text_layout(&shaped,tx,ty,resolved.foreground) >>>
+        frame.pop() >>>
     }
     cx := b.x + b.width - right - arrow * 0.5
     cy := b.y + b.height * 0.5
     half := arrow * 0.35
     stroke_w := math.max(1.5,c.mark_width * d)
     if sel.open_state {
-        frame.line(cx - half,cy + half * 0.5,cx,cy - half * 0.5,resolved.foreground,stroke_w) or >>
-        frame.line(cx,cy - half * 0.5,cx + half,cy + half * 0.5,resolved.foreground,stroke_w) or >>
+        frame.line(cx - half,cy + half * 0.5,cx,cy - half * 0.5,resolved.foreground,stroke_w) >>>
+        frame.line(cx,cy - half * 0.5,cx + half,cy + half * 0.5,resolved.foreground,stroke_w) >>>
     } else {
-        frame.line(cx - half,cy - half * 0.5,cx,cy + half * 0.5,resolved.foreground,stroke_w) or >>
-        frame.line(cx,cy + half * 0.5,cx + half,cy - half * 0.5,resolved.foreground,stroke_w) or >>
+        frame.line(cx - half,cy - half * 0.5,cx,cy + half * 0.5,resolved.foreground,stroke_w) >>>
+        frame.line(cx,cy + half * 0.5,cx + half,cy - half * 0.5,resolved.foreground,stroke_w) >>>
     }
     << 0
 }
@@ -378,10 +378,10 @@ pub fn (sel &Select) visual_state() int {
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn select_box(identity &ui.CanvasEvent,id int,bounds &layout.Rect,count int,selected int) Select {
-    if !valid_identity(identity) || id <= 0 { >> errors.new("widgets: invalid control identity") }
-    validate_bounds(bounds) or >>
+    if !valid_identity(identity) || id <= 0 { >>> errors.new("widgets: invalid control identity") }
+    validate_bounds(bounds) >>>
     if count < 0 || count > 64 || (count==0 && selected!=-1) || (count>0 && (selected<0 || selected>=count)) {
-        >> errors.new("widgets: invalid select count or selection")
+        >>> errors.new("widgets: invalid select count or selection")
     }
     << Select{id: id,identity: copy_identity(identity),bounds: copy_rect(bounds),count_val: count,selected_val: selected,group_options: 0,disabled_options: 0,first_option: 0,visible_options: 8,
         open_state: false,hovered_opt: -1,armed_opt: -1,popup_density: 1.0,popup_padding: 8.0,popup_above: false,

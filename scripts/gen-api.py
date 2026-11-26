@@ -1665,7 +1665,7 @@ def body_notes(item: Item, lang: str) -> list[str]:
     zh = lang == "zh"
     # strip comments in body for signals
     raw = re.sub(r"//.*?$", "", b, flags=re.M)
-    throws = bool(re.search(r"\bor\s*>>", raw)) or bool(re.search(r"(^|[{;])\s*>>\s", raw, re.M)) or (">> errors." in raw)
+    throws = bool(re.search(r"(?:\bor\s*>>|(?<!>)>>>(?!>))", raw)) or bool(re.search(r"(^|[{;])\s*>>>?\s", raw, re.M)) or (">>> errors." in raw) or (">> errors." in raw)
     if throws:
         notes.append("失败时抛出错误，调用方需处理或继续传播。" if zh else "Throws on failure; handle the error or propagate it to the caller.")
     if re.search(r"<<\s*-1\b", raw) and ("index" in item.name or item.name.startswith("last_") or item.name in ("index_of", "index")):
@@ -2418,7 +2418,7 @@ def highlight_xu(sig: str) -> str:
         r'|(?P<str>"(?:\\.|[^"\\])*"|\'(?:\\.|[^\'\\])*\'|`[^`]*`)'
         r'|(?P<import>#[A-Za-z0-9_/]+)'
         r'|(?P<borrow>\$&)'
-        r'|(?P<flow>>>|<<|:=|<-|->)'
+        r'|(?P<flow>>>>|<<<|>>|<<|:=|<-|->)'
         r'|(?P<kw>\b(?:pub|fn|struct|const|affine|defer|xu|if|else|match|return|interface|type|chan|or|for|while|in)\b@?)'
         r'|(?P<type>\b(?:int|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|string|bool|char|void|any|error|byte|rune|Self)\b)'
     )

@@ -41,7 +41,7 @@ fn verify_neo4j_cypher_crud() {
     $p := neo4j.open_pool("http://127.0.0.1:7474", "neo4j", "secret123", "neo4j", 5)
 
     // 1. Clean existing test nodes
-    p.execute("MATCH (n:Person) DETACH DELETE n") or (err) {
+    p.execute("MATCH (n:Person) DETACH DELETE n") >>> (err) {
         println("   [NOTE] Clean test nodes: " + err.msg())
         <<
     }
@@ -49,7 +49,7 @@ fn verify_neo4j_cypher_crud() {
 
     // 2. Create Node
     c1 := "CREATE (a:Person {name: 'Alice', role: 'Engineer', age: 30}) RETURN a.name, a.role"
-    res1 := p.execute(c1) or (err) {
+    res1 := p.execute(c1) >>> (err) {
         println("   [FAIL] Create Alice node failed: " + err.msg())
         p.close()
         <<
@@ -58,7 +58,7 @@ fn verify_neo4j_cypher_crud() {
 
     // 3. Create another Node
     c2 := "CREATE (b:Person {name: 'Bob', role: 'Architect', age: 35}) RETURN b.name, b.role"
-    res2 := p.execute(c2) or (err) {
+    res2 := p.execute(c2) >>> (err) {
         println("   [FAIL] Create Bob node failed: " + err.msg())
         p.close()
         <<
@@ -67,7 +67,7 @@ fn verify_neo4j_cypher_crud() {
 
     // 4. Create Relationship (Graph Edge)
     c3 := "MATCH (a:Person {name: 'Alice'}), (b:Person {name: 'Bob'}) CREATE (a)-[r:COLLABORATES_WITH {project: 'Xu'}]->(b) RETURN type(r)"
-    res3 := p.execute(c3) or (err) {
+    res3 := p.execute(c3) >>> (err) {
         println("   [FAIL] Create Relationship failed: " + err.msg())
         p.close()
         <<
@@ -76,7 +76,7 @@ fn verify_neo4j_cypher_crud() {
 
     // 5. Query Graph Match
     c4 := "MATCH (a:Person)-[r:COLLABORATES_WITH]->(b:Person) RETURN a.name, type(r), b.name"
-    res4 := p.execute(c4) or (err) {
+    res4 := p.execute(c4) >>> (err) {
         println("   [FAIL] Query Graph failed: " + err.msg())
         p.close()
         <<
@@ -84,7 +84,7 @@ fn verify_neo4j_cypher_crud() {
     println("   [PASS] Query Graph Traversal Result: " + res4)
 
     // 6. Detach Delete & Cleanup
-    del_res2 := p.execute("MATCH (n:Person) DETACH DELETE n") or (err) {
+    del_res2 := p.execute("MATCH (n:Person) DETACH DELETE n") >>> (err) {
         println("   [FAIL] Cleanup failed: " + err.msg())
         p.close()
         <<

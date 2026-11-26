@@ -4,46 +4,46 @@
 demo #"github.com/xulang-org/examples/ui_demo"
 
 fn paint(context &draw.Context,frame $&draw.Frame,hits int) int {
-    frame.begin() or >>
-    frame.set_bg(demo.background()) or >>
-    demo.text(context,frame,32.0,28.0,14.0,demo.accent(),"01 / FRAME RECORDER") or >>
-    demo.text(context,frame,32.0,58.0,30.0,demo.ink(),"Draw a frame. Submit once.") or >>
-    demo.text(context,frame,32.0,108.0,15.0,demo.muted(),"Click the teal circle. Resize the window. Escape closes it.") or >>
-    frame.set_fill(demo.accent()) or >>
-    frame.circle(112.0,228.0,52.0) or >>
-    frame.stroke_rect(200.5,176.5,128.0,104.0,draw.rgb(240,180,91),2.0) or >>
-    frame.push() or >>
-    frame.clip_rect(376.0,168.0,216.0,120.0) or >>
-    frame.translate(478.0,226.0) or >>
-    frame.rotate(18.0) or >>
-    frame.fill_rect(-100.0,-42.0,200.0,84.0,draw.rgb(92,127,203)) or >>
-    frame.pop() or >>
-    demo.text(context,frame,32.0,330.0,20.0,demo.ink(),"Circle activations: " + str(hits)) or >>
-    demo.text(context,frame,32.0,370.0,13.0,demo.muted(),"Logical coordinates / state stack / clipping / one present") or >>
-    frame.present() or >>
+    frame.begin() >>>
+    frame.set_bg(demo.background()) >>>
+    demo.text(context,frame,32.0,28.0,14.0,demo.accent(),"01 / FRAME RECORDER") >>>
+    demo.text(context,frame,32.0,58.0,30.0,demo.ink(),"Draw a frame. Submit once.") >>>
+    demo.text(context,frame,32.0,108.0,15.0,demo.muted(),"Click the teal circle. Resize the window. Escape closes it.") >>>
+    frame.set_fill(demo.accent()) >>>
+    frame.circle(112.0,228.0,52.0) >>>
+    frame.stroke_rect(200.5,176.5,128.0,104.0,draw.rgb(240,180,91),2.0) >>>
+    frame.push() >>>
+    frame.clip_rect(376.0,168.0,216.0,120.0) >>>
+    frame.translate(478.0,226.0) >>>
+    frame.rotate(18.0) >>>
+    frame.fill_rect(-100.0,-42.0,200.0,84.0,draw.rgb(92,127,203)) >>>
+    frame.pop() >>>
+    demo.text(context,frame,32.0,330.0,20.0,demo.ink(),"Circle activations: " + str(hits)) >>>
+    demo.text(context,frame,32.0,370.0,13.0,demo.muted(),"Logical coordinates / state stack / clipping / one present") >>>
+    frame.present() >>>
     println("Frame submitted: " + str(frame.command_count()) + " commands / " + str(frame.byte_len()) + " bytes")
     << 0
 }
 fn scene(ech chan ui.Event) int {
-    ready := demo.ready(ech) or >>
+    ready := demo.ready(ech) >>>
     if ready.kind == ui.EV_EXIT { << 0 }
-    identity := ui.canvas_of(&ready) or >>
-    context := draw.context_of(&ready) or >>
+    identity := ui.canvas_of(&ready) >>>
+    context := draw.context_of(&ready) >>>
     $frame := context.new_frame(4096)
     $hits := 0
     $pressed := false
-    paint(&context,$&frame,hits) or >>
+    paint(&context,$&frame,hits) >>>
     while true {
         event := demo.next(ech)
         if event.kind == ui.EV_EXIT { <- }
         if event.window_id != identity.window_id { -> }
         if event.kind == ui.EV_CANVAS_CLOSED { <- }
         if event.kind == ui.EV_BLURRED { pressed = false }
-        if event.kind == ui.EV_CANVAS_METRICS { paint(&context,$&frame,hits) or >> }
+        if event.kind == ui.EV_CANVAS_METRICS { paint(&context,$&frame,hits) >>> }
         if ui.is_input_event(event.kind) {
-            input := ui.input_of(&event) or >>
+            input := ui.input_of(&event) >>>
             if input.generation != identity.generation { -> }
-            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE { demo.quit() or >> }
+            if input.kind == ui.EV_KEY_DOWN && input.key == ui.KEY_ESCAPE { demo.quit() >>> }
             dx := input.x - 112.0
             dy := input.y - 228.0
             inside := dx * dx + dy * dy <= 2704.0
@@ -51,7 +51,7 @@ fn scene(ech chan ui.Event) int {
             if input.kind == ui.EV_POINTER_CANCEL { pressed = false }
             if input.kind == ui.EV_POINTER_UP && input.button == ui.BUTTON_LEFT {
                 if pressed && inside { hits = hits + 1
-                    paint(&context,$&frame,hits) or >> }
+                    paint(&context,$&frame,hits) >>> }
                 pressed = false
             }
         }
@@ -59,12 +59,12 @@ fn scene(ech chan ui.Event) int {
     frame.dispose()
     << 0
 }
-fn worker(ech chan ui.Event) { scene(ech) or (err) { demo.fail(err.msg())
+fn worker(ech chan ui.Event) { scene(ech) >>> (err) { demo.fail(err.msg())
     << } }
 fn launch() int {
-    $app := demo.app("Xu UI / Frame",680,430) or >>
+    $app := demo.app("Xu UI / Frame",680,430) >>>
     xu worker(app.event_ch)
-    << app.run() or >>
+    << app.run() >>>
 }
-fn main() int { << launch() or (err) { eprintln(err.msg())
+fn main() int { << launch() >>> (err) { eprintln(err.msg())
     << 1 } }

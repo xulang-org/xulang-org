@@ -69,25 +69,25 @@ fn paint_demo() int {
         widgets.STATE_FOCUSED | widgets.STATE_PRESSED,widgets.STATE_FOCUSED | widgets.STATE_SELECTED | widgets.STATE_READ_ONLY]
     context := draw.default_context()
     $frame := context.new_frame(8192)
-    frame.begin() or >>
+    frame.begin() >>>
     for row in 0:controls.len {
         for col in 0:states.len {
             bounds := layout.Rect{x: 8.0 + f64(col) * 88.0,y: 8.0 + f64(row) * 52.0,width: 80.0,height: 40.0}
-            widgets.paint_box_styled($&frame,&bounds,&styles,&controls[row],states[col]) or >>
+            widgets.paint_box_styled($&frame,&bounds,&styles,&controls[row],states[col]) >>>
         }
     }
     $transparent_focus := styles.button.clone()
     transparent_focus.palette.focus = draw.rgba(0,0,0,0)
     transparent_focus.states = []widgets.StatePaint{}
-    widgets.paint_box_styled($&frame,&layout.Rect{x: 8.0,y: 320.0,width: 80.0,height: 32.0},&styles,&transparent_focus,widgets.STATE_FOCUSED) or >>
+    widgets.paint_box_styled($&frame,&layout.Rect{x: 8.0,y: 320.0,width: 80.0,height: 32.0},&styles,&transparent_focus,widgets.STATE_FOCUSED) >>>
     $inset_focus := styles.button.clone()
     inset_focus.focus_inset = 3.0
-    widgets.paint_box_styled($&frame,&layout.Rect{x: 96.0,y: 320.0,width: 80.0,height: 32.0},&styles,&inset_focus,widgets.STATE_FOCUSED) or >>
-    frame.present() or >>
+    widgets.paint_box_styled($&frame,&layout.Rect{x: 96.0,y: 320.0,width: 80.0,height: 32.0},&styles,&inset_focus,widgets.STATE_FOCUSED) >>>
+    frame.present() >>>
     << 0
 }
 fn main() int {
-    << paint_demo() or (err) { eprintln(err.msg())
+    << paint_demo() >>> (err) { eprintln(err.msg())
         << 1 }
 }
 `);
@@ -129,16 +129,16 @@ fn probe() int {
     zero := string_from_bytes([0,0,0,0,0,0,0,0])
     minus_zero := string_from_bytes([0,0,0,0,0,0,0,128])
     for i in 0:128 {
-        first := codec.read_float64(&zero,0) or >>
-        second := codec.read_float64(&minus_zero,0) or >>
+        first := codec.read_float64(&zero,0) >>>
+        second := codec.read_float64(&minus_zero,0) >>>
         assert(first == 0.0)
         assert(second == 0.0)
     }
     value := string_from_bytes([0,0,0,0,0,0,4,192])
-    number := codec.read_float64(&value,0) or >>
+    number := codec.read_float64(&value,0) >>>
     assert(number == 0.0 - 2.5)
     tiny := string_from_bytes([1,0,0,0,0,0,0,0])
-    subnormal := codec.read_float64(&tiny,0) or >>
+    subnormal := codec.read_float64(&tiny,0) >>>
     assert(subnormal > 0.0)
     for value in [0.0,0.0 - 2.5,1.0,255.0,1000000000.0,1000000001.0,subnormal] {
         bits := codec.finite_f64_bits(value)
@@ -151,14 +151,14 @@ fn probe() int {
         println(utf8.valid(&text))
     }
     invalid := string_from_bytes([0,0,0,0,0,0,240,127])
-    _ := codec.read_float64(&invalid,0) or (err) {
+    _ := codec.read_float64(&invalid,0) >>> (err) {
         assert(err.msg() == "ui: invalid native floating-point scalar")
         println("scalar decoding passed")
         << 0
     }
     << 1
 }
-fn main() int { << probe() or (err) { eprintln(err.msg())
+fn main() int { << probe() >>> (err) { eprintln(err.msg())
     << 1 } }
 `;
   const fast = await createRuntime(module);

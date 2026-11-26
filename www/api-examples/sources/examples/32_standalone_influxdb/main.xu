@@ -12,7 +12,7 @@ fn verify_influxdb_health() {
         "xu-bucket"
     )
 
-    is_ping := client.ping() or (err) {
+    is_ping := client.ping() >>> (err) {
         println("   [FAIL] Ping failed: " + err.msg())
         <<
     }
@@ -20,7 +20,7 @@ fn verify_influxdb_health() {
         println("   [PASS] Ping succeeded.")
     }
 
-    is_health := client.health() or (err) {
+    is_health := client.health() >>> (err) {
         println("   [FAIL] Health check failed: " + err.msg())
         <<
     }
@@ -47,7 +47,7 @@ fn verify_influxdb_write_query() {
     pt.add_field_int("cores", 16)
     pt.add_field_bool("alert", false)
 
-    client.write_point(pt) or (err) {
+    client.write_point(pt) >>> (err) {
         println("   [FAIL] write_point failed: " + err.msg())
         <<
     }
@@ -57,7 +57,7 @@ fn verify_influxdb_write_query() {
     println("   Writing batch metrics via raw line protocol...")
     $raw_lines := "mem_metrics,host=worker-01 total=32768i,used=16384i\n"
     raw_lines = raw_lines + "mem_metrics,host=worker-02 total=65536i,used=20480i\n"
-    client.write_raw(raw_lines) or (err) {
+    client.write_raw(raw_lines) >>> (err) {
         println("   [FAIL] write_raw failed: " + err.msg())
         <<
     }
@@ -66,7 +66,7 @@ fn verify_influxdb_write_query() {
     // 3. Query using Flux
     println("   Executing Flux query...")
     flux := "from(bucket: \"xu-bucket\") |> range(start: -1h) |> filter(fn: (r) => r._measurement == \"cpu_load\") |> limit(n: 5)"
-    csv := client.query_flux(flux) or (err) {
+    csv := client.query_flux(flux) >>> (err) {
         println("   [FAIL] Flux query failed: " + err.msg())
         <<
     }
@@ -114,20 +114,20 @@ fn verify_influxdb_pool() {
     $pt := influxdb.new_point("pool_sensor")
     pt.add_tag("room", "lab-01")
     pt.add_field_float("humidity", "55.2")
-    p.write_point(pt) or (err) {
+    p.write_point(pt) >>> (err) {
         println("   [FAIL] Pool write_point error: " + err.msg())
         <<
     }
     println("   [PASS] Pool write_point succeeded.")
 
-    p.write_raw("pool_sensor,room=lab-02 humidity=60.1\n") or (err) {
+    p.write_raw("pool_sensor,room=lab-02 humidity=60.1\n") >>> (err) {
         println("   [FAIL] Pool write_raw error: " + err.msg())
         <<
     }
     println("   [PASS] Pool write_raw succeeded.")
 
     flux := "from(bucket: \"xu-bucket\") |> range(start: -5m) |> filter(fn: (r) => r._measurement == \"pool_sensor\") |> limit(n: 5)"
-    csv := p.query_flux(flux) or (err) {
+    csv := p.query_flux(flux) >>> (err) {
         println("   [FAIL] Pool query_flux error: " + err.msg())
         <<
     }

@@ -33,7 +33,7 @@ XU vereint zur Kompilierzeit geprüfte Ownership- und Borrowing-Regeln mit leich
 | :--- | :--- |
 | **Ownership ohne GC** | Move- und Borrow-Prüfungen zur Kompilierzeit, inferierte Lebensdauern und deterministische Ressourcenfreigabe. |
 | **Nebenläufigkeit in der Sprache** | Starten Sie eine Koroutine mit `xu` und tauschen Sie Werte über typisierte `chan`-Kanäle aus. |
-| **Sichtbarer Kontrollfluss** | `<<` gibt einen Wert zurück, `>>` meldet einen Fehler und `or (err) { … }` behandelt ihn direkt am Aufrufort. |
+| **Sichtbarer Kontrollfluss** | `<<` gibt einen Wert zurück, `>>>` meldet einen Fehler und `>>> (err) { … }` behandelt ihn direkt am Aufrufort. |
 | **Integrierte Toolchain** | Bauen, ausführen, prüfen, testen, formatieren, Dokumentation erzeugen und Sprachdienste nutzen – alles über `xu`. |
 
 ## Ein wenig XU lesen
@@ -45,12 +45,12 @@ Zwei Worker, ein Kanal und ein expliziter Fehlerpfad:
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >> errors.new("empty name") }
+    if name.len == 0 { >>> errors.new("empty name") }
     << name.len * 10
 }
 
 fn worker(name string, results chan int) {
-    value := score(name) or (err) {
+    value := score(name) >>> (err) {
         results <- 0
         <<
     }
@@ -68,7 +68,7 @@ fn main() int {
 
 Als `main.xu` speichern und `xu run main.xu` ausführen. Die Ausgabe lautet `100`.
 
-`#errors` importiert ein Paket. `xu worker(...)` startet eine Koroutine. Die beiden Empfangsoperationen sammeln die Ergebnisse; schlägt `score` fehl, sendet `or (err) { … }` den Ersatzwert `0` und beendet diesen Worker.
+`#errors` importiert ein Paket. `xu worker(...)` startet eine Koroutine. Die beiden Empfangsoperationen sammeln die Ergebnisse; schlägt `score` fehl, sendet `>>> (err) { … }` den Ersatzwert `0` und beendet diesen Worker.
 
 ## Hier starten
 

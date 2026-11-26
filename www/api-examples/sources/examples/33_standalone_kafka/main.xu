@@ -5,7 +5,7 @@ kafka #github.com/xulang-org/packages/kafka
 
 fn verify_kafka_ping() {
     println("--- 1. Testing Kafka Heartbeat & ApiVersions Ping ---")
-    $client := kafka.open("127.0.0.1:9092") or (err) {
+    $client := kafka.open("127.0.0.1:9092") >>> (err) {
         println("   [FAIL] Connect error: " + err.msg())
         <<
     }
@@ -20,7 +20,7 @@ fn verify_kafka_ping() {
 
 fn verify_kafka_produce_fetch() {
     println("\n--- 2. Testing Kafka Produce & Fetch Operations ---")
-    $client := kafka.open("127.0.0.1:9092") or (err) {
+    $client := kafka.open("127.0.0.1:9092") >>> (err) {
         println("   [FAIL] Connect error: " + err.msg())
         <<
     }
@@ -34,7 +34,7 @@ fn verify_kafka_produce_fetch() {
     // 1. Produce message
     msg := "Antigravity event message from Xu language"
     println("   Producing message to topic '" + topic + "': " + msg)
-    offset := client.produce_key_value(topic + "", partition, "event-key-1", msg + "") or (err) {
+    offset := client.produce_key_value(topic + "", partition, "event-key-1", msg + "") >>> (err) {
         println("   [FAIL] Produce failed: " + err.msg())
         client.close()
         <<
@@ -42,7 +42,7 @@ fn verify_kafka_produce_fetch() {
     println("   [PASS] Message produced successfully at offset: " + str(offset))
 
     // 2. Fetch message back
-    messages := client.fetch(topic + "", partition, offset) or (err) {
+    messages := client.fetch(topic + "", partition, offset) >>> (err) {
         println("   [FAIL] Fetch failed: " + err.msg())
         client.close()
         <<
@@ -72,7 +72,7 @@ fn verify_kafka_pool() {
     $p := kafka.open_pool("127.0.0.1:9092", "xu-pool-tester", 5)
 
     // 1. Connection Reuse Test
-    $c1 := p.get() or (err) {
+    $c1 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c1: " + err.msg())
         <<
     }
@@ -80,7 +80,7 @@ fn verify_kafka_pool() {
     println("   Borrow 1 fd: " + str(fd1))
     p.put(c1)
 
-    $c2 := p.get() or (err) {
+    $c2 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c2: " + err.msg())
         <<
     }
@@ -93,7 +93,7 @@ fn verify_kafka_pool() {
     }
 
     // 2. Multi-connection concurrent borrow
-    $c3 := p.get() or (err) {
+    $c3 := p.get() >>> (err) {
         println("   [FAIL] Failed to get c3: " + err.msg())
         <<
     }
@@ -112,13 +112,13 @@ fn verify_kafka_pool() {
     pool_topic := "xu_pool_topic"
     pool_msg := "pool message payload test"
 
-    offset := p.produce_key_value(pool_topic + "", 0, "pk1", pool_msg + "") or (err) {
+    offset := p.produce_key_value(pool_topic + "", 0, "pk1", pool_msg + "") >>> (err) {
         println("   [FAIL] Pool produce failed: " + err.msg())
         <<
     }
     println("   [PASS] Message produced via pool at offset: " + str(offset))
 
-    msgs := p.fetch(pool_topic + "", 0, offset) or (err) {
+    msgs := p.fetch(pool_topic + "", 0, offset) >>> (err) {
         println("   [FAIL] Pool fetch failed: " + err.msg())
         <<
     }

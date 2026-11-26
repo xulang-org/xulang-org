@@ -17,12 +17,12 @@ COUNT = '''fn codepoints(value &string) int {
 '''
 
 HELPERS = '''fn demo_text(frame $&draw.Frame,context &draw.Context,x int,y int,size int,ink draw.Color,text string) int {
-    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
-    << frame.text_layout(&label,f64(x),f64(y),ink) or >>
+    label := context.layout_text(&text,&draw.text_options(f64(size))) >>>
+    << frame.text_layout(&label,f64(x),f64(y),ink) >>>
 }
 fn demo_center_text(frame $&draw.Frame,context &draw.Context,x int,top f64,height f64,size int,ink draw.Color,text string) int {
-    label := context.layout_text(&text,&draw.text_options(f64(size))) or >>
-    << frame.text_layout(&label,f64(x),top+(height-label.metrics.height)*0.5,ink) or >>
+    label := context.layout_text(&text,&draw.text_options(f64(size))) >>>
+    << frame.text_layout(&label,f64(x),top+(height-label.metrics.height)*0.5,ink) >>>
 }
 '''
 
@@ -80,7 +80,7 @@ def measured_text(code, slug):
             call = f'demo_center_text($&frame,&context,{x},166.0,22.0,{size},{ink},{value})'
         else:
             call = f'demo_text($&frame,&context,{x},{y},{size},{ink},{value})'
-        suffix = '' if code[end+1:].lstrip().startswith('or ') else ' or >>'
+        suffix = '' if code[end+1:].lstrip().startswith('or ') else ' >>>'
         replacements.append((match.start(), end+1, call + suffix))
     for start, end, value in reversed(replacements):
         code = code[:start] + value + code[end:]
