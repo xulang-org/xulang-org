@@ -191,14 +191,16 @@ make build             # 将运行器打包到 dist/
 
 ### 基准与部署
 
-刷新基准时，下载同一次完整六平台 Actions 附件，然后运行：
+刷新基准时，下载同一次完整六平台 Actions 附件并检出对应的 `bench_commit`，然后运行：
 
 ```sh
-python3 scripts/import-benchmarks.py --artifacts DIR --commit FULL_SHA --run-id ID --date YYYY-MM-DD
+python3 scripts/import-benchmarks.py --artifacts DIR --bench-root PINNED_BENCH_CHECKOUT --commit FULL_SHA --run-id ID --date YYYY-MM-DD
+python3 scripts/sync_all_benches.py --bench-root PINNED_BENCH_CHECKOUT
 python3 scripts/gen-benchmarks.py
+python3 scripts/gen_llms.py
 ```
 
-导入会验证编译器身份、源闭包、自举定点、完整负载与 stdout。未测项保留空缺，C、Rust 行取 O1/O2/O3 中位数最小值。
+上游 `xulang-org/bench` 维护覆盖基础机制、标准库/I/O、编码压缩、密码学、并发调度、Osprey、PLB2、SciMark2 及 AWFY/进阶负载的跨语言基准套件；`scripts/benchmark_groups.py` 仅做同主题展示分组而不合并统计数值。导入会验证编译器身份、源闭包、自举定点、完整注册负载清单与 stdout。未测项保留空缺，C、Rust 行取 O1/O2/O3 中位数最小值（Unix C 编译附加 `-lm`）。
 
 `VERSION` 指定下载页、API 文档和浏览器运行时使用的正式 SDK。Pages 工作流校验 SDK 的 SHA-256、测试构建产物，并在推送到 `main` 后部署。
 

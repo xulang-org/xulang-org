@@ -27,6 +27,25 @@ FAMILIES = (
         ('decrypt', 'decrypt', 'AES decryption', 'AES 解密'),
         ('key-setup', 'key_setup', 'AES key expansion', 'AES 密钥扩展'),
     )),
+    ('plb2-backtracking', 'algo', 'PLB2 backtracking solvers', 'PLB2 组合回溯求解', (
+        ('plb2_nqueen', 'PLB2 15-Queens bitboard backtracking', 'PLB2 15 皇后位运算回溯'),
+        ('plb2_sudoku', 'PLB2 kudoku exact-cover solver · 10 × 20 rounds', 'PLB2 kudoku 精确覆盖数独求解 · 10 题 × 20 轮'),
+    )),
+    ('scimark2', 'algo', 'SciMark2 numerical kernels', 'SciMark2 数值计算核', (
+        ('scimark_montecarlo', 'SciMark2 Monte Carlo integration · 5,000,000 samples', 'SciMark2 蒙特卡洛积分 · 500 万次'),
+        ('scimark_sor', 'SciMark2 2D SOR relaxation · 100×100 × 500 rounds', 'SciMark2 二维 SOR 超松弛 · 100×100 × 500 轮'),
+        ('scimark_lu', 'SciMark2 dense LU factorization · 100×100 × 30 rounds', 'SciMark2 稠密矩阵 LU 分解 · 100×100 × 30 轮'),
+        ('scimark_sparse', 'SciMark2 CSR sparse matvec · 10,000 × 500 rounds', 'SciMark2 CSR 稀疏矩阵乘 · 10,000 阶 × 500 轮'),
+        ('scimark_fft', 'SciMark2 Radix-2 complex FFT · 1,024 × 200 rounds', 'SciMark2 Radix-2 复数 FFT · 1,024 点 × 200 轮'),
+    )),
+    ('balanced-trees', 'data', 'Balanced search trees', '平衡搜索树', (
+        ('avl_tree', 'AVL balanced tree · 80k inserts + 300k lookups', 'AVL 平衡二叉树 · 8 万插入 + 30 万查找'),
+        ('treap_ops', 'Split/merge Treap · 120k mixed ops', '无旋转分裂合并 Treap · 12 万次混合操作'),
+    )),
+    ('json-processing', 'string', 'JSON lexing & parsing', 'JSON 词法与语法解析', (
+        ('json_tokenizer', 'JSON lexical tokenizer · 1,000 rounds', 'JSON 词法扫描器 · 1,000 轮'),
+        ('awfy_json_parser', 'AWFY recursive-descent JSON AST parser · 400 rounds', 'AWFY 递归下降 JSON AST 解析 · 400 轮'),
+    )),
 )
 
 

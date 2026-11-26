@@ -210,9 +210,10 @@ To refresh benchmarks, download one complete six-platform Actions run, then run:
 python3 scripts/import-benchmarks.py --artifacts DIR --bench-root PINNED_BENCH_CHECKOUT --commit FULL_SHA --run-id ID --date YYYY-MM-DD
 python3 scripts/sync_all_benches.py --bench-root PINNED_BENCH_CHECKOUT
 python3 scripts/gen-benchmarks.py
+python3 scripts/gen_llms.py
 ```
 
-Pin the bench checkout to the artifact identity's `bench_commit`. Import verifies compiler identities, source closure, fixed point, the full registered workload inventory, and stdout. Source export preserves every canonical workload ID and the original source text; it never filters, aliases, or rewrites measured rows. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median.
+Pin the bench checkout to the artifact identity's `bench_commit`. The upstream `xulang-org/bench` suite maintains cross-language workloads across core primitives, stdlib/I/O, codecs and compression, cryptography, concurrency, Osprey, PLB2, SciMark2, and AWFY/advanced workloads; `scripts/benchmark_groups.py` groups related variants for display without pooling measurements. Import verifies compiler identities, source closure, fixed point, the full registered workload inventory, and stdout. Source export preserves every canonical workload ID and the original source text; it never filters, aliases, or rewrites measured rows. Unmeasured cells remain empty; C/Rust rows select the lowest O1/O2/O3 median (Unix C builds link `-lm`).
 
 The release in `VERSION` drives downloads, the API reference, and the browser runtime. The Pages workflow verifies the published SDK's SHA-256, tests its output, and deploys to GitHub Pages on pushes to `main`.
 

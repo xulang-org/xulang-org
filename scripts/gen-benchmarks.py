@@ -36,8 +36,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Control Flow & Language Primitives",
         "pill_zh": "控制流机制",
         "pill_en": "Control & Primitives",
-        "desc_zh": "实测进程启动、整数与浮点循环、递归、嵌套循环和结构体方法调用。",
-        "desc_en": "Measured process startup, integer and floating-point loops, recursion, nested loops and struct method calls.",
+        "desc_zh": "实测进程启动、整数与浮点循环、递归、嵌套循环、结构体方法及动态派发（接口、match/switch、函数值）。",
+        "desc_en": "Measured process startup, integer/f64 loops, recursion, nested loops, struct methods, and dynamic dispatch (interfaces, match/switch, function values).",
         "icon": SVG_CONTROL,
     },
     {
@@ -46,8 +46,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Numerical Algorithms & Compute",
         "pill_zh": "数值算法",
         "pill_en": "Algorithms",
-        "desc_zh": "本轮实测数值计算负载；具体算法与规模以各项源码为准。",
-        "desc_en": "Measured numerical workloads in this run; see each workload source for the algorithm and input size.",
+        "desc_zh": "实测矩阵乘法、排序与二分查找、硬件位运算、素数筛法、SROA/前缀扫描及 Osprey 算法题；具体规模以各项源码为准。",
+        "desc_en": "Measured matrix multiplication, sorting and binary search, hardware bit ops, prime sieves, SROA/prefix scans, and Osprey algorithmic workloads; see each source for input sizes.",
         "icon": SVG_ALGO,
     },
     {
@@ -56,8 +56,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Data Structures & Memory Access",
         "pill_zh": "数据结构",
         "pill_en": "Data Structures",
-        "desc_zh": "本轮实测数据结构字段访问及块内存拷贝。",
-        "desc_en": "Measured aggregate field access and block memory copying.",
+        "desc_zh": "实测动态数组、哈希表、二叉堆优先队列、环形缓冲区、LRU 缓存、布隆过滤器、块内存拷贝、下标追逐与拥有型二叉树。",
+        "desc_en": "Measured dynamic arrays, hash maps, priority heaps, ring buffers, LRU cache, Bloom filters, block copy, pointer chasing, and owning binary trees.",
         "icon": SVG_DATA,
     },
     {
@@ -66,8 +66,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Strings & Text I/O",
         "pill_zh": "文本与I/O",
         "pill_en": "Strings & I/O",
-        "desc_zh": "字符串扩容与构建。",
-        "desc_en": "String buffer growth and construction.",
+        "desc_zh": "实测字符串构建与切片视图、字节计数、文件读写往返、Hex/Base64 编解码及分词与词频统计。",
+        "desc_en": "Measured string building, byte views, substring counting, file roundtrip I/O, hex/Base64 codecs, and token/word-frequency text scans.",
         "icon": SVG_STRING,
     },
     {
@@ -76,8 +76,8 @@ CATEGORIES_CONFIG = [
         "name_en": "Modern Cryptography & Hashing",
         "pill_zh": "现代密码学",
         "pill_en": "Cryptography",
-        "desc_zh": "本轮实测 SHA-256 哈希链与 AES-128 加密；硬件与软件执行路径可能不同。",
-        "desc_en": "Measured SHA-256 hash chains and AES-128 encryption; hardware and software execution paths may differ.",
+        "desc_zh": "实测 SHA-256 / MD5 哈希链、CRC32 流校验与软件 AES-128/192/256（加解密及密钥扩展）；硬件与软件执行路径可能不同。",
+        "desc_en": "Measured SHA-256 and MD5 hash chains, CRC32 stream checksums, and software AES-128/192/256 (encrypt, decrypt, key setup); hardware and software execution paths may differ.",
         "icon": SVG_CRYPTO,
     },
     {
@@ -86,11 +86,56 @@ CATEGORIES_CONFIG = [
         "name_en": "Concurrency & Coroutines",
         "pill_zh": "并发通信",
         "pill_en": "Concurrency",
-        "desc_zh": "基于 CSP 通信顺序进程模型的轻量级协程调度延迟与有界/无界 Channel 管道跨协程高频乒乓（Ping-Pong）通信开销。",
-        "desc_en": "CSP-model lightweight coroutine scheduling latency and high-frequency ping-pong channel communications.",
+        "desc_zh": "实测基于 CSP 模型的轻量级协程调度、Channel 高频乒乓通信延迟及并发自环回 HTTP 吞吐。",
+        "desc_en": "Measured CSP-model lightweight coroutine scheduling, channel ping-pong latency, and concurrent loopback HTTP throughput.",
         "icon": SVG_CONCURRENCY,
     },
 ]
+
+CATEGORY_EXTENSIONS = {
+    "control": (
+        {"awfy_richards", "brainfuck_vm"},
+        " Also includes AWFY OS task scheduler simulation (Richards) and Brainfuck bytecode VM execution.",
+        "同时涵盖 AWFY 操作系统任务调度模拟（Richards）与 Brainfuck 字节码虚拟机执行。",
+    ),
+    "algo": (
+        {
+            "plb2_nqueen", "plb2_sudoku", "scimark_montecarlo", "scimark_sor",
+            "scimark_lu", "scimark_sparse", "scimark_fft", "huffman_coding", "astar_maze",
+        },
+        " Also includes PLB2 backtracking (15-Queens, kudoku), NIST SciMark2 numerical kernels (Monte Carlo, SOR, LU, CSR sparse, FFT), Huffman coding, and A* maze shortest-path search.",
+        "同时涵盖 PLB2 组合回溯（15 皇后、kudoku）、NIST SciMark2 数值计算核（蒙特卡洛、SOR、LU、CSR 稀疏矩阵、FFT）、Huffman 编解码与 A* 迷宫最短路搜索。",
+    ),
+    "data": (
+        {"avl_tree", "treap_ops", "plb2_bedcov"},
+        " Also includes balanced trees (AVL, split/merge Treap) and PLB2 implicit interval tree overlap queries (bedcov).",
+        "同时涵盖平衡搜索树（AVL、无旋转分裂合并 Treap）与 PLB2 隐式区间树重叠查询（bedcov）。",
+    ),
+    "string": (
+        {"json_tokenizer", "awfy_json_parser", "lzw_codec", "regex_nfa", "levenshtein_dp", "csv_aggregate"},
+        " Also includes LZW compression, JSON lexing and AWFY recursive-descent AST parsing, Thompson NFA regex matching, Levenshtein edit-distance DP, and fixed-point CSV aggregation.",
+        "同时涵盖 LZW 压缩解压、JSON 词法扫描与 AWFY 递归下降 AST 解析、Thompson NFA 正则匹配、Levenshtein 编辑距离滚动 DP 及定点 CSV 聚合。",
+    ),
+    "crypto": (
+        {"chacha20_stream"},
+        " Also includes ChaCha20 stream cipher block generation.",
+        "同时涵盖 ChaCha20 流密码块生成。",
+    ),
+    "concurrency": (
+        {"thread_ring", "skynet"},
+        " Also includes 503-node token ring scheduling (thread_ring) and 10-ary coroutine fan-out/fan-in (skynet).",
+        "同时涵盖 503 节点令牌环调度（thread_ring）与 10 叉树协程扇出汇总（skynet）。",
+    ),
+}
+
+
+def render_category_desc(cat_cfg: dict, present_names: set[str], en: bool) -> str:
+    """Build category description matching workloads actually present in the dataset."""
+    base = cat_cfg["desc_en"] if en else cat_cfg["desc_zh"]
+    ext = CATEGORY_EXTENSIONS.get(cat_cfg["key"])
+    if ext is not None and (present_names & ext[0]):
+        return base + (ext[1] if en else ext[2])
+    return base
 
 PLATFORMS_CONFIG = [
     {
@@ -673,11 +718,12 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
 def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool) -> str:
     ck = cat_cfg["key"]
     cat_title = cat_cfg["name_en"] if en else cat_cfg["name_zh"]
-    cat_desc = cat_cfg["desc_en"] if en else cat_cfg["desc_zh"]
 
     groups = [g for g in platform_groups(platforms) if g['category'] == ck]
     if not groups:
         return ""
+    present_names = {v['bench']['name'] for g in groups for v in g['variants']}
+    cat_desc = render_category_desc(cat_cfg, present_names, en)
 
     blocks = []
     for group in groups:
@@ -1123,10 +1169,12 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
         f"Seven whole-program executions per implementation; reported wall time is the median including process launch. "
         f"The rankings use default Xu optimization. C and Rust select the lowest measured median among O1/O2/O3. {rss_note} "
         f"Only successful, output-verified runs carry metrics. Failures retain their status and diagnostics. Compiler identities and source closures were verified.{fixed_point_note}"
+        f" The upstream xulang-org/bench repository also evolves with additional canonical workloads (e.g., PLB2, SciMark2, AWFY, codecs, and concurrency); new suites appear here once measured across all six CI platforms."
         if en else
         f"每项实现独立运行七次整进程，展示包含进程冷启动的 Wall 耗时中位数。"
         f"排行使用 Xu 默认优化，C 与 Rust 取同平台 O1/O2/O3 中位数的最小值。{rss_note}"
         f"仅成功且通过输出校验的运行记录实测指标，失败项保留状态和诊断。已核验编译器身份与源码闭包。{fixed_point_note}"
+        f" 上游 xulang-org/bench 仓库持续扩充标准跨语言负载（含 PLB2、SciMark2、AWFY、编解码与并发套件等）；新增套件在完成六平台统一 CI 实测并导入后即自动呈现在本看板。"
     )
 
     t1_title = "Audited Platform & Telemetry Matrix" if en else "6 大目标测试机环境与遥测机制"
@@ -1163,13 +1211,13 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
 
     compilers_rows = [
         ("Xu", "xu build（版本默认优化参数）", "零 GC · 编译期借用生命周期与 RAII 确定性析构"),
-        ("C (Clang)", "clang -O1 / -O2 / -O3 (取最优)", "手动 free · 零运行时开销 (性能标尺)"),
+        ("C (Clang)", "clang -O1 / -O2 / -O3 (取最优，Unix 附加 -lm)", "手动 free · 零运行时开销 (性能标尺)"),
         ("Rust (rustc)", "rustc -C opt-level=1 / 2 / 3 (取最优)", "零 GC · 所有权生命周期与 Scope Drop"),
         ("Swift", "swiftc -O", "ARC 自动引用计数运行时 (含 Swift 标准库)"),
         ("Go", "go build (native)", "并发三色标记清除 GC 运行时 (含并发调度器)"),
     ] if not en else [
         ("Xu", "xu build (versioned defaults)", "Zero GC / RAII Scope Drop / Native machine-code backend"),
-        ("C (Clang)", "clang -O1 / -O2 / -O3 (lowest median)", "Manual memory management / Zero runtime"),
+        ("C (Clang)", "clang -O1 / -O2 / -O3 (lowest median, -lm on Unix)", "Manual memory management / Zero runtime"),
         ("Rust (rustc)", "rustc -C opt-level=1 / 2 / 3 (lowest median)", "Zero GC / Ownership Drop / LLVM Backend"),
         ("Swift", "swiftc -O", "ARC (Automatic Reference Counting) runtime"),
         ("Go", "go build (native)", "Concurrent Tracing GC runtime & Scheduler"),

@@ -81,3 +81,49 @@ class BenchmarkGroupTests(unittest.TestCase):
             page = benchmarks.render_page(data, lang)
             self.assertIn('id="workload-fib"', page)
             self.assertNotIn('bench-radar-svg', page)
+
+    def test_extended_suite_families_group_without_pooling(self):
+        data = json.loads((ROOT / 'www/benchmarks.json').read_text(encoding='utf-8'))
+        rows = deepcopy(next(iter(data['platforms'].values()))['benches'])
+        extra = [
+            ('avl_tree', 'data'), ('chacha20_stream', 'crypto'), ('huffman_coding', 'algo'),
+            ('json_tokenizer', 'string'), ('lzw_codec', 'string'),
+            ('plb2_nqueen', 'algo'), ('plb2_sudoku', 'algo'), ('plb2_bedcov', 'data'),
+            ('thread_ring', 'concurrency'), ('skynet', 'concurrency'),
+            ('scimark_montecarlo', 'algo'), ('scimark_sor', 'algo'), ('scimark_lu', 'algo'),
+            ('scimark_sparse', 'algo'), ('scimark_fft', 'algo'),
+            ('awfy_richards', 'control'), ('awfy_json_parser', 'string'), ('brainfuck_vm', 'control'),
+            ('regex_nfa', 'string'), ('treap_ops', 'data'), ('astar_maze', 'algo'),
+            ('levenshtein_dp', 'string'), ('csv_aggregate', 'string'),
+        ]
+        for name, category in extra:
+            rows.append({'name': name, 'category': category, 'desc_en': name, 'desc_zh': name})
+        groups = group_workloads(rows)
+        self.assertEqual(len(groups), 76)
+        self.assertEqual(sum(len(g['variants']) for g in groups), 95)
+        multi = {g['id']: [v['bench']['name'] for v in g['variants']] for g in groups if len(g['variants']) > 1}
+        self.assertEqual(len(multi), 11)
+        self.assertEqual(multi['plb2-backtracking'], ['plb2_nqueen', 'plb2_sudoku'])
+        self.assertEqual(
+            multi['scimark2'],
+            ['scimark_montecarlo', 'scimark_sor', 'scimark_lu', 'scimark_sparse', 'scimark_fft'],
+        )
+        self.assertEqual(multi['balanced-trees'], ['avl_tree', 'treap_ops'])
+        self.assertEqual(multi['json-processing'], ['json_tokenizer', 'awfy_json_parser'])
+
+    def test_category_descriptions_track_present_workloads(self):
+        by_key = {cfg['key']: cfg for cfg in benchmarks.CATEGORIES_CONFIG}
+        algo_base_en = benchmarks.render_category_desc(by_key['algo'], {'matmul', 'sort_lcg'}, True)
+        self.assertNotIn('SciMark2', algo_base_en)
+        algo_ext_en = benchmarks.render_category_desc(by_key['algo'], {'matmul', 'scimark_fft'}, True)
+        self.assertIn('SciMark2', algo_ext_en)
+
+        ctrl_base_zh = benchmarks.render_category_desc(by_key['control'], {'startup', 'fib'}, False)
+        self.assertNotIn('Richards', ctrl_base_zh)
+        ctrl_ext_zh = benchmarks.render_category_desc(by_key['control'], {'startup', 'awfy_richards'}, False)
+        self.assertIn('Richards', ctrl_ext_zh)
+
+        conc_base_en = benchmarks.render_category_desc(by_key['concurrency'], {'chan_ping'}, True)
+        self.assertNotIn('thread_ring', conc_base_en)
+        conc_ext_en = benchmarks.render_category_desc(by_key['concurrency'], {'chan_ping', 'thread_ring'}, True)
+        self.assertIn('thread_ring', conc_ext_en)
