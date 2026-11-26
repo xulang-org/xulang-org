@@ -1,4 +1,5 @@
 """API navigation must cover every released API page on disk."""
+from __future__ import annotations
 
 import importlib.util
 from html.parser import HTMLParser

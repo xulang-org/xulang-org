@@ -693,8 +693,15 @@
           if (catA !== catB) return catA - catB;
           return defaultItems.indexOf(a) - defaultItems.indexOf(b);
         });
+      } else if (mode === 'ai-first') {
+        sorted.sort(function (a, b) {
+          var catA = (a.getAttribute && a.getAttribute('data-category')) === 'ai' ? 0 : 1;
+          var catB = (b.getAttribute && b.getAttribute('data-category')) === 'ai' ? 0 : 1;
+          if (catA !== catB) return catA - catB;
+          return defaultItems.indexOf(a) - defaultItems.indexOf(b);
+        });
       } else if (mode === 'category') {
-        var catPriority = { lang: 1, os: 2, ui: 3, tools: 4, xacp: 5 };
+        var catPriority = { lang: 1, os: 2, ai: 3, ui: 4, tools: 5, xacp: 6 };
         sorted.sort(function (a, b) {
           var ca = (a.getAttribute && a.getAttribute('data-category')) || '';
           var cb = (b.getAttribute && b.getAttribute('data-category')) || '';
@@ -747,7 +754,7 @@
           var match = /[?&]sort=([a-z-]+)/i.exec(window.location.search);
           if (match && match[1]) {
             var initialSort = match[1].toLowerCase();
-            if (['default', 'os-first', 'category', 'title'].indexOf(initialSort) !== -1) {
+            if (['default', 'os-first', 'ai-first', 'category', 'title'].indexOf(initialSort) !== -1) {
               sortSelect.value = initialSort;
               applySort(initialSort);
             }

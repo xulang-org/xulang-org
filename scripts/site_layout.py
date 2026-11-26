@@ -1,4 +1,5 @@
 """Shared navigation and page shell for the static official site."""
+from __future__ import annotations
 
 from html import escape, unescape
 from html.parser import HTMLParser

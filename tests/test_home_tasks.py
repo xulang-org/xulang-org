@@ -1,4 +1,5 @@
 """Keep the homepage proof, bilingual task paths and integration limits aligned."""
+from __future__ import annotations
 
 from html import unescape
 import json

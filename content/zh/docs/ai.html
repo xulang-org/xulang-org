@@ -1,34 +1,202 @@
-<!--title: 使用 Xu 研发 AI 与本地推理-->
+---
+---
 <h1>AI 研发与本地推理</h1>
-<p class="lead">Xu 编译器可以识别数值计算循环并生成原生 CPU 内核。纯 Xu 编写的 <code>llm_engine</code> 示例使用这些内核在本地运行语言模型。</p>
-<p class="banner">此功能自 Xu 0.14.1 起可用。请使用 Xu 0.14.1 SDK 或同一份源码构建的编译器和标准库。</p>
+<p class="lead">无需引入 C/C++ 第三方推理运行库，使用纯 Xu 从底层构建端到端 AI 系统：标准库 <code>#tensor</code> 低精度表示与数值原语、编译器 MIR SIMD 张量融合（ARM64 NEON/SDOT 与 x86-64 SSE2/AVX2）、带 OpenAI 兼容 HTTP 服务的 <code>examples/llm_engine/main.xu</code> 本地推理引擎、<code>Metal</code> GPU 算子与纯 Xu 向量数据库驱动。</p>
+
+<div class="doc-process-flow">
+  <div class="flow-header">
+    <div class="flow-title">
+      <i class="xi xi-layers"></i>
+      <span>全栈纯 Xu AI 四层架构</span>
+    </div>
+    <div class="flow-subtitle">从紧凑数值编码与纯 Xu 算子原语，到编译器自动融合 SIMD 内核、大模型 HTTP 服务与 Metal GPU 着色器</div>
+  </div>
+  <div class="flow-steps-grid">
+    <div class="flow-step-card">
+      <div class="step-badge">1</div>
+      <div class="step-body">
+        <div class="step-name"><code>#tensor</code> 存储与算子原语</div>
+        <div class="step-meta">内置 <code>F16</code>、<code>BF16</code>、四种 <code>FP8</code> 标量、GGML <code>Q4_0</code>/<code>Q8_0</code> 分块、跨步视图及 <code>src/tensor/ops.xu</code> 12 个纯 Xu 算子</div>
+      </div>
+    </div>
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+    <div class="flow-step-card">
+      <div class="step-badge">2</div>
+      <div class="step-body">
+        <div class="step-name">编译器 MIR 张量融合</div>
+        <div class="step-meta">启用 <code>XU_TENSOR_FUSION=1</code> 后将纯 Xu 循环直接下沉为 ARM64 NEON/SDOT 与 x86-64 SSE2/AVX2 内核（含 <code>vmul</code> 与分页注意力）</div>
+      </div>
+    </div>
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+    <div class="flow-step-card">
+      <div class="step-badge">3</div>
+      <div class="step-body">
+        <div class="step-name">本地推理引擎与 OpenAI <code>serve</code></div>
+        <div class="step-meta"><code>llm_engine</code> 支持 <code>GGUF</code>/<code>Safetensors</code>、低精度分页 KV 缓存、BPE 分词、top-p/重复惩罚采样及 <code>/v1/chat/completions</code></div>
+      </div>
+    </div>
+    <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
+    <div class="flow-step-card flow-step-highlight">
+      <div class="step-badge">4</div>
+      <div class="step-body">
+        <div class="step-name">Metal GPU 与 AI 生态</div>
+        <div class="step-meta"><code>metal</code> GPU 算子（GEMM/GEMM-NT、RMSNorm、Softmax、SwiGLU、Add）以及 <code>qdrant</code>、<code>milvus</code>、<code>chroma</code> 与 <code>XACP</code></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <h2 id="run">编译并运行示例</h2>
-<p>在 <a href="https://github.com/xulang-org/xu/tree/v0.14.1/examples/llm_engine">Xu 0.14.1 源码检出目录</a>中，将 <code>XU</code> 设为已安装或本地构建的编译器路径，并在仓库根目录运行以下命令。请从所用模型的词表中选择 token ID。</p>
-<pre><code>XU_STDLIB_ROOT="$PWD/src" XU_TENSOR_FUSION=1 "$XU" build examples/llm_engine/main.xu -o llm_engine</code></pre>
-<p>在 macOS ARM64 上，运行前执行 <code>codesign -fs - ./llm_engine</code> 为可执行文件做本地签名。</p>
-<pre><code>./llm_engine generate ./model.gguf 'ids:1,7,42' 16 0 40 --ctx 128</code></pre>
-<p>示例支持兼容的 GGUF v2/v3 模型，层权重为 F32/F16 或 Q4_0，输出投影为 F32/F16、Q4_0 或 Q8_0。它也能加载测试所用布局的 F32 Safetensors。模型宽度上限为 2048。GGUF 权重从本地文件流式读取。预填充和解码使用分页 KV 缓存，示例还提供基于协程的连续批处理调度。</p>
-<ul>
-  <li><code>generate MODEL PROMPT [MAX_TOKENS] [TEMP_MILLI] [TOP_K]</code> 接受文本，或以 <code>ids:</code> 开头的逗号分隔 token ID。文本按词表贪心匹配。需要精确分词时请传入 token ID。温度 <code>0</code> 启用贪心解码。</li>
-  <li><code>verify MODEL</code> 比较逐请求与批处理结果，并检查 KV 页是否归还。<code>verify-f32act</code> 使用 F32 激活值。</li>
-  <li><code>bench MODEL [STEPS] [single] [PROMPT_LEN]</code> 测量加载、预填充和解码。<code>single</code> 跳过连续批处理计时。<code>bench-f32act</code> 使用 F32 激活值。</li>
-</ul>
-<p>用正整数 <code>--ctx N</code> 限制上下文长度，默认上限为 512 个 token。生成遇到 EOS 时结束，可用 <code>--ignore-eos</code> 继续。</p>
+<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> 是零外部运行库依赖的纯 Xu Transformer 推理引擎，原生支持 <strong>Safetensors</strong> 与 <strong>GGUF v3</strong>（<code>F32</code>、<code>F16</code>、<code>BF16</code>、<code>FP8 E4M3</code>、<code>Q4_0</code>、<code>Q8_0</code> 及重排 <code>p4k4</code> 权重）。引擎通过 <code>#tensor</code> 管理紧凑混合精度权重与低精度分页 KV 缓存（<code>--kv-dtype f32|f16|bf16|fp8_e4m3fn</code>），突破 2048 隐藏维度上限，支持 GPT-2 字节映射与 <code>tokenizer.ggml.merges</code> BPE 分词合并，并内置基于 <code>#net/http</code> 的 OpenAI 兼容并发推理服务器。</p>
+<pre><code>XU_TENSOR_FUSION=1 XU_TENSOR_FAST_MATH=1 ./bin/xu build examples/llm_engine/main.xu -o llm_engine
 
-<h2 id="tensor-fusion">编译选项</h2>
-<p>构建 ARM64 或 x64 的原生优化程序时，设置 <code>XU_TENSOR_FUSION=1</code> 启用循环模式匹配。可识别的计算包括量化矩阵向量乘法和矩阵乘法、RMSNorm、RoPE 以及分页注意力。是否使用优化内核取决于运算、数据布局和目标架构。另设 <code>XU_TENSOR_FAST_MATH=1</code> 可允许相应内核重排浮点运算或融合乘加，结果的低位可能发生变化。</p>
-<p>用 Xu 循环编写数值计算，<code>__xu_tensor_*</code> 辅助函数由编译器生成和调用。</p>
+# 使用 FP8 KV 缓存验证连续批处理与单请求数学一致性
+./llm_engine verify model.gguf --kv-dtype fp8_e4m3fn
+
+# 带 BPE 合并、Top-P 核采样与重复惩罚的文本生成
+./llm_engine generate model.gguf "Hi Paris" 64 700 40 \
+  --kv-dtype f16 --top-p 900 --repeat-penalty 1100 --seed 42
+
+# 启动 OpenAI 兼容 HTTP 服务（/health、/v1/models、/v1/completions、/v1/chat/completions、/v1/embeddings）
+# 支持 SSE 流式输出（"stream": true）与自定义停止词（"stop"）
+./llm_engine serve model.gguf 127.0.0.1:8080 --kv-dtype bf16</code></pre>
+<p>常用命令行参数：</p>
+<ul>
+  <li><code>--ctx &lt;N&gt;</code> —— 限制并配置最大上下文序列长度。</li>
+  <li><code>--kv-dtype &lt;f32|f16|bf16|fp8_e4m3fn|fp8_e5m2|fp8_e4m3fnuz|fp8_e5m2fnuz&gt;</code> —— 指定分页 KV 缓存存储精度（将 KV 显存/内存压缩为 1/2 或 1/4）。</li>
+  <li><code>--top-p &lt;milli&gt;</code>、<code>--repeat-penalty &lt;milli&gt;</code>、<code>--seed &lt;int&gt;</code> —— 可复现核采样阈值与重复惩罚系数（<code>1000</code> 表示 <code>1.0</code>）。</li>
+  <li><code>--ignore-eos</code> —— 忽略 <code>eos_token_id</code> 停止标记以运行定长吞吐基准测试。</li>
+</ul>
+
+<h2 id="tensor-ops"><code>#tensor</code> 模块与数值原语</h2>
+<p>标准库 <code>#tensor</code> 提供安全的纯 Xu 低精度标量编码、跨步视图、GGML 量化块与 <a href="https://github.com/xulang-org/xu/blob/main/src/tensor/ops.xu"><code>src/tensor/ops.xu</code></a> 中的 20 个通用数值算子：</p>
+<table>
+  <thead>
+    <tr><th>层次</th><th>公开 API</th><th>职责</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>标量编码</td>
+      <td><code>F16</code>、<code>BF16</code>、<code>Fp8E4M3Fn</code>、<code>Fp8E5M2</code>、<code>Fp8E4M3Fnuz</code>、<code>Fp8E5M2Fnuz</code>、<code>DType</code></td>
+      <td>位精确 IEEE/OCP FP16、BF16 与四种 FP8 互转，及运行时 <code>dtype_named</code> 解析</td>
+    </tr>
+    <tr>
+      <td>视图与量化块</td>
+      <td><code>TensorView</code>、<code>MatrixView</code>、<code>Q4Block</code>、<code>Q8Block</code>、<code>read_q4_0</code>、<code>read_q8_0</code></td>
+      <td>零拷贝行列切片形状视图与带边界检查的 GGML 32 元素量化块解码</td>
+    </tr>
+    <tr>
+      <td>向量与相似度</td>
+      <td><code>dot_f32</code>、<code>axpy_f32</code>、<code>vadd_f32</code>、<code>vsub_f32</code>、<code>vmul_f32</code>、<code>vscale_f32</code>、<code>l2_normalize_f32</code>、<code>cosine_similarity_f32</code>、<code>argmax_f32</code></td>
+      <td>带偏移点积、FMA 累加、逐元素运算、L2 归一化、余弦相似度与最大值索引</td>
+    </tr>
+    <tr>
+      <td>Transformer 与量化</td>
+      <td><code>silu_f32</code>、<code>gelu_f32</code>、<code>rmsnorm_f32</code>、<code>layernorm_f32</code>、<code>softmax_f32</code>、<code>swiglu_f32</code>、<code>rope_f32</code>、<code>matvec_f32</code>、<code>matmul_f32</code>、<code>quantize_q8_0</code>、<code>quantize_q4_0_row</code></td>
+      <td>激活函数、RMSNorm/LayerNorm、Softmax、NeoX RoPE、GEMV/GEMM 与 Q8_0/Q4_0 行量化</td>
+    </tr>
+  </tbody>
+</table>
+<pre><code>@main
+#tensor
+
+fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
+    n := x.len
+    $normed := []f32{}
+    $out := []f32{}
+    for _ in 0:n {
+        normed.push(f32(0))
+        out.push(f32(0))
+    }
+    tensor.rmsnorm_f32($&amp;normed, x, w, n, 0.00001)
+    tensor.vscale_f32($&amp;normed, f32(0.5), n)
+    tensor.softmax_f32($&amp;normed, n, f32(1))
+    tensor.vmul_f32($&amp;out, &amp;normed, x, n)
+    << out
+}</code></pre>
+
+<h2 id="tensor-fusion">编译选项与 MIR 张量融合</h2>
+<p>在 <code>XU_TENSOR_FUSION=1</code> 编译模式下，编译器 MIR 张量降级通道会直接识别 <code>#tensor</code> 与用户代码中的规范纯 Xu 数值循环，在保持冻结运行时 ABI 不变的前提下下沉为原生 <strong>ARM64 NEON / SDOT</strong> 与 <strong>x86-64 SSE2 / AVX2</strong> 机器码内核：</p>
+<table>
+  <thead>
+    <tr><th>算子类别</th><th>MIR 运行时内核符号</th><th>目标指令集加速</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>向量算子</td>
+      <td><code>__xu_tensor_dot_f32</code>、<code>__xu_tensor_axpy_f32</code>、<code>__xu_tensor_vadd_inplace_f32</code>、<code>__xu_tensor_vmul_f32</code></td>
+      <td>ARM64 NEON <code>fmul.4s</code>/<code>fmla.4s</code>；x64 SSE2 <code>mulps</code>/<code>addps</code></td>
+    </tr>
+    <tr>
+      <td>归一化与激活</td>
+      <td><code>__xu_tensor_add_sqsum_f32</code>、<code>__xu_tensor_norm_f32</code>、<code>__xu_tensor_swiglu_f32</code>、<code>__xu_tensor_softmax_scaled_f32</code></td>
+      <td>向量化平方和与指数规约流水线</td>
+    </tr>
+    <tr>
+      <td>矩阵与量化乘加</td>
+      <td><code>__xu_tensor_gemv4_f32</code>、<code>__xu_tensor_gemm4x4_f32</code>、<code>__xu_tensor_gemv4_q4_0_p4k4_signed_f16_q8_0_f32</code>、<code>__xu_tensor_gemm4x8_q8_0_p4k4_f16_q8_0_f32</code></td>
+      <td>4×8 分块微内核与 ARM64 <code>sdot.4s</code> / x64 FMA</td>
+    </tr>
+    <tr>
+      <td>分页注意力与 RoPE</td>
+      <td><code>__xu_tensor_rope_f32</code>、<code>__xu_tensor_attn_scores_paged_f32</code>、<code>__xu_tensor_attn_vsum_paged_f32</code></td>
+      <td>覆盖 <code>head_dim % 4 == 0</code>（含 64、128、40 等）与双架构</td>
+    </tr>
+  </tbody>
+</table>
+<ul>
+  <li><code>XU_TENSOR_FUSION=1</code> —— 开启 MIR 张量模式匹配与硬件内核降级（<code>fusion-strict</code> 保持与纯 Xu 基线逐比特一致）。</li>
+  <li><code>XU_TENSOR_FAST_MATH=1</code> —— 启用重结合浮点规约、快速指数逼近与高吞吐量化展开。</li>
+</ul>
+
+<h2 id="gpu-metal">基于 <code>packages/metal</code> 的 GPU 算力</h2>
+<p>在 Apple Silicon 平台上，官方外部包 <a href="https://github.com/xulang-org/packages"><code>packages/metal</code></a> 提供显式 binary32 矩阵内存管理（<code>F32Matrix</code>）、MPS 矩阵乘法及编译期 Metal 计算着色器，通过非阻塞栅栏（<code>Fence</code>）同步并结合编译期借用检查与运行时形状/别名/设备守卫：</p>
+<pre><code>@main
+metal #"github.com/xulang-org/packages/metal"
+#errors
+
+fn gpu_ffn_step(d &amp;metal.Device, x &amp;metal.F32Matrix, w &amp;metal.F32Matrix,
+                w_gate &amp;metal.F32Matrix, w_up &amp;metal.F32Matrix) metal.F32Matrix {
+    $normed := d.matrix_f32(x.rows(), x.columns()) >>>
+    f_rms := metal.rmsnorm_f32($&amp;normed, x, w, 0.00001) >>>
+    _ := f_rms.wait() >>>
+
+    $g := d.matrix_f32(x.rows(), w_gate.rows()) >>>
+    $u := d.matrix_f32(x.rows(), w_up.rows()) >>>
+    f_g := metal.gemm_f32_nt($&amp;g, &amp;normed, w_gate) >>>
+    f_u := metal.gemm_f32_nt($&amp;u, &amp;normed, w_up) >>>
+    _ := f_g.wait() >>>
+    _ := f_u.wait() >>>
+
+    $out := d.matrix_f32(x.rows(), w_gate.rows()) >>>
+    f_sw := metal.swiglu_f32($&amp;out, &amp;g, &amp;u) >>>
+    _ := f_sw.wait() >>>
+    << out
+}</code></pre>
+<p><code>metal/matrix_f32.xu</code> 当前公开的完整 Transformer GPU AI 算子包括：<code>gemm_f32</code>（$A B$）、<code>gemm_f32_nt</code>（$A B^T$）、<code>rmsnorm_f32</code>、<code>layernorm_f32</code>、<code>softmax_f32</code>、<code>gelu_f32</code>、<code>swiglu_f32</code>、<code>add_f32</code>、<code>mul_f32</code>、<code>scale_f32</code>、<code>rope_f32</code> 与 <code>causal_attention_f32</code>。</p>
 
 <h2 id="verification">验证和测量推理</h2>
-<p>回归测试会生成兼容的测试模型，并将浮点与量化推理结果同参考实现比较。测试还覆盖批量预填充、解码 token 和 KV 页复用。</p>
-<pre><code>python3 scripts/test_llm_engine.py --compiler "$XU"
-python3 scripts/test_tensor_opt.py --compiler "$XU"</code></pre>
-<p>用示例的 <code>bench</code> 模式测量选定模型，并将模型及量化格式、CPU、上下文长度和编译器设置与预填充、解码结果一起记录。</p>
+<pre><code># 编译器 MIR 张量融合与 #tensor 数值原语测试
+python3 scripts/test_tensor_opt.py --compiler bin/xu
+python3 scripts/test_tensor_types.py --compiler bin/xu
+python3 scripts/test_llm_engine.py --compiler bin/xu
 
-<h2 id="api">数值与切片 API</h2>
+# Metal GPU 与 CPU 数值一致性测试（位于 packages/ 目录）
+XU_ROOT=../xu python3 metal/native/build.py --target macos-arm64
+XU=../xu/bin/xu python3 -m unittest tests/test_metal_ai.py -v</code></pre>
+<p>上述测试会自动对照独立 Python 基线校验数值误差，核验连续批处理完成后的分页 KV 块释放状态（<code>kv_free_after</code>），并端到端测试 <code>/health</code>、<code>/v1/models</code>、<code>/v1/completions</code> 与 <code>/v1/chat/completions</code> HTTP 接口。各架构性能对比详见<a href="/benchmarks">基准测试</a>。</p>
+
+<h2 id="ecosystem">向量数据库与智能体自动化（XACP）</h2>
+<p>围绕张量算子与本地推理引擎，Xu 生态还提供纯 Xu 客户端与内建智能体交互协议：</p>
 <ul>
-  <li><a href="/api/math#preview-float16_to_f32"><code>math.float16_to_f32(h int) f32</code></a> 将 binary16 位模式转换为 <code>f32</code>。</li>
-  <li><a href="/api/slices#reserve"><code>slice.reserve(n int)</code></a> 确保切片至少可容纳 <code>n</code> 个元素。</li>
-  <li><a href="/api/slices#resize_zero"><code>slice.resize_zero(n int)</code></a> 设置可变标量切片的长度，并把新增区间清零。</li>
+  <li><strong>向量数据库（<a href="/docs/packages">外部包</a>）：</strong>提供 <code>qdrant</code>、<code>milvus</code>、<code>chroma</code> 的纯 Xu HTTP/gRPC 驱动，可直接把 RAG 检索链路与本地模型推理编译进同一个零依赖静态二进制。</li>
+  <li><strong>智能体自动化（<a href="/docs/cli#xacp">XACP</a> 与 <a href="/api/xacp"><code>#xacp</code> API</a>）：</strong>为本地 Xu 桌面应用提供结构化界面树、受限采样与审计化自动化操控能力。</li>
+</ul>
+
+<h2 id="api">数值与相关 API 文档</h2>
+<ul class="link-list">
+  <li><a href="/api">标准库 API 参考</a> —— 包含 <code>#tensor</code> 低精度标量、视图与数值原语，以及 <code>#net/http</code> 和 <code>#encoding/json</code>。</li>
+  <li><a href="/benchmarks">多架构基准测试</a> —— 查看 ARM64 与 x86-64 下 MIR 张量融合前后的真实推理吞吐。</li>
+  <li><a href="/docs/packages">外部包与驱动指南</a> —— 获取 <code>metal</code>、<code>qdrant</code>、<code>milvus</code> 与 <code>chroma</code> 的接入方式。</li>
+  <li><a href="/docs/faq#ai-inference">AI 与 GPU 常见问题</a> —— 快速了解量化格式、MIR 融合、Metal 着色器与 XACP 安全边界。</li>
 </ul>

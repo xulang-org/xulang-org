@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Build the browser playground with the site's released Xu SDK."""
+from __future__ import annotations
 
 import argparse
 import gzip
