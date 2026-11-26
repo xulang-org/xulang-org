@@ -1,7 +1,7 @@
 ---
 ---
 <h1>AI 研发与本地推理</h1>
-<p class="lead">无需引入 C/C++ 第三方推理运行库，使用纯 Xu 从底层构建端到端 AI 系统：标准库 <code>#tensor</code> 低精度表示与数值原语、编译器 MIR SIMD 张量融合（ARM64 NEON/SDOT 与 x86-64 SSE2/SSSE3）、带 OpenAI 兼容 HTTP 服务的 <code>examples/llm_engine/main.xu</code> 本地推理引擎、<code>Metal</code> GPU 算子与纯 Xu <code>openai</code>、<code>mcp</code> 及向量数据库驱动。</p>
+<p class="lead">无需引入 C/C++ 第三方推理运行库，使用纯 Xu 从底层构建端到端 AI 系统：标准库 <code>#tensor</code> 低精度与训练原语、编译器 MIR SIMD 张量融合（ARM64 NEON/SDOT 与 x86-64 SSE2/SSSE3）、支持 HF 分片目录 / DeepSeek MLA / MoE 与 OpenAI/Anthropic HTTP 服务的 <code>examples/llm_engine/main.xu</code> 本地推理引擎、<code>Metal</code> GPU 算子与纯 Xu <code>openai</code>、<code>anthropic</code>、<code>gemini</code>、<code>mcp</code>、<code>agent</code>、混合 <code>rag</code> 及向量数据库驱动。</p>
 
 <div class="doc-process-flow">
   <div class="flow-header">
@@ -16,7 +16,7 @@
       <div class="step-badge">1</div>
       <div class="step-body">
         <div class="step-name"><code>#tensor</code> 存储与算子原语</div>
-        <div class="step-meta">内置 <code>F16</code>、<code>BF16</code>、四种 <code>FP8</code> 标量、GGML <code>Q4_0</code>/<code>Q5_0</code>/<code>Q8_0</code>/<code>Q4_K</code>/<code>Q6_K</code> 分块、跨步 <code>TensorView</code> 及 20 个纯 Xu 算子</div>
+        <div class="step-meta">内置 <code>F16</code>、<code>BF16</code>、四种 <code>FP8</code> 标量、GGML <code>Q4_0</code>/<code>Q5_0</code>/<code>Q8_0</code>/<code>Q4_K</code>/<code>Q5_K</code>/<code>Q6_K</code>/<code>Q8_K</code> 整数点积、跨步 <code>TensorView</code> 及 37 个纯 Xu 算子（含 <code>add_rmsnorm_f32</code>、<code>moe_router_f32</code>、<code>rope_yarn_f32</code>、<code>topk_cosine_f32</code>、<code>cross_entropy_grad_f32</code>、<code>adamw_step_f32</code>、<code>lora_add_f32</code>、<code>lora_backward_f32</code>、<code>rmsnorm_backward_f32</code>、<code>layernorm_backward_f32</code>、<code>swiglu_backward_f32</code>、<code>softmax_backward_f32</code>、<code>grad_clip_norm_f32</code>）</div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
@@ -31,48 +31,55 @@
     <div class="flow-step-card">
       <div class="step-badge">3</div>
       <div class="step-body">
-        <div class="step-name">本地推理引擎与 OpenAI <code>serve</code></div>
-        <div class="step-meta"><code>llm_engine</code> 支持混合 <code>Q4_K_M</code>/<code>Q5_0</code>/<code>Q8_0</code> <code>GGUF</code>/<code>Safetensors</code>、SentencePiece/BPE、ChatML/Llama-3/Gemma/Mistral 模板与 ARM64 多槽批处理解码 + SSE 断连取消</div>
+        <div class="step-name">本地推理引擎与 OpenAI/Anthropic <code>serve</code></div>
+        <div class="step-meta"><code>llm_engine</code> 支持 HF 分片目录、PEFT <code>--lora</code>、纯 Xu <code>train-lora</code>（<code>--max-grad-norm</code>）微调、无损 <code>--draft</code> 投机采样、DeepSeek MLA、MoE、混合 <code>Q4_K_M</code> 与 <code>Q5_K</code>（<code>--q8k-act</code>）、YaRN RoPE、<code>&lt;think&gt;</code> <code>reasoning_content</code>、SSE <code>delta.tool_calls</code>、OpenAI <code>/v1/responses</code>（同步、<code>previous_response_id</code>、工具与 SSE）及 Anthropic <code>/v1/messages</code></div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
     <div class="flow-step-card flow-step-highlight">
       <div class="step-badge">4</div>
       <div class="step-body">
-        <div class="step-name">Metal GPU 与 AI/智能体生态</div>
-        <div class="step-meta"><code>metal</code> <code>v1.4.0</code> GPU 端到端解码（<code>Q8Matrix</code>/<code>Q4KMatrix</code>、<code>qk_norm_f32</code>、<code>attention_decode_f32</code>），及纯 Xu <code>openai</code>、<code>mcp</code>、<code>qdrant</code>、<code>milvus</code>、<code>chroma</code> 与 <code>XACP</code></div>
+        <div class="step-name">Metal GPU 与 AI/智能体/RAG 生态</div>
+        <div class="step-meta"><code>metal</code> <code>v1.9.0</code>（176 符号 / 6 平台 <code>.xulib</code> 切片、<code>Q5KMatrix</code>/MoE <code>Q5_K</code>、<code>paged_kv_cache_append_f16</code>、<code>gemm_f32_tn</code>、PagedAttention F16、GPU <code>rmsnorm_backward_f32</code>/<code>swiglu_backward_f32</code>），及纯 Xu <code>openai</code>（<code>clone_client</code>、<code>/v1/responses</code> <code>input_json</code>）、<code>anthropic</code>（<code>clone_client</code>、图像块、Prompt Caching）、<code>gemini</code>（<code>batch_embed</code>）、<code>mcp</code>（动态模板处理器、<code>logging/setLevel</code>）、流式并发 <code>agent</code>（<code>ResponsesAgent</code>/<code>ResponsesSession</code>、<code>set_tool_hook</code>）、元数据过滤与重排 <code>rag</code>（<code>delete_doc</code>、<code>search_by_meta</code>、<code>rerank_hits</code>）、<code>qdrant</code>、<code>milvus</code>、<code>chroma</code> 与 <code>XACP</code></div>
       </div>
     </div>
   </div>
 </div>
 
 <h2 id="run">编译并运行示例</h2>
-<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> 是零外部运行库依赖的纯 Xu Transformer 推理引擎，原生支持 <strong>Safetensors</strong> 与 <strong>GGUF v2/v3</strong>（混合量化 <code>Q4_K_M</code> 含 <code>Q4_K</code>/<code>Q6_K</code>，以及 <code>F32</code>、<code>F16</code>、<code>BF16</code>、<code>FP8 E4M3</code>、<code>Q4_0</code>、<code>Q5_0</code>、<code>Q8_0</code> 与零拷贝压缩权重 / <code>p4k4</code> 布局），并自动解析 GGUF 元数据（<code>rope_freq_scale</code>、<code>logit_softcap</code>、分词器类型/架构及聊天模板）。引擎支持 Qwen3/Gemma2 逐头 <code>qk_norm</code>、多模板自动识别（<strong>ChatML</strong>、<strong>Llama-3</strong>、<strong>Gemma</strong>、<strong>Mistral</strong>）与多 EOS 终止、低精度分页 KV 缓存（<code>--kv-dtype f32|f16|bf16|fp8_e4m3fn</code>）、突破 2048 隐藏维度上限、SentencePiece（<code>▁</code> / <code>&lt;0xHH&gt;</code>）与 GPT-2 预分词及 BPE 合并、$O(L)$ 采样器（<code>top_k</code>、<code>top_p</code>、<code>--min-p</code>、<code>--repeat-penalty</code>、<code>--presence-penalty</code>、<code>--frequency-penalty</code>），并在 <code>serve</code> 模式下提供 ARM64 多槽批处理解码、SSE 客户端断连取消与 KV 回收、Prefix KV 缓存复用、批量 <code>/v1/embeddings</code>、<code>stream_options.include_usage</code>、CORS 预检、<code>--api-key</code> 鉴权与 <code>--max-slots</code> 并发槽位配置。</p>
+<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> 是零外部运行库依赖的纯 Xu Transformer、DeepSeek MLA 与混合专家（MoE）推理与微调引擎，原生支持 <strong>HuggingFace 模型目录</strong>（<code>config.json</code> + 单文件或分片 <code>model.safetensors.index.json</code> + <code>tokenizer.json</code>/<code>tokenizer_config.json</code>，支持 F32/F16/BF16/FP8 E4M3）、单文件 <strong>Safetensors</strong>、<strong>PEFT LoRA 适配器</strong>（<code>--lora</code> 与 <code>--lora-scale</code> 覆盖 F32/F16/BF16 的 <code>q/k/v/o/w1/w2/w3/lm_head</code>，并提供基于 <code>#tensor</code> 反向传播、<code>--max-grad-norm</code> L2 梯度裁剪与 AdamW 的纯 Xu <code>train-lora</code> 微调与 SafeTensors 导出）、<strong>无损投机解码</strong>（<code>--draft</code> / <code>--draft-k</code> 批量校验与精确 KV 回滚）与 <strong>GGUF v2/v3</strong>（混合量化 <code>Q4_K_M</code> 与 <code>Q5_K</code> 含 <code>Q4_K</code>/<code>Q5_K</code>/<code>Q6_K</code> 与 <code>--q8k-act</code> 整数激活点积，以及 F32/F16/BF16/FP8 E4M3/Q4_0/Q5_0/Q8_0 分层 <code>p4k4</code> SIMD）、<strong>DeepSeek-V2/V3/R1 MLA</strong>（<code>kv_lora_rank</code>、<code>q_lora_rank</code>、<code>qk_nope_head_dim</code>、<code>qk_rope_head_dim</code>、<code>v_head_dim</code>）、<strong>完整 MoE 路由与共享专家</strong>、YaRN NTK-by-parts RoPE 缩放、Gemma-2/Qwen3 扩展、自动识别聊天模板（ChatML、Llama-3、Gemma、Mistral）、低精度分页 KV 缓存、SentencePiece 与 GPT-2 BPE 合并、$O(L)$ 采样器与 <code>logit_bias</code>，并在 <code>serve</code> 模式下同时提供 OpenAI 兼容接口（<code>/v1/completions</code>、<code>/v1/chat/completions</code> 同步及 SSE <code>&lt;think&gt;</code> <code>reasoning_content</code> 与分块 <code>delta.tool_calls</code>、状态化 <code>POST /v1/responses</code> 支持 <code>instructions</code>/<code>previous_response_id</code>/<code>max_output_tokens</code>/<code>tools</code>/<code>function_call_output</code> 与 SSE 事件、批量 <code>/v1/embeddings</code>）和 Anthropic Messages API <code>/v1/messages</code>（同步与 SSE 流式、<code>x-api-key</code> 鉴权）。</p>
 <pre><code>./bin/xu build --tensor-fusion --tensor-fast-math examples/llm_engine/main.xu -o llm_engine
 # （或使用 XU_TENSOR_FUSION=1 XU_TENSOR_FAST_MATH=1 ./bin/xu build ...）
 
 # 使用 FP8 KV 缓存验证连续批处理与单请求数学一致性
 ./llm_engine verify model.gguf --kv-dtype fp8_e4m3fn
 
-# 带 BPE 合并、Min-P / Top-P 核采样与重复/存在/频率惩罚的文本生成
+# 带 BPE 合并、Min-P / Top-P 核采样、LoRA 适配器与无损投机采样的文本生成
 ./llm_engine generate model.gguf "Hi Paris" 64 700 40 \
   --kv-dtype f16 --top-p 900 --min-p 50 --repeat-penalty 1100 \
   --presence-penalty 100 --frequency-penalty 50 --seed 42
+./llm_engine generate model.gguf "Hi Paris" 64 0 40 --lora ./lora_adapter --draft ./draft.gguf --draft-k 4
 
-# 启动 OpenAI 兼容 HTTP 服务（/health、/v1/models、/v1/completions、/v1/chat/completions、/v1/embeddings）
+# 纯 Xu LoRA 微调与梯度裁剪 + SafeTensors 适配器导出
+./llm_engine train-lora model.safetensors "1,2,3,4,5" ./out_lora --lora-rank 4 --steps 20 --lr 0.05 --max-grad-norm 1.0
+
+# 启动 OpenAI 兼容 HTTP 服务（/health、/v1/models、/v1/completions、/v1/chat/completions、/v1/responses、/v1/embeddings）
 # 支持 SSE 流式输出（含 stream_options.include_usage）、批量嵌入、CORS 预检与 Bearer 密钥认证
 ./llm_engine serve model.gguf 127.0.0.1:8080 --kv-dtype bf16 --max-slots 4 --api-key secret</code></pre>
 <p>常用命令行参数：</p>
 <ul>
   <li><code>--ctx &lt;N&gt;</code> —— 限制并配置最大上下文序列长度。</li>
   <li><code>--kv-dtype &lt;f32|f16|bf16|fp8_e4m3fn|fp8_e5m2|fp8_e4m3fnuz|fp8_e5m2fnuz&gt;</code> —— 指定分页 KV 缓存存储精度（将 KV 显存/内存压缩为 1/2 或 1/4）。</li>
+  <li><code>--lora &lt;path&gt;</code>、<code>--lora-scale &lt;f&gt;</code>、<code>--lora-rank &lt;N&gt;</code>、<code>--lora-alpha &lt;f&gt;</code>、<code>--steps &lt;N&gt;</code>、<code>--lr &lt;f&gt;</code>、<code>--max-grad-norm &lt;f&gt;</code> —— 加载 PEFT SafeTensors LoRA 适配器参与推理或运行纯 Xu <code>train-lora</code>（带 L2 梯度裁剪）训练并导出权重。</li>
+  <li><code>--draft &lt;model&gt;</code>、<code>--draft-k &lt;N&gt;</code> —— 开启无损草稿模型投机采样与目标模型批量验证及精确 KV 缓存回滚。</li>
   <li><code>--top-p &lt;milli&gt;</code>、<code>--min-p &lt;milli&gt;</code>、<code>--repeat-penalty &lt;milli&gt;</code>、<code>--presence-penalty &lt;milli&gt;</code>、<code>--frequency-penalty &lt;milli&gt;</code>、<code>--seed &lt;int&gt;</code> —— 可复现核采样/Min-P 过滤与重复/存在/频率惩罚系数（<code>1000</code> 表示 <code>1.0</code>，支持任意正 <code>top_k</code>）。</li>
   <li><code>--max-slots &lt;N&gt;</code>、<code>--api-key &lt;K&gt;</code> —— 配置 <code>serve</code> 连续批处理最大并发槽位与 Bearer 密钥鉴权（<code>/health</code> 除外）。</li>
+  <li><code>--rope-type &lt;auto|norm|neox&gt;</code> —— 指定 RoPE 配对布局（交错配对 <code>norm</code> 与拆半配对 <code>neox</code>；默认随 GGUF 架构自动识别）。</li>
   <li><code>--ignore-eos</code> —— 忽略 EOS 停止标记以运行定长吞吐基准测试。</li>
 </ul>
 
 <h2 id="tensor-ops"><code>#tensor</code> 模块与数值原语</h2>
-<p>标准库 <code>#tensor</code> 提供安全的纯 Xu 低精度标量编码、跨步视图、GGML 量化块与 <a href="https://github.com/xulang-org/xu/blob/main/src/tensor/ops.xu"><code>src/tensor/ops.xu</code></a> 中的 20 个通用数值算子：</p>
+<p>标准库 <code>#tensor</code> 提供安全的纯 Xu 低精度标量编码、跨步视图、GGML 量化块与 <a href="https://github.com/xulang-org/xu/blob/main/src/tensor/ops.xu"><code>src/tensor/ops.xu</code></a> 中的 37 个通用数值与训练原语：</p>
 <table>
   <thead>
     <tr><th>层次</th><th>公开 API</th><th>职责</th></tr>
@@ -80,23 +87,23 @@
   <tbody>
     <tr>
       <td>标量编码</td>
-      <td><code>F16</code>、<code>BF16</code>、<code>Fp8E4M3Fn</code>、<code>Fp8E5M2</code>、<code>Fp8E4M3Fnuz</code>、<code>Fp8E5M2Fnuz</code>、<code>DType</code></td>
-      <td>位精确 IEEE/OCP FP16、BF16 与四种 FP8 互转，及运行时 <code>dtype_named</code> 解析</td>
+      <td><code>F16</code>、<code>BF16</code>、<code>Fp8E4M3Fn</code>、<code>Fp8E5M2</code>、<code>Fp8E4M3Fnuz</code>、<code>Fp8E5M2Fnuz</code>、<code>DType</code>、<code>dequant_f16_to_f32</code>、<code>dequant_bf16_to_f32</code></td>
+      <td>位精确 IEEE/OCP FP16、BF16 与四种 FP8 互转、批量半精度反量化，及运行时 <code>dtype_named</code> 解析</td>
     </tr>
     <tr>
       <td>视图与量化块</td>
-      <td><code>TensorView</code>（<code>reshape</code>、<code>permute</code>、<code>read_f32_bytes</code>、<code>write_f32_bytes</code>）、<code>Q4Block</code>、<code>Q5Block</code>、<code>Q8Block</code>、<code>Q4KBlock</code>、<code>Q6KBlock</code>、<code>dot_q4_k_bytes_f32</code>、<code>dot_q6_k_bytes_f32</code>、<code>dot_q8_0_bytes_f32</code>、<code>dot_q5_0_bytes_f32</code></td>
-      <td>零拷贝形状重排/轴转置与字节视图读写、GGML 32/256 元素量化块解码与零分配字节内积</td>
+      <td><code>TensorView</code>（<code>reshape</code>、<code>permute</code>、<code>read_f32_bytes</code>、<code>write_f32_bytes</code>）、<code>Q4Block</code>、<code>Q5Block</code>、<code>Q8Block</code>、<code>Q4KBlock</code>、<code>Q5KBlock</code>、<code>Q6KBlock</code>、<code>Q8_K_BYTES</code>、<code>dot_*_bytes_f32</code>、<code>dot_*_row_f32</code>、<code>quantize_q8_k_row</code>、<code>dot_q4_k_q8_k_row_f32</code>、<code>dot_q5_k_q8_k_row_f32</code>、<code>dot_q6_k_q8_k_row_f32</code></td>
+      <td>零拷贝形状重排/轴转置与字节视图读写、GGML 32/256 元素量化块解码、整数 <code>Q8_K</code> K-quant 内积与零分配行内积</td>
     </tr>
     <tr>
-      <td>向量与相似度</td>
-      <td><code>dot_f32</code>、<code>axpy_f32</code>、<code>vadd_f32</code>、<code>vsub_f32</code>、<code>vmul_f32</code>、<code>vscale_f32</code>、<code>l2_normalize_f32</code>、<code>cosine_similarity_f32</code>、<code>argmax_f32</code></td>
-      <td>带偏移点积、FMA 累加、逐元素加减乘运算、L2 归一化、余弦相似度与最大值索引</td>
+      <td>向量与检索算子</td>
+      <td><code>dot_f32</code>、<code>axpy_f32</code>、<code>vadd_f32</code>、<code>vsub_f32</code>、<code>vmul_f32</code>、<code>vscale_f32</code>、<code>l2_normalize_f32</code>、<code>cosine_similarity_f32</code>、<code>topk_cosine_f32</code>、<code>argmax_f32</code>、<code>topk_f32</code></td>
+      <td>带偏移点积、FMA 累加、逐元素加减乘运算、L2 归一化、余弦相似度、RAG Top-K 余弦检索与 Top-K/argmax</td>
     </tr>
     <tr>
-      <td>Transformer 与量化</td>
-      <td><code>silu_f32</code>、<code>gelu_f32</code>、<code>rmsnorm_f32</code>、<code>layernorm_f32</code>、<code>softmax_f32</code>、<code>swiglu_f32</code>、<code>rope_f32</code>、<code>matvec_f32</code>、<code>matmul_f32</code>、<code>quantize_q8_0</code>、<code>quantize_q4_0_row</code></td>
-      <td>激活函数、RMSNorm/LayerNorm、Softmax、NeoX RoPE、GEMV/GEMM 与 Q8_0/Q4_0 行量化</td>
+      <td>Transformer / MoE / 量化与训练</td>
+      <td><code>silu_f32</code>、<code>gelu_f32</code>、<code>rmsnorm_f32</code>、<code>add_rmsnorm_f32</code>、<code>layernorm_f32</code>、<code>softmax_f32</code>、<code>log_softmax_f32</code>、<code>swiglu_f32</code>、<code>geglu_f32</code>、<code>moe_router_f32</code>、<code>rope_f32</code>、<code>rope_interleaved_f32</code>、<code>rope_yarn_f32</code>、<code>matvec_f32</code>、<code>matmul_f32</code>、<code>quantize_q8_0</code>、<code>quantize_q5_0_row</code>、<code>quantize_q4_0_row</code>、<code>cross_entropy_grad_f32</code>、<code>adamw_step_f32</code>、<code>lora_add_f32</code>、<code>lora_backward_f32</code>、<code>rmsnorm_backward_f32</code>、<code>layernorm_backward_f32</code>、<code>swiglu_backward_f32</code>、<code>softmax_backward_f32</code>、<code>grad_clip_norm_f32</code></td>
+      <td>激活函数、SwiGLU/GeGLU、融合残差 <code>add_rmsnorm_f32</code>、LayerNorm、Softmax/LogSoftmax、<code>moe_router_f32</code> 路由、NeoX/交错/YaRN RoPE、GEMV/GEMM、量化及前/反向 LoRA/AdamW 训练与梯度裁剪</td>
     </tr>
   </tbody>
 </table>
@@ -153,7 +160,7 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
 </ul>
 
 <h2 id="gpu-metal">基于 <code>packages/metal</code> 的 GPU 算力</h2>
-<p>在 Apple Silicon 平台上，官方外部包 <a href="https://github.com/xulang-org/packages"><code>packages/metal</code></a>（<code>v1.4.0</code>）提供显式 <code>F32Matrix</code>、<code>F16Matrix</code>（<code>MPSDataTypeFloat16</code>）、原始字节写入（<code>write_bytes</code>）与量化权重存储——<code>Q4Matrix</code>（<code>matrix_q4_0</code>）、<code>Q8Matrix</code>（<code>matrix_q8_0</code>）与 <code>Q4KMatrix</code>（<code>matrix_q4_k</code>），并将单维/元素上限提升至 <code>262,144</code> / <code>536,870,912</code>；同时具备并发读锁隔离以及单命令缓冲区多算子批处理（<code>Batch</code>），配合非阻塞 <code>Fence</code> 与编译期借用和运行时形状/别名/设备守卫实现端到端 GPU 推理：</p>
+<p>在 Apple Silicon 平台上，官方外部包 <a href="https://github.com/xulang-org/packages"><code>packages/metal</code></a>（<code>v1.9.0</code>，导出 176 个原生符号并打包完整 6 平台 <code>.xulib</code> 切片）提供显式 <code>F32Matrix</code>、<code>F16Matrix</code>（<code>MPSDataTypeFloat16</code>）、原始字节写入（<code>write_bytes</code>）与六种量化权重存储——<code>Q4Matrix</code>（<code>matrix_q4_0</code>）、<code>Q5Matrix</code>（<code>matrix_q5_0</code>）、<code>Q8Matrix</code>（<code>matrix_q8_0</code>）、<code>Q4KMatrix</code>（<code>matrix_q4_k</code>）、<code>Q5KMatrix</code>（<code>matrix_q5_k</code>）与 <code>Q6KMatrix</code>（<code>matrix_q6_k</code>），并将单维/元素上限提升至 <code>262,144</code> / <code>536,870,912</code>；同时具备并发读锁隔离以及单命令缓冲区多算子批处理（<code>Batch</code>），配合非阻塞 <code>Fence</code> 与编译期借用和运行时形状/别名/设备守卫实现端到端 GPU 推理与训练：</p>
 <pre><code>@main
 metal #"github.com/xulang-org/packages/metal"
 #errors
@@ -174,7 +181,7 @@ fn gpu_ffn_batch(d &amp;metal.Device, x &amp;metal.F32Matrix, w &amp;metal.F32Ma
     _ := f.wait() >>>
     << out
 }</code></pre>
-<p><code>metal</code> 独立调用与 <code>Batch</code> 模式共同公开的 GPU AI 算子涵盖：<code>gemm_f32</code>、<code>gemm_f32_nt</code>、<code>rmsnorm_f32</code>、<code>layernorm_f32</code>、<code>softmax_f32</code>、<code>gelu_f32</code>、<code>swiglu_f32</code>、<code>add_f32</code>、<code>mul_f32</code>、<code>scale_f32</code>、<code>rope_f32</code>、<code>qk_norm_f32</code>、<code>kv_cache_append_f32</code>、<code>attention_decode_f32</code>、<code>causal_attention_f32</code>、<code>embedding_f32</code>、<code>argmax_f32</code>、<code>gemm_f16</code>、<code>gemm_f16_nt</code>、<code>f16_to_f32</code>、<code>f32_to_f16</code> 与寄存器即时反量化融合量化 GEMV（<code>gemv_q4_0_f32</code>、<code>gemv_q8_0_f32</code>、<code>gemv_q4_k_f32</code>）。</p>
+<p><code>metal</code> 独立调用与 <code>Batch</code> 模式共同公开的 GPU AI 算子涵盖：<code>gemm_f32</code>、<code>gemm_f32_nt</code>、<code>gemm_f32_tn</code>、<code>rmsnorm_f32</code>、<code>add_rmsnorm_f32</code>、<code>layernorm_f32</code>、<code>softmax_f32</code>、<code>log_softmax_f32</code>、<code>silu_f32</code>、<code>gelu_f32</code>、<code>swiglu_f32</code>、<code>geglu_f32</code>、<code>add_f32</code>、<code>mul_f32</code>、<code>scale_f32</code>、<code>rope_f32</code>、<code>rope_interleaved_f32</code>、<code>rope_yarn_f32</code>、<code>qk_norm_f32</code>、<code>kv_cache_append_f32</code>、<code>kv_cache_append_f16</code>、<code>paged_kv_cache_append_f16</code>、<code>paged_attention_decode_f16</code>、<code>moe_topk_f32</code>、<code>moe_weighted_add_f32</code>、融合 Top-K 加权 MoE 量化计算（<code>moe_gemv_q4_0_f32</code>、<code>moe_gemv_q8_0_f32</code>、<code>moe_gemv_q4_k_f32</code>、<code>moe_gemv_q5_k_f32</code>、<code>moe_gemv_q6_k_f32</code>）、LoRA/训练前反向内核（<code>lora_add_f32</code>、<code>adamw_step_f32</code>、<code>cross_entropy_grad_f32</code>、<code>rmsnorm_backward_f32</code>、<code>swiglu_backward_f32</code>）、基于 <code>simd_sum</code>/<code>simd_max</code> warp 规约的单遍在线 FlashAttention（<code>causal_attention_f32</code>、<code>causal_attention_f16</code>）与 FlashDecode（<code>attention_decode_f32</code>、<code>attention_decode_f16</code>）、<code>embedding_f32</code>、<code>argmax_f32</code>、<code>gemm_f16</code>、<code>gemm_f16_nt</code>、<code>f16_to_f32</code>、<code>f32_to_f16</code> 与寄存器即时反量化融合 GEMV（<code>gemv_q4_0_f32</code>、<code>gemv_q5_0_f32</code>、<code>gemv_q8_0_f32</code>、<code>gemv_q4_k_f32</code>、<code>gemv_q5_k_f32</code>、<code>gemv_q6_k_f32</code>）。</p>
 
 <h2 id="verification">验证和测量推理</h2>
 <pre><code># 编译器 MIR 张量融合与 #tensor 数值原语测试
@@ -182,16 +189,16 @@ python3 scripts/test_tensor_opt.py --compiler bin/xu
 python3 scripts/test_tensor_types.py --compiler bin/xu
 python3 scripts/test_llm_engine.py --compiler bin/xu
 
-# Metal GPU 与 OpenAI/MCP 端到端测试（位于 packages/ 目录）
+# Metal GPU、OpenAI/Gemini/MCP/Agent、Anthropic/RAG 与 v1.8.0/v1.9.0 生态端到端测试（位于 packages/ 目录）
 XU_ROOT=../xu python3 metal/native/build.py --target macos-arm64
-XU_ROOT=../xu XU=../xu/bin/xu python3 -m unittest tests/test_metal_ai.py tests/test_openai_mcp.py -v</code></pre>
-<p>上述测试会自动对照独立 Python 基线校验数值误差，核验连续批处理完成后的分页 KV 块释放状态（<code>kv_free_after</code>），并端到端测试 <code>/health</code>、<code>/v1/models</code>、<code>/v1/completions</code>、<code>/v1/chat/completions</code> 与批量 <code>/v1/embeddings</code> HTTP 接口（含 SSE 断连取消、CORS 与 Bearer 鉴权）。各架构性能对比详见<a href="/benchmarks">基准测试</a>。</p>
+XU_ROOT=../xu XU=../xu/bin/xu python3 -m unittest tests/test_metal_ai.py tests/test_openai_mcp.py tests/test_anthropic_rag.py tests/test_gemini_rag_agent.py tests/test_v18_ai_ecosystem.py tests/test_v19_ai_ecosystem.py -v</code></pre>
+<p>上述测试会自动对照独立 Python 基线校验数值误差，核验连续批处理完成后的分页 KV 块释放状态（<code>kv_free_after</code>）与 PEFT <code>--lora</code>、纯 Xu <code>train-lora</code>（<code>--max-grad-norm</code>）、无损 <code>--draft</code> 投机采样、GGUF <code>Q5_K</code> 及 HF 分片目录 / DeepSeek MLA / MoE / YaRN 数值一致性，并端到端测试 <code>/health</code>、<code>/v1/models</code>、<code>/v1/completions</code>、<code>/v1/chat/completions</code>、<code>/v1/responses</code>（同步、<code>previous_response_id</code>、<code>tools</code>、SSE）、<code>/v1/messages</code> 与批量 <code>/v1/embeddings</code> HTTP 接口（含 <code>Agent</code>/<code>ResponsesAgent</code>/<code>AnthropicAgent</code>/<code>GeminiAgent</code> + <code>mcp</code> 对接实时 <code>llm_engine serve</code>、<code>&lt;think&gt;</code> <code>reasoning_content</code>、SSE <code>delta.tool_calls</code>、SSE 断连取消、CORS、Bearer/<code>x-api-key</code> 鉴权、<code>logprobs</code>、<code>json_object</code>/<code>json_schema</code> 与 <code>logit_bias</code>）。各架构性能对比详见<a href="/benchmarks">基准测试</a>。</p>
 
-<h2 id="ecosystem">OpenAI 客户端、MCP、向量数据库与智能体自动化</h2>
+<h2 id="ecosystem">OpenAI、Anthropic、Gemini、MCP、Agent、RAG、向量数据库与桌面自动化</h2>
 <p>围绕张量算子与本地推理引擎，Xu 生态还提供纯 Xu 客户端/服务端驱动与内建智能体交互协议：</p>
 <ul>
-  <li><strong>OpenAI 与 MCP（<a href="/docs/packages">外部包</a>）：</strong><code>github.com/xulang-org/packages/openai</code> 提供类型安全的纯 Xu OpenAI 兼容客户端（<code>list_models</code>、<code>chat</code>、<code>chat_stream</code> / <code>chat_stream_chan</code> 流式 SSE、工具调用与 <code>embeddings</code>）；<code>github.com/xulang-org/packages/mcp</code> 实现 Model Context Protocol JSON-RPC 2.0（<code>2025-03-26</code>）stdio 服务端及 Streamable HTTP JSON/SSE 客户端（<code>tools</code>、<code>resources</code>、<code>prompts</code>）。</li>
-  <li><strong>向量数据库（<a href="/docs/packages">外部包</a>）：</strong>提供 <code>qdrant</code>、<code>milvus</code>、<code>chroma</code> 的纯 Xu HTTP/gRPC 驱动，可直接把 RAG 检索链路与本地模型推理编译进同一个零依赖静态二进制。</li>
+  <li><strong>OpenAI、Anthropic、Gemini、MCP 与 Agent 编排（<a href="/docs/packages">外部包</a>）：</strong><code>github.com/xulang-org/packages/openai</code> 提供类型安全的纯 Xu OpenAI 兼容客户端（<code>clone_client</code>、Chat Completions、Responses API <code>/v1/responses</code> 同步与 SSE <code>responses</code>/<code>responses_stream</code>/<code>ResponsesRequest.input_json</code>、多模态视觉 <code>ContentPart</code>、<code>set_max_retries</code> 重试、<code>json_schema_format</code>、<code>reasoning_content</code>、流式分块 <code>tool_calls</code> 拼接、<code>completions</code> 与 <code>embeddings</code>）；<code>github.com/xulang-org/packages/anthropic</code> 提供 Anthropic Messages API（<code>clone_client</code>、<code>/v1/messages</code>、图像块 <code>image_base64_block</code>/<code>image_url_block</code>/<code>message_blocks</code>、<code>cache_control</code>/<code>cache_system</code> 缓存、<code>thinking_delta</code>、<code>tool_use</code>/<code>tool_result</code>、分块 <code>input_json_delta</code>、<code>429</code>/<code>529</code>/<code>5xx</code> 重试）；<code>github.com/xulang-org/packages/gemini</code> 提供 Google Gemini REST API（<code>clone_client</code>、<code>generate</code>/<code>generate_stream</code>/<code>embed</code>/批量 <code>batch_embed</code>、<code>inline_data_part</code>、<code>functionCall</code>、<code>thoughts</code>、<code>response_schema_json</code>）；<code>github.com/xulang-org/packages/mcp</code> 完整支持双向 MCP JSON-RPC 2.0（<code>2025-03-26</code>）stdio 与 Streamable HTTP（含 <code>add_tool_annotated</code> / <code>ToolAnnotations</code>、<code>add_resource_template</code> 与动态 <code>add_resource_template_handler</code> / <code>resources/templates/list</code>、<code>set_completion_handler</code> / <code>completion/complete</code> 及 <code>logging/setLevel</code> / <code>set_logging_level</code>）；<code>github.com/xulang-org/packages/agent</code> 同时提供 OpenAI Chat（<code>Agent</code>、<code>Session</code>）、OpenAI Responses（<code>ResponsesAgent</code>、<code>ResponsesSession</code>）、Anthropic（<code>AnthropicAgent</code>、<code>AnthropicSession</code>）与 Gemini（<code>GeminiAgent</code>、<code>GeminiSession</code>）多轮编排，支持 <code>set_tool_hook</code> 执行前守卫、<code>set_max_total_tokens</code> Token 预算上限、<code>AgentEvent</code> 流式事件回调（<code>run_stream*</code>、<code>send_stream*</code>）与基于 <code>xu</code> 协程的并发工具调用（<code>set_parallel_tools</code>）。</li>
+  <li><strong>混合 RAG 与向量数据库（<a href="/docs/packages">外部包</a>）：</strong><code>github.com/xulang-org/packages/rag</code> 提供 <code>chunk_text</code>、标题层级感知的 <code>chunk_markdown</code>、<code>delete_doc</code>、基于 <code>tensor.topk_cosine_f32</code> 的稠密检索、元数据键值过滤（<code>search_by_meta</code>、<code>search_hybrid_by_meta</code>）、二次重排（<code>rerank_hits</code>）、Maximal Marginal Relevance（<code>search_mmr</code>）多样性重排、Okapi BM25 稀疏检索（<code>search_bm25</code>、<code>search_bm25_filtered</code>）以及 RRF 混合重排（<code>search_hybrid</code>、<code>search_hybrid_filtered</code>、<code>retrieve_hybrid</code>）与 <code>save_json</code>/<code>load_json</code>；配合 <code>qdrant</code>、<code>milvus</code>、<code>chroma</code> 的纯 Xu 驱动即可把混合检索与本地推理编译进同一个零依赖静态二进制。</li>
   <li><strong>智能体自动化（<a href="/docs/cli#xacp">XACP</a> 与 <a href="/api/xacp"><code>#xacp</code> API</a>）：</strong>为本地 Xu 桌面应用提供结构化界面树、受限采样与审计化自动化操控能力。</li>
 </ul>
 
