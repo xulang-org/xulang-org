@@ -159,7 +159,7 @@ _CURATED_API_GROUPS = [
     ('xi-database', '数据库', 'Database', 'database/sql database/sql/driver'.split()),
     ('xi-package', '图形与窗口', 'Graphics & Window', 'gpu gpu/layout window window/events'.split()),
     ('xi-package', '扩展包', 'Extensions', ['packages/' + name for name in
-        'a2a agent anthropic cassandra chroma clickhouse cohere consul dns elasticsearch etcd eval gateway gemini grpc guardrails influxdb kafka mcp meilisearch memcached metal milvus mongodb mqtt mysql nacos nats neo4j openai postgres prometheus prompt qdrant rabbitmq rag redis s3 smtp sqlite transport websocket zookeeper'.split()]),
+        'a2a agent anthropic cassandra chroma clickhouse cohere consul dns elasticsearch etcd eval gateway gemini grpc guardrails influxdb kafka mcp meilisearch memcached metal milvus mongodb mqtt mysql nacos nats neo4j openai postgres prometheus prompt qdrant rabbitmq rag redis s3 smtp sqlite synth transport websocket zookeeper'.split()]),
     ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/chart ui/phone ui/widgets ui/webview'.split()),
 ]
 
