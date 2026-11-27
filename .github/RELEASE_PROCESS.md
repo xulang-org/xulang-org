@@ -60,13 +60,13 @@ flowchart TD
 2. **测试矩阵与负载覆盖**：
    - **支持平台与架构**：双架构（`ARM64` + `x86_64`），覆盖三大主流操作系统（`Linux`、`macOS`、`Windows`），共计 6 大标准目标平台（`linux-arm64`、`linux-x64`、`macos-arm64`、`macos-x64`、`windows-arm64`、`windows-x64`）。
    - **对比语言工具链**：同环境下最新稳定版 C (Clang -O3)、Rust (rustc -O3)、Go (go build)、Swift (swiftc -O)。
-   - **核心基准负载（72 组 Workloads）**：涵盖表达式树（expr_tree）、SPSC 通道会合延迟、高并发协程调度与内存开销、GEMM 矩阵乘法、SROA 聚合体拆解、JSON 解析、SHA-256 哈希计算等典型场景。
+   - **核心基准负载（121 组 Workloads，覆盖 11 大工程领域）**：涵盖表达式树（expr_tree）、SPSC 通道会合延迟、高并发协程调度与内存开销、GEMM 矩阵乘法、SROA 聚合体拆解、JSON 解析、SHA-256 哈希计算、Web/协议、存储检索、系统工具链、图形物理与 AI/量化等典型场景。
 3. **在 `bench` 仓库触发自动化横测流水线**：
    - 正式版本发布时，在 `xulang-org/bench` 仓库触发自动化流水线（`.github/workflows/bench.yml`）：
      ```sh
      gh workflow run bench.yml --repo xulang-org/bench -f mode=full -f xu_ref=vX.Y.Z
      ```
-   - 该工作流在 GitHub Actions 的 6 大标准 Runner 矩阵上完整拉取待测 Xu 编译器，全自动完成 72 项负载编译、对拍执行与可信度采样，生成 6 份结构化数据工件 `benchmark-reports-<target>`。
+   - 该工作流在 GitHub Actions 的 6 大标准 Runner 矩阵上完整拉取待测 Xu 编译器，全自动完成全量注册负载（当前 121 项）编译、对拍执行与可信度采样，生成 6 份结构化数据工件 `benchmark-reports-<target>`。
 4. **数据导入与官网看板同步 (`xulang-org`)**：
    - 从 `bench` 的 Actions 运行产物中下载 6 平台的 `benchmark-reports-*` 工件包。
    - 在 `xulang-org` 仓库运行导入与校验脚本：

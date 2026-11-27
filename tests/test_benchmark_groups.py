@@ -127,3 +127,94 @@ class BenchmarkGroupTests(unittest.TestCase):
         self.assertNotIn('thread_ring', conc_base_en)
         conc_ext_en = benchmarks.render_category_desc(by_key['concurrency'], {'chan_ping', 'thread_ring'}, True)
         self.assertIn('thread_ring', conc_ext_en)
+
+    def test_eleven_domain_taxonomy_and_interactive_ui_controls(self):
+        self.assertEqual(benchmarks.CATEGORIES_CONFIG[0]['key'], 'control')
+        keys = [cfg['key'] for cfg in benchmarks.CATEGORIES_CONFIG]
+        self.assertEqual(len(keys), 11)
+        self.assertEqual(len(set(keys)), 11)
+        for req in ('web', 'storage', 'systems', 'graphics', 'ai', 'crypto', 'concurrency'):
+            self.assertIn(req, keys)
+
+        data = json.loads((ROOT / 'www/benchmarks.json').read_text(encoding='utf-8'))
+        for lang in ('en', 'zh'):
+            page = benchmarks.render_page(data, lang)
+            self.assertIn('data-cat="all"', page)
+            self.assertIn('id="bench-domain-directory"', page)
+            self.assertIn('id="bench-compact-btn"', page)
+            self.assertIn('id="bench-groups-toggle-btn"', page)
+            self.assertIn('id="bench-filter-status"', page)
+            self.assertIn('id="bench-workloads-root"', page)
+            self.assertIn('id="bench-empty-state"', page)
+            for ck in ('control', 'algo', 'data', 'string', 'crypto', 'concurrency'):
+                self.assertIn(f'class="bench-cat-section bench-sec-{ck}" id="cat-{ck}" data-category="{ck}"', page)
+                self.assertIn(f'onclick="selectBenchCategory(\'{ck}\', true)"', page)
+
+    def test_web_domain_and_hmac_renders_cleanly_when_present(self):
+        data = json.loads((ROOT / 'www/benchmarks.json').read_text(encoding='utf-8'))
+        sample = deepcopy(data)
+        for p in sample['platforms'].values():
+            p['benches'].append({
+                'name': 'http_router_parse',
+                'desc_zh': 'HTTP/1.1 解析与 Trie 动态路由',
+                'desc_en': 'HTTP/1.1 parsing & trie router',
+                'category': 'web',
+                'xu_status': 'ok',
+                'xu_wall_ms': 12.0,
+                'xu_bytes': 40960,
+                'implementations': {'Xu': {'wall_ms': 12.0, 'best_ms': 11.5, 'rss_mib': 4.0, 'cpu_ms': 10.0, 'bytes': 40960}},
+            })
+            p['benches'].append({
+                'name': 'hmac_pbkdf2',
+                'desc_zh': 'HMAC-SHA256 与 PBKDF2 派生',
+                'desc_en': 'HMAC-SHA256 & PBKDF2 key derivation',
+                'category': 'crypto',
+                'xu_status': 'ok',
+                'xu_wall_ms': 15.0,
+                'xu_bytes': 38000,
+                'implementations': {'Xu': {'wall_ms': 15.0, 'best_ms': 14.0, 'rss_mib': 4.0, 'cpu_ms': 12.0, 'bytes': 38000}},
+            })
+        page_en = benchmarks.render_page(sample, 'en')
+        self.assertIn('id="cat-web" data-category="web"', page_en)
+        self.assertIn('id="workload-http_router_parse"', page_en)
+        self.assertIn('data-cat="web"', page_en)
+        self.assertIn('PBKDF2 key derivation', page_en)
+        self.assertIn('7 Domains', page_en)
+
+    def test_full_11_domains_and_batch_e_to_g_descriptions_render_cleanly(self):
+        data = json.loads((ROOT / 'www/benchmarks.json').read_text(encoding='utf-8'))
+        sample = deepcopy(data)
+        synthetic = [
+            ('http_router_parse', 'web', 'HTTP/1.1 parsing & trie router', 'HTTP/1.1 解析与 Trie 动态路由'),
+            ('btree_index', 'storage', 'Order-32 B+ tree insert, lookup & range scan', 'Order-32 B+ 树插查与范围扫描'),
+            ('lz4_block_codec', 'systems', 'LZ4 block hash-match compression codec', 'LZ4 块压缩与重叠解压编解码'),
+            ('raytrace_sphere', 'graphics', '3D ray-sphere tracer with shadows & reflections', '3D 球体光线追踪与反射'),
+            ('mlp_inference', 'ai', '3-layer dense MLP forward inference (ReLU)', '三层稠密 MLP 神经网络推理'),
+            ('hmac_pbkdf2', 'crypto', 'HMAC-SHA256 & PBKDF2 key derivation', 'HMAC-SHA256 与 PBKDF2 派生'),
+            ('x25519_dh', 'crypto', 'RFC 7748 Curve25519 / X25519 DH ladder', 'Curve25519 / X25519 密钥交换'),
+            ('parallel_mapreduce', 'concurrency', '8-worker parallel MapReduce channel pipeline', '多 Worker 并发 MapReduce'),
+        ]
+        for p in sample['platforms'].values():
+            for name, category, desc_en, desc_zh in synthetic:
+                p['benches'].append({
+                    'name': name,
+                    'desc_zh': desc_zh,
+                    'desc_en': desc_en,
+                    'category': category,
+                    'xu_status': 'ok',
+                    'xu_wall_ms': 10.0,
+                    'xu_bytes': 40960,
+                    'implementations': {'Xu': {'wall_ms': 10.0, 'best_ms': 9.5, 'rss_mib': 4.0, 'cpu_ms': 8.0, 'bytes': 40960}},
+                })
+        page_en = benchmarks.render_page(sample, 'en')
+        page_zh = benchmarks.render_page(sample, 'zh')
+        self.assertIn('11 Domains', page_en)
+        self.assertIn('11 个领域', page_zh)
+        for key in ('control', 'algo', 'data', 'string', 'web', 'storage', 'systems', 'graphics', 'ai', 'crypto', 'concurrency'):
+            self.assertIn(f'id="cat-{key}" data-category="{key}"', page_en)
+            self.assertIn(f'id="cat-{key}" data-category="{key}"', page_zh)
+        for token in ('X25519', 'parallel_mapreduce', 'MLP'):
+            self.assertIn(token, page_en)
+            self.assertIn(token, page_zh)
+        self.assertNotIn('Transformer', page_en)
+        self.assertNotIn('Transformer', page_zh)

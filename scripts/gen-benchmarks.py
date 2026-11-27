@@ -28,6 +28,11 @@ SVG_DATA = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16"
 SVG_STRING = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>'
 SVG_CRYPTO = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>'
 SVG_CONCURRENCY = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>'
+SVG_WEB = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>'
+SVG_STORAGE = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>'
+SVG_SYSTEMS = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>'
+SVG_GRAPHICS = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>'
+SVG_AI = '<svg class="bench-icon bench-cat-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2v4"/><path d="M12 18v4"/><path d="m4.93 4.93 2.83 2.83"/><path d="m16.24 16.24 2.83 2.83"/><path d="M2 12h4"/><path d="M18 12h4"/><path d="m4.93 19.07 2.83-2.83"/><path d="m16.24 7.76 2.83-2.83"/></svg>'
 
 CATEGORIES_CONFIG = [
     {
@@ -71,9 +76,59 @@ CATEGORIES_CONFIG = [
         "icon": SVG_STRING,
     },
     {
+        "key": "web",
+        "name_zh": "Web 后端、网络协议与序列化",
+        "name_en": "Web, Protocols & Serialization",
+        "pill_zh": "Web 与协议",
+        "pill_en": "Web & Protocols",
+        "desc_zh": "实测 HTTP/1.1 请求解析与 Trie 动态路由、RFC 6455 WebSocket 帧掩码编解码、Protobuf Varint/ZigZag 嵌套编解码、TOML 配置解析及 HTML 模板 XSS 转义渲染。",
+        "desc_en": "Measured HTTP/1.1 parsing and trie routing, RFC 6455 WebSocket framing, Protobuf Varint/ZigZag nested RPC codecs, TOML config lexing, and HTML template compilation with XSS escaping.",
+        "icon": SVG_WEB,
+    },
+    {
+        "key": "storage",
+        "name_zh": "数据库内核、存储与全文检索",
+        "name_en": "Storage, Databases & Search",
+        "pill_zh": "存储与检索",
+        "pill_en": "Storage & Search",
+        "desc_zh": "实测 B+ 树索引分裂与范围扫描、LSM-Tree 多路归并压实、BM25 全文倒排检索、列存 SQL 过滤聚合、一致性哈希环与 WAL 崩溃恢复。",
+        "desc_en": "Measured B+ tree split/range scan, LSM-Tree multi-way compaction, BM25 inverted-index search, columnar SQL execution, consistent hashing, and WAL recovery.",
+        "icon": SVG_STORAGE,
+    },
+    {
+        "key": "systems",
+        "name_zh": "系统编程、编译工具链与压缩",
+        "name_en": "Systems, Tooling & Compression",
+        "pill_zh": "系统与工具链",
+        "pill_en": "Systems & Tooling",
+        "desc_zh": "实测表达式前端编译与字节码 VM、Myers 最短编辑距离 Diff、分级 Slab 内存分配与页回收、分层时间轮调度、LZ4 块压缩及 UTF-8 校验解码与文本规范化。",
+        "desc_en": "Measured bytecode VM compilation, Myers text diff, segregated slab allocator with page reclaim, hierarchical timing wheels, LZ4 block compression, and UTF-8 validation/normalization.",
+        "icon": SVG_SYSTEMS,
+    },
+    {
+        "key": "graphics",
+        "name_zh": "图形渲染、图像处理与物理仿真",
+        "name_en": "Graphics, Imaging & Physics",
+        "pill_zh": "图形与物理",
+        "pill_en": "Graphics & Physics",
+        "desc_zh": "实测 3D 球面光线追踪反射阴影、二维高斯模糊与 Sobel 边缘卷积流水线、及基于空间网格的多体弹性碰撞物理仿真。",
+        "desc_en": "Measured 3D sphere ray tracing, 2D Gaussian blur + Sobel edge convolution pipelines, and spatial-hash 2D rigid-body collision physics.",
+        "icon": SVG_GRAPHICS,
+    },
+    {
+        "key": "ai",
+        "name_zh": "AI 推理、机器学习与量化金融",
+        "name_en": "AI Inference, ML & Quant",
+        "pill_zh": "AI 与金融",
+        "pill_en": "AI & Quant",
+        "desc_zh": "实测三层稠密 MLP 神经网络前向推理（ReLU / Argmax）、8 维 Lloyd K-Means 迭代聚类，及价格-时间优先限价订单簿高频撮合引擎。",
+        "desc_en": "Measured 3-layer dense MLP forward inference (ReLU/argmax), 8D Lloyd K-Means clustering, and price-time priority limit order book matching.",
+        "icon": SVG_AI,
+    },
+    {
         "key": "crypto",
-        "name_zh": "现代密码学与散列摘要",
-        "name_en": "Modern Cryptography & Hashing",
+        "name_zh": "现代密码学与安全",
+        "name_en": "Modern Cryptography & Security",
         "pill_zh": "现代密码学",
         "pill_en": "Cryptography",
         "desc_zh": "实测 SHA-256 / MD5 哈希链、CRC32 流校验与软件 AES-128/192/256（加解密及密钥扩展）；硬件与软件执行路径可能不同。",
@@ -82,9 +137,9 @@ CATEGORIES_CONFIG = [
     },
     {
         "key": "concurrency",
-        "name_zh": "高性能并发与协程通信",
-        "name_en": "Concurrency & Coroutines",
-        "pill_zh": "并发通信",
+        "name_zh": "高性能并发与多核并行",
+        "name_en": "Concurrency & Parallelism",
+        "pill_zh": "并发与并行",
         "pill_en": "Concurrency",
         "desc_zh": "实测基于 CSP 模型的轻量级协程调度、Channel 高频乒乓通信延迟及并发自环回 HTTP 吞吐。",
         "desc_en": "Measured CSP-model lightweight coroutine scheduling, channel ping-pong latency, and concurrent loopback HTTP throughput.",
@@ -134,7 +189,34 @@ def render_category_desc(cat_cfg: dict, present_names: set[str], en: bool) -> st
     base = cat_cfg["desc_en"] if en else cat_cfg["desc_zh"]
     ext = CATEGORY_EXTENSIONS.get(cat_cfg["key"])
     if ext is not None and (present_names & ext[0]):
-        return base + (ext[1] if en else ext[2])
+        base = base + (ext[1] if en else ext[2])
+    if cat_cfg["key"] == "crypto":
+        has_hmac = "hmac_pbkdf2" in present_names
+        has_x25519 = "x25519_dh" in present_names
+        if has_hmac and has_x25519:
+            base += (
+                " Also covers HMAC-SHA256 authentication, PBKDF2 key derivation, and Curve25519 / X25519 DH."
+                if en else
+                " 另涵盖 HMAC-SHA256 签名认证、PBKDF2 密钥派生与 Curve25519 / X25519 密钥交换。"
+            )
+        elif has_hmac:
+            base += (
+                " Also covers HMAC-SHA256 authentication and PBKDF2 key derivation."
+                if en else
+                " 另涵盖 HMAC-SHA256 签名认证与 PBKDF2 密钥派生。"
+            )
+        elif has_x25519:
+            base += (
+                " Also covers Curve25519 / X25519 Diffie-Hellman key exchange."
+                if en else
+                " 另涵盖 Curve25519 / X25519 密钥交换。"
+            )
+    if cat_cfg["key"] == "concurrency" and "parallel_mapreduce" in present_names:
+        base += (
+            " Also includes 8-worker parallel MapReduce channel pipeline (parallel_mapreduce)."
+            if en else
+            " 另涵盖 8 Worker 并发 MapReduce 通道扇出归约流水线（parallel_mapreduce）。"
+        )
     return base
 
 PLATFORMS_CONFIG = [
@@ -682,12 +764,12 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
                 + '</summary><ul>' + ''.join(failure_rows) + '</ul></details>') if failure_rows else ''
 
     return f"""
-<div class="bench-workload-block" id="workload-{b_name}" data-name="{b_name.lower()}" data-desc="{desc.lower()}">
+<div class="bench-workload-block" id="workload-{b_name}" data-name="{b_name.lower()}" data-desc="{desc.lower()}" data-category="{cat_cfg['key']}">
   <div class="bench-workload-header">
     <div class="bench-workload-title-group">
       <code class="bench-workload-code">{b_name}</code>
       <span class="bench-workload-title">{desc}</span>
-      <span class="bench-workload-cat-pill">{cat_pill}</span>
+      <span class="bench-workload-cat-pill" data-cat-pill="{cat_cfg['key']}">{cat_pill}</span>
     </div>
     <div class="bench-workload-meta">
       {fastest_str}
@@ -746,7 +828,7 @@ def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool)
                       else f"{len(groups)} 个项目组 · {variant_count} 个变体")
 
     return f"""
-<div class="bench-cat-section bench-sec-{ck}">
+<div class="bench-cat-section bench-sec-{ck}" id="cat-{ck}" data-category="{ck}">
   <div class="bench-cat-section-header">
     <div class="bench-cat-title-wrap">
       <span class="bench-cat-icon">{cat_cfg["icon"]}</span>
@@ -759,6 +841,56 @@ def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool)
     {''.join(blocks)}
   </div>
 </div>
+"""
+
+
+def render_category_directory(populated_cats: list[dict], groups: list[dict], en: bool) -> str:
+    """Render a domain overview directory grid for one-click category filtering."""
+    if not populated_cats:
+        return ""
+    dir_title = "Engineering Domains Directory" if en else "软件工程领域分类导航"
+    dir_sub = (
+        f"Click any domain card to filter the matrix below without pooling separate algorithms or input sizes."
+        if en else
+        f"点击任意工程领域卡片即可在下方精准筛选该分类实测（各算法与输入规模仍保持独立展示，不合并均值）。"
+    )
+    cards = []
+    for cat_cfg in populated_cats:
+        ck = cat_cfg["key"]
+        cat_groups = [g for g in groups if g.get("category") == ck]
+        variant_names = [v["bench"]["name"] for g in cat_groups for v in g["variants"]]
+        present_names = set(variant_names)
+        cat_desc = render_category_desc(cat_cfg, present_names, en)
+        cat_name = cat_cfg["name_en"] if en else cat_cfg["name_zh"]
+        count_text = (
+            f"{len(cat_groups)} groups · {len(variant_names)} variants"
+            if en else f"{len(cat_groups)} 组 · {len(variant_names)} 项"
+        )
+        preview = variant_names[:4]
+        chips = "".join(f'<code>{html.escape(n)}</code>' for n in preview)
+        if len(variant_names) > 4:
+            chips += f'<span class="bench-domain-more">+{len(variant_names) - 4}</span>'
+        cards.append(
+            f'<button type="button" class="bench-domain-card" data-cat="{ck}" aria-pressed="false" onclick="selectBenchCategory(\'{ck}\', true)">'
+            f'  <div class="bench-domain-card-top">'
+            f'    <span class="bench-cat-icon">{cat_cfg["icon"]}</span>'
+            f'    <span class="bench-domain-card-title">{cat_name}</span>'
+            f'    <span class="bench-cat-count">{count_text}</span>'
+            f'  </div>'
+            f'  <p class="bench-domain-card-desc">{cat_desc}</p>'
+            f'  <div class="bench-domain-chips">{chips}</div>'
+            f'</button>'
+        )
+    return f"""
+<section class="bench-domain-directory" id="bench-domain-directory">
+  <div class="bench-domain-dir-header">
+    <h3 class="bench-domain-dir-title">{dir_title}</h3>
+    <p class="bench-domain-dir-sub">{dir_sub}</p>
+  </div>
+  <div class="bench-domain-grid">
+    {''.join(cards)}
+  </div>
+</section>
 """
 
 
@@ -1169,12 +1301,12 @@ def render_methodology_audit_section(platforms: dict, meta: dict, en: bool) -> s
         f"Seven whole-program executions per implementation; reported wall time is the median including process launch. "
         f"The rankings use default Xu optimization. C and Rust select the lowest measured median among O1/O2/O3. {rss_note} "
         f"Only successful, output-verified runs carry metrics. Failures retain their status and diagnostics. Compiler identities and source closures were verified.{fixed_point_note}"
-        f" The upstream xulang-org/bench repository also evolves with additional canonical workloads (e.g., PLB2, SciMark2, AWFY, codecs, and concurrency); new suites appear here once measured across all six CI platforms."
+        f" The upstream xulang-org/bench repository also evolves with additional engineering-domain workloads (Web protocols & serialization, storage/databases, systems/tooling, graphics/AI, PLB2, SciMark2, AWFY, and concurrency); new domains and suites appear here automatically once measured across all six CI platforms."
         if en else
         f"每项实现独立运行七次整进程，展示包含进程冷启动的 Wall 耗时中位数。"
         f"排行使用 Xu 默认优化，C 与 Rust 取同平台 O1/O2/O3 中位数的最小值。{rss_note}"
         f"仅成功且通过输出校验的运行记录实测指标，失败项保留状态和诊断。已核验编译器身份与源码闭包。{fixed_point_note}"
-        f" 上游 xulang-org/bench 仓库持续扩充标准跨语言负载（含 PLB2、SciMark2、AWFY、编解码与并发套件等）；新增套件在完成六平台统一 CI 实测并导入后即自动呈现在本看板。"
+        f" 上游 xulang-org/bench 仓库持续按软件工程全领域扩充跨语言负载（涵盖 Web 与协议序列化、数据库存储检索、系统工具链与压缩、图形与 AI、PLB2、SciMark2、AWFY 与并发套件等）；新增分类与套件在完成六平台统一 CI 实测并导入后即自动呈现在本看板。"
     )
 
     t1_title = "Audited Platform & Telemetry Matrix" if en else "6 大目标测试机环境与遥测机制"
@@ -1457,25 +1589,34 @@ def render_page(data: dict, lang: str) -> str:
     banner_text += (' Related workloads share a display group. Each algorithm, input size, source and result remains separate; variants are never pooled.'
                     if en else ' 同类负载合并展示；不同算法、输入规模、源码和测量结果分别保留，不合并计算。')
 
-    # 1. 功能大类平铺区块列表
+    # 1. 功能大类平铺区块列表 & 领域筛选条
     category_sections = []
-    anchor_buttons = []
+    populated_cats = []
     groups = platform_groups(platforms)
+    all_pill_label = "All Domains" if en else "全部分类"
+    anchor_buttons = [
+        f'<button type="button" class="bench-anchor-pill bench-cat-filter-pill active" data-cat="all" aria-pressed="true" onclick="selectBenchCategory(\'all\', false)">'
+        f'<span>{all_pill_label}</span> <span class="badge">{group_count}</span>'
+        f'</button>'
+    ]
 
     for cat_cfg in CATEGORIES_CONFIG:
         ck = cat_cfg["key"]
         sec_html = render_category_integrated_section(cat_cfg, platforms, en)
         if sec_html:
             category_sections.append(sec_html)
+            populated_cats.append(cat_cfg)
             pill_name = cat_cfg["pill_en"] if en else cat_cfg["pill_zh"]
             icon = cat_cfg["icon"]
             count = len([g for g in groups if g['category'] == ck])
             count_tag = f'<span class="badge">{count}</span>' if count else ""
             anchor_buttons.append(
-                f'<button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection(\'{ck}\')">'
+                f'<button type="button" class="bench-anchor-pill bench-cat-filter-pill" data-cat="{ck}" aria-pressed="false" onclick="selectBenchCategory(\'{ck}\', true)">'
                 f'{icon} <span>{pill_name}</span> {count_tag}'
                 f'</button>'
             )
+
+    domain_directory_html = render_category_directory(populated_cats, groups, en)
 
     # Summaries report measured coverage and observed ranges only.
     coverage_section = render_coverage_overview_section(platforms, en)
@@ -1712,6 +1853,11 @@ function selectBenchPlatform(pid) {
 }
 
 function jumpToBenchSection(secKey) {
+  var catSec = document.querySelector('.bench-sec-' + secKey + '[data-category]');
+  if (catSec && typeof selectBenchCategory === 'function') {
+    selectBenchCategory(secKey, true);
+    return;
+  }
   var target = document.querySelector('.bench-sec-' + secKey);
   if (target) {
     var nav = document.querySelector('.bench-tabs-wrapper');
@@ -1766,17 +1912,25 @@ function jumpToBenchSection(secKey) {
   <div class="bench-sticky-topline">
     <div class="bench-sticky-title-group">
       <h2 style="margin: 0; font-size: 16.5px; font-weight: 700;">{'Cross-Architecture Benchmark Suite' if en else '全量架构性能评测工作集'}</h2>
-      <span class="meta" style="margin: 0; font-size: 12px;">{f'{group_count} Groups · {workload_count} Measured Variants · 6 Platforms' if en else f'{group_count} 个项目组 · {workload_count} 个实测变体 · 6 个平台'}</span>
+      <span class="meta" style="margin: 0; font-size: 12px;">{f'{len(populated_cats)} Domains · {group_count} Groups · {workload_count} Measured Variants · 6 Platforms' if en else f'{len(populated_cats)} 个领域 · {group_count} 个项目组 · {workload_count} 个实测变体 · 6 个平台'}</span>
     </div>
-  </div>
-  <div class="bench-anchor-bar">
-    <div class="bench-anchor-links">
+    <div class="bench-toolbar-actions">
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('radar')">
         {SVG_RADAR} <span>{'Coverage' if en else '实测覆盖'}</span>
       </button>
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('footprint')">
         {SVG_BRAIN} <span>{'Memory & Size' if en else '内存与体积'}</span>
       </button>
+      <button type="button" class="bench-util-btn" id="bench-compact-btn" aria-pressed="false" data-label-full="{'Full View' if en else '完整图表'}" data-label-compact="{'Compact Tables' if en else '精简表格'}" onclick="toggleBenchCompactMode(this)">
+        <span>{'Compact Tables' if en else '精简表格'}</span>
+      </button>
+      <button type="button" class="bench-util-btn" id="bench-groups-toggle-btn" data-expanded="false" data-label-expand="{'Expand Groups' if en else '展开分组'}" data-label-collapse="{'Collapse Groups' if en else '折叠分组'}" onclick="toggleAllBenchGroups(this)">
+        <span>{'Expand Groups' if en else '展开分组'}</span>
+      </button>
+    </div>
+  </div>
+  <div class="bench-anchor-bar">
+    <div class="bench-anchor-links" role="group" aria-label="{'Filter benchmarks by domain' if en else '按工程领域筛选负载'}">
       {''.join(anchor_buttons)}
     </div>
   </div>
@@ -1789,16 +1943,26 @@ function jumpToBenchSection(secKey) {
   </div>
 </div>
 
-<label class="bench-search-label" for="bench-search">{SVG_SEARCH}<span>{'Search workloads' if en else '搜索负载'}</span>
-  <input id="bench-search" type="search" oninput="searchBenchAll(this.value)" placeholder="{'Name, algorithm or input size' if en else '名称、算法或输入规模'}">
-</label>
+<div class="bench-search-toolbar">
+  <label class="bench-search-label" for="bench-search">{SVG_SEARCH}<span>{'Search workloads' if en else '搜索负载'}</span>
+    <input id="bench-search" type="search" oninput="searchBenchAll(this.value)" placeholder="{'Name, algorithm or input size' if en else '名称、算法或输入规模'}">
+  </label>
+  <div class="bench-filter-status" id="bench-filter-status" hidden data-tpl-shown="{'Showing {shown} of {total} workloads' if en else '当前显示 {shown} / {total} 项负载'}" data-label-reset="{'Reset Filters' if en else '重置筛选'}"></div>
+</div>
 
 <!-- Valid measurement coverage; workloads remain separate. -->
 {coverage_section}
 {footprint_section}
+{domain_directory_html}
 
 <!-- 2. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 6 平台详细数据表) -->
-{''.join(category_sections)}
+<div id="bench-workloads-root" class="bench-workloads-root">
+  {''.join(category_sections)}
+</div>
+<div id="bench-empty-state" class="bench-empty-state" hidden>
+  <p>{'No workloads match the current domain filter and search query.' if en else '当前领域筛选与搜索关键词下暂无匹配的基准负载。'}</p>
+  <button type="button" class="bench-filter-reset-btn" onclick="resetBenchFilters()">{'Show All Workloads' if en else '查看全部负载'}</button>
+</div>
 
 {pending_workloads}
 
