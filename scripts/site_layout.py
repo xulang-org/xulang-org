@@ -1150,6 +1150,23 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         if lang not in ('zh', 'zh-tw') else
         '<a href="/LICENSE">MIT 開源協議</a> · 零 GC · 所有權推斷 · 自研 AOT'
     )
+    if lang == 'zh':
+        footer_text = '<a href="/LICENSE">MIT 开源协议</a> · 零 GC · 所有权推断 · 自研 AOT'
+        footer_nav_items = [
+            (prefix + '/docs/start', '文档'), (prefix + '/api', '标准库 API'),
+            (prefix + '/playground', '演练场'), (prefix + '/benchmarks', '性能横测'),
+            (prefix + '/download', '下载'), (prefix + '/releases', '版本记录'),
+            (prefix + '/blog', '博客'),
+        ]
+    else:
+        api_blog_prefix = ''
+        footer_nav_items = [
+            (prefix + '/docs/start', 'Docs'), (api_blog_prefix + '/api', 'API'),
+            (prefix + '/playground', 'Playground'), (prefix + '/benchmarks', 'Benchmarks'),
+            (prefix + '/download', 'Download'), (prefix + '/releases', 'Releases'),
+            (api_blog_prefix + '/blog', 'Blog'),
+        ]
+    footer_links = ''.join(f'<a href="{escape(href)}">{escape(label)}</a>' for href, label in footer_nav_items)
 
     return template.substitute(
         lang=IN_LANGUAGES.get(lang, 'en'),
@@ -1176,6 +1193,7 @@ def render(root: Path, title: str, route: str, body: str, xu_version: str) -> st
         lang_title=lang_title, lang_label=lang_label,
         theme_label=theme_label, ui_href=prefix + '/docs/ui',
         footer_text=footer_text,
+        footer_links=footer_links,
         header_social=social_links(lang, compact=True), footer_social=social_links(lang),
         social_label=social_label,
         menu_label=menu_label,

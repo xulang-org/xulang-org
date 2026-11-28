@@ -5,6 +5,9 @@
 const benchGroupOpenBeforeSearch = new Map();
 let activeBenchCategory = 'all';
 let activeBenchQuery = '';
+let activeBenchPlatform = 'all';
+let benchMatrixSortCol = '';
+let benchMatrixSortAsc = true;
 
 function applyBenchFilters() {
   const q = (activeBenchQuery || '').toLowerCase().trim();
@@ -21,6 +24,14 @@ function applyBenchFilters() {
     const show = catOk && queryOk;
     block.hidden = !show;
     if (show) visibleCount += 1;
+  });
+
+  document.querySelectorAll('.bench-matrix-row').forEach(row => {
+    const rCat = row.dataset.category || '';
+    const catOk = cat === 'all' || rCat === cat;
+    const text = [row.dataset.name, row.dataset.desc, rCat].join(' ').toLowerCase();
+    const queryOk = !q || text.includes(q);
+    row.hidden = !(catOk && queryOk);
   });
 
   document.querySelectorAll('.bench-workload-group').forEach(group => {
@@ -87,6 +98,121 @@ function applyBenchFilters() {
   }
 }
 
+function toggleBenchMatrixView(btn) {
+  const matrix = document.getElementById('bench-quick-matrix');
+  const root = document.getElementById('bench-workloads-root');
+  if (!matrix || !root) return;
+  const showMatrix = matrix.hidden;
+  matrix.hidden = !showMatrix;
+  root.hidden = showMatrix;
+  if (btn) {
+    btn.classList.toggle('active', showMatrix);
+    btn.setAttribute('aria-pressed', showMatrix ? 'true' : 'false');
+    const labelEl = btn.querySelector('span');
+    if (labelEl) {
+      labelEl.textContent = showMatrix
+        ? (btn.dataset.labelCards || 'Card Charts')
+        : (btn.dataset.labelMatrix || 'Dense Matrix');
+    }
+  }
+}
+
+function fmtMatrixMs(v) {
+  if (v === null || v === undefined || v <= 0) return '—';
+  return v >= 100 ? v.toFixed(1) + ' ms' : v.toFixed(2) + ' ms';
+}
+
+function ratioClassFor(v) {
+  if (v === null || v === undefined || v <= 0) return '';
+  if (v <= 1.0) return 'is-fast';
+  if (v <= 1.2) return 'is-close';
+  return 'is-slow';
+}
+
+function refreshBenchMatrixPlatform(pid) {
+  activeBenchPlatform = pid || 'all';
+  document.querySelectorAll('.bench-matrix-row').forEach(row => {
+    let payload = {};
+    try { payload = JSON.parse(row.dataset.metrics || '{}'); } catch { return; }
+    const m = payload[activeBenchPlatform] || payload.all || {};
+    const setCell = (col, text, ratioVal) => {
+      const td = row.querySelector('[data-col="' + col + '"]');
+      if (!td) return;
+      td.textContent = text;
+      if (col === 'rc' || col === 'rr') {
+        td.classList.remove('is-fast', 'is-close', 'is-slow');
+        const cls = ratioClassFor(ratioVal);
+        if (cls) td.classList.add(cls);
+      }
+    };
+    setCell('xu', fmtMatrixMs(m.xu));
+    setCell('c', fmtMatrixMs(m.c));
+    setCell('rc', m.rc ? m.rc.toFixed(2) + '×' : '—', m.rc);
+    setCell('r', fmtMatrixMs(m.r));
+    setCell('rr', m.rr ? m.rr.toFixed(2) + '×' : '—', m.rr);
+    setCell('rss', m.rss ? m.rss.toFixed(1) + ' MiB' : '—');
+    setCell('kb', m.kb ? Math.round(m.kb) + ' KiB' : '—');
+  });
+}
+
+function sortBenchMatrix(colKey, btn) {
+  const tbody = document.getElementById('bench-quick-matrix-body');
+  if (!tbody) return;
+  if (benchMatrixSortCol === colKey) {
+    benchMatrixSortAsc = !benchMatrixSortAsc;
+  } else {
+    benchMatrixSortCol = colKey;
+    benchMatrixSortAsc = true;
+  }
+  const rows = Array.from(tbody.querySelectorAll('.bench-matrix-row'));
+  rows.sort((a, b) => {
+    let pa = {}; let pb = {};
+    try { pa = JSON.parse(a.dataset.metrics || '{}'); } catch {}
+    try { pb = JSON.parse(b.dataset.metrics || '{}'); } catch {}
+    const ma = (pa[activeBenchPlatform] || pa.all || {})[colKey];
+    const mb = (pb[activeBenchPlatform] || pb.all || {})[colKey];
+    const va = (ma !== null && ma !== undefined && ma > 0) ? ma : 1e18;
+    const vb = (mb !== null && mb !== undefined && mb > 0) ? mb : 1e18;
+    if (va === vb) return 0;
+    return benchMatrixSortAsc ? va - vb : vb - va;
+  });
+  rows.forEach(r => tbody.appendChild(r));
+  document.querySelectorAll('.bench-matrix-sort').forEach(b => b.classList.remove('is-sorted'));
+  if (btn) btn.classList.add('is-sorted');
+}
+
+function jumpToWorkloadCard(wname) {
+  const matrix = document.getElementById('bench-quick-matrix');
+  const root = document.getElementById('bench-workloads-root');
+  const toggleBtn = document.getElementById('bench-matrix-toggle-btn');
+  if (matrix && root && !matrix.hidden) {
+    matrix.hidden = true;
+    root.hidden = false;
+    if (toggleBtn) {
+      toggleBtn.classList.remove('active');
+      toggleBtn.setAttribute('aria-pressed', 'false');
+      const labelEl = toggleBtn.querySelector('span');
+      if (labelEl) labelEl.textContent = toggleBtn.dataset.labelMatrix || 'Dense Matrix';
+    }
+  }
+  const target = document.getElementById('workload-' + wname);
+  if (target) {
+    const group = target.closest('.bench-workload-group');
+    if (group) group.open = true;
+    const top = target.getBoundingClientRect().top + window.pageYOffset - benchStickyOffset();
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+  }
+}
+
+function benchStickyOffset() {
+  const header = document.querySelector('.header-bar');
+  const headerH = header ? header.offsetHeight : 56;
+  const nav = document.querySelector('.bench-tabs-wrapper');
+  const navSticky = nav && getComputedStyle(nav).position === 'sticky';
+  const navH = navSticky ? nav.offsetHeight : 0;
+  return headerH + navH + 16;
+}
+
 function selectBenchCategory(catKey, shouldScroll) {
   activeBenchCategory = catKey || 'all';
   applyBenchFilters();
@@ -100,9 +226,7 @@ function selectBenchCategory(catKey, shouldScroll) {
       ? document.getElementById('bench-workloads-root')
       : document.querySelector('.bench-sec-' + activeBenchCategory);
     if (target) {
-      const nav = document.querySelector('.bench-tabs-wrapper');
-      const navHeight = nav ? nav.offsetHeight : 80;
-      const top = target.getBoundingClientRect().top + window.pageYOffset - navHeight - 16;
+      const top = target.getBoundingClientRect().top + window.pageYOffset - benchStickyOffset();
       window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
     }
   }
@@ -166,6 +290,11 @@ function revealBenchHash() {
       selectBenchCategory(catKey, true);
     }
     return;
+  }
+  const el = document.getElementById(id);
+  if (el) {
+    const drawer = el.closest('.bench-section-drawer');
+    if (drawer) drawer.open = true;
   }
   if (!id.startsWith('workload-') && !id.startsWith('group-')) return;
   const target = document.getElementById(id);
