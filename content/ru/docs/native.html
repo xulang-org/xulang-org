@@ -4,6 +4,22 @@
 <h1>Нативные модули и взаимодействие с C (FFI)</h1>
 <p class="banner">Интероперабельность с C/C++ с нулевой стоимостью: прямой вызов внешних функций, линковка статических библиотек и безопасные заимствованные срезы.</p>
 
+<h2>Два взаимодополняющих подхода: <code>extern &quot;C&quot;</code> и <code>xu native</code></h2>
+<p>В Xu одновременно поддерживаются два взаимодополняющих механизма взаимодействия с C: прямой FFI (<code>extern &quot;C&quot;</code> + <code>#ffi</code>) и статические нативные модули (<code>xu native</code> + <code>include/xu_native.h</code>):</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Критерий</th><th><code>extern &quot;C&quot;</code> + <code>#ffi</code> (прямой FFI)</th><th><code>xu native</code> + <code>include/xu_native.h</code> (статический модуль)</th></tr></thead>
+<tbody>
+<tr><td><strong>Основной сценарий</strong></td><td>Прямой вызов готовых системных и сторонних динамических библиотек (<code>libc</code>, <code>libsqlite3</code>, <code>libSDL3</code>, GPU/AI)</td><td>Упаковка собственного C / C++ / Objective-C кода в статический архив <code>.a</code> или кроссплатформенный контейнер <code>.xulib</code></td></tr>
+<tr><td><strong>Накладные расходы</strong></td><td>Отдельный C-адаптер не требуется — достаточно объявить сигнатуру в Xu</td><td>Требуется тонкий C-мост и JSON-манифест, собираемые через <code>xu native</code></td></tr>
+<tr><td><strong>Граница безопасности</strong></td><td>Вызовы выполняются внутри <code>unsafe { }</code>; указатели <code>c_ptr</code> контролирует вызывающая сторона</td><td>На стороне Xu <strong>не требуется <code>unsafe</code></strong>; <code>xu-c-2</code> передаёт заимствованные срезы без копирования (<code>&amp;[]int</code> / <code>$&amp;[]int</code> / <code>&amp;[]u8</code> / <code>$&amp;[]u8</code>) с защитой COW</td></tr>
+<tr><td><strong>Линковка и доставка</strong></td><td>Обычно загружается динамически (через <code>dlopen</code>) и зависит от окружения целевой машины</td><td>Статическая линковка в итоговый артефакт; <code>.xulib</code> включает срезы для разных платформ (включая iOS / Android) и проверку SHA-256</td></tr>
+<tr><td><strong>Возможности и инструменты</strong></td><td>Поддержка <code>@repr(&quot;C&quot;)</code>, <code>c_callback</code>, variadic-функций и любых C-структур через <code>#ffi</code></td><td>Контролируемый ABI для скаляров и заимствованных span-срезов через <code>bin/xu-native</code> и <code>include/xu_native.h</code></td></tr>
+</tbody></table></div>
+<ul>
+  <li><strong>Готовые системные или динамические C-библиотеки</strong> → используйте <code>extern &quot;C&quot;</code> + <code>#ffi</code>.</li>
+  <li><strong>Собственные мосты на C / C++ / ObjC, безопасные zero-copy срезы без <code>unsafe</code> или распространение в формате <code>.xulib</code></strong> → используйте <code>xu native</code> + <code>include/xu_native.h</code>.</li>
+</ul>
+
 <h2>Прямой вызов C-функций</h2>
 <p>Функции на C объявляются с префиксом <code>extern</code>:</p>
 

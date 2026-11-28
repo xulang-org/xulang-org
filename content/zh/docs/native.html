@@ -7,6 +7,22 @@
 
 <p>本文档深入解析 Xu 的原生互操作机制、通用静态库与 <code>.xulib</code> 的分工定位、支持的完整数据类型映射表以及端到端完整的 7 个开发动作。</p>
 
+<h2>两种原生互操作路径：<code>extern &quot;C&quot;</code> 与 <code>xu native</code></h2>
+<p>Xu 同时保留并长期维护两套互补的 C 原生互操作机制：直接 C FFI（<code>extern &quot;C&quot;</code> + 标准库 <code>#ffi</code>）与静态原生模块（<code>xu native</code> + <code>include/xu_native.h</code>）。二者定位不同，而非新旧替代：</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>维度</th><th><code>extern &quot;C&quot;</code> + <code>#ffi</code>（直接 C FFI）</th><th><code>xu native</code> + <code>include/xu_native.h</code>（静态原生模块）</th></tr></thead>
+<tbody>
+<tr><td><strong>适用场景</strong></td><td>直接调用现成系统库或第三方动态库（如 <code>libc</code>、<code>libsqlite3</code>、<code>libSDL3</code>、GPU / AI 驱动）</td><td>封装自有 C / C++ / Objective-C 桥接代码，打包为静态 <code>.a</code> 或跨平台 <code>.xulib</code></td></tr>
+<tr><td><strong>胶水成本</strong></td><td>无需单独编写 C 胶水文件，在 Xu 源码中直接声明即可调用</td><td>需编写薄 C 桥接与 JSON Manifest，经 <code>xu native</code> 编译归档</td></tr>
+<tr><td><strong>安全边界</strong></td><td>调用点须在 <code>unsafe { }</code> 内，裸指针 <code>c_ptr</code> 与内存布局由调用方保证</td><td>Xu 调用侧<strong>无需 <code>unsafe</code></strong>；<code>xu-c-2</code> 通过借用检查传递零拷贝切片（<code>&amp;[]int</code> / <code>$&amp;[]int</code> / <code>&amp;[]u8</code> / <code>$&amp;[]u8</code>），并自动保障写时复制（COW）</td></tr>
+<tr><td><strong>链接与分发</strong></td><td>常见用法通过动态库（如 <code>dlopen</code>）加载，依赖目标机运行库环境</td><td>静态链接进最终产物；<code>.xulib</code> 内置多平台切片（含 iOS / Android）与 SHA-256 校验，适合移动端与独立分发</td></tr>
+<tr><td><strong>能力与配套</strong></td><td>支持 <code>@repr(&quot;C&quot;)</code>、<code>c_callback</code>、变参与任意 C 结构体，配套标准库 <code>#ffi</code></td><td>收敛为受控标量与借用 span ABI，配套工具链 <code>bin/xu-native</code> 与头文件 <code>include/xu_native.h</code></td></tr>
+</tbody></table></div>
+<ul>
+  <li><strong>对接现成 C / 系统 / 动态库</strong> → 优先使用 <code>extern &quot;C&quot;</code> + <code>#ffi</code>。</li>
+  <li><strong>封装自有 C / C++ / ObjC 代码、需要无 <code>unsafe</code> 零拷贝借用切片或跨平台静态 <code>.xulib</code> 分发</strong> → 使用 <code>xu native</code> + <code>include/xu_native.h</code>（下文详解该路径）。</li>
+</ul>
+
 <h2>1. 核心结论：通用 .a 与 .xulib 的关系</h2>
 <ul>
   <li><strong>标准通用 <code>.a</code>（Unix 静态归档库）原生支持且地位完全平等</strong>：使用 <code>xu native compile</code> 或 <code>xu native archive</code> 将 Xu 接口元数据与原生对象一起打包。在 <code>macos-arm64</code> 和 <code>macos-x64</code> 上，可在命令行 <code>xu build main.xu module.a</code> 或 <code>xu.xun</code> 的 <code>native:</code> 中直接声明引用，底层最终由操作系统原生链接器（<code>ld</code> / <code>clang</code> / <code>lld</code>）静态链接。</li>
