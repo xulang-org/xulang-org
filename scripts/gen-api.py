@@ -2419,7 +2419,7 @@ def highlight_xu(sig: str) -> str:
         r'|(?P<import>#[A-Za-z0-9_/]+)'
         r'|(?P<borrow>\$&)'
         r'|(?P<flow>>>>|<<<|>>|<<|:=|<-|->)'
-        r'|(?P<kw>\b(?:pub|fn|struct|const|affine|defer|xu|if|else|match|return|interface|type|chan|or|for|while|in)\b@?)'
+        r'|(?P<kw>\b(?:pub|fn|struct|const|affine|defer|xu|if|else|match|return|interface|type|chan|for|while|in)\b@?)'
         r'|(?P<type>\b(?:int|i8|i16|i32|i64|u8|u16|u32|u64|f32|f64|string|bool|char|void|any|error|byte|rune|Self)\b)'
     )
     parts = []
