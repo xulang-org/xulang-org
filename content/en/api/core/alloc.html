@@ -1,20 +1,24 @@
 <!--title: #core/alloc-->
 <p class="crumb">API</p>
 <h1><code>#core/alloc</code></h1>
-<!--xu-api-version: 0.14.1-->
+<!--xu-api-version: 0.14.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#core/alloc</code></p>
-<p class="meta">counts: 1 functions, 0 methods, 1 types, 0 constants, 1 method sets</p>
-<p class="lead">Memory allocation contracts for kernels, drivers, and embedded systems.</p>
+<p class="meta">counts: 7 functions, 24 methods, 4 types, 0 constants, 1 method sets</p>
+<p class="lead">Memory allocation contracts and zero-dependency freestanding allocators (BumpAllocator, FixedPoolAllocator, LinkedListAllocator) for baremetal kernels, drivers, and embedded systems.</p>
 <article class="api-item" id="struct-Layout">
 <h2><code>struct Layout</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> Layout {
-
+    <span class="syn-kw">pub</span> size <span class="syn-type">int</span>
+    <span class="syn-kw">pub</span> align <span class="syn-type">int</span>
 }</code></pre></div>
 <h3>Purpose</h3>
-<p><code>Layout</code> context or state structure.</p>
+<p>Structure encapsulating size, align.</p>
 <h3>Public fields</h3>
-<p class="api-none">This type has no public fields.</p>
+<dl class="api-params">
+<dt><code>size</code> <span class="type">int</span></dt><dd>field (int)</dd>
+<dt><code>align</code> <span class="type">int</span></dt><dd>field (int)</dd>
+</dl>
 </article>
 <article class="api-item" id="layout_new">
 <h2><code>layout_new</code></h2>
@@ -32,20 +36,20 @@
 <article class="api-item" id="iface-GlobalAlloc">
 <h2><code>struct@ GlobalAlloc</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct@</span> GlobalAlloc {
-    <span class="syn-kw">fn</span> alloc(layout Layout) *raw <span class="syn-type">u8</span>
-    <span class="syn-kw">fn</span> dealloc(ptr *raw <span class="syn-type">u8</span>, layout Layout)
+    <span class="syn-kw">fn</span> alloc(Layout) *raw <span class="syn-type">u8</span>
+    <span class="syn-kw">fn</span> dealloc(*raw <span class="syn-type">u8</span>, Layout)
 }</code></pre></div>
 <h3>Purpose</h3>
 <p>Method-set constraint <code>GlobalAlloc</code>.</p>
 <h3>Required methods</h3>
 <dl class="api-params">
-<dt><code>alloc</code> <span class="type">fn alloc(layout Layout) *raw u8</span></dt><dd>Execute <code>alloc</code> on <code>GlobalAlloc</code>.</dd>
-<dt><code>dealloc</code> <span class="type">fn dealloc(ptr *raw u8, layout Layout)</span></dt><dd>Execute <code>dealloc</code> on <code>GlobalAlloc</code>.</dd>
+<dt><code>alloc</code> <span class="type">fn alloc(Layout) *raw u8</span></dt><dd>Execute <code>alloc</code> on <code>GlobalAlloc</code>.</dd>
+<dt><code>dealloc</code> <span class="type">fn dealloc(*raw u8, Layout)</span></dt><dd>Execute <code>dealloc</code> on <code>GlobalAlloc</code>.</dd>
 </dl>
 </article>
 <article class="api-item" id="GlobalAlloc-alloc">
 <h2><code>(GlobalAlloc) alloc</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">fn</span> alloc(layout Layout) *raw <span class="syn-type">u8</span></code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">fn</span> alloc(Layout) *raw <span class="syn-type">u8</span></code></pre></div>
 <h3>Purpose</h3>
 <p>Execute <code>alloc</code> on <code>GlobalAlloc</code>.</p>
 <h3>Parameters</h3>
@@ -58,15 +62,467 @@
 </article>
 <article class="api-item" id="GlobalAlloc-dealloc">
 <h2><code>(GlobalAlloc) dealloc</code></h2>
-<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">fn</span> dealloc(ptr *raw <span class="syn-type">u8</span>, layout Layout)</code></pre></div>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">fn</span> dealloc(*raw <span class="syn-type">u8</span>, Layout)</code></pre></div>
 <h3>Purpose</h3>
 <p>Execute <code>dealloc</code> on <code>GlobalAlloc</code>.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>self</code> <span class="type">Self</span></dt><dd>The <code>Self</code> instance used by this call (value receiver).</dd>
+<dt><code>v</code> <span class="type">*raw u8</span></dt><dd>value (*raw u8)</dd>
+<dt><code>layout</code> <span class="type">Layout</span></dt><dd>layout (Layout)</dd>
+</dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
+</article>
+<article class="api-item" id="is_power_of_two">
+<h2><code>is_power_of_two</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> is_power_of_two(n usize) <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Whether it is power of two.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>n</code> <span class="type">usize</span></dt><dd>count, length, or limit (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="align_up">
+<h2><code>align_up</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> align_up(addr usize, align usize) usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Align up.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>addr</code> <span class="type">usize</span></dt><dd>address (usize)</dd>
+<dt><code>align</code> <span class="type">usize</span></dt><dd>align (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="align_down">
+<h2><code>align_down</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> align_down(addr usize, align usize) usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Align down.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>addr</code> <span class="type">usize</span></dt><dd>address (usize)</dd>
+<dt><code>align</code> <span class="type">usize</span></dt><dd>align (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="Layout-byte_size">
+<h2><code>(Layout) byte_size</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (l Layout) byte_size() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>Layout</code>: byte size.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>l</code> <span class="type">Layout</span></dt><dd>The <code>Layout</code> instance used by this call (value receiver).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="Layout-byte_align">
+<h2><code>(Layout) byte_align</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (l Layout) byte_align() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>Layout</code>: byte align.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>l</code> <span class="type">Layout</span></dt><dd>The <code>Layout</code> instance used by this call (value receiver).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="Layout-is_valid">
+<h2><code>(Layout) is_valid</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (l Layout) is_valid() <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>Layout</code>: whether it is valid.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>l</code> <span class="type">Layout</span></dt><dd>The <code>Layout</code> instance used by this call (value receiver).</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="struct-BumpAllocator">
+<h2><code>struct BumpAllocator</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> BumpAllocator {
+    <span class="syn-kw">pub</span> base usize
+    <span class="syn-kw">pub</span> limit usize
+    <span class="syn-kw">pub</span> cursor usize
+    <span class="syn-kw">pub</span> allocs usize
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>Structure encapsulating base, limit, cursor, allocs.</p>
+<h3>Public fields</h3>
+<dl class="api-params">
+<dt><code>base</code> <span class="type">usize</span></dt><dd>numeric base</dd>
+<dt><code>limit</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>cursor</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>allocs</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+</dl>
+</article>
+<article class="api-item" id="bump_init">
+<h2><code>bump_init</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> bump_init(a *raw BumpAllocator, base *raw <span class="syn-type">u8</span>, size usize)</code></pre></div>
+<h3>Purpose</h3>
+<p>Bump init.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">*raw BumpAllocator</span></dt><dd>value (*raw BumpAllocator)</dd>
+<dt><code>base</code> <span class="type">*raw u8</span></dt><dd>numeric base (*raw u8)</dd>
+<dt><code>size</code> <span class="type">usize</span></dt><dd>size (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
+</article>
+<article class="api-item" id="--BumpAllocator-alloc_raw">
+<h2><code>($&amp;BumpAllocator) alloc_raw</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>BumpAllocator) alloc_raw(size usize, align usize) *raw <span class="syn-type">u8</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>$&amp;BumpAllocator</code>: alloc raw.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;BumpAllocator</span></dt><dd>The <code>BumpAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>size</code> <span class="type">usize</span></dt><dd>size (usize)</dd>
+<dt><code>align</code> <span class="type">usize</span></dt><dd>align (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>*raw u8 — a value of this type</p>
+</article>
+<article class="api-item" id="--BumpAllocator-alloc_zeroed">
+<h2><code>($&amp;BumpAllocator) alloc_zeroed</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>BumpAllocator) alloc_zeroed(size usize, align usize) *raw <span class="syn-type">u8</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>$&amp;BumpAllocator</code>: alloc zeroed.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;BumpAllocator</span></dt><dd>The <code>BumpAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>size</code> <span class="type">usize</span></dt><dd>size (usize)</dd>
+<dt><code>align</code> <span class="type">usize</span></dt><dd>align (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>*raw u8 — a value of this type</p>
+</article>
+<article class="api-item" id="--BumpAllocator-alloc">
+<h2><code>($&amp;BumpAllocator) alloc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>BumpAllocator) alloc(layout Layout) *raw <span class="syn-type">u8</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>alloc</code> on <code>$&amp;BumpAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;BumpAllocator</span></dt><dd>The <code>BumpAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>layout</code> <span class="type">Layout</span></dt><dd>layout (Layout)</dd>
+</dl>
+<h3>Returns</h3>
+<p>*raw u8 — a value of this type</p>
+</article>
+<article class="api-item" id="--BumpAllocator-dealloc">
+<h2><code>($&amp;BumpAllocator) dealloc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>BumpAllocator) dealloc(ptr *raw <span class="syn-type">u8</span>, layout Layout)</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>dealloc</code> on <code>$&amp;BumpAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;BumpAllocator</span></dt><dd>The <code>BumpAllocator</code> instance used by this call (exclusive borrow).</dd>
 <dt><code>ptr</code> <span class="type">*raw u8</span></dt><dd>ptr (*raw u8)</dd>
 <dt><code>layout</code> <span class="type">Layout</span></dt><dd>layout (Layout)</dd>
 </dl>
 <h3>Returns</h3>
 <p>This call does not return a value.</p>
+</article>
+<article class="api-item" id="--BumpAllocator-reset">
+<h2><code>($&amp;BumpAllocator) reset</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>BumpAllocator) reset()</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>$&amp;BumpAllocator</code>: clear internal state so the value can be reused.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;BumpAllocator</span></dt><dd>The <code>BumpAllocator</code> instance used by this call (exclusive borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
+</article>
+<article class="api-item" id="-BumpAllocator-used">
+<h2><code>(&amp;BumpAllocator) used</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;BumpAllocator) used() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>used</code> on <code>&amp;BumpAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">&amp;BumpAllocator</span></dt><dd>The <code>BumpAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="-BumpAllocator-remaining">
+<h2><code>(&amp;BumpAllocator) remaining</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;BumpAllocator) remaining() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>remaining</code> on <code>&amp;BumpAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">&amp;BumpAllocator</span></dt><dd>The <code>BumpAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="struct-FixedPoolAllocator">
+<h2><code>struct FixedPoolAllocator</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> FixedPoolAllocator {
+    <span class="syn-kw">pub</span> base usize
+    <span class="syn-kw">pub</span> end usize
+    <span class="syn-kw">pub</span> slot_size usize
+    <span class="syn-kw">pub</span> capacity usize
+    <span class="syn-kw">pub</span> free_head usize
+    <span class="syn-kw">pub</span> free_count usize
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>Structure encapsulating base, end, slot_size, capacity, free_head.</p>
+<h3>Public fields</h3>
+<dl class="api-params">
+<dt><code>base</code> <span class="type">usize</span></dt><dd>numeric base</dd>
+<dt><code>end</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>slot_size</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>capacity</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>free_head</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>free_count</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+</dl>
+</article>
+<article class="api-item" id="fixed_pool_init">
+<h2><code>fixed_pool_init</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> fixed_pool_init(p *raw FixedPoolAllocator, mem_base *raw <span class="syn-type">u8</span>, mem_bytes usize, slot_size usize, slot_align usize) usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Fixed pool init.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>p</code> <span class="type">*raw FixedPoolAllocator</span></dt><dd>p (*raw FixedPoolAllocator)</dd>
+<dt><code>mem_base</code> <span class="type">*raw u8</span></dt><dd>mem_base (*raw u8)</dd>
+<dt><code>mem_bytes</code> <span class="type">usize</span></dt><dd>mem_bytes (usize)</dd>
+<dt><code>slot_size</code> <span class="type">usize</span></dt><dd>slot_size (usize)</dd>
+<dt><code>slot_align</code> <span class="type">usize</span></dt><dd>slot_align (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="--FixedPoolAllocator-alloc_slot">
+<h2><code>($&amp;FixedPoolAllocator) alloc_slot</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">$&amp;</span>FixedPoolAllocator) alloc_slot() *raw <span class="syn-type">u8</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>$&amp;FixedPoolAllocator</code>: alloc slot.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>p</code> <span class="type">$&amp;FixedPoolAllocator</span></dt><dd>The <code>FixedPoolAllocator</code> instance used by this call (exclusive borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>*raw u8 — a value of this type</p>
+</article>
+<article class="api-item" id="--FixedPoolAllocator-free_slot">
+<h2><code>($&amp;FixedPoolAllocator) free_slot</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p <span class="syn-borrow">$&amp;</span>FixedPoolAllocator) free_slot(ptr *raw <span class="syn-type">u8</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>$&amp;FixedPoolAllocator</code>: free slot.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>p</code> <span class="type">$&amp;FixedPoolAllocator</span></dt><dd>The <code>FixedPoolAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>ptr</code> <span class="type">*raw u8</span></dt><dd>ptr (*raw u8)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="-FixedPoolAllocator-available">
+<h2><code>(&amp;FixedPoolAllocator) available</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;FixedPoolAllocator) available() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>available</code> on <code>&amp;FixedPoolAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>p</code> <span class="type">&amp;FixedPoolAllocator</span></dt><dd>The <code>FixedPoolAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="-FixedPoolAllocator-in_use">
+<h2><code>(&amp;FixedPoolAllocator) in_use</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;FixedPoolAllocator) in_use() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;FixedPoolAllocator</code>: in use.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>p</code> <span class="type">&amp;FixedPoolAllocator</span></dt><dd>The <code>FixedPoolAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="struct-LinkedListAllocator">
+<h2><code>struct LinkedListAllocator</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">struct</span> LinkedListAllocator {
+    <span class="syn-kw">pub</span> base usize
+    <span class="syn-kw">pub</span> end usize
+    <span class="syn-kw">pub</span> head usize
+    <span class="syn-kw">pub</span> bytes_used usize
+    <span class="syn-kw">pub</span> bytes_free usize
+    <span class="syn-kw">pub</span> block_count usize
+    <span class="syn-kw">pub</span> alloc_count usize
+    <span class="syn-kw">pub</span> free_count usize
+}</code></pre></div>
+<h3>Purpose</h3>
+<p>Structure encapsulating base, end, head, bytes_used, bytes_free.</p>
+<h3>Public fields</h3>
+<dl class="api-params">
+<dt><code>base</code> <span class="type">usize</span></dt><dd>numeric base</dd>
+<dt><code>end</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>head</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>bytes_used</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>bytes_free</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>block_count</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>alloc_count</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+<dt><code>free_count</code> <span class="type">usize</span></dt><dd>field (usize)</dd>
+</dl>
+</article>
+<article class="api-item" id="linked_list_init">
+<h2><code>linked_list_init</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> linked_list_init(a *raw LinkedListAllocator, base *raw <span class="syn-type">u8</span>, size usize) <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Linked list init.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">*raw LinkedListAllocator</span></dt><dd>value (*raw LinkedListAllocator)</dd>
+<dt><code>base</code> <span class="type">*raw u8</span></dt><dd>numeric base (*raw u8)</dd>
+<dt><code>size</code> <span class="type">usize</span></dt><dd>size (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="--LinkedListAllocator-alloc_raw">
+<h2><code>($&amp;LinkedListAllocator) alloc_raw</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>LinkedListAllocator) alloc_raw(size usize, align usize) *raw <span class="syn-type">u8</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>$&amp;LinkedListAllocator</code>: alloc raw.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>size</code> <span class="type">usize</span></dt><dd>size (usize)</dd>
+<dt><code>align</code> <span class="type">usize</span></dt><dd>align (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>*raw u8 — a value of this type</p>
+</article>
+<article class="api-item" id="--LinkedListAllocator-alloc_zeroed">
+<h2><code>($&amp;LinkedListAllocator) alloc_zeroed</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>LinkedListAllocator) alloc_zeroed(size usize, align usize) *raw <span class="syn-type">u8</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>$&amp;LinkedListAllocator</code>: alloc zeroed.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>size</code> <span class="type">usize</span></dt><dd>size (usize)</dd>
+<dt><code>align</code> <span class="type">usize</span></dt><dd>align (usize)</dd>
+</dl>
+<h3>Returns</h3>
+<p>*raw u8 — a value of this type</p>
+</article>
+<article class="api-item" id="--LinkedListAllocator-dealloc_raw">
+<h2><code>($&amp;LinkedListAllocator) dealloc_raw</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>LinkedListAllocator) dealloc_raw(ptr *raw <span class="syn-type">u8</span>) <span class="syn-type">bool</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>$&amp;LinkedListAllocator</code>: dealloc raw.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>ptr</code> <span class="type">*raw u8</span></dt><dd>ptr (*raw u8)</dd>
+</dl>
+<h3>Returns</h3>
+<p>bool — true or false</p>
+</article>
+<article class="api-item" id="--LinkedListAllocator-alloc">
+<h2><code>($&amp;LinkedListAllocator) alloc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>LinkedListAllocator) alloc(layout Layout) *raw <span class="syn-type">u8</span></code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>alloc</code> on <code>$&amp;LinkedListAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>layout</code> <span class="type">Layout</span></dt><dd>layout (Layout)</dd>
+</dl>
+<h3>Returns</h3>
+<p>*raw u8 — a value of this type</p>
+</article>
+<article class="api-item" id="--LinkedListAllocator-dealloc">
+<h2><code>($&amp;LinkedListAllocator) dealloc</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a <span class="syn-borrow">$&amp;</span>LinkedListAllocator) dealloc(ptr *raw <span class="syn-type">u8</span>, layout Layout)</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>dealloc</code> on <code>$&amp;LinkedListAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">$&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (exclusive borrow).</dd>
+<dt><code>ptr</code> <span class="type">*raw u8</span></dt><dd>ptr (*raw u8)</dd>
+<dt><code>layout</code> <span class="type">Layout</span></dt><dd>layout (Layout)</dd>
+</dl>
+<h3>Returns</h3>
+<p>This call does not return a value.</p>
+</article>
+<article class="api-item" id="-LinkedListAllocator-used">
+<h2><code>(&amp;LinkedListAllocator) used</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;LinkedListAllocator) used() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>used</code> on <code>&amp;LinkedListAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="-LinkedListAllocator-free_bytes">
+<h2><code>(&amp;LinkedListAllocator) free_bytes</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;LinkedListAllocator) free_bytes() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Operation on <code>&amp;LinkedListAllocator</code>: free bytes.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="-LinkedListAllocator-blocks">
+<h2><code>(&amp;LinkedListAllocator) blocks</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;LinkedListAllocator) blocks() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>blocks</code> on <code>&amp;LinkedListAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="-LinkedListAllocator-allocs">
+<h2><code>(&amp;LinkedListAllocator) allocs</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;LinkedListAllocator) allocs() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>allocs</code> on <code>&amp;LinkedListAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
+</article>
+<article class="api-item" id="-LinkedListAllocator-frees">
+<h2><code>(&amp;LinkedListAllocator) frees</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (a &amp;LinkedListAllocator) frees() usize</code></pre></div>
+<h3>Purpose</h3>
+<p>Execute <code>frees</code> on <code>&amp;LinkedListAllocator</code>.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>a</code> <span class="type">&amp;LinkedListAllocator</span></dt><dd>The <code>LinkedListAllocator</code> instance used by this call (borrow).</dd>
+</dl>
+<h3>Returns</h3>
+<p>usize — a value of this type</p>
 </article>

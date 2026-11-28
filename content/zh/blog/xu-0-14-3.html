@@ -1,0 +1,89 @@
+<!--title: Xu 0.14.3 发布 · 二进制格式全平台加固、128-bit SLP 自动向量化与 121 项工作负载跨语言横测-->
+<!--summary: Xu 0.14.3（合并 0.14.2–0.14.3 演进）确立 >> 抛错与 >>> / >>> (err) {} 错误处理语法，完成 Windows PE32+、Linux ELF PIE/W^X/RELRO/CET、macOS 内建 Ad-hoc 签名及 WASM 全平台格式加固，合入 128-bit SLP 自动向量化、Ext-TSP 布局、SwissTable SWAR core/map 与 M:N 多核协程调度，并通过六平台 121 项标准工作负载跨语言横测。-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.14.3 发布 · 二进制格式全平台加固、128-bit SLP 自动向量化与 121 项工作负载跨语言横测</h1>
+<p class="meta"><time datetime="2026-11-27">2026-11-27</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.3">Xu v0.14.3</a></p>
+
+<p>Xu 0.14.3 正式发布！本版本汇集 <code>0.14.2</code>–<code>0.14.3</code> 两个里程碑的核心工程成果：在语言前端确立 <code>&gt;&gt;</code> 抛错与 <code>&gt;&gt;&gt;</code> / <code>&gt;&gt;&gt; (err) {}</code> 接错语法及跨函数多错误恢复；在编译优化层落地 128-bit SLP 自动向量化、Ext-TSP 布局、相关跳跃线程化、SwissTable <code>core/map</code> 与 Phase 5–7 通用 MIR/后端优化；在目标格式层完成 Windows PE32+、Linux ELF、macOS Mach-O 与 WASM 全平台安全加固；同时大幅拓展 <code>#core</code> 裸机/UEFI 原语、<code>#sync/pool</code> 多核 M:N 调度、<code>#tensor</code>/<code>llm_engine</code>、<code>#ui/widgets</code> 与 <code>xu doctor</code>/<code>#ui/phone</code>。全版本已通过六大目标平台自举不动点与 <strong>121 项标准工作负载</strong>（覆盖 11 大工程领域）跨语言基准横测。</p>
+
+<h2>1. 语言语法定型与跨声明多错误恢复</h2>
+<ul>
+  <li><strong>错误处理语义清晰分界</strong>：全面统一编译器、CLI 工具链、标准库、官网与测试集——<code>&gt;&gt; expr</code> 用于显式抛出错误，<code>expr &gt;&gt;&gt;</code> 与 <code>expr &gt;&gt;&gt; (err) { ... }</code> 用于错误传播与接住处理，并在解析器中消歧三重泛型闭合 <code>&gt;&gt;&gt;</code>。</li>
+  <li><strong>跨声明多错误检查与借用恢复</strong>：检查器支持跨声明与跨函数持续收集诊断（单轮上限 <code>MAX_DIAG_ERRORS = 25</code>），通过 <code>ERROR_TY</code> / <code>fn_failed()</code> 抑制单函数内级联误报，配套回归套件 <code>scripts/test_checker_multi_error.py</code>。</li>
+</ul>
+
+<h2>2. 全平台二进制格式标准化与安全加固</h2>
+<ul>
+  <li><strong>Windows PE32+ (<code>windows-arm64</code> / <code>windows-x64</code>)</strong>：严格分离 W^X 节权限（<code>.text</code> RX、<code>.rdata</code> R、<code>.data</code> RW），发射 <code>.reloc</code> 基址重定位、PE Load Config / Security Cookie（<code>IMAGE_GUARD_CF_INSTRUMENTED</code> / <code>_load_config_used</code>）与 <code>.pdata</code>/<code>.xdata</code> 系统栈展开表。</li>
+  <li><strong>Linux ELF32/ELF64 (<code>linux-x64</code> / <code>linux-arm64</code> / <code>linux-riscv64</code> / <code>linux-loongarch64</code> / <code>linux-riscv32</code>)</strong>：默认开启严格 W^X、<code>ET_DYN</code> PIE、Full RELRO（<code>DF_BIND_NOW</code>）、<code>.note.gnu.build-id</code>、Intel CET IBT（<code>endbr64</code>）、CFI 栈展开帧与完整节头表。</li>
+  <li><strong>macOS Mach-O (<code>macos-arm64</code> / <code>macos-x64</code>)</strong>：新增 <code>__DATA_CONST</code> 只读数据段、<code>LC_UUID</code>、<code>LC_BUILD_VERSION</code>，并在发布/调试全模式下内建原生 <code>LC_CODE_SIGNATURE</code> Ad-hoc 代码签名，开箱直接运行；同步加固 COFF/ELF/Mach-O <code>.xuobj</code> 转换与 WASM 产物。</li>
+</ul>
+
+<h2>3. 编译器优化、SwissTable 运行时与 M:N 多核调度</h2>
+<ul>
+  <li><strong>128-bit SLP 自动向量化与 CFG 重排（0.14.2）</strong>：引入块内 SLP 自动向量化（<code>opt_slp</code>，<code>XU_NO_SLP=1</code> 可关闭），将同构数组访存/算术树与 4 路关联整数归约打包为 ARM64 NEON 与 x86-64 SSE2 向量指令；引入 Wu–Larus + Ext-TSP 基本块布局（<code>opt_cfg</code>）、相关跳跃线程化（<code>opt_jump_thread</code>）、寄存器空洞复用与常量重物化。</li>
+  <li><strong>Phase 5–7 通用优化与代码生成对齐（0.14.3）</strong>：新增单调用点内联、单块与递减计数循环展开、面向 <code>div</code>/<code>mod</code>/受护减法的非负 GVN 值域传播、规范偏移标量提升、冷调用常量外提、ARM64 <code>CCMP</code>/<code>CCMN</code> 与移位加常量乘法、以及 x86-64 <code>mul_const</code>/<code>imul</code>/<code>madd</code> 对齐。</li>
+  <li><strong>SwissTable <code>core/map</code> 与 M:N 多核协程调度</strong>：<code>core/map</code> 升级为 8 槽 SWAR <code>CTRL_LANE_MUL</code> 分组探测（7/8 负载因子）；新增线程安全堆/FFI 锁、Linux/macOS M:N 多核协程调度器（<code>#sync/pool</code>）及硬件 <code>u8</code>/<code>u16</code>/<code>u32</code>/<code>u64</code> 原子原语，并修复 <code>resize_zero</code> 堆清零与 <code>net/poller</code> 唤醒调度。</li>
+</ul>
+
+<h2>4. 裸机、UEFI、AI/Tensor、UI 与工程体系升级</h2>
+<ul>
+  <li><strong>操作系统与 UEFI 原语</strong>：新增 <code>@interrupt</code>、<code>@weak</code>、<code>@naked</code>、<code>@section</code>/<code>@align</code>/<code>@export</code>、<code>extern static</code>、<code>usize</code>/<code>isize</code>、紧缩/联合/位域 C 结构体、<code>sizeof</code>/<code>alignof</code>/<code>offsetof</code>、严格 <code>--no-sse</code>、<code>--stack-size</code>、可重定位 DWARF、<code>x64-uefi</code> 与 <code>arm64-uefi</code>、多架构参数化内联汇编，以及 <code>#core/{acpi,addr,ds,elf,fdt,fmt,mmio,pci,uefi}</code>、VirtIO 1.0 Modern MMIO、HPET 与 UEFI MemMap。</li>
+  <li><strong>AI / Tensor 与配套生态</strong>：扩展 <code>#tensor</code> 与 <code>examples/llm_engine</code>，支持 <code>Q4_K</code>/<code>Q6_K</code>/<code>Q4_1</code>/<code>Q5_1</code>/<code>Q2_K</code>/<code>Q3_K</code>/<code>Q5_0</code> 内核、<code>M=12</code> GEMM、分页 SIMD 注意力、<code>--threads N</code> 多线程推理、训练反向算子、GBNF Trie/Schema 与 <code>mmproj.gguf</code> VLM；配套 <code>github.com/xulang-org/packages</code> 同步演进至 <code>v1.17.0</code>（50 个包，含 <code>llm_metal</code>、<code>cuda_native</code>、<code>vulkan_native</code>、统一 <code>gpu</code> 外观与 Redis 分布式网关状态）。</li>
+  <li><strong>UI、诊断与发布策略</strong>：升级 <code>#ui/widgets</code> 第 12–14 轮能力（响应式布局、样式类、FLIP 动画、拖拽、虚拟列表、表单、检查器等），加固 <code>xu doctor</code> 与 <code>#ui/phone</code> P0–P3 移动运行时，确立每轮发布强制选用上一正式版作为自举种子的长期策略。</li>
+</ul>
+
+<h2>5. 六平台 121 项工作负载跨语言横测实测</h2>
+<p>下表基于 <a href="https://github.com/xulang-org/bench/actions/runs/46085158072">xulang-org/bench Actions Run #46085158072</a>（Xu 提交 <code>7813e249</code>，2026-11-27）六大平台完整实测数据，全部 <code>121 × 6 = 726</code> 项测试 <strong>0 失败</strong>（<code>xu_failed_cases = 0</code>），比率为 <code>Xu / 对手最佳（Clang/rustc 取 O1/O2/O3 最小值）</code>，数值越小越快：</p>
+<div class="doc-table-wrap"><table>
+  <thead>
+    <tr>
+      <th>目标平台</th>
+      <th>完整用例</th>
+      <th>vs Clang 几何均值 / 中位（胜出）</th>
+      <th>vs rustc 几何均值 / 中位（胜出）</th>
+      <th>vs Go 几何均值 / 中位（胜出）</th>
+      <th>vs Swift 几何均值 / 中位（胜出）</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>macOS ARM64</td><td>121 / 121</td><td>1.066× / 1.193× (32/116)</td><td>0.970× / 1.089× (45/120)</td><td>0.646× / 0.780× (93/121)</td><td>0.489× / 0.665× (101/116)</td></tr>
+    <tr><td>Linux ARM64</td><td>121 / 121</td><td>0.922× / 1.067× (48/116)</td><td>0.832× / 1.032× (56/120)</td><td>0.581× / 0.713× (93/121)</td><td>0.390× / 0.581× (106/114)</td></tr>
+    <tr><td>Windows ARM64</td><td>121 / 121</td><td>0.971× / 1.026× (52/116)</td><td>0.880× / 0.972× (72/120)</td><td>0.715× / 0.797× (107/121)</td><td>—</td></tr>
+    <tr><td>macOS x86_64</td><td>121 / 121</td><td>1.165× / 1.344× (31/116)</td><td>1.027× / 1.223× (38/120)</td><td>0.818× / 0.958× (66/121)</td><td>0.474× / 0.699× (85/116)</td></tr>
+    <tr><td>Linux x86_64</td><td>121 / 121</td><td>1.056× / 1.200× (36/116)</td><td>0.965× / 1.142× (39/120)</td><td>0.690× / 0.879× (76/121)</td><td>0.424× / 0.697× (88/114)</td></tr>
+    <tr><td>Windows x86_64</td><td>121 / 121</td><td>1.079× / 1.155× (34/116)</td><td>0.995× / 1.112× (43/120)</td><td>0.743× / 0.875× (88/121)</td><td>—</td></tr>
+  </tbody>
+</table></div>
+
+<p>跨领域代表性工作负载实测中位耗时（括号内为相对同平台最优 Clang O1/O2/O3 比率，详见 <a href="/benchmarks">全量多架构横测看板</a>）：</p>
+<div class="doc-table-wrap"><table>
+  <thead>
+    <tr>
+      <th>工作负载</th>
+      <th>macOS ARM64</th>
+      <th>Linux ARM64</th>
+      <th>Windows ARM64</th>
+      <th>macOS x86_64</th>
+      <th>Linux x86_64</th>
+      <th>Windows x86_64</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>startup</code></td><td>3.78 ms (1.08×)</td><td>0.42 ms (0.56×)</td><td>14.74 ms (0.98×)</td><td>4.35 ms (0.67×)</td><td>0.28 ms (0.45×)</td><td>7.49 ms (0.90×)</td></tr>
+    <tr><td><code>loop_sum</code></td><td>8.64 ms (0.62×)</td><td>0.42 ms (0.03×)</td><td>14.21 ms (0.51×)</td><td>6.67 ms (0.35×)</td><td>0.30 ms (0.05×)</td><td>4.58 ms (0.41×)</td></tr>
+    <tr><td><code>fib</code></td><td>25.54 ms (1.10×)</td><td>10.85 ms (0.86×)</td><td>25.27 ms (0.95×)</td><td>35.46 ms (1.51×)</td><td>17.99 ms (1.34×)</td><td>31.05 ms (1.26×)</td></tr>
+    <tr><td><code>matmul</code></td><td>9.81 ms (1.11×)</td><td>7.82 ms (0.88×)</td><td>21.79 ms (1.06×)</td><td>44.72 ms (2.38×)</td><td>13.60 ms (2.18×)</td><td>22.66 ms (1.50×)</td></tr>
+    <tr><td><code>sieve_primes</code></td><td>11.31 ms (1.32×)</td><td>14.37 ms (0.98×)</td><td>24.65 ms (0.98×)</td><td>38.88 ms (1.17×)</td><td>16.99 ms (1.15×)</td><td>27.44 ms (1.07×)</td></tr>
+    <tr><td><code>sha256_chain</code></td><td>3.62 ms (0.94×)</td><td>0.68 ms (0.38×)</td><td>15.38 ms (0.93×)</td><td>7.71 ms (1.14×)</td><td>2.62 ms (1.75×)</td><td>9.66 ms (1.05×)</td></tr>
+    <tr><td><code>aes128_encrypt</code></td><td>4.34 ms (0.14×)</td><td>2.24 ms (0.09×)</td><td>16.07 ms (0.35×)</td><td>18.17 ms (0.20×)</td><td>2.53 ms (0.11×)</td><td>6.15 ms (0.22×)</td></tr>
+    <tr><td><code>scimark_fft</code></td><td>9.36 ms (1.36×)</td><td>6.25 ms (1.27×)</td><td>20.07 ms (1.05×)</td><td>13.02 ms (1.49×)</td><td>5.37 ms (1.65×)</td><td>20.11 ms (1.63×)</td></tr>
+    <tr><td><code>btree_index</code></td><td>27.82 ms (1.22×)</td><td>22.69 ms (1.16×)</td><td>34.96 ms (1.04×)</td><td>35.93 ms (1.15×)</td><td>23.63 ms (1.00×)</td><td>36.97 ms (1.03×)</td></tr>
+    <tr><td><code>sql_query_exec</code></td><td>44.31 ms (1.27×)</td><td>38.98 ms (1.43×)</td><td>51.12 ms (1.27×)</td><td>64.19 ms (1.37×)</td><td>61.22 ms (1.58×)</td><td>62.68 ms (1.27×)</td></tr>
+    <tr><td><code>expr_bytecode_vm</code></td><td>22.18 ms (1.44×)</td><td>11.65 ms (1.18×)</td><td>26.99 ms (1.14×)</td><td>27.78 ms (0.60×)</td><td>12.79 ms (1.27×)</td><td>12.43 ms (1.19×)</td></tr>
+    <tr><td><code>chan_ping</code></td><td>20.34 ms</td><td>14.31 ms</td><td>28.39 ms</td><td>74.63 ms</td><td>21.19 ms</td><td>20.01 ms</td></tr>
+  </tbody>
+</table></div>
+
+<h2>6. 升级与下载</h2>
+<p>请从 <a href="/download">官网下载中心</a> 或 <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.3">GitHub Releases v0.14.3</a> 统一更新编译器、标准库与 SDK 工具链，并校验 <a href="https://github.com/xulang-org/xu/releases/download/v0.14.3/SHA256SUMS">SHA256SUMS</a>。</p>

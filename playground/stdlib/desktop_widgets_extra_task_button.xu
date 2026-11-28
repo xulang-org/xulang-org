@@ -101,7 +101,7 @@ pub fn (spinner $&Spinner) set_style(style &ControlStyle) int {
 
 // Upstream: src/ui/widgets/task_button.xu
 pub fn (task $&TaskButton) begin(id int,now time.Instant) int {
-    if task.control.closed || task.is_running() || id <= task.task_id || id <= 0 { >>> errors.new("widgets: invalid task start or stale task id") }
+    if task.control.closed || task.is_running() || id <= task.task_id || id <= 0 { >> errors.new("widgets: invalid task start or stale task id") }
     task.task_id = id
     task.state_val = TASK_RUNNING
     task.actual = 0.0
@@ -127,7 +127,7 @@ pub fn (task $&TaskButton) cancel() { control := $&task.control
 // Upstream: src/ui/widgets/task_button.xu
 pub fn (task $&TaskButton) complete(id int,state int) bool {
     if task.control.closed || !task.is_running() || id != task.task_id { << false }
-    if state < TASK_SUCCESS || state > TASK_CANCELLED { >>> errors.new("widgets: invalid terminal task state") }
+    if state < TASK_SUCCESS || state > TASK_CANCELLED { >> errors.new("widgets: invalid terminal task state") }
     task.state_val = state
     task.completed_at=task.now
     task.cancelling = false
@@ -235,7 +235,7 @@ pub fn (task $&TaskButton) paint_styled(frame $&draw.Frame,styles &Styles) int {
 
 // Upstream: src/ui/widgets/task_button.xu
 pub fn (task $&TaskButton) reset() int {
-    if task.is_running() || task.control.closed { >>> errors.new("widgets: cannot reset an active or disposed task") }
+    if task.is_running() || task.control.closed { >> errors.new("widgets: cannot reset an active or disposed task") }
     task.state_val = TASK_IDLE
     task.control.dirty = true
     << 0
@@ -255,7 +255,7 @@ pub fn (task $&TaskButton) set_focus(focused bool) { control := $&task.control
 pub fn (task $&TaskButton) set_progress(id int,value f64) bool {
     if task.control.closed || !task.is_running() || id != task.task_id { << false }
     if math.is_nan(value) || math.is_inf(value) || value < 0.0 || value > 1.0 || (task.determinate && value < task.actual) {
-        >>> errors.new("widgets: task progress must be finite, monotonic and within 0..1")
+        >> errors.new("widgets: task progress must be finite, monotonic and within 0..1")
     }
     if task.determinate && task.actual==value { << true }
     task.actual = value
@@ -275,7 +275,7 @@ pub fn (task $&TaskButton) tick(now time.Instant,reduced bool) bool {
     curve := task.motion.curve
     amount := $&task.amount
     before := amount.value()
-    amount.set_curve(curve) >>> (err) { >>> errors.new("widgets: task progress: " + err.msg()) }
+    amount.set_curve(curve) >>> (err) { >> errors.new("widgets: task progress: " + err.msg()) }
     amount.retarget(target,now,duration,reduced) >>>
     _ := amount.advance(now) >>>
     if amount.value() != before { changed = true }
@@ -325,7 +325,7 @@ pub fn (task &TaskButton) task_id() int { << task.task_id }
 
 // Upstream: src/ui/widgets/task_button.xu
 pub fn task_button(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,label &string) TaskButton {
-    if !context.matches_canvas(identity) { >>> errors.new("widgets: task context mismatch") }
+    if !context.matches_canvas(identity) { >> errors.new("widgets: task context mismatch") }
     validate_table_text(label) >>>
     control := button(identity,id,bounds) >>>
     activity := spinner(bounds) >>>

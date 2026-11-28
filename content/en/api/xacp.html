@@ -1,10 +1,10 @@
 <!--title: #xacp-->
 <p class="crumb">API</p>
 <h1><code>#xacp</code></h1>
-<!--xu-api-version: 0.14.1-->
+<!--xu-api-version: 0.14.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#xacp</code></p>
-<p class="meta">counts: 58 functions, 4 methods, 11 types, 29 constants, 0 method sets</p>
+<p class="meta">counts: 59 functions, 4 methods, 11 types, 29 constants, 0 method sets</p>
 <p class="lead"><code>#xacp</code> is the transport-neutral safety core published with the Xu {{xu_version}} SDK: frame limits, XUN checks, permissions, and session lifetime. Importing it does not open a control channel. Stdio and loopback TCP are runtime hooks inserted only by <code>xu build --xacp</code> or <code>--xacp-port</code>.</p>
 <p><a href="/docs/cli#xacp">CLI: <code>xu xacp</code></a> · <a href="/docs/faq">FAQ</a> · <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/src/xacp">Matching release source</a> · <a href="https://github.com/xulang-org/xu/blob/dev/examples/xacp/PROTOCOL.md">Development protocol</a></p>
 
@@ -147,7 +147,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 }
 
 <span class="syn-kw">fn</span> (m <span class="syn-borrow">$&amp;</span>Model) layout(s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">int</span> {
-    s.place(m.label_id, 32.0, 36.0, 540.0, 44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    s.place(m.label_id, 32.0, 36.0, 540.0, 44.0) <span class="syn-flow">&gt;&gt;&gt;</span>
     <span class="syn-flow">&lt;&lt;</span> 0
 }
 
@@ -158,7 +158,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
     permissions <span class="syn-flow">:=</span> xacp.PERM_UI_READ | xacp.PERM_UI_MUTATE
     limits <span class="syn-flow">:=</span> xacp.default_limits()
     $nonces <span class="syn-flow">:=</span> xacp.new_nonce_registry(8, true)
-    hello <span class="syn-flow">:=</span> xacp.parse_frame(<span class="syn-str">"id: !i 1\nop: xacp.hello\nargs:\n  ver: !ver 1.0.0\n  nonce: local-screen-demo\n  token: local-screen-demo\n  permissions: !i "</span> + str(permissions) + <span class="syn-str">"\n"</span>) <span class="syn-kw">or</span>(err) {
+    hello <span class="syn-flow">:=</span> xacp.parse_frame(<span class="syn-str">"id: !i 1\nop: xacp.hello\nargs:\n  ver: !ver 1.0.0\n  nonce: local-screen-demo\n  token: local-screen-demo\n  permissions: !i "</span> + str(permissions) + <span class="syn-str">"\n"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -167,7 +167,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> errors.new(<span class="syn-str">"xacp_screen: "</span> + opened.err_msg)
     }
-    tree <span class="syn-flow">:=</span> xacp.ui_tree(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 2, false, 0, 32, &amp;limits) <span class="syn-kw">or</span>(err) {
+    tree <span class="syn-flow">:=</span> xacp.ui_tree(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 2, false, 0, 32, &amp;limits) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -176,17 +176,17 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
         println(<span class="syn-str">"  #"</span> + str(node.id) + <span class="syn-str">" kind="</span> + str(node.kind) + <span class="syn-str">" "</span> + node.text)
     }
 
-    $snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 3, 1.0, &amp;limits) <span class="syn-kw">or</span>(err) {
+    $snapshot <span class="syn-flow">:=</span> xacp.ui_screenshot(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 3, 1.0, &amp;limits) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
     println(<span class="syn-str">"XACP ui.screenshot: "</span> + str(snapshot.pixel_width) + <span class="syn-str">"x"</span> + str(snapshot.pixel_height) + <span class="syn-str">" pixels"</span>)
-    snapshot.dispose() <span class="syn-kw">or</span>(err) {
+    snapshot.dispose() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
 
-    _ <span class="syn-flow">:=</span> xacp.ui_act(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 2, 4, <span class="syn-str">"focus"</span>, <span class="syn-str">""</span>, false, &amp;limits) <span class="syn-kw">or</span>(err) {
+    _ <span class="syn-flow">:=</span> xacp.ui_act(&amp; * s, <span class="syn-borrow">$&amp;</span>session, 2, 4, <span class="syn-str">"focus"</span>, <span class="syn-str">""</span>, false, &amp;limits) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         xacp.close_session(<span class="syn-borrow">$&amp;</span>session)
         <span class="syn-flow">&gt;&gt;</span> err
     }
@@ -195,38 +195,38 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 }
 
 <span class="syn-kw">fn</span> scene(events <span class="syn-kw">chan</span> ui.Event) <span class="syn-type">int</span> {
-    ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    ready <span class="syn-flow">:=</span> demo.ready(events) <span class="syn-flow">&gt;&gt;&gt;</span>
     <span class="syn-kw">if</span> ready.kind == ui.EV_EXIT{ <span class="syn-flow">&lt;&lt;</span> 0}
-    $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.resize(640.0, 180.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>, 22.0, false) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    button_id <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Activate locally or through ui.act"</span>) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.place(label_id, 32.0, 36.0, 540.0, 44.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    screen.place(button_id, 32.0, 96.0, 360.0, 40.0) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
-    inspect_screen(<span class="syn-borrow">$&amp;</span>screen) <span class="syn-kw">or</span>(err) {
+    $screen <span class="syn-flow">:=</span> widgets.screen(&amp;ready) <span class="syn-flow">&gt;&gt;&gt;</span>
+    screen.resize(640.0, 180.0) <span class="syn-flow">&gt;&gt;&gt;</span>
+    label_id <span class="syn-flow">:=</span> screen.label(<span class="syn-str">"XACP Screen adapter"</span>, 22.0, false) <span class="syn-flow">&gt;&gt;&gt;</span>
+    button_id <span class="syn-flow">:=</span> screen.button(<span class="syn-str">"Activate locally or through ui.act"</span>) <span class="syn-flow">&gt;&gt;&gt;</span>
+    screen.place(label_id, 32.0, 36.0, 540.0, 44.0) <span class="syn-flow">&gt;&gt;&gt;</span>
+    screen.place(button_id, 32.0, 96.0, 360.0, 40.0) <span class="syn-flow">&gt;&gt;&gt;</span>
+    inspect_screen(<span class="syn-borrow">$&amp;</span>screen) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         screen.dispose()
         <span class="syn-flow">&gt;&gt;</span> err
     }
     $model <span class="syn-flow">:=</span> Model{label_id: label_id, count: 0}
     $actions <span class="syn-flow">:=</span> widgets.action_dispatcher(&amp;model, &amp;screen)
-    actions.on(button_id, widgets.ACTION_ACTIVATE, activate) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    actions.on(button_id, widgets.ACTION_ACTIVATE, activate) <span class="syn-flow">&gt;&gt;&gt;</span>
     actions.set_fallback(global_key)
-    <span class="syn-flow">&lt;&lt;</span> widgets.run_screen_actions(<span class="syn-borrow">$&amp;</span>screen, events, <span class="syn-borrow">$&amp;</span>model, layout_action, &amp;actions) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> widgets.run_screen_actions(<span class="syn-borrow">$&amp;</span>screen, events, <span class="syn-borrow">$&amp;</span>model, layout_action, &amp;actions) <span class="syn-flow">&gt;&gt;&gt;</span>
 }
 
 <span class="syn-kw">fn</span> worker(events <span class="syn-kw">chan</span> ui.Event) {
-    scene(events) <span class="syn-kw">or</span>(err) {demo.fail(err.msg())
+    scene(events) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {demo.fail(err.msg())
         <span class="syn-flow">&lt;&lt;</span> }
 }
 
 <span class="syn-kw">fn</span> launch() <span class="syn-type">int</span> {
-    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>, 640, 180) <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    $app <span class="syn-flow">:=</span> demo.app(<span class="syn-str">"Xu / XACP Screen adapter"</span>, 640, 180) <span class="syn-flow">&gt;&gt;&gt;</span>
     <span class="syn-kw">xu</span> worker(app.event_ch)
-    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-kw">or</span> <span class="syn-flow">&gt;&gt;</span>
+    <span class="syn-flow">&lt;&lt;</span> app.run() <span class="syn-flow">&gt;&gt;&gt;</span>
 }
 
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
-    <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-kw">or</span>(err) {eprintln(err.msg())
+    <span class="syn-flow">&lt;&lt;</span> launch() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {eprintln(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1}
 }</code></pre></div>
 </details>
@@ -663,7 +663,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h2><code>request_id_hint</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> request_id_hint(d &amp;xun.Doc) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>request_id_hint returns a top-level <code>id: !i N</code> if one parses, otherwise 0, so schema errors can still echo the caller&#x27;s id.</p>
+<p>request_id_hint returns a top-level <code>id: !i N</code> if one parses, otherwise 0, so schema errors can still echo the caller&#x27;s id. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>d</code> <span class="type">&amp;xun.Doc</span></dt><dd>d (read-only borrow; caller keeps the original; type &amp;xun.Doc)</dd>
@@ -814,7 +814,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h2><code>dispatch_with_token</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> dispatch_with_token(s <span class="syn-borrow">$&amp;</span>Session, d &amp;xun.Doc, l &amp;Limits, expected_token <span class="syn-type">string</span>, nonces <span class="syn-borrow">$&amp;</span>NonceRegistry) Outcome</code></pre></div>
 <h3>Purpose</h3>
-<p>Hosts with an explicit authentication policy pass the expected token here.</p>
+<p>Hosts with an explicit authentication policy pass the expected token here. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">$&amp;Session</span></dt><dd>s (exclusive borrow; may modify the original; type $&amp;Session)</dd>
@@ -930,7 +930,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h2><code>poll</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> poll(control <span class="syn-borrow">$&amp;</span>ScreenControl,s <span class="syn-borrow">$&amp;</span>widgets.Screen) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Nonblocking: service at most one request between UI event iterations. Never call a blocking UI wait while control work needs polling. A registered owner that stops polling gets request_timeout after the configured deadline. Work already executing is not interrupted; its late reply is buffered and discarded.</p>
+<p>Nonblocking: service at most one request between UI event iterations. Never call a blocking UI wait while control work needs polling. A registered owner that stops polling gets request_timeout after the configured deadline. Work already executing is not interrupted; its late reply is buffered and discarded. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>control</code> <span class="type">$&amp;ScreenControl</span></dt><dd>control (exclusive borrow; may modify the original; type $&amp;ScreenControl)</dd>
@@ -1018,7 +1018,7 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <h2><code>stdio_preflight</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> stdio_preflight(port <span class="syn-type">int</span>)</code></pre></div>
 <h3>Purpose</h3>
-<p>Explicit control modes skip business main; the first control flag wins. Ordinary invocations never listen or read control stdin. The -- boundary protects application arguments.</p>
+<p>Explicit control modes skip business main; the first control flag wins. Ordinary invocations never listen or read control stdin. The -- boundary protects application arguments. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>port</code> <span class="type">int</span></dt><dd>port (int)</dd>
@@ -1186,6 +1186,24 @@ demo #<span class="syn-str">"github.com/xulang-org/examples/ui_demo"</span>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>s (exclusive borrow; may modify the original; type $&amp;widgets.Screen)</dd>
 <dt><code>include_hidden</code> <span class="type">bool</span></dt><dd>include_hidden (bool)</dd>
+<dt><code>start</code> <span class="type">int</span></dt><dd>start (int)</dd>
+<dt><code>max_rows</code> <span class="type">int</span></dt><dd>max_rows (int)</dd>
+<dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l (read-only borrow; caller keeps the original; type &amp;Limits)</dd>
+</dl>
+<h3>Returns</h3>
+<p>TreeWindow — a value of this type</p>
+</article>
+<article class="api-item" id="screen_tree_filtered">
+<h2><code>screen_tree_filtered</code></h2>
+<div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> screen_tree_filtered(s <span class="syn-borrow">$&amp;</span>widgets.Screen,include_hidden <span class="syn-type">bool</span>,root_node <span class="syn-type">int</span>,focused_only <span class="syn-type">bool</span>,start <span class="syn-type">int</span>,max_rows <span class="syn-type">int</span>,l &amp;Limits) TreeWindow</code></pre></div>
+<h3>Purpose</h3>
+<p>Screen tree filtered. Throws on failure; handle the error or propagate it to the caller.</p>
+<h3>Parameters</h3>
+<dl class="api-params">
+<dt><code>s</code> <span class="type">$&amp;widgets.Screen</span></dt><dd>s (exclusive borrow; may modify the original; type $&amp;widgets.Screen)</dd>
+<dt><code>include_hidden</code> <span class="type">bool</span></dt><dd>include_hidden (bool)</dd>
+<dt><code>root_node</code> <span class="type">int</span></dt><dd>root_node (int)</dd>
+<dt><code>focused_only</code> <span class="type">bool</span></dt><dd>focused_only (bool)</dd>
 <dt><code>start</code> <span class="type">int</span></dt><dd>start (int)</dd>
 <dt><code>max_rows</code> <span class="type">int</span></dt><dd>max_rows (int)</dd>
 <dt><code>l</code> <span class="type">&amp;Limits</span></dt><dd>l (read-only borrow; caller keeps the original; type &amp;Limits)</dd>

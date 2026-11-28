@@ -1,0 +1,89 @@
+<!--title: Xu 0.14.3 Released: Full Binary Hardening, 128-bit SLP Vectorization, and 121-Workload Benchmarks-->
+<!--summary: Xu 0.14.3 (combining 0.14.2–0.14.3 advances) standardizes >> throw and >>> / >>> (err) {} error handling, hardens PE32+/ELF/Mach-O/WASM binary formats with built-in macOS ad-hoc signing, ships 128-bit SLP auto-vectorization, Ext-TSP layout, SwissTable SWAR core/map, and M:N multi-core coroutine scheduling, and passes 121 cross-language benchmark workloads across six platforms.-->
+<p class="crumb"><a href="/blog">Blog</a></p>
+<h1>Xu 0.14.3 Released: Full Binary Hardening, 128-bit SLP Vectorization, and 121-Workload Benchmarks</h1>
+<p class="meta"><time datetime="2026-11-27">2026-11-27</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.3">Xu v0.14.3</a></p>
+
+<p>Xu 0.14.3 is officially released! Combining the engineering milestones of <code>0.14.2</code> and <code>0.14.3</code>, this release finalizes <code>&gt;&gt;</code> throws with <code>&gt;&gt;&gt;</code> / <code>&gt;&gt;&gt; (err) {}</code> error handling and multi-error checker recovery, standardizes hardened Windows PE32+, Linux ELF, macOS Mach-O (including built-in ad-hoc signing), and WASM binary emission, lands 128-bit SLP auto-vectorization, Ext-TSP layout, SwissTable SWAR <code>core/map</code>, Phase 5–7 general optimizer passes, and M:N multi-core coroutine scheduling, and expands <code>#core</code> OS/UEFI primitives, <code>#tensor</code>/<code>llm_engine</code>, <code>#ui/widgets</code>, and <code>xu doctor</code>/<code>#ui/phone</code>. All six native platforms passed self-hosted fixed-point builds and the expanded <strong>121-workload</strong> cross-language benchmark matrix (11 engineering domains).</p>
+
+<h2>1. Finalized Error-Handling Syntax &amp; Multi-Error Checker Recovery</h2>
+<ul>
+  <li><strong>Clean Separation of Throw vs. Handle</strong>: Across the compiler, CLI tools, standard library, documentation, and examples, <code>&gt;&gt; expr</code> explicitly throws errors while <code>expr &gt;&gt;&gt;</code> and <code>expr &gt;&gt;&gt; (err) { ... }</code> propagate and handle errors cleanly alongside disambiguated nested <code>&gt;&gt;&gt;</code> generic closing.</li>
+  <li><strong>Cross-Function Multi-Error Recovery</strong>: The checker continues across declarations and functions (up to <code>MAX_DIAG_ERRORS = 25</code>) using <code>ERROR_TY</code> and <code>fn_failed()</code> cascade suppression, guarded by <code>scripts/test_checker_multi_error.py</code>.</li>
+</ul>
+
+<h2>2. Standardized Binary Formats &amp; Modern Platform Hardening</h2>
+<ul>
+  <li><strong>Windows PE32+ (<code>windows-arm64</code> / <code>windows-x64</code>)</strong>: Strict W^X sections (<code>.text</code> RX, <code>.rdata</code> R, <code>.data</code> RW), <code>.reloc</code> base relocations, PE Load Config / Security Cookie (<code>IMAGE_GUARD_CF_INSTRUMENTED</code> / <code>_load_config_used</code>), and OS <code>.pdata</code>/<code>.xdata</code> unwind tables.</li>
+  <li><strong>Linux ELF32/ELF64 (<code>linux-x64</code> / <code>linux-arm64</code> / <code>linux-riscv64</code> / <code>linux-loongarch64</code> / <code>linux-riscv32</code>)</strong>: Strict W^X, <code>ET_DYN</code> PIE, Full RELRO (<code>DF_BIND_NOW</code>), <code>.note.gnu.build-id</code>, Intel CET IBT (<code>endbr64</code>), CFI unwind frames, and full section headers.</li>
+  <li><strong>macOS Mach-O (<code>macos-arm64</code> / <code>macos-x64</code>)</strong>: Adds <code>__DATA_CONST</code>, <code>LC_UUID</code>, <code>LC_BUILD_VERSION</code>, and built-in ad-hoc <code>LC_CODE_SIGNATURE</code> across both release and debug builds; hardened COFF/ELF/Mach-O <code>.xuobj</code> emitters and WASM output ship alongside.</li>
+</ul>
+
+<h2>3. Compiler Optimizer, SwissTable Runtime &amp; M:N Multi-Core Scheduling</h2>
+<ul>
+  <li><strong>128-bit SLP Auto-Vectorization &amp; Ext-TSP Layout (0.14.2)</strong>: <code>opt_slp</code> (opt-out <code>XU_NO_SLP=1</code>) packs unrolled isomorphic array ops and 4-way integer reductions into ARM64 NEON and baseline x86-64 SSE2 lanes; paired with Wu–Larus + Ext-TSP basic-block layout, correlated jump threading, lifetime-hole register allocation, and zero-spill constant rematerialization.</li>
+  <li><strong>Phase 5–7 General Passes &amp; Codegen Parity (0.14.3)</strong>: Adds single-caller inlining, 1-block and countdown-loop unrolling, non-negative GVN value-range propagation across <code>div</code>/<code>mod</code>/guarded subtraction, canonical-offset state promotion, cold-call constant hoisting, ARM64 <code>CCMP</code>/<code>CCMN</code> fusion and shift-add constant multiplication, and x86-64 <code>mul_const</code>/<code>imul</code>/<code>madd</code> parity.</li>
+  <li><strong>SwissTable <code>core/map</code> &amp; M:N Coroutines</strong>: Upgrades <code>core/map</code> to 8-slot SWAR <code>CTRL_LANE_MUL</code> probing (7/8 load factor); adds thread-safe heap/FFI locking, the M:N multi-core coroutine scheduler (<code>#sync/pool</code>) on Linux and macOS, hardware <code>u8</code>/<code>u16</code>/<code>u32</code>/<code>u64</code> atomic intrinsics, and fixes for <code>resize_zero</code> heap zeroing and <code>net/poller</code> wakeups.</li>
+</ul>
+
+<h2>4. OS Substrate, AI/Tensor, UI &amp; Release Tooling</h2>
+<ul>
+  <li><strong>Bare-Metal &amp; UEFI Substrate</strong>: Adds <code>@interrupt</code>, <code>@weak</code>, <code>@naked</code>, <code>@section</code>/<code>@align</code>/<code>@export</code>, <code>extern static</code>, <code>usize</code>/<code>isize</code>, packed/union/bitfield C structs, <code>sizeof</code>/<code>alignof</code>/<code>offsetof</code>, strict <code>--no-sse</code>, <code>--stack-size</code>, relocatable DWARF, <code>x64-uefi</code> and <code>arm64-uefi</code> targets, parameterized inline asm across x64/ARM64/RV64, <code>#core/{acpi,addr,ds,elf,fdt,fmt,mmio,pci,uefi}</code>, VirtIO 1.0 Modern MMIO, HPET, and UEFI MemMap.</li>
+  <li><strong>AI / Tensor &amp; Companion Ecosystem</strong>: Expands <code>#tensor</code> and <code>examples/llm_engine</code> with <code>Q4_K</code>/<code>Q6_K</code>/<code>Q4_1</code>/<code>Q5_1</code>/<code>Q2_K</code>/<code>Q3_K</code>/<code>Q5_0</code> kernels, <code>M=12</code> GEMM, paged SIMD attention, <code>--threads N</code> CPU parallelism, training backward ops, GBNF Trie/Schema, and <code>mmproj.gguf</code> VLM support; accompanied by <code>github.com/xulang-org/packages</code> <code>v1.17.0</code> (50 packages, adding <code>llm_metal</code>, <code>cuda_native</code>, <code>vulkan_native</code>, unified <code>gpu</code> facade, and Redis distributed gateway state).</li>
+  <li><strong>UI, Diagnostics &amp; Bootstrap Policy</strong>: Upgrades <code>#ui/widgets</code> through Rounds 12–14 (responsive rules, style classes, FLIP transitions, DnD, virtualization, forms, inspector tools), hardens <code>xu doctor</code> and <code>#ui/phone</code> P0–P3, and enforces seeding every release directly from its immediately preceding published release.</li>
+</ul>
+
+<h2>5. Verified Six-Platform Cross-Language Benchmarks (121 Workloads)</h2>
+<p>Measured across all 121 canonical workloads on six platforms in <a href="https://github.com/xulang-org/bench/actions/runs/46085158072">xulang-org/bench Actions Run #46085158072</a> (Xu commit <code>7813e249</code>, 2026-11-27), with <strong>0 failures across <code>121 × 6 = 726</code> runs</strong> (<code>xu_failed_cases = 0</code>). Ratios represent <code>Xu / best peer median</code> (minimum across <code>O1</code>/<code>O2</code>/<code>O3</code> for Clang and <code>rustc</code>); lower is faster:</p>
+<div class="doc-table-wrap"><table>
+  <thead>
+    <tr>
+      <th>Platform</th>
+      <th>Coverage</th>
+      <th>vs Clang Geomean / Median (Wins)</th>
+      <th>vs rustc Geomean / Median (Wins)</th>
+      <th>vs Go Geomean / Median (Wins)</th>
+      <th>vs Swift Geomean / Median (Wins)</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>macOS ARM64</td><td>121 / 121</td><td>1.066× / 1.193× (32/116)</td><td>0.970× / 1.089× (45/120)</td><td>0.646× / 0.780× (93/121)</td><td>0.489× / 0.665× (101/116)</td></tr>
+    <tr><td>Linux ARM64</td><td>121 / 121</td><td>0.922× / 1.067× (48/116)</td><td>0.832× / 1.032× (56/120)</td><td>0.581× / 0.713× (93/121)</td><td>0.390× / 0.581× (106/114)</td></tr>
+    <tr><td>Windows ARM64</td><td>121 / 121</td><td>0.971× / 1.026× (52/116)</td><td>0.880× / 0.972× (72/120)</td><td>0.715× / 0.797× (107/121)</td><td>—</td></tr>
+    <tr><td>macOS x86_64</td><td>121 / 121</td><td>1.165× / 1.344× (31/116)</td><td>1.027× / 1.223× (38/120)</td><td>0.818× / 0.958× (66/121)</td><td>0.474× / 0.699× (85/116)</td></tr>
+    <tr><td>Linux x86_64</td><td>121 / 121</td><td>1.056× / 1.200× (36/116)</td><td>0.965× / 1.142× (39/120)</td><td>0.690× / 0.879× (76/121)</td><td>0.424× / 0.697× (88/114)</td></tr>
+    <tr><td>Windows x86_64</td><td>121 / 121</td><td>1.079× / 1.155× (34/116)</td><td>0.995× / 1.112× (43/120)</td><td>0.743× / 0.875× (88/121)</td><td>—</td></tr>
+  </tbody>
+</table></div>
+
+<p>Representative workload medians across domains (ratios vs. same-platform best Clang <code>O1</code>–<code>O3</code> in parentheses; explore all 121 workloads on the <a href="/benchmarks">Benchmarks dashboard</a>):</p>
+<div class="doc-table-wrap"><table>
+  <thead>
+    <tr>
+      <th>Workload</th>
+      <th>macOS ARM64</th>
+      <th>Linux ARM64</th>
+      <th>Windows ARM64</th>
+      <th>macOS x86_64</th>
+      <th>Linux x86_64</th>
+      <th>Windows x86_64</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td><code>startup</code></td><td>3.78 ms (1.08×)</td><td>0.42 ms (0.56×)</td><td>14.74 ms (0.98×)</td><td>4.35 ms (0.67×)</td><td>0.28 ms (0.45×)</td><td>7.49 ms (0.90×)</td></tr>
+    <tr><td><code>loop_sum</code></td><td>8.64 ms (0.62×)</td><td>0.42 ms (0.03×)</td><td>14.21 ms (0.51×)</td><td>6.67 ms (0.35×)</td><td>0.30 ms (0.05×)</td><td>4.58 ms (0.41×)</td></tr>
+    <tr><td><code>fib</code></td><td>25.54 ms (1.10×)</td><td>10.85 ms (0.86×)</td><td>25.27 ms (0.95×)</td><td>35.46 ms (1.51×)</td><td>17.99 ms (1.34×)</td><td>31.05 ms (1.26×)</td></tr>
+    <tr><td><code>matmul</code></td><td>9.81 ms (1.11×)</td><td>7.82 ms (0.88×)</td><td>21.79 ms (1.06×)</td><td>44.72 ms (2.38×)</td><td>13.60 ms (2.18×)</td><td>22.66 ms (1.50×)</td></tr>
+    <tr><td><code>sieve_primes</code></td><td>11.31 ms (1.32×)</td><td>14.37 ms (0.98×)</td><td>24.65 ms (0.98×)</td><td>38.88 ms (1.17×)</td><td>16.99 ms (1.15×)</td><td>27.44 ms (1.07×)</td></tr>
+    <tr><td><code>sha256_chain</code></td><td>3.62 ms (0.94×)</td><td>0.68 ms (0.38×)</td><td>15.38 ms (0.93×)</td><td>7.71 ms (1.14×)</td><td>2.62 ms (1.75×)</td><td>9.66 ms (1.05×)</td></tr>
+    <tr><td><code>aes128_encrypt</code></td><td>4.34 ms (0.14×)</td><td>2.24 ms (0.09×)</td><td>16.07 ms (0.35×)</td><td>18.17 ms (0.20×)</td><td>2.53 ms (0.11×)</td><td>6.15 ms (0.22×)</td></tr>
+    <tr><td><code>scimark_fft</code></td><td>9.36 ms (1.36×)</td><td>6.25 ms (1.27×)</td><td>20.07 ms (1.05×)</td><td>13.02 ms (1.49×)</td><td>5.37 ms (1.65×)</td><td>20.11 ms (1.63×)</td></tr>
+    <tr><td><code>btree_index</code></td><td>27.82 ms (1.22×)</td><td>22.69 ms (1.16×)</td><td>34.96 ms (1.04×)</td><td>35.93 ms (1.15×)</td><td>23.63 ms (1.00×)</td><td>36.97 ms (1.03×)</td></tr>
+    <tr><td><code>sql_query_exec</code></td><td>44.31 ms (1.27×)</td><td>38.98 ms (1.43×)</td><td>51.12 ms (1.27×)</td><td>64.19 ms (1.37×)</td><td>61.22 ms (1.58×)</td><td>62.68 ms (1.27×)</td></tr>
+    <tr><td><code>expr_bytecode_vm</code></td><td>22.18 ms (1.44×)</td><td>11.65 ms (1.18×)</td><td>26.99 ms (1.14×)</td><td>27.78 ms (0.60×)</td><td>12.79 ms (1.27×)</td><td>12.43 ms (1.19×)</td></tr>
+    <tr><td><code>chan_ping</code></td><td>20.34 ms</td><td>14.31 ms</td><td>28.39 ms</td><td>74.63 ms</td><td>21.19 ms</td><td>20.01 ms</td></tr>
+  </tbody>
+</table></div>
+
+<h2>6. Upgrade &amp; Downloads</h2>
+<p>Upgrade compiler, standard library, and SDK tools together from the <a href="/download">Download center</a> or <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.3">GitHub Releases v0.14.3</a>, and verify <a href="https://github.com/xulang-org/xu/releases/download/v0.14.3/SHA256SUMS">SHA256SUMS</a>.</p>

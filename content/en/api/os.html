@@ -1,7 +1,7 @@
 <!--title: #os-->
 <p class="crumb">API</p>
 <h1><code>#os</code></h1>
-<!--xu-api-version: 0.14.1-->
+<!--xu-api-version: 0.14.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#os</code></p>
 <p class="meta">counts: 82 functions, 16 methods, 5 types, 9 constants, 0 method sets</p>
@@ -21,7 +21,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <span class="syn-import"><span class="hash">#</span>errors</span>
 
 <span class="syn-kw">fn</span> remove_if_exists(p <span class="syn-type">string</span>) {
-    os.remove(p) <span class="syn-kw">or</span> (e) {
+    os.remove(p) <span class="syn-flow">&gt;&gt;&gt;</span> (e) {
         <span class="syn-flow">&lt;&lt;</span>
     }
 }
@@ -33,14 +33,14 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     $db <span class="syn-flow">:=</span> sqlite.open_pool(db_file + <span class="syn-str">""</span>, 5, 2)
 
     <span class="syn-cmt">// 1. Ping</span>
-    db.ping() <span class="syn-kw">or</span> (err) {
+    db.ping() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] SQLite pool ping failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] SQLite Pool ping succeeded."</span>)
 
     <span class="syn-cmt">// 2. Schema</span>
-    db.exec(<span class="syn-str">"CREATE TABLE pool_items (id INTEGER PRIMARY KEY, title TEXT, value INT);"</span>) <span class="syn-kw">or</span> (err) {
+    db.exec(<span class="syn-str">"CREATE TABLE pool_items (id INTEGER PRIMARY KEY, title TEXT, value INT);"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Create table failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -49,7 +49,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     <span class="syn-cmt">// 3. Sequential &amp; Concurrent Inserts through Pool</span>
     $i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
-        db.exec(<span class="syn-str">"INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"item_"</span> + str(i), i * 10) <span class="syn-kw">or</span> (err) {
+        db.exec(<span class="syn-str">"INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"item_"</span> + str(i), i * 10) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert failed at item "</span> + str(i) + <span class="syn-str">": "</span> + err.msg())
             <span class="syn-flow">&lt;&lt;</span>
         }
@@ -58,13 +58,13 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     println(<span class="syn-str">"   [PASS] 5 items inserted through SQLite connection pool."</span>)
 
     <span class="syn-cmt">// 4. Query through Pool</span>
-    $rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, title, value FROM pool_items ORDER BY id ASC;"</span>) <span class="syn-kw">or</span> (err) {
+    $rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, title, value FROM pool_items ORDER BY id ASC;"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Query failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     $count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
-        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             <span class="syn-flow">&lt;&lt;</span>
         }
         count = count + 1
@@ -73,11 +73,11 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     println(<span class="syn-str">"   [PASS] SQLite Pool query verified: retrieved "</span> + str(count) + <span class="syn-str">" rows."</span>)
 
     <span class="syn-cmt">// 5. Close Pool</span>
-    db.close() <span class="syn-kw">or</span> (err) {
+    db.close() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Close failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    os.remove(db_file + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (e) {
+    os.remove(db_file + <span class="syn-str">""</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (e) {
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] SQLite Pool closed cleanly."</span>)
@@ -108,17 +108,17 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
 
     $db <span class="syn-flow">:=</span> sql.open(mysql.driver(), dsn)
-    db.ping() <span class="syn-kw">or</span> (err) {
+    db.ping() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"MySQL ping failed"</span>)
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
 
-    db.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_people"</span>) <span class="syn-kw">or</span> (err) {
+    db.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_people"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
-    db.exec(<span class="syn-str">"CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)"</span>) <span class="syn-kw">or</span> (err) {
+    db.exec(<span class="syn-str">"CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -128,7 +128,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
         1,
         <span class="syn-str">"Ada"</span>,
         true
-    ) <span class="syn-kw">or</span> (err) {
+    ) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -136,17 +136,17 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
     $insert_person <span class="syn-flow">:=</span> db.prepare(
         <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES (?, ?, ?)"</span>
-    ) <span class="syn-kw">or</span> (err) {
+    ) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
-    insert_person.exec(2, <span class="syn-str">"Lin"</span>, true) <span class="syn-kw">or</span> (err) {
+    insert_person.exec(2, <span class="syn-str">"Lin"</span>, true) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     insert_person.close()
 
-    $tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
+    $tx <span class="syn-flow">:=</span> db.begin() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -155,21 +155,21 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
         3,
         <span class="syn-str">"Grace"</span>,
         true
-    ) <span class="syn-kw">or</span> (err) {
+    ) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
-    tx.commit() <span class="syn-kw">or</span> (err) {
+    tx.commit() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
 
-    $rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
+    $rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     <span class="syn-kw">while</span> rows.next() {
-        values <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+        values <span class="syn-flow">:=</span> rows.take() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(err.msg())
             <span class="syn-flow">&lt;&lt;</span> 1
         }
@@ -184,13 +184,13 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     rows.close()
 
     row <span class="syn-flow">:=</span> db.query_row(<span class="syn-str">"SELECT name FROM xu_people WHERE id = ?"</span>, 2)
-    values <span class="syn-flow">:=</span> row.take() <span class="syn-kw">or</span> (err) {
+    values <span class="syn-flow">:=</span> row.take() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     println(<span class="syn-str">"selected="</span> + (values[0] as <span class="syn-type">string</span>))
 
-    db.close() <span class="syn-kw">or</span> (err) {
+    db.close() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -216,17 +216,17 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
 
     $db <span class="syn-flow">:=</span> sql.open(postgres.driver(), dsn)
-    db.ping() <span class="syn-kw">or</span> (err) {
+    db.ping() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"PostgreSQL ping failed"</span>)
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
 
-    db.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_people"</span>) <span class="syn-kw">or</span> (err) {
+    db.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_people"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
-    db.exec(<span class="syn-str">"CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)"</span>) <span class="syn-kw">or</span> (err) {
+    db.exec(<span class="syn-str">"CREATE TABLE xu_people (id INTEGER PRIMARY KEY, name VARCHAR(100) NOT NULL, active BOOLEAN NOT NULL)"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -236,7 +236,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
         1,
         <span class="syn-str">"Ada"</span>,
         true
-    ) <span class="syn-kw">or</span> (err) {
+    ) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -245,13 +245,13 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     $insert_person <span class="syn-flow">:=</span> db.prepare(
         <span class="syn-str">"INSERT INTO xu_people (id, name, active) VALUES ($$1, $$2, $$3)"</span>
     )
-    insert_person.exec(2, <span class="syn-str">"Lin"</span>, true) <span class="syn-kw">or</span> (err) {
+    insert_person.exec(2, <span class="syn-str">"Lin"</span>, true) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     insert_person.close()
 
-    $tx <span class="syn-flow">:=</span> db.begin() <span class="syn-kw">or</span> (err) {
+    $tx <span class="syn-flow">:=</span> db.begin() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -260,21 +260,21 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
         3,
         <span class="syn-str">"Grace"</span>,
         true
-    ) <span class="syn-kw">or</span> (err) {
+    ) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
-    tx.commit() <span class="syn-kw">or</span> (err) {
+    tx.commit() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
 
-    $rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-kw">or</span> (err) {
+    $rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, name FROM xu_people ORDER BY id"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     <span class="syn-kw">while</span> rows.next() {
-        values <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+        values <span class="syn-flow">:=</span> rows.take() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(err.msg())
             <span class="syn-flow">&lt;&lt;</span> 1
         }
@@ -288,12 +288,12 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
     rows.close()
 
-    $qrows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT name FROM xu_people WHERE id = $$1"</span>, 2) <span class="syn-kw">or</span> (err) {
+    $qrows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT name FROM xu_people WHERE id = $$1"</span>, 2) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     <span class="syn-kw">if</span> qrows.next() {
-        vals <span class="syn-flow">:=</span> qrows.take() <span class="syn-kw">or</span> (err) {
+        vals <span class="syn-flow">:=</span> qrows.take() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(err.msg())
             <span class="syn-flow">&lt;&lt;</span> 1
         }
@@ -301,7 +301,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
     qrows.close()
 
-    db.close() <span class="syn-kw">or</span> (err) {
+    db.close() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
@@ -321,7 +321,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <span class="syn-import"><span class="hash">#</span>strings</span>
 
 <span class="syn-kw">fn</span> remove_if_exists(p <span class="syn-type">string</span>) {
-    os.remove(p) <span class="syn-kw">or</span> (err) {
+    os.remove(p) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         <span class="syn-flow">&lt;&lt;</span>
     }
 }
@@ -1060,7 +1060,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>is_dir</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> is_dir(path <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Whether it is a directory.</p>
+<p>Whether it is a directory. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>path</code> <span class="type">string</span></dt><dd>filesystem path (string)</dd>
@@ -1184,7 +1184,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>remove_all</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> remove_all(path0 <span class="syn-type">string</span>) <span class="syn-type">int</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Remove all.</p>
+<p>Remove all. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>path0</code> <span class="type">string</span></dt><dd>path0 (string)</dd>
@@ -1343,7 +1343,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;File) read_result</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f &amp;File) read_result(n <span class="syn-type">int</span>) io.ReadResult</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on <code>&amp;File</code>: read result.</p>
+<p>Operation on <code>&amp;File</code>: read result. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>f</code> <span class="type">&amp;File</span></dt><dd>The <code>File</code> instance used by this call (borrow).</dd>
@@ -1356,7 +1356,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>(&amp;File) write_result</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (f &amp;File) write_result(data <span class="syn-type">string</span>) io.WriteResult</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on <code>&amp;File</code>: write result.</p>
+<p>Operation on <code>&amp;File</code>: write result. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>f</code> <span class="type">&amp;File</span></dt><dd>The <code>File</code> instance used by this call (borrow).</dd>

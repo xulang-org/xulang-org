@@ -1,7 +1,7 @@
 <!--title: #net-->
 <p class="crumb">API</p>
 <h1><code>#net</code></h1>
-<!--xu-api-version: 0.14.1-->
+<!--xu-api-version: 0.14.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>#net</code></p>
 <p class="meta">counts: 93 functions, 68 methods, 19 types, 2 constants, 0 method sets</p>
@@ -22,18 +22,18 @@
 <span class="syn-cmt">// TCP 见 14tcp_echo。</span>
 
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
-    $c <span class="syn-flow">:=</span> net.listen_packet(<span class="syn-str">"udp"</span>, <span class="syn-str">"127.0.0.1:19001"</span>) <span class="syn-kw">or</span> (err) {
+    $c <span class="syn-flow">:=</span> net.listen_packet(<span class="syn-str">"udp"</span>, <span class="syn-str">"127.0.0.1:19001"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     println(<span class="syn-str">"udp://127.0.0.1:19001  echo"</span>)
     $running <span class="syn-flow">:=</span> true
     <span class="syn-kw">while</span> running {
-        pkt <span class="syn-flow">:=</span> c.read_from(4096) <span class="syn-kw">or</span> (err) {
+        pkt <span class="syn-flow">:=</span> c.read_from(4096) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             <span class="syn-flow">-&gt;</span>
         }
         data <span class="syn-flow">:=</span> pkt.data + <span class="syn-str">""</span>
-        c.write_to(&amp;data, &amp;pkt.addr) <span class="syn-kw">or</span> (err) {
+        c.write_to(&amp;data, &amp;pkt.addr) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             <span class="syn-flow">-&gt;</span>
         }
     }
@@ -53,27 +53,27 @@
 
 <span class="syn-kw">fn</span> handle(c net.Conn) {
     $conn <span class="syn-flow">:=</span> c
-    buf <span class="syn-flow">:=</span> conn.read(4096) <span class="syn-kw">or</span> (err) {
-        conn.close() <span class="syn-kw">or</span> (e2) { <span class="syn-flow">&lt;&lt;</span> }
+    buf <span class="syn-flow">:=</span> conn.read(4096) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
+        conn.close() <span class="syn-flow">&gt;&gt;&gt;</span> (e2) { <span class="syn-flow">&lt;&lt;</span> }
         <span class="syn-flow">&lt;&lt;</span>
     }
     <span class="syn-kw">if</span> buf.len == 0 {
-        conn.close() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        conn.close() <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
         <span class="syn-flow">&lt;&lt;</span>
     }
-    conn.write(&amp;buf) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
-    conn.close() <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+    conn.write(&amp;buf) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+    conn.close() <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
 }
 
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
-    ln <span class="syn-flow">:=</span> net.listen_on(<span class="syn-str">"tcp"</span>, <span class="syn-str">"127.0.0.1:19000"</span>) <span class="syn-kw">or</span> (err) {
+    ln <span class="syn-flow">:=</span> net.listen_on(<span class="syn-str">"tcp"</span>, <span class="syn-str">"127.0.0.1:19000"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     println(<span class="syn-str">"tcp://127.0.0.1:19000  echo"</span>)
     $running <span class="syn-flow">:=</span> true
     <span class="syn-kw">while</span> running {
-        c <span class="syn-flow">:=</span> ln.accept() <span class="syn-kw">or</span> (err) {
+        c <span class="syn-flow">:=</span> ln.accept() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             <span class="syn-flow">-&gt;</span>
         }
         <span class="syn-kw">xu</span> handle(c)
@@ -124,7 +124,7 @@
     out = out + <span class="syn-str">"Connection: close\r\n"</span>
     out = out + <span class="syn-str">"\r\n"</span>
     out = out + body
-    <span class="syn-flow">&lt;&lt;</span> net.conn_write(fd, &amp;out) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&gt;&gt;</span> err }
+    <span class="syn-flow">&lt;&lt;</span> net.conn_write(fd, &amp;out) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&gt;&gt;</span> err }
 }
 
 <span class="syn-kw">fn</span> index_page() <span class="syn-type">string</span> {
@@ -145,10 +145,10 @@
 
 <span class="syn-kw">fn</span> handle(fd <span class="syn-type">int</span>) {
     $req <span class="syn-flow">:=</span> http.new_request()
-    req.read(fd) <span class="syn-kw">or</span> (err) {
+    req.read(fd) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         msg <span class="syn-flow">:=</span> err.msg()
-        write_http(fd, 400, <span class="syn-str">"text/plain; charset=utf-8"</span>, msg) <span class="syn-kw">or</span> (e2) { <span class="syn-flow">&lt;&lt;</span> }
-        net.conn_close(fd) <span class="syn-kw">or</span> (e3) { <span class="syn-flow">&lt;&lt;</span> }
+        write_http(fd, 400, <span class="syn-str">"text/plain; charset=utf-8"</span>, msg) <span class="syn-flow">&gt;&gt;&gt;</span> (e2) { <span class="syn-flow">&lt;&lt;</span> }
+        net.conn_close(fd) <span class="syn-flow">&gt;&gt;&gt;</span> (e3) { <span class="syn-flow">&lt;&lt;</span> }
         <span class="syn-flow">&lt;&lt;</span>
     }
     method <span class="syn-flow">:=</span> req.method()
@@ -156,49 +156,49 @@
     path <span class="syn-flow">:=</span> path_only(raw_path)
     <span class="syn-kw">if</span> path == <span class="syn-str">"/"</span> || path == <span class="syn-str">"/index.html"</span> {
         page <span class="syn-flow">:=</span> index_page()
-        write_http(fd, 200, <span class="syn-str">"text/html; charset=utf-8"</span>, page) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
-        net.conn_close(fd) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        write_http(fd, 200, <span class="syn-str">"text/html; charset=utf-8"</span>, page) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        net.conn_close(fd) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
         <span class="syn-flow">&lt;&lt;</span>
     }
     <span class="syn-kw">if</span> path == <span class="syn-str">"/hello"</span> {
         body <span class="syn-flow">:=</span> <span class="syn-str">"hello, xu\n"</span>
-        write_http(fd, 200, <span class="syn-str">"text/plain; charset=utf-8"</span>, body) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
-        net.conn_close(fd) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        write_http(fd, 200, <span class="syn-str">"text/plain; charset=utf-8"</span>, body) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        net.conn_close(fd) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
         <span class="syn-flow">&lt;&lt;</span>
     }
     <span class="syn-kw">if</span> path == <span class="syn-str">"/health"</span> {
         body <span class="syn-flow">:=</span> <span class="syn-str">"ok\n"</span>
-        write_http(fd, 200, <span class="syn-str">"text/plain; charset=utf-8"</span>, body) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
-        net.conn_close(fd) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        write_http(fd, 200, <span class="syn-str">"text/plain; charset=utf-8"</span>, body) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        net.conn_close(fd) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
         <span class="syn-flow">&lt;&lt;</span>
     }
     <span class="syn-kw">if</span> path == <span class="syn-str">"/echo"</span> {
         <span class="syn-kw">if</span> method != <span class="syn-str">"POST"</span> &amp;&amp; method != <span class="syn-str">"PUT"</span> {
             body <span class="syn-flow">:=</span> <span class="syn-str">"method not allowed\n"</span>
-            write_http(fd, 405, <span class="syn-str">"text/plain; charset=utf-8"</span>, body) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
-            net.conn_close(fd) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+            write_http(fd, 405, <span class="syn-str">"text/plain; charset=utf-8"</span>, body) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+            net.conn_close(fd) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
             <span class="syn-flow">&lt;&lt;</span>
         }
         echo <span class="syn-flow">:=</span> req.body()
-        write_http(fd, 200, <span class="syn-str">"text/plain; charset=utf-8"</span>, echo) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
-        net.conn_close(fd) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        write_http(fd, 200, <span class="syn-str">"text/plain; charset=utf-8"</span>, echo) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+        net.conn_close(fd) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
         <span class="syn-flow">&lt;&lt;</span>
     }
     miss <span class="syn-flow">:=</span> <span class="syn-str">"not found: "</span> + path + <span class="syn-str">"\n"</span>
-    write_http(fd, 404, <span class="syn-str">"text/plain; charset=utf-8"</span>, miss) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
-    net.conn_close(fd) <span class="syn-kw">or</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+    write_http(fd, 404, <span class="syn-str">"text/plain; charset=utf-8"</span>, miss) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
+    net.conn_close(fd) <span class="syn-flow">&gt;&gt;&gt;</span> (err) { <span class="syn-flow">&lt;&lt;</span> }
 }
 
 <span class="syn-kw">fn</span> main() <span class="syn-type">int</span> {
     $s <span class="syn-flow">:=</span> http.new_server()
-    s.listen(<span class="syn-str">"127.0.0.1:18080"</span>) <span class="syn-kw">or</span> (err) {
+    s.listen(<span class="syn-str">"127.0.0.1:18080"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(err.msg())
         <span class="syn-flow">&lt;&lt;</span> 1
     }
     println(<span class="syn-str">"http://127.0.0.1:18080"</span>)
     $running <span class="syn-flow">:=</span> true
     <span class="syn-kw">while</span> running {
-        fd <span class="syn-flow">:=</span> s.accept() <span class="syn-kw">or</span> (err) {
+        fd <span class="syn-flow">:=</span> s.accept() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             <span class="syn-flow">-&gt;</span>
         }
         <span class="syn-cmt">// The deployable example uses the portable, deterministic path on all</span>
@@ -2174,7 +2174,7 @@
 <h2><code>(&amp;Conn) read_result</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) read_result(n <span class="syn-type">int</span>) io.ReadResult</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on <code>&amp;Conn</code>: read result.</p>
+<p>Operation on <code>&amp;Conn</code>: read result. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>The <code>Conn</code> instance used by this call (borrow).</dd>
@@ -2187,7 +2187,7 @@
 <h2><code>(&amp;Conn) write_result</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c &amp;Conn) write_result(data <span class="syn-type">string</span>) io.WriteResult</code></pre></div>
 <h3>Purpose</h3>
-<p>Operation on <code>&amp;Conn</code>: write result.</p>
+<p>Operation on <code>&amp;Conn</code>: write result. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">&amp;Conn</span></dt><dd>The <code>Conn</code> instance used by this call (borrow).</dd>
