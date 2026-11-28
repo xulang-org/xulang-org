@@ -514,24 +514,24 @@ fn chart_number(n f64) bool { << chart_finite(n) && math.abs(n) <= 1000000000000
 
 // Upstream: src/ui/widgets/chart_data.xu
 fn chart_validate_series(series &[]ChartSeries) int {
-    if series.len > CHART_MAX_SERIES { >>> errors.new("widgets: too many chart series") }
+    if series.len > CHART_MAX_SERIES { >> errors.new("widgets: too many chart series") }
     $count := 0
     for i in 0:series.len { s := &series[i]
         if s.id <= 0 || s.id > 2147483647 || s.kind < CHART_LINE || s.kind > CHART_DONUT || s.name.len > 256 ||
            !chart_finite(s.line_width) || s.line_width < 0.5 || s.line_width > 12.0 || !chart_finite(s.symbol_size) || s.symbol_size < 0.0 || s.symbol_size > 24.0 {
-            >>> errors.new("widgets: invalid chart series") }
-        if s.kind == CHART_DONUT && series.len != 1 { >>> errors.new("widgets: a donut chart requires one series") }
-        for j in 0:i { if series[j].id == s.id { >>> errors.new("widgets: duplicate chart series id") } }
+            >> errors.new("widgets: invalid chart series") }
+        if s.kind == CHART_DONUT && series.len != 1 { >> errors.new("widgets: a donut chart requires one series") }
+        for j in 0:i { if series[j].id == s.id { >> errors.new("widgets: duplicate chart series id") } }
         $ids := map[int]bool{}
         $previous_x := 0.0 - 1000000000001.0
         for p in s.points {
             if p.id <= 0 || p.id > 2147483647 || ids.has(p.id) || !chart_number(p.x) || !chart_number(p.y) || p.label.len > 256 || (s.kind == CHART_DONUT && p.y < 0.0) {
-                >>> errors.new("widgets: invalid or duplicate chart point") }
-            if s.kind <= CHART_BAR && p.x <= previous_x { >>> errors.new("widgets: line, area and bar points require increasing x coordinates") }
+                >> errors.new("widgets: invalid or duplicate chart point") }
+            if s.kind <= CHART_BAR && p.x <= previous_x { >> errors.new("widgets: line, area and bar points require increasing x coordinates") }
             previous_x = p.x
             ids[p.id] = true
             count = count + 1
-            if count > CHART_MAX_POINTS { >>> errors.new("widgets: chart point limit exceeded") }
+            if count > CHART_MAX_POINTS { >> errors.new("widgets: chart point limit exceeded") }
         }
     }
     << 0
@@ -825,10 +825,10 @@ pub fn (c $&Chart) input(event &ui.InputEvent) Action {
 
 // Upstream: src/ui/widgets/chart_paint.xu
 pub fn (c $&Chart) paint_styled(frame $&draw.Frame,styles &Styles) int {
-    if c.control.closed { >>> errors.new("widgets: chart is disposed") }
+    if c.control.closed { >> errors.new("widgets: chart is disposed") }
     frame.push() >>>
     c.paint_content(frame,styles) >>> (err) { screen_controls_pop(frame)
-        >>> err }
+        >> err }
     frame.pop() >>>
     << 0
 }
@@ -846,7 +846,7 @@ pub fn (c $&Chart) set_focus(value bool) { item := $&c.control
 
 // Upstream: src/ui/widgets/chart.xu
 pub fn (c $&Chart) set_series(series &[]ChartSeries) int {
-    if c.control.closed { >>> errors.new("widgets: chart is disposed") }
+    if c.control.closed { >> errors.new("widgets: chart is disposed") }
     chart_validate_series(series) >>>
     selection := c.selection()
     $old := map[string]int{}
@@ -909,7 +909,7 @@ pub fn (c $&Chart) set_series(series &[]ChartSeries) int {
 // Upstream: src/ui/widgets/chart_input.xu
 pub fn (c $&Chart) set_series_visible(series_id int,visible bool) int {
     index := c.series_index(series_id)
-    if index < 0 { >>> errors.new("widgets: chart series is unavailable") }
+    if index < 0 { >> errors.new("widgets: chart series is unavailable") }
     bit := 1 << index
     if visible { c.disabled_series = c.disabled_series & (0 - 1 - bit) }
     else { c.disabled_series = c.disabled_series | bit }
@@ -975,7 +975,7 @@ pub fn (c &Chart) selection() ChartHit { << c.datum_hit(c.selected) }
 // Upstream: src/ui/widgets/chart_input.xu
 pub fn (c &Chart) series_visible(series_id int) bool {
     index := c.series_index(series_id)
-    if index < 0 { >>> errors.new("widgets: chart series is unavailable") }
+    if index < 0 { >> errors.new("widgets: chart series is unavailable") }
     << c.series_is_visible(index)
 }
 
@@ -997,7 +997,7 @@ pub fn (c &Chart) visible_domain() ChartDomain {
 // Upstream: src/ui/widgets/chart_data.xu
 pub fn (d &ChartDomain) validate() int {
     if !chart_number(d.x_min) || !chart_number(d.x_max) || !chart_number(d.y_min) || !chart_number(d.y_max) ||
-       d.x_max - d.x_min < 0.000000001 || d.y_max - d.y_min < 0.000000001 { >>> errors.new("widgets: invalid chart domain") }
+       d.x_max - d.x_min < 0.000000001 || d.y_max - d.y_min < 0.000000001 { >> errors.new("widgets: invalid chart domain") }
     << 0
 }
 
@@ -1013,7 +1013,7 @@ pub fn (options &AnimationOptions) validate() int {
     if options.duration.nanoseconds() <= 0 || options.duration.nanoseconds() > 3600 * time.second() ||
        options.delay.is_negative() || options.delay.nanoseconds() > 3600 * time.second() ||
        options.iterations < 0 || options.iterations > 10000 || (math.is_nan(options.rate) || math.is_inf(options.rate)) || options.rate <= 0.0 || options.rate > 16.0 ||
-       options.curve < EASE_LINEAR || options.curve > EASE_IN_QUINT { >>> errors.new("widgets: invalid animation options") }
+       options.curve < EASE_LINEAR || options.curve > EASE_IN_QUINT { >> errors.new("widgets: invalid animation options") }
     << 0
 }
 

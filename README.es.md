@@ -33,7 +33,7 @@ XU combina la propiedad y el préstamo verificados en tiempo de compilación con
 | :--- | :--- |
 | **Propiedad sin GC** | Verificación de movimientos y préstamos en compilación, tiempos de vida inferidos y limpieza determinista de recursos. |
 | **Concurrencia en el lenguaje** | Inicia una corrutina con `xu`; intercambia valores mediante canales `chan` tipados. |
-| **Flujo de control visible** | `<<` devuelve un valor, `>>>` lanza un error y `>>> (err) { … }` lo gestiona en el punto de llamada. |
+| **Flujo de control visible** | `<<` devuelve un valor, `>>` lanza un error y `>>> (err) { … }` lo gestiona en el punto de llamada. |
 | **Cadena de herramientas integrada** | Compila, ejecuta, verifica, prueba, formatea, genera documentación y utiliza el servidor de lenguaje mediante `xu`. |
 
 ## Lee un poco de XU
@@ -45,7 +45,7 @@ Dos trabajadores, un canal y una ruta de error explícita:
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >>> errors.new("empty name") }
+    if name.len == 0 { >> errors.new("empty name") }
     << name.len * 10
 }
 

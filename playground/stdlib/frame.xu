@@ -28,7 +28,7 @@ pub fn (frame $&Frame) present() int { frame.active = false
 pub fn (frame $&Frame) cancel() { frame.active = false
     cancel() }
 fn (frame &Frame) writable() int {
-    if !frame.active { >>> errors.new("draw: frame is not writable") }
+    if !frame.active { >> errors.new("draw: frame is not writable") }
     << 0
 }
 pub fn (frame $&Frame) clear(color Color) int { frame.writable() >>>
@@ -116,7 +116,7 @@ pub fn (context &Context) layout_masked_text(value &string,options &TextOptions)
     << context.layout_text_mode(value,options,true) >>>
 }
 fn (context &Context) layout_text_mode(value &string,options &TextOptions,masked bool) TextLayout {
-    if options.size < 1.0 || options.size > 256.0 || math.is_nan(options.size) { >>> errors.new("draw: invalid browser text size") }
+    if options.size < 1.0 || options.size > 256.0 || math.is_nan(options.size) { >> errors.new("draw: invalid browser text size") }
     cells := measure_cells_until(value,value.len,masked) >>>
     width := f64(cells) * options.size * 0.6
     height := options.size * 1.25
@@ -164,13 +164,13 @@ pub fn (frame $&Frame) text_layout(label &TextLayout,x f64,y f64,color Color) in
 
 pub fn (frame $&Frame) cursor_rect(x f64,y f64,w f64,h f64,cursor string) int {
     frame.writable() >>>
-    if w < 0.0 || h < 0.0 || math.is_nan(w) || math.is_nan(h) { >>> errors.new("draw: invalid cursor rect") }
+    if w < 0.0 || h < 0.0 || math.is_nan(w) || math.is_nan(h) { >> errors.new("draw: invalid cursor rect") }
     << cmd("cursor_rect\t" + scalar(x) + "\t" + scalar(y) + "\t" + scalar(w) + "\t" + scalar(h) + "\t" + clean(cursor))
 }
 
 pub fn (frame $&Frame) copy_text(seq int,value &string) int {
     frame.writable() >>>
-    if seq < 0 { >>> errors.new("draw: invalid clipboard sequence") }
+    if seq < 0 { >> errors.new("draw: invalid clipboard sequence") }
     << cmd("clipboard\t" + str(seq) + "\t" + escape_cmd_text(value))
 }
 
@@ -209,7 +209,7 @@ pub fn (frame $&Frame) fill_path(path &Path,color Color,rule int) int {
 pub fn (frame $&Frame) stroke_path(path &Path,color Color,options &StrokeOptions) int {
     frame.writable() >>>
     if options.cap < CAP_BUTT || options.cap > CAP_SQUARE || options.join < JOIN_MITER || options.join > JOIN_BEVEL || options.dashes.len > 0 {
-        >>> errors.new("draw: unsupported browser stroke options")
+        >> errors.new("draw: unsupported browser stroke options")
     }
     cmd("path_begin")
     if path.commands.len > 0 { cmd(path.commands[0:path.commands.len - 1]) }
@@ -242,16 +242,16 @@ pub fn (context &Context) matches_canvas(identity &ui.CanvasEvent) bool {
     << identity.window_id == 1 && identity.canvas_id == context.canvas_id && identity.generation == context.generation
 }
 pub fn (context &Context) start_text_input(options &ui.TextInputOptions) ui.TextInput {
-    >>> errors.new("browser: native text input unavailable; use read-only Editor")
+    >> errors.new("browser: native text input unavailable; use read-only Editor")
 }
 pub fn (layout &TextLayout) bind_input_transform(input &ui.TextInput,revision int,transform &ui.TextInputTransform,upstream bool) int {
-    >>> errors.new("browser: native text input geometry unavailable")
+    >> errors.new("browser: native text input geometry unavailable")
 }
 // Single-line code-point grid, with UTF-8 byte indices matching desktop APIs.
 // This supports display-only Editor.paint(), not grapheme or bidi shaping.
 pub fn (layout &TextLayout) caret(index int,trailing bool) TextHit {
     value := layout_source(layout)
-    if index < 0 || index > value.len { >>> errors.new("draw: invalid browser caret index") }
+    if index < 0 || index > value.len { >> errors.new("draw: invalid browser caret index") }
     masked := layout.id < 0
     $cells := 0
     $position := 0
@@ -264,7 +264,7 @@ pub fn (layout &TextLayout) caret(index int,trailing bool) TextHit {
         }
         position += step
     }
-    if position != index { >>> errors.new("draw: caret index must be a UTF-8 boundary") }
+    if position != index { >> errors.new("draw: caret index must be a UTF-8 boundary") }
     $length := 0
     if index < value.len { length = utf8.decode_width(&value,index) >>> }
     if trailing && length > 0 {
@@ -277,7 +277,7 @@ pub fn (layout &TextLayout) caret(index int,trailing bool) TextHit {
     << TextHit{index: index,length: length,trailing: trailing,inside: true,x: f64(cells) * layout.metrics.baseline * 0.6,y: 0.0,height: layout.metrics.height}
 }
 pub fn (layout &TextLayout) selection_rects(start int,end int) []TextSelectionRect {
-    if end < start { >>> errors.new("draw: invalid browser selection") }
+    if end < start { >> errors.new("draw: invalid browser selection") }
     left := layout.caret(start,false) >>>
     right := layout.caret(end,false) >>>
     $rects := []TextSelectionRect{}

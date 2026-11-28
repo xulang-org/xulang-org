@@ -14,7 +14,7 @@
 
 // Upstream: src/ui/widgets/table_sort.xu
 fn (t $&Table) apply_sort(column int,descending bool,reset_scroll bool) int {
-    if t.rows.closed || column < -1 || column >= t.column_count() { >>> errors.new("widgets: invalid table sort column") }
+    if t.rows.closed || column < -1 || column >= t.column_count() { >> errors.new("widgets: invalid table sort column") }
     selected := t.selected_row() >>>
     $order := []int{}
     if column < 0 || !t.local_sort { for row in 0:t.count() { order.push(row) } }
@@ -222,7 +222,7 @@ pub fn (styles &Styles) table_style() ControlStyle {
 
 // Upstream: src/ui/widgets/table.xu
 pub fn (t $&Table) apply_styles(styles &Styles) int {
-    if t.rows.closed { >>> errors.new("widgets: table is disposed") }
+    if t.rows.closed { >> errors.new("widgets: table is disposed") }
     styles.validate() >>>
     c := t.style_or(styles)
     cache := $&t.labels
@@ -406,7 +406,7 @@ pub fn (t $&Table) refresh_sort() int {
 
 // Upstream: src/ui/widgets/table.xu
 pub fn (t $&Table) set_bounds(bounds &layout.Rect) int {
-    if t.rows.closed { >>> errors.new("widgets: table is disposed") }
+    if t.rows.closed { >> errors.new("widgets: table is disposed") }
     validate_bounds(bounds) >>>
     if t.outer.x != bounds.x || t.outer.y != bounds.y || t.outer.width != bounds.width || t.outer.height != bounds.height {
         t.hot_header = -1
@@ -423,7 +423,7 @@ pub fn (t $&Table) set_bounds(bounds &layout.Rect) int {
 
 // Upstream: src/ui/widgets/table.xu
 pub fn (t $&Table) set_cell(row int,column int,text &string) int {
-    if t.rows.closed || row < 0 || row >= t.count() || column < 0 || column >= t.column_count() { >>> errors.new("widgets: invalid table cell") }
+    if t.rows.closed || row < 0 || row >= t.count() || column < 0 || column >= t.column_count() { >> errors.new("widgets: invalid table cell") }
     validate_table_text(text) >>>
     index := row * t.column_count() + column
     if t.cells[index] != text + "" { t.cells[index] = text + ""
@@ -435,7 +435,7 @@ pub fn (t $&Table) set_cell(row int,column int,text &string) int {
 // Upstream: src/ui/widgets/table_appearance.xu
 pub fn (t $&Table) set_column_width(column int,width f64) int {
     if t.rows.closed || column < 0 || column >= t.column_count() || !finite_metric(width,4096.0) || (width > 0.0 && width < t.minima[column]) {
-        >>> errors.new("widgets: invalid table column width")
+        >> errors.new("widgets: invalid table column width")
     }
     t.widths[column] = width
     b := t.bounds()
@@ -453,7 +453,7 @@ pub fn (t $&Table) set_focus(focused bool) { if !focused { t.sort_key_armed = 0
 
 // Upstream: src/ui/widgets/table_appearance.xu
 pub fn (t $&Table) set_horizontal_offset(offset f64) int {
-    if math.is_nan(offset) || math.is_inf(offset) { >>> errors.new("widgets: invalid table scroll offset") }
+    if math.is_nan(offset) || math.is_inf(offset) { >> errors.new("widgets: invalid table scroll offset") }
     next := math.max(0.0,math.min(math.max(0.0,t.content_width() - t.outer.width),offset))
     if t.scroll_x != next { t.scroll_x = next
         t.rows.dirty = true }
@@ -462,7 +462,7 @@ pub fn (t $&Table) set_horizontal_offset(offset f64) int {
 
 // Upstream: src/ui/widgets/table_sort.xu
 pub fn (t $&Table) set_local_sort(enabled bool) int {
-    if t.rows.closed { >>> errors.new("widgets: table is disposed") }
+    if t.rows.closed { >> errors.new("widgets: table is disposed") }
     if t.local_sort == enabled { << 0 }
     t.local_sort = enabled
     column := t.sort_col
@@ -472,7 +472,7 @@ pub fn (t $&Table) set_local_sort(enabled bool) int {
 
 // Upstream: src/ui/widgets/table_sort.xu
 pub fn (t $&Table) set_sort_kind(column int,kind int) int {
-    if t.rows.closed || column < 0 || column >= t.column_count() || kind < TABLE_SORT_TEXT || kind > TABLE_SORT_NUMBER { >>> errors.new("widgets: invalid table sort kind") }
+    if t.rows.closed || column < 0 || column >= t.column_count() || kind < TABLE_SORT_TEXT || kind > TABLE_SORT_NUMBER { >> errors.new("widgets: invalid table sort kind") }
     if t.sort_kinds[column] != kind { t.sort_kinds[column] = kind
         if column == t.sort_col { t.refresh_sort() >>> } }
     << 0
@@ -511,7 +511,7 @@ pub fn (t &Table) needs_paint() bool { << t.rows.dirty }
 // Upstream: src/ui/widgets/table_sort.xu
 pub fn (t &Table) row_at(view_row int) int {
     if view_row == -1 { << -1 }
-    if view_row < 0 || view_row >= t.order.len { >>> errors.new("widgets: invalid table view row") }
+    if view_row < 0 || view_row >= t.order.len { >> errors.new("widgets: invalid table view row") }
     << t.order[view_row]
 }
 
@@ -530,7 +530,7 @@ pub fn (t &Table) style_or(styles &Styles) ControlStyle {
 // Upstream: src/ui/widgets/table_sort.xu
 pub fn (t &Table) view_row(source_row int) int {
     if source_row == -1 { << -1 }
-    if source_row < 0 || source_row >= t.count() { >>> errors.new("widgets: invalid table source row") }
+    if source_row < 0 || source_row >= t.count() { >> errors.new("widgets: invalid table source row") }
     for i in 0:t.order.len { if t.order[i] == source_row { << i } }
     << -1
 }
@@ -538,9 +538,9 @@ pub fn (t &Table) view_row(source_row int) int {
 // Upstream: src/ui/widgets/table.xu
 pub fn table(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,headers &[]string,rows int,selected int) Table {
     if headers.len < 1 || headers.len > 16 || rows < 0 || rows > 512 || rows * headers.len > 768 || (rows == 0 && selected != -1) {
-        >>> errors.new("widgets: table exceeds 16 columns, 512 rows or 768 cells")
+        >> errors.new("widgets: table exceeds 16 columns, 512 rows or 768 cells")
     }
-    if !context.matches_canvas(identity) { >>> errors.new("widgets: table context mismatch") }
+    if !context.matches_canvas(identity) { >> errors.new("widgets: table context mismatch") }
     $titles := []string{}
     for title in headers { validate_table_text(&title) >>>
         titles.push(title + "") }

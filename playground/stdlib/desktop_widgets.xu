@@ -106,7 +106,7 @@ pub struct Button {
 
 // Upstream: src/ui/widgets/mod.xu
 pub fn button(identity &ui.CanvasEvent,id int,bounds &layout.Rect) Button {
-    if !valid_identity(identity) || id <= 0 { >>> errors.new("widgets: invalid control identity") }
+    if !valid_identity(identity) || id <= 0 { >> errors.new("widgets: invalid control identity") }
     validate_bounds(bounds) >>>
     << Button{id: id,identity: copy_identity(identity),bounds: copy_rect(bounds),enabled: true,focused: false,hovered: false,
               pointer_armed: false,keyboard_armed: 0,dirty: true,closed: false,invalid: false,selected: false,read_only: false,custom: empty_scalar_style()}
@@ -373,7 +373,7 @@ pub struct Progress {
 // Upstream: src/ui/widgets/mod.xu
 pub fn progress(bounds &layout.Rect,value f64) Progress {
     validate_bounds(bounds) >>>
-    if math.is_nan(value) || math.is_inf(value) { >>> errors.new("widgets: invalid progress") }
+    if math.is_nan(value) || math.is_inf(value) { >> errors.new("widgets: invalid progress") }
     << Progress{buffer: value,buffered: false,enabled: true,invalid: false,focused: false,selected: false,bounds: copy_rect(bounds),value: math.max(0.0,math.min(1.0,value)),dirty: true,custom: empty_scalar_style()}
 }
 
@@ -388,7 +388,7 @@ pub fn (progress $&Progress) painted() { progress.dirty = false }
 
 // Upstream: src/ui/widgets/mod.xu
 pub fn (progress $&Progress) set_value(value f64) int {
-    if math.is_nan(value) || math.is_inf(value) { >>> errors.new("widgets: invalid progress") }
+    if math.is_nan(value) || math.is_inf(value) { >> errors.new("widgets: invalid progress") }
     clamped := math.max(0.0,math.min(1.0,value))
     if clamped != progress.value { progress.value = clamped
         progress.buffer=math.max(progress.buffer,clamped)
@@ -470,9 +470,9 @@ pub struct Editor {
 
 // Upstream: src/ui/widgets/editor.xu
 fn new_editor(context &draw.Context,identity &ui.CanvasEvent,id int,bounds &layout.Rect,value &string,multiline bool) Editor {
-    if !valid_identity(identity) || !context.matches_canvas(identity) || id <= 0 || value.len > 16384 || !utf8.valid(value) { >>> errors.new("widgets: invalid editor identity or UTF-8 value") }
+    if !valid_identity(identity) || !context.matches_canvas(identity) || id <= 0 || value.len > 16384 || !utf8.valid(value) { >> errors.new("widgets: invalid editor identity or UTF-8 value") }
     validate_bounds(bounds) >>>
-    for i in 0:value.len { if (value[i] & 255) == 0 || (!multiline && ((value[i] & 255) == 10 || (value[i] & 255) == 13)) { >>> errors.new("widgets: invalid editor text") } }
+    for i in 0:value.len { if (value[i] & 255) == 0 || (!multiline && ((value[i] & 255) == 10 || (value[i] & 255) == 13)) { >> errors.new("widgets: invalid editor text") } }
     styles := dark_styles()
     $appearance := styles.input.clone()
     if multiline { appearance = styles.text_area.clone() }
@@ -906,7 +906,7 @@ pub struct Scroll {
 pub fn scroll(identity &ui.CanvasEvent,id int,bounds &layout.Rect,axis int,content_extent f64) Scroll {
     if !valid_identity(identity) || id <= 0 || axis < AXIS_VERTICAL || axis > AXIS_HORIZONTAL ||
        math.is_nan(content_extent) || math.is_inf(content_extent) || content_extent < 0.0 || content_extent > f64(layout.MAX_EXTENT) {
-        >>> errors.new("widgets: invalid scroll options")
+        >> errors.new("widgets: invalid scroll options")
     }
     validate_bounds(bounds) >>>
     styles := dark_styles()
@@ -940,7 +940,7 @@ pub fn (scroll $&Scroll) set_focus(focused bool) {
 
 // Upstream: src/ui/widgets/scroll.xu
 pub fn (scroll $&Scroll) set_offset(offset f64) int {
-    if math.is_nan(offset) || math.is_inf(offset) || math.abs(offset) > f64(layout.MAX_EXTENT) { >>> errors.new("widgets: invalid scroll offset") }
+    if math.is_nan(offset) || math.is_inf(offset) || math.abs(offset) > f64(layout.MAX_EXTENT) { >> errors.new("widgets: invalid scroll offset") }
     next := math.max(0.0,math.min(offset,math.max(0.0,scroll.content - scroll.viewport())))
     if next != scroll.offset { scroll.offset = next
         scroll.dirty = true }
@@ -949,7 +949,7 @@ pub fn (scroll $&Scroll) set_offset(offset f64) int {
 
 // Upstream: src/ui/widgets/scroll.xu
 pub fn (scroll $&Scroll) set_content_extent(extent f64) int {
-    if math.is_nan(extent) || math.is_inf(extent) || extent < 0.0 || extent > f64(layout.MAX_EXTENT) { >>> errors.new("widgets: invalid content extent") }
+    if math.is_nan(extent) || math.is_inf(extent) || extent < 0.0 || extent > f64(layout.MAX_EXTENT) { >> errors.new("widgets: invalid content extent") }
     if scroll.content != extent { scroll.content = extent
         scroll.dirty = true }
     scroll.set_offset(scroll.offset) >>>
@@ -1007,7 +1007,7 @@ pub fn (scroll $&Scroll) input(input &ui.InputEvent) Action {
 
 // Upstream: src/ui/widgets/scroll.xu
 pub fn (scroll &Scroll) begin(frame $&draw.Frame) int {
-    if scroll.closed { >>> errors.new("widgets: scroll owner is closed") }
+    if scroll.closed { >> errors.new("widgets: scroll owner is closed") }
     frame.push() >>>
     frame.clip_rect(scroll.bounds.x,scroll.bounds.y,scroll.bounds.width,scroll.bounds.height) >>>
     $x := scroll.bounds.x
@@ -1031,10 +1031,10 @@ pub struct FocusGroup {
 
 // Upstream: src/ui/widgets/scroll.xu
 pub fn focus_group(identity &ui.CanvasEvent,ids []int) FocusGroup {
-    if !valid_identity(identity) || ids.len > 512 { >>> errors.new("widgets: invalid focus group") }
+    if !valid_identity(identity) || ids.len > 512 { >> errors.new("widgets: invalid focus group") }
     for i in 0:ids.len {
-        if ids[i] <= 0 { >>> errors.new("widgets: invalid focus id") }
-        for j in 0:i { if ids[i] == ids[j] { >>> errors.new("widgets: duplicate focus id") } }
+        if ids[i] <= 0 { >> errors.new("widgets: invalid focus id") }
+        for j in 0:i { if ids[i] == ids[j] { >> errors.new("widgets: duplicate focus id") } }
     }
     << FocusGroup{identity: copy_identity(identity),ids: ids,current: 0,closed: false}
 }
@@ -1047,12 +1047,12 @@ pub fn (focus $&FocusGroup) clear() { focus.current = 0 }
 
 // Upstream: src/ui/widgets/scroll.xu
 pub fn (focus $&FocusGroup) focus(id int) int {
-    if focus.closed { >>> errors.new("widgets: focus owner is closed") }
+    if focus.closed { >> errors.new("widgets: focus owner is closed") }
     if id == 0 { focus.current = 0
         << 0 }
     for candidate in focus.ids { if candidate == id { focus.current = id
         << 0 } }
-    >>> errors.new("widgets: focus id is not registered")
+    >> errors.new("widgets: focus id is not registered")
 }
 
 // Upstream: src/ui/widgets/scroll.xu
@@ -1079,11 +1079,11 @@ pub fn (focus $&FocusGroup) input(input &ui.InputEvent) Action {
 
 // Upstream: src/ui/widgets/scroll.xu
 pub fn (focus $&FocusGroup) set_items(ids []int) int {
-    if focus.closed || ids.len > 512 { >>> errors.new("widgets: invalid focus update") }
+    if focus.closed || ids.len > 512 { >> errors.new("widgets: invalid focus update") }
     $found := false
     for i in 0:ids.len {
-        if ids[i] <= 0 { >>> errors.new("widgets: invalid focus id") }
-        for j in 0:i { if ids[i] == ids[j] { >>> errors.new("widgets: duplicate focus id") } }
+        if ids[i] <= 0 { >> errors.new("widgets: invalid focus id") }
+        for j in 0:i { if ids[i] == ids[j] { >> errors.new("widgets: duplicate focus id") } }
         if ids[i] == focus.current { found = true }
     }
     focus.ids = ids
@@ -1443,10 +1443,10 @@ fn clamp_slider_value(min_val f64,max_val f64,step_val f64,raw f64) f64 {
 
 // Upstream: src/ui/widgets/controls_basic.xu
 pub fn slider(identity &ui.CanvasEvent,id int,bounds &layout.Rect,min f64,max f64,value f64) Slider {
-    if !valid_identity(identity) || id <= 0 { >>> errors.new("widgets: invalid control identity") }
+    if !valid_identity(identity) || id <= 0 { >> errors.new("widgets: invalid control identity") }
     validate_bounds(bounds) >>>
     if math.is_nan(min) || math.is_inf(min) || math.is_nan(max) || math.is_inf(max) || max <= min || math.is_nan(value) || math.is_inf(value) {
-        >>> errors.new("widgets: invalid slider range")
+        >> errors.new("widgets: invalid slider range")
     }
     << Slider{locale: "",appearance: slider_appearance(),id: id,identity: copy_identity(identity),bounds: copy_rect(bounds),min_val: min,max_val: max,step_val: 0.0,
         val: clamp_slider_value(min,max,0.0,value),enabled: true,focused: false,hovered: false,dragging: false,commit_only: false,pending: false,committed: clamp_slider_value(min,max,0.0,value),thumb_extent: 18.0,inset_left: 0.0,inset_right: 0.0,
@@ -1552,7 +1552,7 @@ pub fn (s $&Slider) set_read_only(read_only bool) {
 
 // Upstream: src/ui/widgets/controls_basic.xu
 pub fn (s $&Slider) set_value(value f64) int {
-    if math.is_nan(value) || math.is_inf(value) { >>> errors.new("widgets: invalid slider value") }
+    if math.is_nan(value) || math.is_inf(value) { >> errors.new("widgets: invalid slider value") }
     next := clamp_slider_value(s.min_val,s.max_val,s.step_val,value)
     if next != s.val {
         s.val = next
@@ -1564,7 +1564,7 @@ pub fn (s $&Slider) set_value(value f64) int {
 // Upstream: src/ui/widgets/controls_basic.xu
 pub fn (s $&Slider) set_range(min f64,max f64) int {
     if math.is_nan(min) || math.is_inf(min) || math.is_nan(max) || math.is_inf(max) || max <= min {
-        >>> errors.new("widgets: invalid slider range")
+        >> errors.new("widgets: invalid slider range")
     }
     s.min_val = min
     s.max_val = max
@@ -1577,7 +1577,7 @@ pub fn (s $&Slider) set_range(min f64,max f64) int {
 // Upstream: src/ui/widgets/controls_basic.xu
 pub fn (s $&Slider) set_step(step f64) int {
     if math.is_nan(step) || math.is_inf(step) || step < 0.0 || step > (s.max_val - s.min_val) {
-        >>> errors.new("widgets: invalid slider step")
+        >> errors.new("widgets: invalid slider step")
     }
     s.step_val = step
     next := clamp_slider_value(s.min_val,s.max_val,s.step_val,s.val)
@@ -1756,10 +1756,10 @@ pub struct ListBox {
 
 // Upstream: src/ui/widgets/controls_data.xu
 pub fn list_box(identity &ui.CanvasEvent,id int,bounds &layout.Rect,count int,selected int) ListBox {
-    if !valid_identity(identity) || id <= 0 { >>> errors.new("widgets: invalid control identity") }
+    if !valid_identity(identity) || id <= 0 { >> errors.new("widgets: invalid control identity") }
     validate_bounds(bounds) >>>
     if count < 0 || count > 4096 || (count > 0 && (selected < -1 || selected >= count)) {
-        >>> errors.new("widgets: invalid list_box count or selection")
+        >> errors.new("widgets: invalid list_box count or selection")
     }
     << ListBox{appearance: list_appearance(),id: id,identity: copy_identity(identity),bounds: copy_rect(bounds),count_val: count,selected_val: selected,
         hovered_idx: -1,armed_idx: -1,scroll_y: 0.0,scroll_dragging: false,scroll_grab: 0.0,row_h: 44.0,
@@ -1863,7 +1863,7 @@ fn (lb &ListBox) max_scroll() f64 {
 
 // Upstream: src/ui/widgets/controls_data.xu
 pub fn (lb $&ListBox) set_scroll_offset(offset f64) int {
-    if math.is_nan(offset) || math.is_inf(offset) { >>> errors.new("widgets: invalid list_box scroll offset") }
+    if math.is_nan(offset) || math.is_inf(offset) { >> errors.new("widgets: invalid list_box scroll offset") }
     next := math.max(0.0,math.min(lb.max_scroll(),offset))
     if next != lb.scroll_y {
         lb.scroll_y = next
@@ -1891,7 +1891,7 @@ pub fn (lb $&ListBox) ensure_visible(index int) {
 
 // Upstream: src/ui/widgets/controls_data.xu
 pub fn (lb $&ListBox) set_count(count int) int {
-    if count < 0 || count > 4096 { >>> errors.new("widgets: invalid list_box count") }
+    if count < 0 || count > 4096 { >> errors.new("widgets: invalid list_box count") }
     if lb.count_val != count {
         lb.count_val = count
         if lb.selected_val >= count { lb.selected_val = count - 1 }
@@ -1906,7 +1906,7 @@ pub fn (lb $&ListBox) set_count(count int) int {
 // Upstream: src/ui/widgets/controls_data.xu
 pub fn (lb $&ListBox) set_selected(index int) int {
     if index < -1 || (lb.count_val > 0 && index >= lb.count_val) || (lb.count_val == 0 && index != -1) {
-        >>> errors.new("widgets: list_box index out of range")
+        >> errors.new("widgets: list_box index out of range")
     }
     if lb.selected_val != index {
         lb.selected_val = index
@@ -2099,10 +2099,10 @@ pub struct Tabs {
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn tabs(identity &ui.CanvasEvent,id int,bounds &layout.Rect,count int,selected int) Tabs {
-    if !valid_identity(identity) || id <= 0 { >>> errors.new("widgets: invalid control identity") }
+    if !valid_identity(identity) || id <= 0 { >> errors.new("widgets: invalid control identity") }
     validate_bounds(bounds) >>>
     if count <= 0 || count > 64 || selected < 0 || selected >= count {
-        >>> errors.new("widgets: invalid tabs count or selection")
+        >> errors.new("widgets: invalid tabs count or selection")
     }
     << Tabs{id: id,identity: copy_identity(identity),bounds: copy_rect(bounds),count_val: count,selected_val: selected,segmented_val: false,active_idx: selected,automatic: true,item_widths: []f64{},layout_density: 1.0,layout_padding: layout.Insets{left: 0.0,top: 0.0,right: 0.0,bottom: 0.0},layout_gap: 0.0,
         hovered_idx: -1,armed_idx: -1,enabled: true,focused: false,hovered: false,dirty: true,closed: false,
@@ -2201,7 +2201,7 @@ pub fn (t $&Tabs) set_read_only(read_only bool) {
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (t $&Tabs) set_count(count int) int {
-    if count <= 0 || count > 64 { >>> errors.new("widgets: invalid tabs count") }
+    if count <= 0 || count > 64 { >> errors.new("widgets: invalid tabs count") }
     if t.count_val != count {
         t.count_val = count
         if t.selected_val >= count { t.selected_val = count - 1 }
@@ -2214,7 +2214,7 @@ pub fn (t $&Tabs) set_count(count int) int {
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (t $&Tabs) set_selected(index int) int {
-    if index < 0 || index >= t.count_val { >>> errors.new("widgets: tab index out of range") }
+    if index < 0 || index >= t.count_val { >> errors.new("widgets: tab index out of range") }
     if t.selected_val != index {
         t.selected_val = index
         t.dirty = true
@@ -2278,9 +2278,9 @@ fn (t &Tabs) hit_item(x f64,y f64) int {
 
 // Upstream: src/ui/widgets/controls_nav.xu
 pub fn (t $&Tabs) set_item_widths(widths &[]f64) int {
-    if widths.len != 0 && widths.len != t.count_val { >>> errors.new("widgets: expected one width per tab") }
+    if widths.len != 0 && widths.len != t.count_val { >> errors.new("widgets: expected one width per tab") }
     $values := []f64{}
-    for width in widths { if !finite_metric(width,4096.0) || (width > 0.0 && width < 24.0) { >>> errors.new("widgets: invalid tab width") }
+    for width in widths { if !finite_metric(width,4096.0) || (width > 0.0 && width < 24.0) { >> errors.new("widgets: invalid tab width") }
         values.push(width) }
     t.item_widths=values
     t.armed_idx=-1
@@ -2419,7 +2419,7 @@ pub struct Divider {
 pub fn divider(bounds &layout.Rect,axis int) Divider {
     validate_bounds(bounds) >>>
     if axis < AXIS_VERTICAL || axis > AXIS_HORIZONTAL {
-        >>> errors.new("widgets: invalid divider axis")
+        >> errors.new("widgets: invalid divider axis")
     }
     << Divider{axis_val: axis,bounds: copy_rect(bounds),enabled: true,invalid: false,selected: false,dirty: true,custom: empty_scalar_style()}
 }
@@ -2429,7 +2429,7 @@ pub fn (div &Divider) axis() int { << div.axis_val }
 
 // Upstream: src/ui/widgets/controls_display.xu
 pub fn (div $&Divider) set_axis(axis int) int {
-    if axis < AXIS_VERTICAL || axis > AXIS_HORIZONTAL { >>> errors.new("widgets: invalid divider axis") }
+    if axis < AXIS_VERTICAL || axis > AXIS_HORIZONTAL { >> errors.new("widgets: invalid divider axis") }
     if div.axis_val != axis {
         div.axis_val = axis
         div.dirty = true
@@ -2724,7 +2724,7 @@ pub fn (cd &Card) paint(frame $&draw.Frame,theme &Theme) int {
 
 // Upstream: src/ui/widgets/controls_display.xu
 pub fn (bg $&Badge) set_tone(tone int) int {
-    if tone<BADGE_NEUTRAL || tone>BADGE_ERROR { >>> errors.new("widgets: invalid badge tone") }
+    if tone<BADGE_NEUTRAL || tone>BADGE_ERROR { >> errors.new("widgets: invalid badge tone") }
     bg.tone=tone
     bg.dirty=true
     << 0
@@ -3023,7 +3023,7 @@ pub fn (progress $&Progress) set_invalid(invalid bool) { if progress.invalid != 
 
 // Upstream: src/ui/widgets/styled_controls.xu
 pub fn (progress $&Progress) set_buffer(value f64) int {
-    if !finite_metric(value,1.0) || value<progress.value { >>> errors.new("widgets: buffered progress must contain completed progress") }
+    if !finite_metric(value,1.0) || value<progress.value { >> errors.new("widgets: buffered progress must contain completed progress") }
     progress.buffer=value
     progress.buffered=true
     progress.dirty=true
@@ -3113,10 +3113,10 @@ pub fn (c &ControlStyle) resolve(state int) ResolvedStyle {
 
 // Upstream: src/ui/widgets/state_style.xu
 fn validate_states(c &ControlStyle) int {
-    if c.states.len > 32 { >>> errors.new("widgets: too many state paint rules") }
+    if c.states.len > 32 { >> errors.new("widgets: too many state paint rules") }
     for rule in c.states {
         if rule.when < 0 || rule.when > 127 || rule.unless < 0 || rule.unless > 127 || (rule.when & rule.unless) != 0 ||
-           rule.fields < 0 || rule.fields > 255 || !finite_metric(rule.icon_opacity,1.0) { >>> errors.new("widgets: invalid state paint rule") }
+           rule.fields < 0 || rule.fields > 255 || !finite_metric(rule.icon_opacity,1.0) { >> errors.new("widgets: invalid state paint rule") }
     }
     << 0
 }
@@ -3288,7 +3288,7 @@ pub struct Tween {
 
 // Upstream: src/ui/widgets/motion.xu
 pub fn tween(value f64) Tween {
-    if math.is_nan(value) || math.is_inf(value) { >>> errors.new("widgets: invalid tween value") }
+    if math.is_nan(value) || math.is_inf(value) { >> errors.new("widgets: invalid tween value") }
     << Tween{current: value,origin: value,target: value,started: time.zero_instant(),duration: time.duration(0),curve: EASE_OUT_QUART}
 }
 
@@ -3625,8 +3625,8 @@ fn finite_metric(value f64,limit f64) bool { << !math.is_nan(value) && !math.is_
 // Upstream: src/ui/widgets/style.xu
 fn validate_font(font &FontStyle) int {
     if font.family.len > 256 || !utf8.valid(&font.family) || !finite_metric(font.size,512.0) || font.size < 1.0 ||
-       font.weight < 100 || font.weight > 900 || !finite_metric(font.line_height,1024.0) || (font.line_height > 0.0 && font.line_height < font.size) { >>> errors.new("widgets: invalid font style") }
-    for i in 0:font.family.len { if (font.family[i] & 255) == 0 { >>> errors.new("widgets: font family contains NUL") } }
+       font.weight < 100 || font.weight > 900 || !finite_metric(font.line_height,1024.0) || (font.line_height > 0.0 && font.line_height < font.size) { >> errors.new("widgets: invalid font style") }
+    for i in 0:font.family.len { if (font.family[i] & 255) == 0 { >> errors.new("widgets: font family contains NUL") } }
     << 0
 }
 
@@ -3634,7 +3634,7 @@ fn validate_font(font &FontStyle) int {
 fn validate_control(c &ControlStyle) int {
     validate_font(&c.font) >>>
     validate_states(c) >>>
-    if !finite_metric(c.icon_size,4096.0) || c.icon_placement < ICON_LEADING || c.icon_placement > ICON_BELOW || !finite_metric(c.icon_opacity,1.0) || !finite_metric(c.disabled_icon_opacity,1.0) { >>> errors.new("widgets: invalid icon style") }
+    if !finite_metric(c.icon_size,4096.0) || c.icon_placement < ICON_LEADING || c.icon_placement > ICON_BELOW || !finite_metric(c.icon_opacity,1.0) || !finite_metric(c.disabled_icon_opacity,1.0) { >> errors.new("widgets: invalid icon style") }
     if !finite_metric(c.padding.left,4096.0) || !finite_metric(c.padding.top,4096.0) || !finite_metric(c.padding.right,4096.0) || !finite_metric(c.padding.bottom,4096.0) ||
        !finite_metric(c.radius,4096.0) ||
        !finite_metric(c.border_width,4096.0) ||
@@ -3651,14 +3651,14 @@ fn validate_control(c &ControlStyle) int {
        !finite_metric(c.shadow_blur,4096.0) ||
        !finite_metric(c.align_x,1.0) ||
        !finite_metric(c.align_y,1.0) ||
-       !finite_metric(math.abs(c.shadow_x),4096.0) || !finite_metric(math.abs(c.shadow_y),4096.0) { >>> errors.new("widgets: invalid control style") }
+       !finite_metric(math.abs(c.shadow_x),4096.0) || !finite_metric(math.abs(c.shadow_y),4096.0) { >> errors.new("widgets: invalid control style") }
     << 0
 }
 
 // Upstream: src/ui/widgets/style.xu
 pub fn (styles &Styles) validate() int {
     validate_font(&styles.font) >>>
-    if !finite_metric(styles.text_scale,4.0) || styles.text_scale < 0.5 || !finite_metric(styles.density,4.0) || styles.density < 0.5 { >>> errors.new("widgets: invalid text scale or density") }
+    if !finite_metric(styles.text_scale,4.0) || styles.text_scale < 0.5 || !finite_metric(styles.density,4.0) || styles.density < 0.5 { >> errors.new("widgets: invalid text scale or density") }
     validate_control(&styles.button) >>>
     validate_control(&styles.checkbox) >>>
     validate_control(&styles.input) >>>
@@ -3668,7 +3668,7 @@ pub fn (styles &Styles) validate() int {
     controls := [styles.button.clone(),styles.checkbox.clone(),styles.input.clone(),styles.text_area.clone(),styles.progress.clone(),styles.scroll.clone()]
     for c in controls {
         options := styles.text_options(&c)
-        if options.size < 1.0 || options.size > 512.0 || options.line_height > 1024.0 { >>> errors.new("widgets: scaled font exceeds drawing limits") }
+        if options.size < 1.0 || options.size > 512.0 || options.line_height > 1024.0 { >> errors.new("widgets: scaled font exceeds drawing limits") }
     }
     << 0
 }
@@ -3854,7 +3854,7 @@ pub fn (label $&StyledLabel) measure_styled(styles &Styles,control &ControlStyle
 pub fn (label $&StyledLabel) measure_wrapped(styles &Styles,control &ControlStyle,width f64) layout.Size {
     effective := label.style_or(control)
     $options := styles.text_options(&effective)
-    if !finite_metric(width,100000.0) || width<=0.0 { >>> errors.new("widgets: invalid wrapped text width") }
+    if !finite_metric(width,100000.0) || width<=0.0 { >> errors.new("widgets: invalid wrapped text width") }
     options.width=width
     if label.dirty || label.ellipsis_width >= 0.0 || label.layouts.len==0 || !options_equal(&label.options,&options) {
         shaped := label.context.layout_text(&label.value,&options) >>>

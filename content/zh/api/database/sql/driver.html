@@ -1,7 +1,7 @@
 <!--title: #database/sql/driver-->
 <p class="crumb">API</p>
 <h1><code>#database/sql/driver</code></h1>
-<!--xu-api-version: 0.14.1-->
+<!--xu-api-version: 0.14.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">导入方式: <code>#database/sql/driver</code></p>
 <p class="meta">公开 API: 7 函数, 0 方法, 6 类型, 0 常量, 5 方法集</p>
@@ -124,18 +124,18 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"postgres://zicq:zicq@127.0.0.1:5432/xu_demo?sslmode=disable"</span>
     $pool <span class="syn-flow">:=</span> postgres.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
 
-    pool.ping() <span class="syn-kw">or</span> (err) {
+    pool.ping() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] Postgres Pool ping succeeded."</span>)
 
     <span class="syn-cmt">// 1. DDL</span>
-    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_users;"</span>) <span class="syn-kw">or</span> (err) {
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_users;"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    pool.exec(<span class="syn-str">"CREATE TABLE xu_pool_users (id INTEGER PRIMARY KEY, name VARCHAR(50), balance INTEGER);"</span>) <span class="syn-kw">or</span> (err) {
+    pool.exec(<span class="syn-str">"CREATE TABLE xu_pool_users (id INTEGER PRIMARY KEY, name VARCHAR(50), balance INTEGER);"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Create table error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -144,7 +144,7 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
     $i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
-        pool.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, i, <span class="syn-str">"User_"</span> + str(i), i * 100) <span class="syn-kw">or</span> (err) {
+        pool.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, i, <span class="syn-str">"User_"</span> + str(i), i * 100) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
             <span class="syn-flow">&lt;&lt;</span>
         }
@@ -153,13 +153,13 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
 
     <span class="syn-cmt">// 3. Query</span>
-    $rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, name, balance FROM xu_pool_users ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+    $rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, name, balance FROM xu_pool_users ORDER BY id;"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     $count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
-        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
             <span class="syn-flow">&lt;&lt;</span>
         }
@@ -177,26 +177,26 @@ postgres <span class="syn-import"><span class="hash">#</span>github</span>.com/x
     }
 
     <span class="syn-cmt">// 4. Transaction via Pool</span>
-    $tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+    $tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    tx.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, 6, <span class="syn-str">"User_6"</span>, 600) <span class="syn-kw">or</span> (err) {
+    tx.exec(<span class="syn-str">"INSERT INTO xu_pool_users (id, name, balance) VALUES ($$1, $$2, $$3);"</span>, 6, <span class="syn-str">"User_6"</span>, 600) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Tx insert error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    tx.commit() <span class="syn-kw">or</span> (err) {
+    tx.commit() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Tx commit error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] Transaction committed via pool."</span>)
 
     <span class="syn-cmt">// 5. Cleanup &amp; Close</span>
-    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_users;"</span>) <span class="syn-kw">or</span> (err) {
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_users;"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Cleanup table error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    pool.close() <span class="syn-kw">or</span> (err) {
+    pool.close() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool close error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -324,18 +324,18 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     dsn <span class="syn-flow">:=</span> <span class="syn-str">"root:root@tcp(127.0.0.1:3306)/xu_demo?tls=false"</span>
     $pool <span class="syn-flow">:=</span> mysql.open_pool(dsn + <span class="syn-str">""</span>, 5, 2)
 
-    pool.ping() <span class="syn-kw">or</span> (err) {
+    pool.ping() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool ping error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] MySQL Pool ping succeeded."</span>)
 
     <span class="syn-cmt">// 1. DDL</span>
-    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_orders;"</span>) <span class="syn-kw">or</span> (err) {
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_orders;"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Drop table error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    pool.exec(<span class="syn-str">"CREATE TABLE xu_pool_orders (id INT PRIMARY KEY, title VARCHAR(50), amount INT);"</span>) <span class="syn-kw">or</span> (err) {
+    pool.exec(<span class="syn-str">"CREATE TABLE xu_pool_orders (id INT PRIMARY KEY, title VARCHAR(50), amount INT);"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Create table error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -344,7 +344,7 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     <span class="syn-cmt">// 2. Concurrency / multiple inserts</span>
     $i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
-        pool.exec(<span class="syn-str">"INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"Order_"</span> + str(i), i * 150) <span class="syn-kw">or</span> (err) {
+        pool.exec(<span class="syn-str">"INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"Order_"</span> + str(i), i * 150) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert row error: "</span> + err.msg())
             <span class="syn-flow">&lt;&lt;</span>
         }
@@ -353,13 +353,13 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Concurrently inserted 5 rows across pooled connections."</span>)
 
     <span class="syn-cmt">// 3. Query</span>
-    $rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, title, amount FROM xu_pool_orders ORDER BY id;"</span>) <span class="syn-kw">or</span> (err) {
+    $rows <span class="syn-flow">:=</span> pool.query(<span class="syn-str">"SELECT id, title, amount FROM xu_pool_orders ORDER BY id;"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool query error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     $count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
-        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(<span class="syn-str">"   [FAIL] rows.take error: "</span> + err.msg())
             <span class="syn-flow">&lt;&lt;</span>
         }
@@ -377,26 +377,26 @@ mysql <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
 
     <span class="syn-cmt">// 4. Transaction via Pool</span>
-    $tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-kw">or</span> (err) {
+    $tx <span class="syn-flow">:=</span> pool.begin() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool begin tx error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    tx.exec(<span class="syn-str">"INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);"</span>, 6, <span class="syn-str">"Order_6"</span>, 900) <span class="syn-kw">or</span> (err) {
+    tx.exec(<span class="syn-str">"INSERT INTO xu_pool_orders (id, title, amount) VALUES (?, ?, ?);"</span>, 6, <span class="syn-str">"Order_6"</span>, 900) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Tx insert error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    tx.commit() <span class="syn-kw">or</span> (err) {
+    tx.commit() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Tx commit error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] Transaction committed via pool."</span>)
 
     <span class="syn-cmt">// 5. Cleanup &amp; Close</span>
-    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_orders;"</span>) <span class="syn-kw">or</span> (err) {
+    pool.exec(<span class="syn-str">"DROP TABLE IF EXISTS xu_pool_orders;"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Cleanup table error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    pool.close() <span class="syn-kw">or</span> (err) {
+    pool.close() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool close error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -421,7 +421,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <span class="syn-import"><span class="hash">#</span>strings</span>
 
 <span class="syn-kw">fn</span> remove_if_exists(p <span class="syn-type">string</span>) {
-    os.remove(p) <span class="syn-kw">or</span> (err) {
+    os.remove(p) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         <span class="syn-flow">&lt;&lt;</span>
     }
 }
@@ -1022,7 +1022,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <h2><code>decode_value</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> decode_value(s <span class="syn-type">string</span>) temp</code></pre></div>
 <h3>用途</h3>
-<p>解码 value 数据。</p>
+<p>解码 value 数据。失败时抛出错误，调用方需处理或继续传播。</p>
 <h3>参数</h3>
 <dl class="api-params">
 <dt><code>s</code> <span class="type">string</span></dt><dd>源字符串（string）</dd>

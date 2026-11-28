@@ -101,7 +101,7 @@ class HomeTaskTests(unittest.TestCase):
             table = re.search(r'<table id="integration-matrix".*?</table>', page, re.S)[0]
             self.assertEqual(table.count('<th>'), 9)
             rows = re.findall(r'<tr data-package="([^"]+)">(.*?)</tr>', table, re.S)
-            self.assertEqual(len(rows), 30)
+            self.assertEqual(len(rows), len(expected))
             self.assertEqual({name for name, _ in rows}, expected)
             unknown = 'unknown' if lang == 'en' else '未知'
             unknowns[lang] = {}

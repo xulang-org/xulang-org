@@ -33,7 +33,7 @@ XU brings compile-time ownership and borrowing together with lightweight corouti
 | :--- | :--- |
 | **Ownership, without a GC** | Compile-time move and borrow checks, inferred lifetimes, and deterministic resource cleanup. |
 | **Concurrency in the language** | Start a coroutine with `xu`; exchange values through typed `chan` channels. |
-| **Visible control flow** | `<<` returns a value, `>>>` raises an error, and `>>> (err) { … }` (or `>>>`) handles it at the call site. |
+| **Visible control flow** | `<<` returns a value, `>>` raises an error, and `>>> (err) { … }` (or `>>>`) handles it at the call site. |
 | **An integrated toolchain** | Build, run, check, test, format, generate docs, and use language services through `xu`. |
 
 ## Read a little XU
@@ -45,7 +45,7 @@ Two workers, one channel, and an explicit error path:
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >>> errors.new("empty name") }
+    if name.len == 0 { >> errors.new("empty name") }
     << name.len * 10
 }
 

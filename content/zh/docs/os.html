@@ -1,21 +1,22 @@
 <!--title: 使用 Xu 研发操作系统-->
 <h1>操作系统研发</h1>
 <p class="lead">使用 Xu 的裸机编译模式，以原生 AOT 构建内核、驱动和固件代码。内核示例覆盖内存布局、硬件 I/O、同步、中断和任务上下文切换。</p>
-<p class="banner">Xu 0.14.0 SDK 已提供裸机 ELF64 编译目标。</p>
+<p class="banner">Xu 0.14.3 SDK 已提供裸机 ELF64 与 UEFI 编译目标、中断/裸函数属性及固件驱动模块。</p>
 
 <h2 id="build">构建内核示例</h2>
-<p>安装 <a href="/download">Xu SDK</a>，然后在 <a href="https://github.com/xulang-org/xu/tree/v0.14.0">Xu 0.14.0 源码仓库</a>根目录运行以下命令。</p>
+<p>安装 <a href="/download">Xu SDK</a>，然后在 <a href="https://github.com/xulang-org/xu/tree/v0.14.3">Xu 0.14.3 源码仓库</a>根目录运行以下命令。</p>
 <pre><code>xu build --profile=freestanding --target=x64-none examples/baremetal/kernel_poc/main.xu -o kernel-x64.elf
 xu build --profile=freestanding --target=arm64-none examples/baremetal/kernel_poc/main.xu -o kernel-arm64.elf
 xu build --profile=freestanding --target=riscv64-none examples/baremetal/kernel_poc/main.xu -o kernel-riscv64.elf</code></pre>
-<p>用 <code>file kernel-*.elf</code> 检查产物的架构。<a href="https://github.com/xulang-org/xu/tree/v0.14.0/examples/baremetal/kernel_poc">内核示例</a>提供 x86-64 QEMU 运行步骤。运行时需为目标架构配置匹配的引导环境、板级支持和硬件设置。</p>
+<p>用 <code>file kernel-*.elf</code> 检查产物的架构。<a href="https://github.com/xulang-org/xu/tree/v0.14.3/examples/baremetal/kernel_poc">内核示例</a>提供 x86-64 QEMU 运行步骤。同时支持 <code>--target=x64-uefi</code> 与 <code>--target=arm64-uefi</code> UEFI 应用生成。运行时需为目标架构配置匹配的引导环境、板级支持和硬件设置。</p>
 
 <h2 id="hardware">硬件访问与核心 API</h2>
 <p>裸机模式构建的程序独立于宿主系统服务与 libc，源码可以通过 <code>$freestanding</code> 声明。项目配置和编译器参数见<a href="/docs/faq#freestanding-profile">裸机模式参考</a>。</p>
 <ul>
-  <li>用 <code>*raw T</code> 表示硬件地址，在 <code>unsafe { … }</code> 中解引用。用 <code>volatile_read</code> 和 <code>volatile_write</code> 访问内存映射 I/O。详见<a href="/docs/lang/memory">内存模型</a>。</li>
+  <li>用 <code>*raw T</code> 表示硬件地址，在 <code>unsafe { … }</code> 中解引用。用 <code>volatile_read</code> 和 <code>volatile_write</code> 访问内存映射 I/O；支持 <code>@interrupt</code>、<code>@weak</code>、<code>@naked</code>、<code>@section</code>、<code>@align</code>、<code>@export</code>、<code>@noreturn</code>、<code>@panic_handler</code>、<code>extern static</code>、严格 <code>--no-sse</code>、<code>--stack-size</code> 与多架构参数化内联汇编。详见<a href="/docs/lang/memory">内存模型</a>。</li>
   <li>用 <code>@repr("C", align: N)</code> 或 <code>@repr("C", packed)</code> 明确指定页表、硬件描述符等结构体的布局。</li>
   <li><a href="/api/core/arch"><code>#core/arch</code></a> 提供架构相关的控制操作，<a href="/api/core/mem"><code>#core/mem</code></a> 提供底层内存操作，<a href="/api/core/alloc"><code>#core/alloc</code></a> 定义分配器接口。</li>
   <li><a href="/api/core/sync"><code>#core/sync</code></a> 提供自旋锁和中断保护，<a href="/api/core/task"><code>#core/task</code></a> 提供任务上下文和中断现场结构。</li>
+  <li>0.14.2–0.14.3 新增核心与固件模块：<a href="/api/core/acpi"><code>#core/acpi</code></a>、<a href="/api/core/addr"><code>#core/addr</code></a>、<a href="/api/core/ds"><code>#core/ds</code></a>、<a href="/api/core/elf"><code>#core/elf</code></a>、<a href="/api/core/fdt"><code>#core/fdt</code></a>、<a href="/api/core/fmt"><code>#core/fmt</code></a>、<a href="/api/core/mmio"><code>#core/mmio</code></a>、<a href="/api/core/pci"><code>#core/pci</code></a>、<a href="/api/core/uefi"><code>#core/uefi</code></a>，以及 VirtIO 1.0 Modern MMIO、HPET 与 UEFI MemMap 支持。</li>
 </ul>
 <p>各目标平台的支持与验证范围见<a href="/docs/status">实现状态</a>。</p>

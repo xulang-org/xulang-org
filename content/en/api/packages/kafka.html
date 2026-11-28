@@ -1,12 +1,12 @@
 <!--title: #github.com/xulang-org/packages/kafka-->
 <p class="crumb">API</p>
 <h1><code>#github.com/xulang-org/packages/kafka</code></h1>
-<!--xu-api-version: 0.14.1-->
+<!--xu-api-version: 0.14.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>kafka #github.com/xulang-org/packages/kafka</code></p>
 <p class="meta">counts: 31 functions, 24 methods, 4 types, 0 constants, 0 method sets</p>
 <p class="lead">Apache Kafka High-Performance Distributed Event Streaming Driver for Xu Features Pure native Kafka Wire Protocol implementation (TCP socket + Big-Endian framing). IEEE CRC32 message verification via standard library #hash/crc32. High-throughput Produce &amp; Fetch operations with partition targeting. Heartbeat probe via ApiVersions &amp; Metadata APIs. Connection pooling via reusable TCP socket channels. Full compatibility with Apache Kafka 2.x, 3.x, and 4.x (KRaft &amp; ZooKeeper modes).</p>
-<p class="note">github.com/xulang-org/packages · 1.1.6 · <a href="/docs/packages">Install and use</a></p>
+<p class="note">github.com/xulang-org/packages · 1.17.0 · <a href="/docs/packages">Install and use</a></p>
 <p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
 <section class="api-examples" id="examples">
 <h2>Examples</h2>
@@ -21,7 +21,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
 <span class="syn-kw">fn</span> verify_kafka_ping() {
     println(<span class="syn-str">"--- 1. Testing Kafka Heartbeat &amp; ApiVersions Ping ---"</span>)
-    $client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-kw">or</span> (err) {
+    $client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Connect error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -36,7 +36,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 
 <span class="syn-kw">fn</span> verify_kafka_produce_fetch() {
     println(<span class="syn-str">"\n--- 2. Testing Kafka Produce &amp; Fetch Operations ---"</span>)
-    $client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-kw">or</span> (err) {
+    $client <span class="syn-flow">:=</span> kafka.open(<span class="syn-str">"127.0.0.1:9092"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Connect error: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -50,7 +50,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     <span class="syn-cmt">// 1. Produce message</span>
     msg <span class="syn-flow">:=</span> <span class="syn-str">"Antigravity event message from Xu language"</span>
     println(<span class="syn-str">"   Producing message to topic '"</span> + topic + <span class="syn-str">"': "</span> + msg)
-    offset <span class="syn-flow">:=</span> client.produce_key_value(topic + <span class="syn-str">""</span>, partition, <span class="syn-str">"event-key-1"</span>, msg + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+    offset <span class="syn-flow">:=</span> client.produce_key_value(topic + <span class="syn-str">""</span>, partition, <span class="syn-str">"event-key-1"</span>, msg + <span class="syn-str">""</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Produce failed: "</span> + err.msg())
         client.close()
         <span class="syn-flow">&lt;&lt;</span>
@@ -58,7 +58,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   [PASS] Message produced successfully at offset: "</span> + str(offset))
 
     <span class="syn-cmt">// 2. Fetch message back</span>
-    messages <span class="syn-flow">:=</span> client.fetch(topic + <span class="syn-str">""</span>, partition, offset) <span class="syn-kw">or</span> (err) {
+    messages <span class="syn-flow">:=</span> client.fetch(topic + <span class="syn-str">""</span>, partition, offset) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Fetch failed: "</span> + err.msg())
         client.close()
         <span class="syn-flow">&lt;&lt;</span>
@@ -88,7 +88,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     $p <span class="syn-flow">:=</span> kafka.open_pool(<span class="syn-str">"127.0.0.1:9092"</span>, <span class="syn-str">"xu-pool-tester"</span>, 5)
 
     <span class="syn-cmt">// 1. Connection Reuse Test</span>
-    $c1 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+    $c1 <span class="syn-flow">:=</span> p.get() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Failed to get c1: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -96,7 +96,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     println(<span class="syn-str">"   Borrow 1 fd: "</span> + str(fd1))
     p.put(c1)
 
-    $c2 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+    $c2 <span class="syn-flow">:=</span> p.get() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Failed to get c2: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -109,7 +109,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     }
 
     <span class="syn-cmt">// 2. Multi-connection concurrent borrow</span>
-    $c3 <span class="syn-flow">:=</span> p.get() <span class="syn-kw">or</span> (err) {
+    $c3 <span class="syn-flow">:=</span> p.get() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Failed to get c3: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -128,13 +128,13 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
     pool_topic <span class="syn-flow">:=</span> <span class="syn-str">"xu_pool_topic"</span>
     pool_msg <span class="syn-flow">:=</span> <span class="syn-str">"pool message payload test"</span>
 
-    offset <span class="syn-flow">:=</span> p.produce_key_value(pool_topic + <span class="syn-str">""</span>, 0, <span class="syn-str">"pk1"</span>, pool_msg + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (err) {
+    offset <span class="syn-flow">:=</span> p.produce_key_value(pool_topic + <span class="syn-str">""</span>, 0, <span class="syn-str">"pk1"</span>, pool_msg + <span class="syn-str">""</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool produce failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] Message produced via pool at offset: "</span> + str(offset))
 
-    msgs <span class="syn-flow">:=</span> p.fetch(pool_topic + <span class="syn-str">""</span>, 0, offset) <span class="syn-kw">or</span> (err) {
+    msgs <span class="syn-flow">:=</span> p.fetch(pool_topic + <span class="syn-str">""</span>, 0, offset) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Pool fetch failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -281,7 +281,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <h2><code>($&amp;Client) ping</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">$&amp;</span>Client) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Send a ping heartbeat request to verify connection liveness.</p>
+<p>Send a ping heartbeat request to verify connection liveness. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>The <code>Client</code> instance used by this call (exclusive borrow).</dd>
@@ -293,7 +293,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <h2><code>($&amp;Client) metadata</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (c <span class="syn-borrow">$&amp;</span>Client) metadata(topic <span class="syn-type">string</span>) <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Execute <code>metadata</code> on <code>$&amp;Client</code>.</p>
+<p>Execute <code>metadata</code> on <code>$&amp;Client</code>. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>c</code> <span class="type">$&amp;Client</span></dt><dd>The <code>Client</code> instance used by this call (exclusive borrow).</dd>
@@ -423,7 +423,7 @@ kafka <span class="syn-import"><span class="hash">#</span>github</span>.com/xula
 <h2><code>(&amp;Pool) ping</code></h2>
 <div class="code-block-wrapper"><div class="code-block-header"><span>Xu</span><span>API</span></div><pre><code><span class="syn-kw">pub</span> <span class="syn-kw">fn</span> (p &amp;Pool) ping() <span class="syn-type">bool</span></code></pre></div>
 <h3>Purpose</h3>
-<p>Send a ping heartbeat request to verify connection liveness.</p>
+<p>Send a ping heartbeat request to verify connection liveness. Throws on failure; handle the error or propagate it to the caller.</p>
 <h3>Parameters</h3>
 <dl class="api-params">
 <dt><code>p</code> <span class="type">&amp;Pool</span></dt><dd>The <code>Pool</code> instance used by this call (borrow).</dd>

@@ -1,12 +1,12 @@
 <!--title: #github.com/xulang-org/packages/sqlite-->
 <p class="crumb">API</p>
 <h1><code>#github.com/xulang-org/packages/sqlite</code></h1>
-<!--xu-api-version: 0.14.1-->
+<!--xu-api-version: 0.14.3-->
 <p class="banner">Xu {{xu_version}} API</p>
 <p class="meta">import: <code>sqlite #github.com/xulang-org/packages/sqlite</code></p>
 <p class="meta">counts: 4 functions, 0 methods, 4 types, 0 constants, 0 method sets</p>
 <p>The SQLite driver uses pure-Xu <code>sqlite_native</code> to dynamically load system <code>libsqlite3</code> (falls back to built-in <code>winsqlite3.dll</code> on Windows, overridable via <code>XU_SQLITE_LIBRARY</code>), requiring no manual precompilation of native bridges.</p>
-<p class="note">github.com/xulang-org/packages · 1.1.6 · <a href="/docs/packages">Install and use</a></p>
+<p class="note">github.com/xulang-org/packages · 1.17.0 · <a href="/docs/packages">Install and use</a></p>
 <p><a href="#examples">Examples</a> · <a href="#api-declarations">API declarations</a></p>
 <section class="api-examples" id="examples">
 <h2>Examples</h2>
@@ -22,7 +22,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <span class="syn-import"><span class="hash">#</span>errors</span>
 
 <span class="syn-kw">fn</span> remove_if_exists(p <span class="syn-type">string</span>) {
-    os.remove(p) <span class="syn-kw">or</span> (e) {
+    os.remove(p) <span class="syn-flow">&gt;&gt;&gt;</span> (e) {
         <span class="syn-flow">&lt;&lt;</span>
     }
 }
@@ -34,14 +34,14 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     $db <span class="syn-flow">:=</span> sqlite.open_pool(db_file + <span class="syn-str">""</span>, 5, 2)
 
     <span class="syn-cmt">// 1. Ping</span>
-    db.ping() <span class="syn-kw">or</span> (err) {
+    db.ping() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] SQLite pool ping failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] SQLite Pool ping succeeded."</span>)
 
     <span class="syn-cmt">// 2. Schema</span>
-    db.exec(<span class="syn-str">"CREATE TABLE pool_items (id INTEGER PRIMARY KEY, title TEXT, value INT);"</span>) <span class="syn-kw">or</span> (err) {
+    db.exec(<span class="syn-str">"CREATE TABLE pool_items (id INTEGER PRIMARY KEY, title TEXT, value INT);"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Create table failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
@@ -50,7 +50,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     <span class="syn-cmt">// 3. Sequential &amp; Concurrent Inserts through Pool</span>
     $i <span class="syn-flow">:=</span> 1
     <span class="syn-kw">while</span> i &lt;= 5 {
-        db.exec(<span class="syn-str">"INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"item_"</span> + str(i), i * 10) <span class="syn-kw">or</span> (err) {
+        db.exec(<span class="syn-str">"INSERT INTO pool_items (id, title, value) VALUES (?, ?, ?);"</span>, i, <span class="syn-str">"item_"</span> + str(i), i * 10) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             println(<span class="syn-str">"   [FAIL] Insert failed at item "</span> + str(i) + <span class="syn-str">": "</span> + err.msg())
             <span class="syn-flow">&lt;&lt;</span>
         }
@@ -59,13 +59,13 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     println(<span class="syn-str">"   [PASS] 5 items inserted through SQLite connection pool."</span>)
 
     <span class="syn-cmt">// 4. Query through Pool</span>
-    $rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, title, value FROM pool_items ORDER BY id ASC;"</span>) <span class="syn-kw">or</span> (err) {
+    $rows <span class="syn-flow">:=</span> db.query(<span class="syn-str">"SELECT id, title, value FROM pool_items ORDER BY id ASC;"</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Query failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
     $count <span class="syn-flow">:=</span> 0
     <span class="syn-kw">while</span> rows.next() {
-        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-kw">or</span> (err) {
+        vals <span class="syn-flow">:=</span> rows.take() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
             <span class="syn-flow">&lt;&lt;</span>
         }
         count = count + 1
@@ -74,11 +74,11 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
     println(<span class="syn-str">"   [PASS] SQLite Pool query verified: retrieved "</span> + str(count) + <span class="syn-str">" rows."</span>)
 
     <span class="syn-cmt">// 5. Close Pool</span>
-    db.close() <span class="syn-kw">or</span> (err) {
+    db.close() <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         println(<span class="syn-str">"   [FAIL] Close failed: "</span> + err.msg())
         <span class="syn-flow">&lt;&lt;</span>
     }
-    os.remove(db_file + <span class="syn-str">""</span>) <span class="syn-kw">or</span> (e) {
+    os.remove(db_file + <span class="syn-str">""</span>) <span class="syn-flow">&gt;&gt;&gt;</span> (e) {
         <span class="syn-flow">&lt;&lt;</span>
     }
     println(<span class="syn-str">"   [PASS] SQLite Pool closed cleanly."</span>)
@@ -101,7 +101,7 @@ sqlite <span class="syn-import"><span class="hash">#</span>github</span>.com/xul
 <span class="syn-import"><span class="hash">#</span>strings</span>
 
 <span class="syn-kw">fn</span> remove_if_exists(p <span class="syn-type">string</span>) {
-    os.remove(p) <span class="syn-kw">or</span> (err) {
+    os.remove(p) <span class="syn-flow">&gt;&gt;&gt;</span> (err) {
         <span class="syn-flow">&lt;&lt;</span>
     }
 }

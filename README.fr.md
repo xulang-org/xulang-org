@@ -33,7 +33,7 @@ XU réunit la propriété et l'emprunt vérifiés à la compilation avec des cor
 | :--- | :--- |
 | **Propriété sans GC** | Vérification des déplacements et emprunts à la compilation, durées de vie inférées et nettoyage déterministe des ressources. |
 | **Concurrence intégrée** | Lancez une coroutine avec `xu` ; échangez des valeurs via des canaux `chan` typés. |
-| **Flux de contrôle visible** | `<<` renvoie une valeur, `>>>` lève une erreur et `>>> (err) { … }` la gère au point d'appel. |
+| **Flux de contrôle visible** | `<<` renvoie une valeur, `>>` lève une erreur et `>>> (err) { … }` la gère au point d'appel. |
 | **Chaîne d'outils intégrée** | Compilez, exécutez, vérifiez, testez, formatez, générez la documentation et utilisez le serveur de langage via `xu`. |
 
 ## Lire un peu de XU
@@ -45,7 +45,7 @@ Deux travailleurs, un canal et un chemin d'erreur explicite :
 #errors
 
 fn score(name string) int {
-    if name.len == 0 { >>> errors.new("empty name") }
+    if name.len == 0 { >> errors.new("empty name") }
     << name.len * 10
 }
 

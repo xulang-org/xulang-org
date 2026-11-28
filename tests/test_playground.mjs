@@ -183,7 +183,7 @@ test('tutorial 05 error handling and interface method dispatch', async () => {
 #errors
 fn read_name(ok bool) string {
     if !ok {
-        >>> errors.new("empty name")
+        >> errors.new("empty name")
     }
     << "ada"
 }

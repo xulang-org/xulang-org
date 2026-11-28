@@ -67,19 +67,22 @@ class StaticSiteTests(unittest.TestCase):
         llms = (output / 'llms.txt').read_text()
         self.assertIn('# Xu Programming Language', llms)
         chinese = (output / 'zh/index.html').read_text()
-        benchmark_count = json.loads((self.source / 'www/benchmarks.json').read_text())['metadata']['total_benches']
+        benchmarks_data = json.loads((self.source / 'www/benchmarks.json').read_text())
+        benchmark_count = benchmarks_data['metadata']['total_benches']
+        from benchmark_groups import platform_groups
+        group_count = len(platform_groups(benchmarks_data['platforms']))
         self.assertIn(f'{benchmark_count} workload variants', home)
-        self.assertIn('60 groups', home)
+        self.assertIn(f'{group_count} groups', home)
         self.assertIn(f'{benchmark_count} 个负载变体', chinese)
-        self.assertIn('60 个项目组', chinese)
+        self.assertIn(f'{group_count} 个项目组', chinese)
         self.assertIn('<html lang="zh-CN"', chinese)
         self.assertIn('href="/zh/docs/start/"', chinese)
         self.assertIn('href="/" hreflang="en"', chinese)
         self.assertIn('<link rel="canonical" href="https://xulang.org/zh/">', chinese)
         self.assertIn('SoftwareApplication', chinese)
         for page, expected in ((home, 4), (chinese, 4),
-                               ((output / 'docs/faq/index.html').read_text(), 27),
-                               ((output / 'zh/docs/faq/index.html').read_text(), 27)):
+                               ((output / 'docs/faq/index.html').read_text(), 28),
+                               ((output / 'zh/docs/faq/index.html').read_text(), 28)):
             schema = json.loads(re.search(r'<script type="application/ld\+json">(.*?)</script>', page, re.DOTALL)[1])
             faq = next(item for item in schema['@graph'] if item['@type'] == 'FAQPage') if '@graph' in schema else schema
             questions = re.findall(r'<summary><h3>(.*?)</h3></summary>', page)
