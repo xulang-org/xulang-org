@@ -751,7 +751,7 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
             f'</button>'
         )
 
-    table_heading = "6-Platform Audited Data Matrix & Median" if en else "6 大目标平台审计实测数据表与中位数"
+    table_heading = "6-Platform Raw Measurements & All Metrics Table" if en else "展开 6 平台完整原始数据表 (耗时 / CPU / 内存 / 体积)"
     failure_rows = []
     for c in active_configs:
         item = p_map.get(c['id'])
@@ -781,18 +781,20 @@ def render_workload_block(b_name: str, ref_bench: dict, platforms: dict, cat_cfg
   </div>
   {failures}
   {bars_matrix_html}
-  <div class="bench-workload-table-toolbar">
-    <div class="bench-workload-table-heading">
-      <i class="xi xi-table xi-brand"></i>
-      <span>{table_heading}</span>
+  <details class="bench-table-disclosure">
+    <summary class="bench-table-disclosure-summary">
+      <span class="bench-table-disclosure-title"><i class="xi xi-table xi-brand"></i> <span>{table_heading}</span></span>
+      <span class="bench-table-disclosure-hint">{'6 platforms × 4 metrics' if en else '6 平台 × 4 维度'}</span>
+    </summary>
+    <div class="bench-workload-table-toolbar">
+      <div class="bench-table-metric-tabs">
+        {''.join(tab_btns)}
+      </div>
     </div>
-    <div class="bench-table-metric-tabs">
-      {''.join(tab_btns)}
+    <div class="bench-workload-table-wrap">
+      {''.join(table_panes)}
     </div>
-  </div>
-  <div class="bench-workload-table-wrap">
-    {''.join(table_panes)}
-  </div>
+  </details>
 </div>
 """
 
@@ -844,16 +846,199 @@ def render_category_integrated_section(cat_cfg: dict, platforms: dict, en: bool)
 """
 
 
-def render_category_directory(populated_cats: list[dict], groups: list[dict], en: bool) -> str:
+def _geomean(values: list[float]) -> float | None:
+    pos = [v for v in values if v is not None and v > 0]
+    if not pos:
+        return None
+    return math.exp(sum(math.log(v) for v in pos) / len(pos))
+
+
+def _ratio_chip_cls(ratio: float | None) -> str:
+    if ratio is None:
+        return ""
+    if ratio <= 1.0:
+        return "is-fast"
+    if ratio <= 1.2:
+        return "is-close"
+    return "is-slow"
+
+
+def render_platform_scorecard(platforms: dict, en: bool) -> str:
+    """Render an interactive 6-platform executive summary grid directly below the hero."""
+    import math as _m  # local alias safe
+    del _m
+    active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
+    if not active_configs:
+        return ""
+    title = "Six-Platform Executive Scorecard" if en else "六大原生平台实测总览计分板"
+    sub = (
+        "Geometric mean ratios across all measured workloads (Xu / best peer O1–O3 median; lower is faster). Click any card to focus bar charts and matrix."
+        if en else
+        "全量工作负载实测几何均值倍率（Xu / 对手最佳 O1–O3 中位数，越小越快）。点击任意平台卡片即可联动切换下方图表与矩阵视图。"
+    )
+    cards = []
+    for cfg in active_configs:
+        pid = cfg["id"]
+        pdata = platforms[pid]
+        ws = pdata.get("benches", [])
+        total = len(ws)
+        ok_cnt = sum(1 for w in ws if w.get("xu_status", "ok") == "ok" and (w.get("xu_wall_ms") or 0) > 0)
+        geo_c = _geomean([w.get("ratio_vs_c") for w in ws])
+        geo_r = _geomean([w.get("ratio_vs_rust") for w in ws])
+        geo_g = _geomean([w.get("ratio_vs_go") for w in ws])
+        geo_s = _geomean([w.get("ratio_vs_swift") for w in ws])
+        wins_c = sum(1 for w in ws if (w.get("ratio_vs_c") or 999) <= 1.0)
+        tot_c = sum(1 for w in ws if (w.get("ratio_vs_c") or 0) > 0)
+        wins_r = sum(1 for w in ws if (w.get("ratio_vs_rust") or 999) <= 1.0)
+        tot_r = sum(1 for w in ws if (w.get("ratio_vs_rust") or 0) > 0)
+
+        p_name = cfg["name_en"] if en else cfg["name_zh"]
+        arch = cfg["arch_tag"]
+        c_str = f"{geo_c:.3f}×" if geo_c is not None else "—"
+        r_str = f"{geo_r:.3f}×" if geo_r is not None else "—"
+        g_str = f"{geo_g:.3f}×" if geo_g is not None else "—"
+        s_str = f"{geo_s:.3f}×" if geo_s is not None else "—"
+        cards.append(
+            f'<button type="button" class="bench-scorecard-card" data-pid="{pid}" onclick="selectBenchPlatform(\'{pid}\')">'
+            f'  <div class="bench-scorecard-head">'
+            f'    <span class="bench-scorecard-plat"><i class="xi {cfg["icon"]}"></i> <span>{p_name}</span> <span class="bench-scorecard-arch">{arch}</span></span>'
+            f'    <span class="bench-scorecard-pass">{ok_cnt}/{total}</span>'
+            f'  </div>'
+            f'  <div class="bench-scorecard-metrics">'
+            f'    <div class="bench-sc-cell"><span class="bench-sc-lbl">vs Clang</span><strong class="bench-sc-val {_ratio_chip_cls(geo_c)}">{c_str}</strong><small>{wins_c}/{tot_c}</small></div>'
+            f'    <div class="bench-sc-cell"><span class="bench-sc-lbl">vs rustc</span><strong class="bench-sc-val {_ratio_chip_cls(geo_r)}">{r_str}</strong><small>{wins_r}/{tot_r}</small></div>'
+            f'    <div class="bench-sc-cell"><span class="bench-sc-lbl">vs Go</span><strong class="bench-sc-val {_ratio_chip_cls(geo_g)}">{g_str}</strong><small>{"geo" if en else "均值"}</small></div>'
+            f'    <div class="bench-sc-cell"><span class="bench-sc-lbl">vs Swift</span><strong class="bench-sc-val {_ratio_chip_cls(geo_s)}">{s_str}</strong><small>{"geo" if en else "均值"}</small></div>'
+            f'  </div>'
+            f'</button>'
+        )
+    return f"""
+<section class="bench-scorecard-section" aria-label="{title}">
+  <div class="bench-scorecard-header">
+    <div>
+      <h2>{title}</h2>
+      <p>{sub}</p>
+    </div>
+    <button type="button" class="bench-scorecard-reset" data-pid="all" onclick="selectBenchPlatform('all')">{'Reset to All Architectures' if en else '恢复全架构视图'}</button>
+  </div>
+  <div class="bench-scorecard-grid">
+    {''.join(cards)}
+  </div>
+</section>
+"""
+
+
+def render_quick_matrix(platforms: dict, groups: list[dict], en: bool) -> str:
+    """Render a compact sortable 121-workload quick-comparison matrix panel."""
+    active_configs = [c for c in PLATFORMS_CONFIG if c["id"] in platforms]
+    cat_lookup = {c["key"]: c for c in CATEGORIES_CONFIG}
+    rows = []
+    for g in groups:
+        ck = g["category"]
+        cat_cfg = cat_lookup.get(ck, {"pill_en": ck, "pill_zh": ck})
+        cat_label = cat_cfg["pill_en"] if en else cat_cfg["pill_zh"]
+        for v in g["variants"]:
+            ref = v["bench"]
+            wname = ref["name"]
+            desc = ref.get("desc_en" if en else "desc_zh", wname)
+            p_payload = {}
+            all_xu, all_c, all_r, all_g, all_rss, all_bytes = [], [], [], [], [], []
+            for cfg in active_configs:
+                pid = cfg["id"]
+                item = next((x for x in platforms[pid].get("benches", []) if x["name"] == wname), None)
+                if not item:
+                    continue
+                xm = item.get("xu_wall_ms") if item.get("xu_status", "ok") == "ok" else None
+                cm = item.get("c_wall_ms")
+                rm = item.get("rust_wall_ms")
+                gm = item.get("go_wall_ms")
+                rss = item.get("xu_rss_mib")
+                byt = item.get("xu_bytes")
+                rc = item.get("ratio_vs_c")
+                rr = item.get("ratio_vs_rust")
+                if xm and xm > 0: all_xu.append(xm)
+                if cm and cm > 0: all_c.append(cm)
+                if rm and rm > 0: all_r.append(rm)
+                if gm and gm > 0: all_g.append(gm)
+                if rss and rss > 0: all_rss.append(rss)
+                if byt and byt > 0: all_bytes.append(byt / 1024.0)
+                p_payload[pid] = {
+                    "xu": xm, "c": cm, "r": rm, "g": gm,
+                    "rc": rc, "rr": rr, "rss": rss, "kb": (byt / 1024.0) if byt else None,
+                }
+            agg_xu = statistics.median(all_xu) if all_xu else None
+            agg_c = statistics.median(all_c) if all_c else None
+            agg_r = statistics.median(all_r) if all_r else None
+            agg_g = statistics.median(all_g) if all_g else None
+            agg_rc = _geomean([v.get("rc") for v in p_payload.values() if v.get("rc")])
+            agg_rr = _geomean([v.get("rr") for v in p_payload.values() if v.get("rr")])
+            agg_rss = statistics.median(all_rss) if all_rss else None
+            agg_kb = statistics.median(all_bytes) if all_bytes else None
+            p_payload["all"] = {
+                "xu": agg_xu, "c": agg_c, "r": agg_r, "g": agg_g,
+                "rc": agg_rc, "rr": agg_rr, "rss": agg_rss, "kb": agg_kb,
+            }
+            payload_attr = html.escape(json.dumps(p_payload), quote=True)
+            xu_str = format_ms(agg_xu) if agg_xu else "—"
+            c_str = format_ms(agg_c) if agg_c else "—"
+            r_str = format_ms(agg_r) if agg_r else "—"
+            rc_str = f"{agg_rc:.2f}×" if agg_rc else "—"
+            rr_str = f"{agg_rr:.2f}×" if agg_rr else "—"
+            rss_str = f"{agg_rss:.1f} MiB" if agg_rss else "—"
+            kb_str = f"{agg_kb:.0f} KiB" if agg_kb else "—"
+            rows.append(
+                f'<tr class="bench-matrix-row" data-name="{wname.lower()}" data-desc="{html.escape(desc.lower(), quote=True)}" data-category="{ck}" data-metrics="{payload_attr}">'
+                f'  <td><button type="button" class="bench-matrix-jump" onclick="jumpToWorkloadCard(\'{wname}\')"><code>{wname}</code><span>{html.escape(desc)}</span></button></td>'
+                f'  <td><span class="bench-matrix-cat">{cat_label}</span></td>'
+                f'  <td class="bench-m-val bench-m-xu" data-col="xu">{xu_str}</td>'
+                f'  <td class="bench-m-val" data-col="c">{c_str}</td>'
+                f'  <td class="bench-m-val bench-m-ratio {_ratio_chip_cls(agg_rc)}" data-col="rc">{rc_str}</td>'
+                f'  <td class="bench-m-val" data-col="r">{r_str}</td>'
+                f'  <td class="bench-m-val bench-m-ratio {_ratio_chip_cls(agg_rr)}" data-col="rr">{rr_str}</td>'
+                f'  <td class="bench-m-val" data-col="rss">{rss_str}</td>'
+                f'  <td class="bench-m-val" data-col="kb">{kb_str}</td>'
+                f'  <td><button type="button" class="bench-matrix-src" onclick="openBenchCodeModal(\'{wname}\', \'{html.escape(desc, quote=True)}\')" title="{"Source" if en else "源码"}"><i class="xi xi-code"></i></button></td>'
+                f'</tr>'
+            )
+
+    headers = (
+        [("Workload", ""), ("Domain", ""), ("Xu", "xu"), ("Clang", "c"), ("vs Clang", "rc"), ("rustc", "r"), ("vs rustc", "rr"), ("RSS", "rss"), ("Size", "kb"), ("Code", "")]
+        if en else
+        [("工作负载", ""), ("领域", ""), ("Xu", "xu"), ("Clang", "c"), ("对 Clang", "rc"), ("rustc", "r"), ("对 rustc", "rr"), ("内存 RSS", "rss"), ("二进制", "kb"), ("源码", "")]
+    )
+    ths = []
+    for label, key in headers:
+        if key:
+            ths.append(f'<th><button type="button" class="bench-matrix-sort" data-sort="{key}" onclick="sortBenchMatrix(\'{key}\', this)">{label} <span aria-hidden="true">↕</span></button></th>')
+        else:
+            ths.append(f'<th>{label}</th>')
+
+    return f"""
+<section class="bench-quick-matrix-wrap" id="bench-quick-matrix" hidden>
+  <div class="bench-quick-matrix-scroll">
+    <table class="bench-quick-matrix">
+      <thead><tr>{''.join(ths)}</tr></thead>
+      <tbody id="bench-quick-matrix-body">
+        {''.join(rows)}
+      </tbody>
+    </table>
+  </div>
+</section>
+"""
+
+
+def render_category_directory(populated_cats: list[dict], groups: list[dict], en: bool, platforms: dict | None = None) -> str:
     """Render a domain overview directory grid for one-click category filtering."""
     if not populated_cats:
         return ""
     dir_title = "Engineering Domains Directory" if en else "软件工程领域分类导航"
     dir_sub = (
-        f"Click any domain card to filter the matrix below without pooling separate algorithms or input sizes."
+        "Click any domain card to filter the matrix below without pooling separate algorithms or input sizes."
         if en else
-        f"点击任意工程领域卡片即可在下方精准筛选该分类实测（各算法与输入规模仍保持独立展示，不合并均值）。"
+        "点击任意工程领域卡片即可在下方精准筛选该分类实测（各算法与输入规模仍保持独立展示，不合并均值）。"
     )
+    default_pid = next(iter(platforms.keys()), None) if platforms else None
+    ws_ref = platforms[default_pid].get("benches", []) if (platforms and default_pid) else []
     cards = []
     for cat_cfg in populated_cats:
         ck = cat_cfg["key"]
@@ -866,6 +1051,19 @@ def render_category_directory(populated_cats: list[dict], groups: list[dict], en
             f"{len(cat_groups)} groups · {len(variant_names)} variants"
             if en else f"{len(cat_groups)} 组 · {len(variant_names)} 项"
         )
+        geo_badge = ""
+        if ws_ref:
+            cat_ws = [w for w in ws_ref if w.get("category") == ck]
+            gc = _geomean([w.get("ratio_vs_c") for w in cat_ws])
+            gr = _geomean([w.get("ratio_vs_rust") for w in cat_ws])
+            parts = []
+            if gc is not None:
+                parts.append(f'<span class="bench-domain-geo {_ratio_chip_cls(gc)}">vs C {gc:.2f}×</span>')
+            if gr is not None:
+                parts.append(f'<span class="bench-domain-geo {_ratio_chip_cls(gr)}">vs Rust {gr:.2f}×</span>')
+            if parts:
+                geo_badge = '<div class="bench-domain-geos">' + "".join(parts) + '</div>'
+
         preview = variant_names[:4]
         chips = "".join(f'<code>{html.escape(n)}</code>' for n in preview)
         if len(variant_names) > 4:
@@ -877,6 +1075,7 @@ def render_category_directory(populated_cats: list[dict], groups: list[dict], en
             f'    <span class="bench-domain-card-title">{cat_name}</span>'
             f'    <span class="bench-cat-count">{count_text}</span>'
             f'  </div>'
+            f'  {geo_badge}'
             f'  <p class="bench-domain-card-desc">{cat_desc}</p>'
             f'  <div class="bench-domain-chips">{chips}</div>'
             f'</button>'
@@ -1616,7 +1815,9 @@ def render_page(data: dict, lang: str) -> str:
                 f'</button>'
             )
 
-    domain_directory_html = render_category_directory(populated_cats, groups, en)
+    domain_directory_html = render_category_directory(populated_cats, groups, en, platforms)
+    scorecard_html = render_platform_scorecard(platforms, en)
+    quick_matrix_html = render_quick_matrix(platforms, groups, en)
 
     # Summaries report measured coverage and observed ranges only.
     coverage_section = render_coverage_overview_section(platforms, en)
@@ -1812,6 +2013,8 @@ function copyBenchReproCmd(btn, cmd) {
 function switchWorkloadTableMetric(wname, metricKey) {
   var block = document.getElementById('workload-' + wname);
   if (!block) return;
+  var disc = block.querySelector('.bench-table-disclosure');
+  if (disc) disc.open = true;
   block.querySelectorAll('.bench-table-tab').forEach(function(tab) {
     if (tab.getAttribute('data-metric') === metricKey) {
       tab.classList.add('active');
@@ -1831,7 +2034,7 @@ function switchWorkloadTableMetric(wname, metricKey) {
 }
 
 function selectBenchPlatform(pid) {
-  document.querySelectorAll('.bench-platform-pill').forEach(function(b) {
+  document.querySelectorAll('.bench-platform-pill, .bench-scorecard-card, .bench-scorecard-reset').forEach(function(b) {
     if (b.getAttribute('data-pid') === pid) {
       b.classList.add('active');
     } else {
@@ -1850,6 +2053,9 @@ function selectBenchPlatform(pid) {
       if (t !== null) valWrap.innerHTML = t;
     }
   });
+  if (typeof refreshBenchMatrixPlatform === 'function') {
+    refreshBenchMatrixPlatform(pid);
+  }
 }
 
 function jumpToBenchSection(secKey) {
@@ -1858,12 +2064,15 @@ function jumpToBenchSection(secKey) {
     selectBenchCategory(secKey, true);
     return;
   }
+  var drawer = document.getElementById('bench-overview-drawer');
+  if (drawer && (secKey === 'radar' || secKey === 'footprint')) {
+    drawer.open = true;
+  }
   var target = document.querySelector('.bench-sec-' + secKey);
   if (target) {
-    var nav = document.querySelector('.bench-tabs-wrapper');
-    var navHeight = nav ? nav.offsetHeight : 80;
-    var targetTop = target.getBoundingClientRect().top + window.pageYOffset - navHeight - 16;
-    window.scrollTo({ top: targetTop, behavior: 'smooth' });
+    var offset = typeof benchStickyOffset === 'function' ? benchStickyOffset() : 220;
+    var targetTop = target.getBoundingClientRect().top + window.pageYOffset - offset;
+    window.scrollTo({ top: Math.max(0, targetTop), behavior: 'smooth' });
   }
 }
 
@@ -1890,7 +2099,17 @@ function jumpToBenchSection(secKey) {
             f'</button>'
         )
 
-    selector_label = "Target Platform Perspective:" if en else "目标实测架构视角:"
+    selector_label = "Platform:" if en else "实测平台:"
+    overview_summary = (
+        f"Coverage Matrix & Footprint Analysis · {workload_count} workloads · Binary Size & Peak RSS"
+        if en else
+        f"全量覆盖范围矩阵、峰值内存与二进制体积分布分析 · {workload_count} 项负载"
+    )
+    charter_summary = (
+        "Methodology Audit, Transparency Charter & Toolchain Versions"
+        if en else
+        "透明承诺书、测量方法审计与 6 平台工具链完整版本清单"
+    )
 
     return f"""<!--title: {title}-->
 <div class="hero bench-hero">
@@ -1898,34 +2117,38 @@ function jumpToBenchSection(secKey) {
     <p class="banner"><i class="xi xi-benchmark xi-brand"></i> {meta_text}</p>
     <h1>{h1_text}</h1>
     <p class="lead">{lead_text}</p>
-    <p class="meta">{'Expand related workloads to compare their separate algorithms and input sizes. Results are never pooled.' if en else '展开同类项目可查看不同算法和输入规模的独立结果；各变体不合并计算。'}</p>
+    <div class="bench-hero-kpis">
+      <div class="bench-hero-kpi"><strong>{workload_count}</strong><span>{'Measured Workloads' if en else '实测工作负载'}</span></div>
+      <div class="bench-hero-kpi"><strong>{group_count}</strong><span>{'Algorithm Groups' if en else '独立算法分组'}</span></div>
+      <div class="bench-hero-kpi"><strong>{len(populated_cats)}</strong><span>{'Engineering Domains' if en else '软件工程领域'}</span></div>
+      <div class="bench-hero-kpi"><strong>6</strong><span>{'OS × Arch Targets' if en else '原生双架构平台'}</span></div>
+      <div class="bench-hero-kpi bench-kpi-pass"><strong>0</strong><span>{'Xu Failures' if en else 'Xu 失败用例'}</span></div>
+    </div>
     {render_outcome_summary(platforms, en)}
     {render_peer_failures(platforms, en)}
-    {render_toolchain_versions(platforms, version, en)}
   </div>
 </div>
 
-<!-- 阳光公开与权威基准评测承诺书 -->
-{charter_section}
+{scorecard_html}
 
 <div class="bench-tabs-wrapper">
   <div class="bench-sticky-topline">
     <div class="bench-sticky-title-group">
-      <h2 style="margin: 0; font-size: 16.5px; font-weight: 700;">{'Cross-Architecture Benchmark Suite' if en else '全量架构性能评测工作集'}</h2>
-      <span class="meta" style="margin: 0; font-size: 12px;">{f'{len(populated_cats)} Domains · {group_count} Groups · {workload_count} Measured Variants · 6 Platforms' if en else f'{len(populated_cats)} 个领域 · {group_count} 个项目组 · {workload_count} 个实测变体 · 6 个平台'}</span>
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700;">{'Benchmark Explorer' if en else '性能评测浏览器'}</h2>
+      <span class="meta" style="margin: 0; font-size: 11.5px;">{f'{len(populated_cats)} Domains · {group_count} Groups · {workload_count} Workloads' if en else f'{len(populated_cats)} 个领域 · {group_count} 个项目组 · {workload_count} 项'}</span>
     </div>
     <div class="bench-toolbar-actions">
+      <button type="button" class="bench-util-btn" id="bench-matrix-toggle-btn" aria-pressed="false" data-label-cards="{'Card Charts' if en else '图表卡片'}" data-label-matrix="{'Dense Matrix' if en else '紧凑对比表'}" onclick="toggleBenchMatrixView(this)">
+        <i class="xi xi-table"></i> <span>{'Dense Matrix' if en else '紧凑对比表'}</span>
+      </button>
+      <button type="button" class="bench-util-btn" id="bench-compact-btn" aria-pressed="false" data-label-full="{'Full View' if en else '展开条形图'}" data-label-compact="{'Compact' if en else '仅看列表'}" onclick="toggleBenchCompactMode(this)">
+        <span>{'Compact' if en else '仅看列表'}</span>
+      </button>
+      <button type="button" class="bench-util-btn" id="bench-groups-toggle-btn" data-expanded="false" data-label-expand="{'Expand Groups' if en else '展开全部组'}" data-label-collapse="{'Collapse Groups' if en else '折叠全部组'}" onclick="toggleAllBenchGroups(this)">
+        <span>{'Expand Groups' if en else '展开全部组'}</span>
+      </button>
       <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('radar')">
-        {SVG_RADAR} <span>{'Coverage' if en else '实测覆盖'}</span>
-      </button>
-      <button type="button" class="bench-anchor-pill" onclick="jumpToBenchSection('footprint')">
-        {SVG_BRAIN} <span>{'Memory & Size' if en else '内存与体积'}</span>
-      </button>
-      <button type="button" class="bench-util-btn" id="bench-compact-btn" aria-pressed="false" data-label-full="{'Full View' if en else '完整图表'}" data-label-compact="{'Compact Tables' if en else '精简表格'}" onclick="toggleBenchCompactMode(this)">
-        <span>{'Compact Tables' if en else '精简表格'}</span>
-      </button>
-      <button type="button" class="bench-util-btn" id="bench-groups-toggle-btn" data-expanded="false" data-label-expand="{'Expand Groups' if en else '展开分组'}" data-label-collapse="{'Collapse Groups' if en else '折叠分组'}" onclick="toggleAllBenchGroups(this)">
-        <span>{'Expand Groups' if en else '展开分组'}</span>
+        {SVG_RADAR} <span>{'Coverage & Footprint' if en else '覆盖与内存'}</span>
       </button>
     </div>
   </div>
@@ -1934,28 +2157,27 @@ function jumpToBenchSection(secKey) {
       {''.join(anchor_buttons)}
     </div>
   </div>
-  <!-- 多平台架构视角一键切换器 -->
-  <div class="bench-platform-selector-bar">
-    <div class="bench-platform-selector-label"><i class="xi xi-sliders xi-brand"></i> <span>{selector_label}</span></div>
-    <div class="bench-platform-pills">
-      {''.join(platform_pills)}
+  <div class="bench-dock-bottom">
+    <div class="bench-platform-selector-bar">
+      <div class="bench-platform-selector-label"><i class="xi xi-sliders xi-brand"></i> <span>{selector_label}</span></div>
+      <div class="bench-platform-pills">
+        {''.join(platform_pills)}
+      </div>
+    </div>
+    <div class="bench-search-toolbar">
+      <label class="bench-search-label" for="bench-search">{SVG_SEARCH}<span class="sr-only">{'Search workloads' if en else '搜索负载'}</span>
+        <input id="bench-search" type="search" oninput="searchBenchAll(this.value)" placeholder="{'Filter workloads, e.g. startup, matmul, aes...' if en else '按名称或算法实时过滤 (如 startup, matmul, aes)...'}">
+      </label>
+      <div class="bench-filter-status" id="bench-filter-status" hidden data-tpl-shown="{'Showing {shown} / {total}' if en else '显示 {shown} / {total} 项'}" data-label-reset="{'Reset' if en else '重置'}"></div>
     </div>
   </div>
 </div>
 
-<div class="bench-search-toolbar">
-  <label class="bench-search-label" for="bench-search">{SVG_SEARCH}<span>{'Search workloads' if en else '搜索负载'}</span>
-    <input id="bench-search" type="search" oninput="searchBenchAll(this.value)" placeholder="{'Name, algorithm or input size' if en else '名称、算法或输入规模'}">
-  </label>
-  <div class="bench-filter-status" id="bench-filter-status" hidden data-tpl-shown="{'Showing {shown} of {total} workloads' if en else '当前显示 {shown} / {total} 项负载'}" data-label-reset="{'Reset Filters' if en else '重置筛选'}"></div>
-</div>
-
-<!-- Valid measurement coverage; workloads remain separate. -->
-{coverage_section}
-{footprint_section}
 {domain_directory_html}
 
-<!-- 2. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 6 平台详细数据表) -->
+{quick_matrix_html}
+
+<!-- 2. 功能大类全平台合一平铺 (每个功能内部均包含 4 维度条形矩阵 + 可折叠 6 平台详细数据表) -->
 <div id="bench-workloads-root" class="bench-workloads-root">
   {''.join(category_sections)}
 </div>
@@ -1964,14 +2186,28 @@ function jumpToBenchSection(secKey) {
   <button type="button" class="bench-filter-reset-btn" onclick="resetBenchFilters()">{'Show All Workloads' if en else '查看全部负载'}</button>
 </div>
 
+<details class="bench-section-drawer" id="bench-overview-drawer">
+  <summary><i class="xi xi-chart-bar xi-brand"></i> <span>{overview_summary}</span></summary>
+  <div class="bench-section-drawer-body">
+    {coverage_section}
+    {footprint_section}
+  </div>
+</details>
+
 {pending_workloads}
 
-<!-- 评测准则与环境审计公示专区 -->
-{method_audit_section}
+<details class="bench-section-drawer" id="bench-audit-drawer">
+  <summary><i class="xi xi-shield-check xi-brand"></i> <span>{charter_summary}</span></summary>
+  <div class="bench-section-drawer-body">
+    {charter_section}
+    {render_toolchain_versions(platforms, version, en)}
+    {method_audit_section}
+  </div>
+</details>
 
 <p class="meta">
-  <a href="/docs/status">{'View Limitations & Status' if en else '查看语言规范与现状限制'}</a> · 
-  <a href="/download">{'Download Compiler' if en else '下载 Xu 编译器'}</a> · 
+  <a href="/docs/status">{'View Limitations & Status' if en else '查看语言规范与现状限制'}</a> ·
+  <a href="/download">{'Download Compiler' if en else '下载 Xu 编译器'}</a> ·
   <a href="https://github.com/xulang-org/bench" target="_blank" rel="noopener noreferrer">{'Benchmark Suite on GitHub' if en else 'GitHub 基准测试套件源码'}</a>
 </p>
 {modal_html}
