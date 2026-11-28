@@ -7,6 +7,22 @@
 
 <p>This technical guide details Xu's native interop architecture, the distinct roles of universal static archives versus <code>.xulib</code> containers, the complete multi-type ABI mapping table, and the end-to-end 7 development actions.</p>
 
+<h2>Choosing a Native Interop Path: <code>extern &quot;C&quot;</code> vs. <code>xu native</code></h2>
+<p>Xu intentionally maintains two complementary native C interop mechanisms: direct C FFI (<code>extern &quot;C&quot;</code> + <code>#ffi</code>) and static native modules (<code>xu native</code> + <code>include/xu_native.h</code>). They serve distinct roles rather than replacing each other:</p>
+<div class="doc-table-wrap"><table>
+<thead><tr><th>Dimension</th><th><code>extern &quot;C&quot;</code> + <code>#ffi</code> (Direct C FFI)</th><th><code>xu native</code> + <code>include/xu_native.h</code> (Static Native Module)</th></tr></thead>
+<tbody>
+<tr><td><strong>Primary Use Case</strong></td><td>Calling existing system or third-party shared libraries directly (e.g., <code>libc</code>, <code>libsqlite3</code>, <code>libSDL3</code>, GPU / AI drivers)</td><td>Wrapping self-owned C / C++ / Objective-C bridges into a static <code>.a</code> archive or cross-platform <code>.xulib</code> bundle</td></tr>
+<tr><td><strong>Glue Cost</strong></td><td>No separate C shim file needed; declare the signatures in Xu and call directly</td><td>Requires a thin C bridge and JSON manifest compiled via <code>xu native</code></td></tr>
+<tr><td><strong>Safety Boundary</strong></td><td>Calls require <code>unsafe { }</code>; raw <code>c_ptr</code> lifetimes and C memory layout are the caller's responsibility</td><td>Xu call sites need <strong>no <code>unsafe</code></strong>; <code>xu-c-2</code> passes zero-copy borrowed slices (<code>&amp;[]int</code> / <code>$&amp;[]int</code> / <code>&amp;[]u8</code> / <code>$&amp;[]u8</code>) with COW protection</td></tr>
+<tr><td><strong>Linking &amp; Distribution</strong></td><td>Typically loaded via dynamic libraries (such as <code>dlopen</code>), relying on runtime libraries on the target host</td><td>Statically linked into the build artifact; <code>.xulib</code> embeds multi-platform slices (including iOS / Android) with SHA-256 verification</td></tr>
+<tr><td><strong>Capabilities &amp; Tooling</strong></td><td>Supports <code>@repr(&quot;C&quot;)</code>, <code>c_callback</code>, variadics, and arbitrary C structs via stdlib <code>#ffi</code></td><td>Intentionally scoped to scalars and borrowed span ABIs, backed by <code>bin/xu-native</code> and <code>include/xu_native.h</code></td></tr>
+</tbody></table></div>
+<ul>
+  <li><strong>Integrating existing C / system / dynamic libraries</strong> → Prefer <code>extern &quot;C&quot;</code> + <code>#ffi</code>.</li>
+  <li><strong>Packaging your own C / C++ / ObjC bridges, needing <code>unsafe</code>-free zero-copy borrowed spans, or distributing portable static <code>.xulib</code> bundles</strong> → Use <code>xu native</code> + <code>include/xu_native.h</code> (covered in detail below).</li>
+</ul>
+
 <h2>1. Core Architecture: Universal .a vs .xulib Containers</h2>
 <ul>
   <li><strong>Standard universal <code>.a</code> (Unix static archives) are first-class peers</strong>: Use <code>xu native compile</code> or <code>xu native archive</code> to include the Xu interface metadata alongside native objects. On <code>macos-arm64</code> and <code>macos-x64</code>, link via <code>xu build main.xu module.a</code> or declare it under <code>native:</code> in <code>xu.xun</code>. It is statically linked by the system linker.</li>
