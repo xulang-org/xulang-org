@@ -82,7 +82,7 @@ xu build main.xu -o hello
 
 接着阅读 [入门指南](https://xulang.org/zh/docs/start)、[语言参考](https://xulang.org/zh/docs/lang/syntax)，或运行 [官方示例](https://github.com/xulang-org/examples)。
 
-XU 正在 **0.x 阶段**持续演进。已发布 SDK 见 [Releases](https://github.com/xulang-org/xu/releases)，平台与运行时覆盖见 [限制与现状](https://xulang.org/zh/docs/status)。[基准看板](https://xulang.org/zh/benchmarks) 保留实测负载、编译器版本与源码来源。
+XU 正在 **0.x 阶段**持续演进（最新发布：**0.14.3**，带来 Linux/macOS M:N 多核协程调度与 `#sync/pool`、定型 `>>`/`>>>` 错误语法、`--threads N` LLM 与 K-quant SIMD、Phase 5–7 优化、Mach-O 内置签名与 UEFI/ACPI/PCI/FDT OS 原语）。已发布 SDK 见 [Releases](https://github.com/xulang-org/xu/releases)，平台与运行时覆盖见 [限制与现状](https://xulang.org/zh/docs/status)。[基准看板](https://xulang.org/zh/benchmarks) 保留实测负载、编译器版本与源码来源。
 
 打开 [API 文档](https://xulang.org/zh/api/)，使用「搜索 API」查找包或直达本页声明。在输入框外按 `/` 打开搜索，方向键和 Enter 操作结果，Escape 关闭。手机上目录默认收起，便于直接阅读正文；声明标题可直达对应位置，「复制链接」可分享当前页面或声明。
 
@@ -94,7 +94,9 @@ API 索引提供常用任务入口、主题用途说明和页内包搜索，可�
 | :--- | :--- |
 | **语言与编译器** | [xu](https://github.com/xulang-org/xu) — 自举编译器、标准库与命令行工具。 |
 | **从示例入手** | [examples](https://github.com/xulang-org/examples) — 语法基础、并发、网络、数据库与 UI 示例。 |
-| **库与服务集成** | [packages](https://github.com/xulang-org/packages) — 数据库驱动、消息队列、存储与服务集成。 |
+| **库与服务集成** | [packages](https://github.com/xulang-org/packages) — 50 个官方扩展包（`v1.17.0`），覆盖数据库/消息驱动、AI/Agent/RAG 协议与多后端 GPU（`gpu`、`llm_metal`、`metal`、`cuda_native`、`vulkan_native`）。 |
+| **2D/3D 游戏引擎** | [nexus](https://github.com/xulang-org/nexus) — 基于 `#gpu` / `#window` 的纯 Xu 游戏引擎（PBR + CSM 阴影、3D 三角形碰撞与物理、GLB/OBJ/STL 导入、原生编辑器）。 |
+| **加密原生网络** | [Fatext](https://fatext.com) — 无数据库、零 JS 的 AI Agent 广场、E2EE 私信中继与 P2P 信令单二进制服务（内建纯 Xu TLS 1.3 + ACME v2 Auto-TLS）。 |
 | **编辑器支持** | [vscode-xu](https://github.com/xulang-org/vscode-xu) — VS Code 与 Cursor 的语法高亮和 XU 语言服务。 |
 | **性能与横测** | [bench](https://github.com/xulang-org/bench) — 跨语言负载与可复现的基准源码。 |
 | **官网与文档** | [xulang-org](https://github.com/xulang-org/xulang-org) — xulang.org、文档中心与 WebAssembly 演练场。 |

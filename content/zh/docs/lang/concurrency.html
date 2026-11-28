@@ -2,7 +2,7 @@
 <p class="crumb"><a href="/docs/start">文档</a> / 语言</p>
 <h1>并发</h1>
 <p><code>xu f(args)</code> 调度一个协程。调度决定哪个就绪任务可以推进；并行是多个任务同时在不同 CPU 线程上执行。启动协程本身既不保证执行顺序，也不承诺 CPU 并行。<code>xu.pkg.f</code> 是包限定调用，不是启动协程。</p>
-<p>下列代码块均使用官方 SDK v0.10.12 检查。每个块单独保存为一个 <code>.xu</code> 文件；完整程序用 <code>xu check</code>，仅含函数的示例用 <code>xu check --lib</code>。预期诊断均为实际输出的子串。完整程序也通过本机 <code>xu run</code>；浏览器运行使用下述 WASM 子集。</p>
+<p>下列代码块均使用官方 SDK v{{xu_version}} 检查。每个块单独保存为一个 <code>.xu</code> 文件；完整程序用 <code>xu check</code>，仅含函数的示例用 <code>xu check --lib</code>。预期诊断均为实际输出的子串。完整程序也通过本机 <code>xu run</code>；浏览器运行使用下述 WASM 子集。</p>
 
 <h2 id="scheduling">调度与无缓冲会合</h2>
 <p>容量为零的信道要求发送方与接收方会合。对开放的空信道接收会等待；缓冲区满时发送也会等待。这些信道等待会让调度器推进其他就绪协程。应通过信道等待结果，再让 <code>main</code> 返回；启动并不代表任务已完成。</p>
@@ -24,6 +24,13 @@ fn main() int {
 <ul>
   <li><strong>直接栈-栈零拷贝会合（Zero-Copy Rendezvous）</strong>：当接收方在 <code>cap: 0</code> 无缓冲信道上等待时，其目标栈槽位地址直接暴露给发送方；发送方在唤醒接收方时通过单指令内存解引用直接向目标栈拷贝数据，完全跳过堆分配与中间缓冲。</li>
   <li><strong>调用图有界栈与 16KB Tiny Slab</strong>：编译器通过跨过程调用图静态推导协程的最大调用栈深与局部帧上限；对于证明无外部调用或不可控递归的有界轻量协程，自动分配至极小的 16KB Slab 专用内存池（<code>task_spawn_tiny</code>），将百万并发协程的常驻内存开销直降 98.4%。</li>
+</ul>
+
+<h2 id="mn-scheduler">M:N 多核调度器与 <code>#sync/pool</code>（0.14.3+）</h2>
+<p>Xu 0.14.3 为 Linux 与 macOS 引入了 M:N 多核协程调度器及标准库模块 <a href="/api/sync/pool"><code>#sync/pool</code></a>，使高并发协程可在多个 OS 工作线程上真实并行执行：</p>
+<ul>
+  <li><strong>多核调度控制</strong>：通过 <code>pool.set_max_procs(N)</code> 与 <code>pool.max_procs()</code> 配置和查询调度工作线程数，或使用 <code>pool.new_thread_pool(N)</code> 管理专用工作线程池。</li>
+  <li><strong>线程安全运行时与硬件原子指令</strong>：运行时堆分配器与 FFI 符号表解析全面加锁保护，内置 ARM64 / x86-64 硬件原子指令并修复 <code>net/poller</code> 跨线程唤醒竞争。</li>
 </ul>
 
 <h2 id="send-receive">发送与接收：转移 owned 数据，共享信道句柄</h2>

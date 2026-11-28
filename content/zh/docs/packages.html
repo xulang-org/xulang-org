@@ -1,8 +1,8 @@
 <!--title: 官方扩展包 (Packages)-->
 <p class="crumb"><a href="/docs/start">文档</a></p>
 <h1>官方扩展包 (Packages)</h1>
-<p class="banner">官方模块：<code>github.com/xulang-org/packages</code> · SDK 内模块版本 1.0.0 · 29 个服务集成包及共享 transport 包</p>
-<p>Xu {{xu_version}} SDK 包含外部驱动及原生源码资源，下方矩阵以该安装包为范围；API 页显示各自的包来源身份（当前为 1.0.2），与 SDK 内 1.0.0 清单不同，不能从较新 API 声明推断内置能力。驱动涵盖数据库、缓存、消息、对象存储与服务发现；协议和平台边界见各包说明。</p>
+<p class="banner">官方模块：<code>github.com/xulang-org/packages</code> · SDK 内模块版本 1.0.2 · 29 个服务集成包及共享 transport 包</p>
+<p>Xu {{xu_version}} SDK 内置 1.0.2 版驱动和原生源码资源。下文介绍的 AI 与 GPU 扩展包来自独立的 1.17.0 版源码。选用依赖时请核对各 API 页面标注的源码版本。</p>
 <h2>1. 选择 SDK 内置包或固定源码提交</h2>
 <p>将项目放在解压后的 SDK 旁，通过本地来源声明内置 packages；安装位置不同时调整相对路径：</p>
 <pre><code class="language-xun">module: my_app
@@ -12,12 +12,12 @@ require:
   "github.com/xulang-org/packages": file:../xu-v{{xu_version}}/packages</code></pre>
 <p>也可以指定该 SDK 使用的完整不可变提交来获取源码：</p>
 <pre><code class="language-xun">require:
-  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@96693e6cce8d51eba45e4f68dc12ce06f7a2336b</code></pre>
+  "github.com/xulang-org/packages": git:https://github.com/xulang-org/packages.git@c16af7ca38dc31c289ca83670edf153f1f85f5f2</code></pre>
 <p>在项目目录中解析并锁定依赖，再检查和构建：</p>
 <pre><code class="language-shell">xu install
 xu check main.xu --offline
 xu build main.xu -o my_app</code></pre>
-<p>模块版本与 Git 标签分别管理：本安装包声明模块版本 1.0.0，以上固定源码地址直接选择准确提交。请将 <code>xu.lock</code> 与应用一同维护；冻结构建、vendor 和代理用法见<a href="/docs/modules">模块与依赖</a>。</p>
+<p>模块版本与 Git 标签分别管理：本安装包声明模块版本 1.0.2，以上固定源码地址直接选择准确提交。请将 <code>xu.lock</code> 与应用一同维护；冻结构建、vendor 和代理用法见<a href="/docs/modules">模块与依赖</a>。</p>
 <h2>2. 在代码中引用扩展包</h2>
 <p>Xu 对所有外部扩展包采用<strong>明确的命名空间别名机制</strong>，语法格式为：<code>别名 #完整包路径</code>。这不仅避免了全局命名污染，也保证了所有代码依赖关系透明可见。</p>
 
@@ -32,17 +32,17 @@ redis    #github.com/xulang-org/packages/redis
 postgres #github.com/xulang-org/packages/postgres
 
 fn main() int {
-    // 使用别名进行调用
+    // 直接通过别名访问包内公开接口
     println("Drivers loaded successfully")
-    << 0
+    &lt;&lt; 0
 }</code></pre></div>
 
-<p class="note"><strong>注意：</strong>不能写 <code>#mysql</code> 或 <code>#redis</code>。外部模块必须使用显式别名与完整模块路径。标准库与本地包（如 <code>#util</code>）各有解析规则。本文所列集成包属于 <code>github.com/xulang-org/packages</code>，其他外部模块使用各自的模块标识。</p>
+<p class="note"><strong>注意：</strong>请勿写成 <code>#mysql</code> 或 <code>#redis</code>。外部扩展必须声明别名和完整模块路径；标准库导入与本地包导入（例如 <code>#util</code>）遵循各自解析规则。本页列出的集成属于 <code>github.com/xulang-org/packages</code>，其他外部模块按各自模块身份声明。</p>
 
-<h2>3. 快速上手实战示例</h2>
+<h2>3. 快速上手代码示例</h2>
 
-<h3>实战 1：配合 <code>database/sql</code> 使用 MySQL 驱动</h3>
-<p>标准库 <code>database/sql</code> 提供连接池、事务与结果集抽象，具体的驱动实现由 packages 的 <code>mysql</code> 包提供：</p>
+<h3>示例 1：通过标准库 <code>database/sql</code> 使用 MySQL 驱动</h3>
+<p>标准库 <code>database/sql</code> 提供连接池、事务与结果行读取抽象，底层具体数据库驱动由 <code>packages/mysql</code> 实现：</p>
 <div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 #database/sql
 mysql #github.com/xulang-org/packages/mysql
@@ -51,52 +51,52 @@ fn main() int {
     dsn := "root:123456@tcp(127.0.0.1:3306)/test_db?tls=false"
     $db := sql.open(mysql.driver(), dsn)
     db.ping() &gt;&gt;&gt; (err) {
-        println("Database ping failed: " + err.msg())
+        println("数据库连接探测失败: " + err.msg())
         &lt;&lt; 1
     }
-    println("Connected to MySQL successfully!")
+    println("MySQL 连接成功！")
     db.close() &gt;&gt;&gt; (err) { &lt;&lt; 1 }
     &lt;&lt; 0
 }</code></pre></div>
 
-<h3>实战 2：连接与操作 Redis 缓存</h3>
+<h3>示例 2：Redis 缓存客户端操作</h3>
 <div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 redis #github.com/xulang-org/packages/redis
 
 fn main() int {
     $client := redis.open("127.0.0.1:6379") &gt;&gt;&gt; (err) {
-        println("Redis connect error: " + err.msg())
+        println("Redis 连接失败: " + err.msg())
         &lt;&lt; 1
     }
     client.set("app_version", "demo") &gt;&gt;&gt; (err) { &lt;&lt; 1 }
     val := client.get("app_version") &gt;&gt;&gt; (err) { &lt;&lt; 1 }
-    println("Key 'app_version': " + val)
+    println("读取键值 app_version: " + val)
     client.close()
     &lt;&lt; 0
 }</code></pre></div>
 
-<h3>实战 3：使用 S3 / MinIO 进行对象存储</h3>
+<h3>示例 3：S3 / MinIO 对象存储</h3>
 <div class="code-block-wrapper xu-local-only"><pre><code class="language-xu">@main
 s3 #github.com/xulang-org/packages/s3
 
 fn main() int {
     $client := s3.open("http://127.0.0.1:9000", "access_key", "secret_key", "us-east-1")
     client.put_object("my-bucket", "welcome.txt", "Hello from Xu!", "text/plain") &gt;&gt;&gt; (err) {
-        println("S3 upload failed: " + err.msg())
+        println("S3 上传失败: " + err.msg())
         &lt;&lt; 1
     }
-    println("Object uploaded successfully")
+    println("对象上传完成")
     &lt;&lt; 0
 }</code></pre></div>
 
-<h2>4. 官方服务集成包速查表与导入代码</h2>
-<p>packages 仓库在此共收录 47 个已文档化扩展包（30 个核心网络/存储/传输驱动包，外加 17 个 AI 与多后端 GPU 计算包）。可直接复制下方对应的导入代码行置于源文件顶部：</p>
+<h2>4. 扩展包全景矩阵与快速导入表</h2>
+<p>下表覆盖 SDK 内置的 30 个包（含共享 transport 包）及独立模块提供的 17 个 AI 与 GPU 扩展包。直接复制下表中的导入语句即可使用：</p>
 
-<p id="matrix-scope">以下状态列来自所选 SDK 随附的 <code>packages/*.xu</code> 源码检查，包括 <code>client.xu</code>、认证文件、<code>tls.xu</code> 辅助接口与 <code>transport/mod.xu</code>。这是源码证据，不是服务互操作或平台验收结果。<strong>未知</strong>表示此处尚未证明该能力。</p>
-<p class="note"><strong>TLS 路径：</strong>HTTPS 业务请求使用共享 TLS 连接路径，旧的手工 fd 池仍为明文。<em>TLS 字节流辅助接口</em>仅提供 <code>tls_connect</code> / <code>tls_connect_config</code> 及原始读写，不能据此认定普通带认证客户端或连接池已接通 TLS；这种集成明确标为未知。SMTP STARTTLS 和 DNS-over-TLS 查询集成未知。默认 TLS 配置校验证书与主机名；此处没有逐服务实测这些源码路径。</p>
-<p><strong>平台：</strong>网络驱动依赖原生套接字，只能沿本机 SDK 路径运行，超出演练场浏览器子集。每行各系统 / 架构的验收均为未知。SQLite 现升级至纯 Xu <code>sqlite_native</code> 动态加载，无需预编译静态 <code>.xulib</code> 切片。参见<a href="/download#platform-boundaries">下载平台边界</a>与<a href="/docs/status">状态说明</a>。</p>
+<p id="matrix-scope">下方状态列依据 SDK 内置包和独立模块的源码，覆盖 <code>client.xu</code>、认证文件、<code>tls.xu</code> 辅助逻辑与 <code>transport/mod.xu</code>。这些结论反映源码路径，不构成真实服务互通或平台验收结果；凡未在源码路径中证实的能力，均明确标为<strong>未知</strong>。</p>
+<p class="note"><strong>TLS 路径：</strong>HTTPS 业务请求使用共享 TLS 连接路径；旧式手写 fd 连接池仍走明文。标注为 <em>TLS 字节流辅助</em>仅提供 <code>tls_connect</code> / <code>tls_connect_config</code> 与原始读写封装，不能推导该包常规认证客户端或连接池已经接入 TLS，相关集成状态为未知；SMTP STARTTLS 与 DNS-over-TLS 集成同样未知。默认 TLS 配置校验证书与主机名；这些源码路径并未针对每项服务逐一执行实网验证。</p>
+<p><strong>平台边界：</strong>网络驱动基于原生套接字，属于本地 SDK 路径，不进入浏览器演练场子集；各目标操作系统与架构验收均未逐行实测。SQLite 现使用纯 Xu <code>sqlite_native</code> 动态加载，不再依赖静态 <code>.xulib</code> 切片。详见 <a href="/download#platform-boundaries">下载页边界说明</a> 与 <a href="/docs/status">当前状态</a>。</p>
 
-<div class="doc-table-wrap" role="region" tabindex="0" aria-label="集成支持矩阵">
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="扩展包能力矩阵">
 <table id="integration-matrix" class="package-matrix">
   <thead>
     <tr>
@@ -165,42 +165,87 @@ fn main() int {
 
 <h2>5. 边界与注意事项</h2>
 <ul>
-  <li><strong>SQLite 与 Metal 纯 FFI 架构</strong>：SQLite 驱动现通过纯 Xu 包 <code>sqlite_native</code> 动态加载（<code>dlopen</code>）系统 <code>libsqlite3</code>（Windows 平台自动识别系统内置 <code>winsqlite3.dll</code>，亦可通过 <code>XU_SQLITE_LIBRARY</code> 覆盖路径），无需再通过 <code>make native</code> 编译打包静态 <code>.xulib</code>。Metal GPU 计算包通过 <code>metal_native</code> 动态加载 <code>libxu_metal.dylib</code>（可由 <code>metal/native/build.py</code> 构建，支持 <code>XU_METAL_LIBRARY</code> 覆盖）。</li>
-  <li><strong>离线与生产构建（Frozen Builds）</strong>：在生产 CI/CD 流水线中，建议提交生成的 <code>vendor/</code> 和 <code>xu.lock</code>，并使用 <code>xu build main.xu --frozen</code>。编译器将严格禁止任何外部网络请求，保障构建的 100% 确定性与安全。</li>
+  <li><strong>SQLite 与多后端 GPU 纯 FFI / <code>dlopen</code> 架构</strong>：SQLite 驱动通过纯 Xu 包 <code>sqlite_native</code> 动态加载（<code>dlopen</code>）系统 <code>libsqlite3</code>（Windows 自动识别系统 <code>winsqlite3.dll</code>，支持 <code>XU_SQLITE_LIBRARY</code> 覆盖），无需编译 <code>.xulib</code>。CUDA 与 Vulkan 同样采用纯 Xu <code>dlopen</code>（<code>cuda_native</code> / <code>vulkan_native</code>）；Metal GPU 包通过 <code>metal_native</code> 动态加载 <code>libxu_metal.dylib</code>（支持 <code>XU_METAL_LIBRARY</code> 覆盖）。</li>
+  <li><strong>离线与生产构建（Frozen Builds）</strong>：在生产 CI/CD 流水线中，提交生成的 <code>vendor/</code> 和 <code>xu.lock</code> 并运行 <code>xu build main.xu --frozen</code>，严格禁止构建期间发起网络请求。</li>
 </ul>
 
-<p>更多模块图解析细节与原生模块规范，请参考：<a href="/docs/modules">模块与依赖规范 (Modules &amp; Dependencies)</a> 与 <a href="/docs/native">原生模块规范</a>。</p>
+<p>更多模块解析与原生模块规范见：<a href="/docs/modules">模块与依赖规范</a> 与 <a href="/docs/native">原生模块规范</a>。</p>
 
-<h2 id="ai-packages">AI 扩展包与多后端 GPU 计算（<code>v1.17.0</code>）</h2>
-<p>除上方固定 SDK 矩阵收录的 30 个网络与存储驱动外，独立仓库 <a href="https://github.com/xulang-org/packages"><code>github.com/xulang-org/packages</code></a>（<code>v1.17.0</code>，共 50 个包，新增 <code>llm_metal</code> GPU 推理与 Metal K-quant SIMD GEMV、<code>cuda_native</code>、<code>vulkan_native</code> SPIR-V、统一 <code>gpu</code> 外观以及 <code>gateway</code> Redis 分布式状态）还提供纯 Xu AI 协议包、合成数据集流水线（<code>synth</code>）、并发实时 SSE 的 A2A 智能体协作协议、异构跨厂商（OpenAI/Anthropic/Gemini）同步与流式 LLM 网关、渐进式技能 + <code>AgentSwarm</code> + 并行 HITL <code>StateGraph</code> 编排、安全护栏、校准与回归评测套件、实时 PostgreSQL <code>PgVectorClient</code> / 持久化 <code>SqliteVectorStore</code> / <code>QdrantVectorStore</code> 与自动化 GraphRAG 检索引擎与 Metal/CUDA/Vulkan GPU 算子库：</p>
-<ul>
-  <li><code>synth #github.com/xulang-org/packages/synth</code> —— 纯 Xu 合成数据与微调语料策展包，支持 SFT/DPO 生成与教师-学生蒸馏（<code>generate_sft_openai</code>、<code>generate_dpo_pair_openai</code>、<code>distill_dataset_openai</code>）、精确与 Jaccard n-gram 近似去重（<code>dedup_exact</code>、<code>dedup_near_jaccard</code>、<code>jaccard_ngram_similarity</code>）、质量清洗过滤（<code>filter_sft_quality</code>）以及兼容 <code>llm_engine</code> 的 JSONL 导出与解析（<code>format_sft_jsonl</code>、<code>parse_sft_jsonl</code>、<code>format_dpo_jsonl</code>、<code>format_rlvr_jsonl</code>、<code>save_jsonl</code>）。</li>
-  <li><code>a2a #github.com/xulang-org/packages/a2a</code> —— 纯 Xu Agent-to-Agent 协议客户端与并发服务端，提供 <code>AgentCard</code> 能力发现（<code>/.well-known/agent.json</code>、<code>new_agent_card</code>、<code>add_skill</code>、<code>format_agent_card_json</code>、<code>parse_agent_card_json</code>）、结构化多产出 <code>TaskArtifact</code>、JSON-RPC 2.0 <code>tasks/send</code>、<code>tasks/get</code>、<code>tasks/cancel</code> 与无缓冲实时刷新 SSE 流式订阅 <code>tasks/sendSubscribe</code>（<code>new_server</code>、<code>set_stream_handler</code>、<code>serve_http_server</code>、<code>new_client</code>、<code>discover</code>、<code>send_task</code>、<code>send_task_stream</code>、<code>send_task_stream_chan</code>、<code>get_task</code>、<code>cancel_task</code>）。</li>
-  <li><code>openai #github.com/xulang-org/packages/openai</code> —— 纯 Xu OpenAI 兼容客户端，内置 11 个主流厂商一行构造预设（<code>new_deepseek_client</code>、<code>new_openrouter_client</code>、<code>new_groq_client</code>、<code>new_xai_client</code>、<code>new_together_client</code>、<code>new_fireworks_client</code>、<code>new_ollama_client</code>、<code>new_cohere_client</code>、<code>new_qwen_client</code>、<code>new_mistral_client</code>、<code>new_minimax_client</code>），支持 <code>clone_client</code>、Responses API（<code>/v1/responses</code> 同步与 SSE）、Files API（<code>upload_file</code>、<code>get_file</code>、<code>list_files</code>、<code>get_file_content</code>、<code>delete_file</code>）、Batches API（<code>create_batch</code>、<code>get_batch</code>、<code>cancel_batch</code>、<code>list_batches</code>）、音频 Whisper 转录与 TTS 语音合成（<code>audio_transcriptions</code>、<code>audio_speech</code>）、<code>images_generate</code>、<code>rerank</code>（<code>/v1/rerank</code>）、多模态视觉、重试、<code>json_schema_format</code>、流式 <code>chat_stream</code>、<code>completions</code> 与批量 <code>embeddings</code>。</li>
-  <li><code>cohere #github.com/xulang-org/packages/cohere</code> —— 纯 Xu Cohere v2 API 客户端（<code>new_client</code>、<code>new_client_with_base</code>、<code>chat</code> <code>/v2/chat</code>、支持浮点向量返回的 <code>embed</code> <code>/v2/embed</code> 与 <code>rerank</code> <code>/v2/rerank</code>），内置 Bearer 鉴权与指数退避重试。</li>
-  <li><code>gateway #github.com/xulang-org/packages/gateway</code> —— 纯 Xu 多厂商异构 LLM 网关包，支持统一注册 OpenAI、Anthropic（<code>add_anthropic_route</code>）与 Gemini（<code>add_gemini_route</code>）加权/故障转移路由（<code>new_gateway</code>、<code>add_route</code>、<code>add_weighted_route</code>、<code>chat_weighted</code>）、同步与流式 SSE 跨厂商故障转移及权重路由（<code>chat_stream_with_fallback</code>、<code>chat_stream_chan_with_fallback</code>、<code>chat_stream_weighted</code>、<code>chat_stream_chan_weighted</code>）、熔断器与 RPM 限流（<code>set_circuit_breaker</code>、<code>reset_circuits</code>、<code>set_rate_limit</code>）、Prometheus 指标导出（<code>format_metrics_prometheus</code>）、按路由覆写模型名（<code>chat_with_fallback</code>）、Token 单价成本统计（<code>estimate_cost_usd</code>、<code>get_stats</code>）以及基于 <code>#tensor.cosine_similarity_f32</code> 的语义响应缓存（<code>enable_semantic_cache</code>、<code>chat_cached</code>）。</li>
-  <li><code>prompt #github.com/xulang-org/packages/prompt</code> —— 纯 Xu 版本化提示词与结构化抽取包，提供 <code>PromptTemplate</code> / <code>PromptRegistry</code>（<code>new_template</code>、带必填变量校验的 <code>render_template</code>、<code>register</code>、<code>get</code>、<code>render_messages</code>、<code>list_names</code>）、<code>#tensor</code> 驱动的动态 Few-Shot 检索（<code>select_few_shot</code>、<code>format_few_shot_messages</code>）及 Markdown JSON 围栏提取（<code>extract_json_block</code>）。</li>
-  <li><code>anthropic #github.com/xulang-org/packages/anthropic</code> —— 纯 Xu Anthropic Messages API（<code>/v1/messages</code>）客户端，支持 <code>clone_client</code>、同步 <code>messages</code> 与 SSE 流式 <code>messages_stream</code> / <code>messages_stream_chan</code>、多模态图像内容块（<code>text_block</code>、<code>image_base64_block</code>、<code>image_url_block</code>、<code>message_blocks</code>）、Prompt Caching（<code>ContentBlock.cache_control</code>、<code>MessagesRequest.cache_system</code>）、扩展思考 <code>thinking</code> / <code>thinking_delta</code>、<code>tool_use</code> / <code>tool_result</code> 及分块 <code>input_json_delta</code> 拼接、自定义请求头与 <code>429</code>/<code>529</code>/<code>5xx</code> 退避重试。</li>
-  <li><code>gemini #github.com/xulang-org/packages/gemini</code> —— 纯 Xu Google Gemini REST API 客户端（<code>generateContent</code> / <code>streamGenerateContent?alt=sse</code> / <code>embedContent</code> / 批量 <code>batch_embed</code> <code>batchEmbedContents</code>，自动携带 <code>x-goog-api-key</code>），支持 <code>clone_client</code>、多模态 <code>inline_data_part</code>、函数调用（<code>function_decl</code>、<code>function_call_part</code>、<code>function_response_part</code>）、结构化输出 <code>response_schema_json</code>、思考预算 <code>thinking_budget</code>（分离 <code>thoughts</code>/<code>thought_delta</code>）以及 <code>429</code>/<code>5xx</code> 指数退避重试。</li>
-  <li><code>mcp #github.com/xulang-org/packages/mcp</code> —— Model Context Protocol JSON-RPC 2.0（<code>2025-03-26</code>）双向 stdio 与 Streamable HTTP 服务端及客户端（<code>serve_stdio</code>、<code>serve_http</code>/<code>serve_http_server</code>、<code>connect_stdio</code> 与 <code>new_http_client</code>），覆盖 <code>tools</code>（含 <code>add_tool_annotated</code> / <code>ToolAnnotations</code>）、<code>resources</code>、<code>resourceTemplates</code>（<code>add_resource_template</code>、动态 URI 模板路由 <code>add_resource_template_handler</code>、<code>list_resource_templates</code>）、<code>prompts</code>、参数补全（<code>set_completion_handler</code> / <code>complete</code>）、日志级别设置（<code>logging/setLevel</code>、<code>set_logging_level</code>）、自定义请求头（<code>add_header</code>、<code>set_bearer_token</code>、<code>clone_client</code>）、<code>close_session</code>（HTTP <code>DELETE</code>）以及 <code>Accept: text/event-stream</code> SSE 协商响应。</li>
-  <li><code>agent #github.com/xulang-org/packages/agent</code> —— 纯 Xu 多轮工具与 MCP 联动智能体运行时，OpenAI Chat（<code>Agent</code>、<code>Session</code>）、OpenAI Responses API（<code>ResponsesAgent</code>、<code>ResponsesSession</code>）、Anthropic（<code>AnthropicAgent</code>、<code>AnthropicSession</code>）与 Gemini（<code>GeminiAgent</code>、<code>GeminiSession</code>）四端特性全面对等（均支持渐进式按需 <code>load_skill</code>、护栏策略、上下文预算压缩、OTLP 追踪、审批钩子与并发工具调用），支持工具能力的多智能体群组 <code>AgentSwarm</code>（<code>new_agent_swarm</code>、<code>add_member</code>、<code>run</code>）、<code>HandoffTeam</code> 接力路由与 A2A 远程委托（<code>discover_a2a_skills_prompt</code>、<code>delegate_to_a2a</code>）、会话检查点保存与恢复（<code>Session.save_checkpoint_json</code>、<code>load_session_checkpoint</code>）、<code>SKILL.md</code> 解析与目录自动发现（<code>discover_skills_dir</code>、<code>load_skills_dir</code>、<code>set_progressive_skills</code>）、持久化混合记忆 <code>AgentMemory</code>（<code>new_memory</code>、<code>remember</code>、<code>recall</code>、<code>update</code>、<code>forget</code>、<code>save_json</code>、<code>load_memory_json</code>）、上下文预算压缩与摘要（<code>estimate_tokens</code>、<code>compact_messages</code>、<code>compact_anthropic_messages</code>、<code>compact_gemini_contents</code>、<code>summarize_messages_openai</code>、<code>set_context_budget</code>）、安全护栏与链路追踪（<code>TraceSpan</code>、<code>set_trace_hook</code>、<code>format_trace_jsonl</code>、<code>format_trace_otlp_json</code>、<code>export_traces_otlp_http</code>、<code>format_trace_prometheus</code>）、支持并行扇出/扇入与 HITL 中断/续跑的声明式状态图引擎（<code>StateGraph</code>、<code>add_parallel_node</code>、<code>add_interrupt_before</code>、<code>checkpoint_from_result</code>、<code>save_graph_checkpoint</code>、<code>load_graph_checkpoint</code>、<code>resume</code>）、多智能体工作流（<code>run_sequential_workflow</code>、<code>run_router_workflow</code>、<code>run_parallel_workflow</code>、<code>run_evaluator_optimizer</code>）、JSON Schema 纠错重试（<code>run_json_checked</code>）与 <code>Step.is_error</code> 容错恢复。</li>
-  <li><code>guardrails #github.com/xulang-org/packages/guardrails</code> —— 纯 Xu AI 安全护栏包，提供 <code>default_policy</code>、PII 与密钥脱敏（<code>redact_pii</code>）、提示注入检测（<code>detect_prompt_injection</code>）、金丝雀防泄露（<code>inject_canary</code>、<code>detect_canary_leak</code>）、RAG 间接注入过滤（<code>sanitize_rag_chunks</code>）、模型安全分类器（<code>check_safety_openai</code>）、输入/输出/工具返回检查（<code>check_input</code>、<code>check_output</code>、<code>check_tool_output</code>）、忠实度评分（<code>check_groundedness</code>）与自动化红队评测（<code>run_red_team</code>）。</li>
-  <li><code>eval #github.com/xulang-org/packages/eval</code> —— 纯 Xu AI 评测基准包，提供 <code>exact_match</code>、<code>token_f1</code>、<code>rouge_n</code>、<code>rouge_l</code>、<code>bleu_score</code>、JSON Schema 结构合规评分与字段校验（<code>json_valid_score</code>、<code>evaluate_json_schema</code>）、置信度校准（<code>expected_calibration_error</code>）、回归门控与 Markdown/JSON 报告（<code>compare_summaries</code>、<code>format_summary_markdown</code>、<code>format_summary_json</code>）、无偏 <code>pass_at_k</code>、Ragas RAG Triad 确定性与模型评测（<code>RagasReport</code>、<code>evaluate_rag_triad</code>、<code>evaluate_rag_judge_openai</code>）、单点与成对 LLM-as-a-Judge（<code>judge_openai</code>、<code>judge_anthropic</code>、<code>judge_gemini</code>、<code>compare_openai</code>）、JSONL 数据集加载（<code>load_cases_jsonl</code>）与批量评测流水线（<code>run_suite</code>）。</li>
-  <li><code>rag #github.com/xulang-org/packages/rag</code> —— 纯 Xu <code>#tensor</code> 加速混合 RAG 与 GraphRAG 检索工具包，除 SQL 构建器 <code>PgVectorStore</code> 与内存 <code>MemoryStore</code> 外，原生提供直连实时持久化向量后端 <code>PgVectorClient</code>（<code>open_pgvector_client</code>、<code>ensure_table</code>、<code>ensure_index</code>、<code>upsert_chunk</code>、<code>delete_doc</code>、<code>search</code>）、本地 SQLite 向量库 <code>SqliteVectorStore</code>（<code>open_sqlite_store</code>、<code>upsert_chunk</code>、<code>search</code>、<code>search_hybrid</code>）及 Qdrant 适配器 <code>QdrantVectorStore</code>（<code>new_qdrant_store</code>、<code>ensure_collection</code>、<code>upsert_chunk</code>、<code>search</code>），以及自动三元组抽取与 GraphRAG 混合检索（<code>extract_triples_openai</code>、<code>KnowledgeGraph.ingest_text_openai</code>、<code>hybrid_graph_vector_search_auto</code>）、代码/递归/父子分块、<code>contextualize_chunks_openai</code>、多路查询与 HyDE、上下文压缩与引用拼接、API 与 Cohere 重排；<code>packages/postgres</code> 与 MS6 兼容 <code>packages/sqlite</code> 提供底层持久驱动支持。</li>
-  <li><code>metal #github.com/xulang-org/packages/metal</code>（<code>v1.13.0</code> 包发布版）—— Apple Silicon GPU 计算包，导出 176 个原生符号并包含 6 平台 <code>.xulib</code> 切片，单维/总元素上限提升至 <code>262,144</code> / <code>536,870,912</code>，新增转置左乘 <code>gemm_f32_tn</code>、分页 KV 追加（<code>paged_kv_cache_append_f16</code>）、分页 PagedAttention（<code>paged_attention_decode_f16</code>）、<code>Q5KMatrix</code>（<code>matrix_q5_k</code>、<code>gemv_q5_k_f32</code>）与 MoE K-quant 量化核（<code>moe_gemv_q4_k_f32</code>、<code>moe_gemv_q5_k_f32</code>、<code>moe_gemv_q6_k_f32</code>）、LoRA/训练前反向内核（<code>lora_add_f32</code>、<code>adamw_step_f32</code>、<code>cross_entropy_grad_f32</code>、<code>rmsnorm_backward_f32</code>、<code>swiglu_backward_f32</code>）、YaRN 缩放旋转位置编码（<code>rope_yarn_f32</code>）与融合 Top-K 加权 MoE 量化计算（<code>moe_gemv_q4_0_f32</code>、<code>moe_gemv_q8_0_f32</code>），延续支持 <code>Q5Matrix</code>/<code>Q6KMatrix</code>、<code>simd_sum</code>/<code>simd_max</code> warp 规约归一化/Softmax/量化 GEMV、单遍在线 FlashAttention（<code>causal_attention_f32</code>/<code>f16</code>）与 FlashDecode（<code>attention_decode_f32</code>/<code>f16</code>）、<code>rope_interleaved_f32</code>、<code>kv_cache_append_f16</code> 及融合算子与 <code>Batch</code> 批调度算子。</li>
-</ul>
+<h2 id="ai-packages">AI 扩展包与多后端 GPU 计算（<code>v1.17.0</code> · 50 个包）</h2>
+<p>除 SDK 内置的 30 个包外，独立仓库 <a href="https://github.com/xulang-org/packages"><code>github.com/xulang-org/packages</code></a>（<code>v1.17.0</code>，共 50 个包）按四个领域提供了完整的纯 Xu AI、Agent 与跨平台 GPU 能力：</p>
+
+<h3>1. 多后端 GPU 计算与本地 GPU LLM 推理</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="GPU 扩展包分组表">
+<table>
+  <thead>
+    <tr><th>包名</th><th>导入路径</th><th>核心能力</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>gpu</code></td><td><code>gpu #github.com/xulang-org/packages/gpu</code></td><td>统一 GPU 门面（<code>BACKEND_METAL</code> / <code>CUDA</code> / <code>VULKAN</code> / <code>CPU</code>），提供 <code>detect_backends</code>、<code>open_auto</code>、<code>open_backend</code> 与统一矩阵计算接口</td></tr>
+    <tr><td><code>llm_metal</code></td><td><code>llm_metal #github.com/xulang-org/packages/llm_metal</code></td><td>Apple Silicon 端到端 GPU Transformer 引擎：<code>load_gguf</code> / <code>load_safetensors</code> / <code>load_model</code>、<code>MetalKVCache</code> / <code>MetalPagedKVCache</code>、<code>generate_paged</code> 与 <code>MetalLoRA</code>（<code>train_lora_step</code>）</td></tr>
+    <tr><td><code>metal</code> / <code>metal_native</code></td><td><code>metal #github.com/xulang-org/packages/metal</code></td><td>176 个 Apple Silicon Metal GPU 符号：<code>F32/F16/Q4–Q6KMatrix</code>（上限 <code>262,144</code> 维）、Metal K-quant SIMD GEMV、FlashAttention/FlashDecode、PagedAttention F16、MoE 与 LoRA 反向</td></tr>
+    <tr><td><code>cuda_native</code></td><td><code>cuda_native #github.com/xulang-org/packages/cuda_native</code></td><td>纯 Xu <code>dlopen</code> 加载 CUDA Driver API / NVRTC / cuBLAS（支持 <code>XU_CUDA_LIBRARY</code> 等环境变量覆盖），零 C 胶水代码</td></tr>
+    <tr><td><code>vulkan_native</code></td><td><code>vulkan_native #github.com/xulang-org/packages/vulkan_native</code></td><td>纯 Xu <code>dlopen</code> Vulkan 1.1 计算管线 + <code>spirv.xu</code> 纯 Xu SPIR-V 1.0 二进制生成器（支持 Linux / Windows / MoltenVK）</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>2. LLM 客户端、异构网关与提示词工程</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="LLM 客户端与网关扩展包表">
+<table>
+  <thead>
+    <tr><th>包名</th><th>导入路径</th><th>核心能力</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>openai</code></td><td><code>openai #github.com/xulang-org/packages/openai</code></td><td>11 个厂商预设（DeepSeek/OpenRouter/Groq/Qwen/Mistral/MiniMax 等）、Chat/Responses API、Files/Batches、Whisper/TTS、Images 与 Rerank</td></tr>
+    <tr><td><code>anthropic</code></td><td><code>anthropic #github.com/xulang-org/packages/anthropic</code></td><td>Messages API（<code>/v1/messages</code>）、Prompt Caching、扩展思考 <code>thinking</code>、视觉内容块与分块 <code>tool_use</code> SSE 拼接</td></tr>
+    <tr><td><code>gemini</code></td><td><code>gemini #github.com/xulang-org/packages/gemini</code></td><td>Gemini REST（<code>generate*</code> / <code>streamGenerateContent?alt=sse</code>）、<code>response_schema_json</code>、<code>thinking_budget</code> 与 <code>batchEmbedContents</code></td></tr>
+    <tr><td><code>cohere</code></td><td><code>cohere #github.com/xulang-org/packages/cohere</code></td><td>原生 Cohere v2 接口（<code>chat</code>、浮点向量 <code>embed</code> 与 <code>rerank</code>）</td></tr>
+    <tr><td><code>gateway</code></td><td><code>gateway #github.com/xulang-org/packages/gateway</code></td><td>跨厂商（OpenAI/Anthropic/Gemini）加权/故障转移路由、同步与 SSE 切换、熔断限流、<code>ProviderPassthrough</code>、成本与 Redis 分布式状态（<code>set_redis_pool</code> / <code>set_redis_url</code>）</td></tr>
+    <tr><td><code>prompt</code></td><td><code>prompt #github.com/xulang-org/packages/prompt</code></td><td>版本化模板 <code>PromptRegistry</code>、<code>#tensor</code> 动态 Few-Shot 检索与 Markdown JSON 抽取</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>3. 智能体框架、开放协议与 RAG 检索</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="智能体协议与 RAG 扩展包表">
+<table>
+  <thead>
+    <tr><th>包名</th><th>导入路径</th><th>核心能力</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>agent</code></td><td><code>agent #github.com/xulang-org/packages/agent</code></td><td>OpenAI/Responses/Anthropic/Gemini 四端特性对等、跨厂商 <code>AgentSwarm</code>、可插拔 <code>set_token_counter</code>、SQLite 记忆/会话/图检查点持久化、<code>SKILL.md</code>、并行 HITL <code>StateGraph</code> 与 OTLP/Prometheus</td></tr>
+    <tr><td><code>mcp</code></td><td><code>mcp #github.com/xulang-org/packages/mcp</code></td><td>Model Context Protocol JSON-RPC 2.0（<code>2025-03-26</code>）双向 stdio 与 Streamable HTTP 服务端/客户端及 SSE 协商</td></tr>
+    <tr><td><code>a2a</code></td><td><code>a2a #github.com/xulang-org/packages/a2a</code></td><td><code>AgentCard</code> 发现、JSON-RPC 2.0 任务接口、SSE <code>tasks/sendSubscribe</code>，并内置 API Key/钩子鉴权与 SQLite 任务存储（<code>v1.16.0</code>）</td></tr>
+    <tr><td><code>rag</code></td><td><code>rag #github.com/xulang-org/packages/rag</code></td><td>连接池化 <code>PgVectorPool</code>（<code>v1.16.0</code>）、<code>PgVectorClient</code>、缓存持久化 <code>SqliteVectorStore</code>（<code>cached_len</code> / <code>refresh_cache</code>）、<code>QdrantVectorStore</code>、GraphRAG <code>KnowledgeGraph</code> 与多种分块重排</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4. 安全护栏、自动化评测与合成数据</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="安全评测与合成数据扩展包表">
+<table>
+  <thead>
+    <tr><th>包名</th><th>导入路径</th><th>核心能力</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>guardrails</code></td><td><code>guardrails #github.com/xulang-org/packages/guardrails</code></td><td>PII/密钥脱敏、注入与金丝雀检测、RAG 片段净化、<code>check_safety_openai</code>，以及 <code>strict_policy</code> / <code>normalize_for_detection</code> / <code>check_input_strict</code>（<code>v1.16.0</code>）</td></tr>
+    <tr><td><code>eval</code></td><td><code>eval #github.com/xulang-org/packages/eval</code></td><td><code>exact_match</code> / F1 / ROUGE / BLEU、<code>evaluate_json_schema_raw</code> 原生 JSON Schema 校验、<code>pass_at_k</code>、ECE、Ragas Triad 与 LLM-as-a-Judge 回归门控</td></tr>
+    <tr><td><code>synth</code></td><td><code>synth #github.com/xulang-org/packages/synth</code></td><td>SFT/DPO/RLVR 合成数据生成与蒸馏、精确/Jaccard 去重、质量筛选与 <code>llm_engine</code> JSONL 导入导出</td></tr>
+  </tbody>
+</table>
+</div>
 
 <h2 id="ai-limitations">AI 包与驱动已知边界与局限</h2>
-<p class="note"><strong>上线前必读：</strong>以下为源码级实测确认的边界条件，接入生产前请按需前置反向代理、外部存储或模型安全审查。</p>
+<p class="note"><strong>上线前必读：</strong>以下边界条件结合 <code>Xu v0.14.3</code> 与 <code>packages v1.17.0</code> 源码事实总结，接入生产前请按需配置外部存储或代理：</p>
 <ul>
-  <li><strong><code>metal</code> 仅限 Apple Silicon macOS：</strong>支持 176 个 GPU 原生符号，但无 CUDA / ROCm / Vulkan 后端，使用前须执行 <code>python3 metal/native/build.py</code>，且目前尚未接入 <code>xu/examples/llm_engine</code> 端到端推理主循环；macOS ARM64 上经 <code>xu build</code> 生成的可执行文件需执行 <code>codesign --force --sign -</code> 方可运行。</li>
-  <li><strong><code>PgVectorClient</code> 单连接无内置连接池：</strong><code>postgres</code>、<code>mysql</code> 与 <code>sqlite</code> 现均已通过 <code>#database/sql</code> 支持任意数量 <code>driver.NamedValue</code> 参数绑定；但 <code>rag.PgVectorClient</code> 仅封装单条 <code>driver.Conn</code> 并使用简单查询协议转义 SQL 字面量，不内置连接池或并发多路复用，高并发场景请在外层搭配 <code>database/sql</code> 连接池管理。</li>
-  <li><strong><code>rag.SqliteVectorStore</code> 内存全量检索：</strong>虽然向量与文本持久化在磁盘 SQLite 中，但 <code>search</code> / <code>search_hybrid</code> 会将匹配行读入内存做 $O(N)$ 精确余弦 / BM25 计算（无磁盘 ANN/HNSW 索引），适合万级以内切片，超大规模请切换 <code>PgVectorClient</code>（HNSW/IVFFlat）或 <code>QdrantVectorStore</code>；<code>KnowledgeGraph</code> 为内存三元组 + JSON 文件导出。</li>
-  <li><strong><code>a2a</code> 与 <code>gateway</code> 为单机内存态：</strong><code>a2a.serve_http_server</code> 任务存储在内存中（进程重启即丢失）且未内置认证/RBAC/mTLS；<code>gateway</code> 熔断、RPM 限流、费用统计与语义缓存不跨实例共享，SSE 故障转移仅能在首个流块到达前切换后端，跨厂商转换覆盖通用字段而非各家私有扩展。</li>
-  <li><strong><code>agent</code>、<code>guardrails</code> 与 <code>eval</code> 局限：</strong><code>AgentSwarm</code> 目前仅支持编排 <code>Agent</code>（OpenAI Chat 兼容接口），跨 Anthropic/Gemini 混编需通过 <code>gateway</code> 或 <code>a2a</code> 桥接；<code>estimate_tokens</code> 为 <code>(bytes + 3) / 4</code> 字符估算；<code>guardrails</code> 本地规则（ASCII 邮箱、<code>NNN-NNN-NNNN</code> 电话、特定密钥前缀、英文注入子串与词重叠忠实度）只作低成本初筛，复杂越狱需联合 <code>check_safety_openai</code>；<code>eval.evaluate_json_schema</code> 面向扁平字段规则 <code>[]SchemaFieldRule</code>。</li>
+  <li><strong>多后端 GPU 的硬件与环境前提：</strong><code>metal</code> 与 <code>llm_metal</code> 仅在 Apple Silicon macOS 上可用（使用前需构建 <code>libxu_metal.dylib</code> 或通过 <code>XU_METAL_LIBRARY</code> 指定路径）；<code>cuda_native</code> 依赖宿主机 NVIDIA 驱动/NVRTC/cuBLAS 动态库；<code>vulkan_native</code> 依赖 Vulkan 1.1 运行时。<code>llm_engine</code> 主程序仍为 CPU 多线程（<code>--threads N</code>），不直接调度 <code>llm_metal</code>/CUDA。</li>
+  <li><strong>签名与 SQLite 驱动简化：</strong>自 <code>Xu v0.14.3</code> 起编译器已在构建阶段直接嵌入 Mach-O <code>LC_CODE_SIGNATURE</code> 签名，无需再手工执行 <code>codesign</code>；SQLite 通过纯 Xu <code>sqlite_native</code> 动态加载，不再需要编译 <code>.xulib</code>。</li>
+  <li><strong>向量存储与高并发网关选型：</strong><code>PgVectorPool</code> 现已提供基于 <code>#database/sql</code> 连接池的多连接并发能力（原 <code>PgVectorClient</code> 仍保持单连接向后兼容）；<code>rag.SqliteVectorStore</code>虽新增内存缓存与刷新增量，但检索仍为 $O(N)$ 全量余弦/BM25 扫描（适合万级以内切片），更大规模请选用 <code>PgVectorPool</code>（HNSW/IVFFlat）或 <code>QdrantVectorStore</code>。</li>
+  <li><strong>网关、协议与护栏注意项：</strong><code>gateway</code> 现支持通过 Redis 共享熔断/限流/费用与缓存状态，但 SSE 流式故障转移仍只发生在首个流块到达前，跨厂商映射覆盖公共字段而非各厂商私有扩展；<code>a2a</code> 已支持 API Key / 自定义鉴权钩子与 SQLite 持久化，生产暴露公网时仍建议前置反向代理/TLS；高风险安全审查建议组合使用 <code>guardrails.strict_policy</code> 与 <code>check_safety_openai</code>。</li>
 </ul>
 
 <h2 id="metal-native">构建 Metal 原生动态库（macOS 可选）</h2>
-<p>未导入 <code>metal</code> 的应用无需构建 Metal 资源。在 Apple Silicon macOS 环境使用 Metal GPU 计算前，可先构建动态库：</p>
+<p>未使用 <code>metal</code> / <code>llm_metal</code> / Metal 后端的应用无需构建该动态库。在 Apple Silicon macOS 使用 Metal GPU 计算前，可构建共享库：</p>
 <pre><code class="language-shell">cd packages
 python3 metal/native/build.py</code></pre>

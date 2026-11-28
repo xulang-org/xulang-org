@@ -2,7 +2,7 @@
 <p class="crumb"><a href="/en/docs/start">Docs</a> / Language</p>
 <h1>Concurrency</h1>
 <p><code>xu f(args)</code> schedules a coroutine. Scheduling determines which ready task can make progress; parallelism means tasks execute at the same time on different CPU threads. Spawning a coroutine alone promises neither an execution order nor CPU parallelism. The spelling <code>xu.pkg.f</code> is a package-qualified call, not a spawn.</p>
-<p>All blocks below were checked with the official SDK v0.10.12. Save each as a separate <code>.xu</code> file. Use <code>xu check</code> for complete programs and <code>xu check --lib</code> for function-only examples. Expected diagnostics are actual substrings. Complete programs also passed native <code>xu run</code>; browser Run uses the WASM subset described below.</p>
+<p>All blocks below were checked with the official SDK v{{xu_version}}. Save each as a separate <code>.xu</code> file. Use <code>xu check</code> for complete programs and <code>xu check --lib</code> for function-only examples. Expected diagnostics are actual substrings. Complete programs also passed native <code>xu run</code>; browser Run uses the WASM subset described below.</p>
 
 <h2 id="scheduling">Scheduling and rendezvous</h2>
 <p>A zero-capacity channel needs a sender and a receiver to rendezvous. A receive on an open empty channel waits; a buffered send waits when the buffer is full. These channel waits let the scheduler run other ready coroutines. Use a channel to wait for a result before <code>main</code> returns, rather than assuming that spawn means completion.</p>
@@ -24,6 +24,13 @@ fn main() int {
 <ul>
   <li><strong>Direct Stack-to-Stack Zero-Copy Rendezvous</strong>: When a receiver waits on an unbuffered (<code>cap: 0</code>) channel, its destination stack slot address is directly registered with the channel; the waking sender dereferences and copies the value directly into the receiver stack, bypassing intermediate heap and buffer allocations.</li>
   <li><strong>Call-Graph Bounded Stack Analysis & 16KB Tiny Slab</strong>: The compiler derives whole-program maximum call stack depths and local frame bounds; coroutines proven to have bounded stack usage without recursive growth are automatically allocated from a dedicated 16KB Tiny Slab pool (<code>task_spawn_tiny</code>), reducing high-concurrency memory footprints by 98.4%.</li>
+</ul>
+
+<h2 id="mn-scheduler">M:N Multi-Core Scheduler &amp; <code>#sync/pool</code> (0.14.3+)</h2>
+<p>Xu 0.14.3 introduces the Linux/macOS M:N multi-core coroutine scheduler and the new <a href="/api/sync/pool"><code>#sync/pool</code></a> standard library module, enabling coroutines to execute in parallel across multiple OS worker threads:</p>
+<ul>
+  <li><strong>Scheduler Concurrency Controls</strong>: Configure and query scheduler parallelism via <code>pool.set_max_procs(N)</code> and <code>pool.max_procs()</code>, or spawn bounded worker pools with <code>pool.new_thread_pool(N)</code>.</li>
+  <li><strong>Thread-Safe Runtime &amp; Hardware Atomics</strong>: Heap allocation and FFI symbol lookup are lock-protected across OS workers, paired with ARM64/x86-64 hardware atomic intrinsics and <code>net/poller</code> cross-thread wakeup hardening.</li>
 </ul>
 
 <h2 id="send-receive">Send and receive: transfer owned data, share channel handles</h2>

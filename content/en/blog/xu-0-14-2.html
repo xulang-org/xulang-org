@@ -1,0 +1,29 @@
+<!--title: Xu 0.14.2 Released: 128-bit SLP Vectorization, Ext-TSP Layout, SwissTable Runtime, #core/elf, and MRT GPU-->
+<!--summary: Xu 0.14.2 delivers 128-bit intra-block SLP auto-vectorization, Ext-TSP basic-block layout and jump threading, a compact SwissTable runtime hash map, bare-metal #core/{addr,ds,elf,fmt,mmio} primitives, #tensor low-precision storage, modern GPU MRT/indirect draw, and hostless #ui/widgets support.-->
+<p class="crumb"><a href="/blog">Blog</a></p>
+<h1>Xu 0.14.2 Released: 128-bit SLP Vectorization, Ext-TSP Layout, SwissTable Runtime, <code>#core/elf</code>, and MRT GPU</h1>
+<p class="meta"><time datetime="2026-11-26">2026-11-26</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.2">Xu v0.14.2</a></p>
+
+<p>Xu 0.14.2 shipped on 2026-11-26 with advances across <strong>compiler auto-vectorization and code layout</strong>, <strong>runtime data structures</strong>, <strong>bare-metal kernel and ELF primitives</strong>, and <strong><code>#tensor</code> storage plus modern GPU rendering</strong>.</p>
+
+<h2>1. Compiler Vectorization, Layout &amp; Optimizer</h2>
+<ul>
+  <li><strong>128-bit Intra-Block SLP Auto-Vectorization (<code>opt_slp</code>)</strong>: Packs unrolled isomorphic array memory/arithmetic trees and 4-way associative integer reductions into 128-bit SIMD instructions on ARM64 NEON and baseline x86-64 SSE2 while preserving strict left-to-right IEEE-754 evaluation semantics (disable via <code>XU_NO_SLP=1</code>).</li>
+  <li><strong>Ext-TSP Layout &amp; Correlated Jump Threading</strong>: Replaces greedy trace layout in <code>opt_cfg</code> with Wu–Larus edge-weight chain merging (<code>cfg_exttsp_hot_order</code>) and loop rotation, alongside dominator/range-driven jump threading (<code>opt_jump_thread</code>, disable via <code>XU_NO_JT=1</code>).</li>
+  <li><strong>Regalloc &amp; Scalar Pipeline</strong>: Adds interval hole reuse, Ball–Larus call-site weighting, cold-call caller-save prioritization, zero-spill constant/<code>MI_ADDR</code> rematerialization, GVN cross-call reuse, scope-disjoint LICM, SROA (<code>opt_sroa</code>), and MIR lowering for <code>float64_bits</code>/<code>float64_from_bits</code>.</li>
+</ul>
+
+<h2>2. SwissTable Runtime &amp; Bare-Metal <code>#core</code> Substrate</h2>
+<ul>
+  <li><strong>SwissTable Hash Maps (<code>core/map</code>)</strong>: Rebuilds the runtime map around a compact 8-slot SWAR (<code>CTRL_LANE_MUL</code>) control-byte probe design (7/8 load factor), alongside machine-word scanning improvements in <code>core/chan</code>, <code>compress/lzw</code>, and <code>core/intrin</code>.</li>
+  <li><strong>Freestanding &amp; Multi-Section ELF</strong>: Adds <code>usize</code>/<code>isize</code>, packed/union/bitfield C structs, freestanding sections (<code>.bss</code>/<code>.data</code>/<code>.rodata</code>/<code>@section</code>/<code>@align</code>/<code>@export</code>), <code>sizeof</code>/<code>alignof</code>/<code>offsetof</code>, <code>static_assert</code>, <code>@noreturn</code>, <code>@panic_handler</code>, <code>cpuid</code>/<code>syscall4</code> intrinsics, and multi-section <code>ET_EXEC</code>/<code>ET_REL</code> ELF emission for <code>x64-none</code>, <code>arm64-none</code>, and <code>riscv64-none</code>.</li>
+  <li><strong>New <code>#core</code> Modules</strong>: Adds <code>#core/addr</code>, <code>#core/ds</code>, <code>#core/elf</code>, <code>#core/fmt</code>, and <code>#core/mmio</code>, and expands <code>#core/virtio</code> with multi-sector <code>virtio-blk</code> reads.</li>
+</ul>
+
+<h2>3. <code>#tensor</code>, Modern GPU &amp; Hostless <code>#ui/widgets</code></h2>
+<ul>
+  <li><strong>Low-Precision Tensor Foundations</strong>: Introduces <code>src/tensor</code> (<code>float</code>, <code>quant</code>, <code>view</code>) and signed P4K4 Q4/Q8 kernels, <code>M=12</code> GEMM, and paged SIMD attention kernels.</li>
+  <li><strong>Modern GPU &amp; Hostless UI</strong>: Adds <code>R32_UINT</code>, MRT <code>begin_render_targets</code>, storage buffer/texture bindings, and indirect draw/dispatch to <code>#gpu</code>/SDL, plus hostless <code>Screen</code>/<code>Context</code> support and <code>TreeView</code> multi-selection fixes in <code>#ui/widgets</code>.</li>
+</ul>
+
+<p><a href="/download">Download Center</a> · <a href="/en/docs/os">OS Development Guide</a> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.2">GitHub Release Page</a> · <a href="https://github.com/xulang-org/xu/blob/v0.14.2/RELEASES.md#xu-0142">Full Release Notes</a></p>

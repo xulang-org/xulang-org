@@ -1665,7 +1665,7 @@ def body_notes(item: Item, lang: str) -> list[str]:
     zh = lang == "zh"
     # strip comments in body for signals
     raw = re.sub(r"//.*?$", "", b, flags=re.M)
-    throws = bool(re.search(r"(?:\bor\s*>>|(?<!>)>>>(?!>))", raw)) or bool(re.search(r"(^|[{;])\s*>>>?\s", raw, re.M)) or (">>> errors." in raw) or (">> errors." in raw)
+    throws = bool(re.search(r"(?<!>)>>>(?!\s*\(|>)", raw)) or bool(re.search(r"(^|[{;])\s*>>\s", raw, re.M)) or (">> errors." in raw)
     if throws:
         notes.append("失败时抛出错误，调用方需处理或继续传播。" if zh else "Throws on failure; handle the error or propagate it to the caller.")
     if re.search(r"<<\s*-1\b", raw) and ("index" in item.name or item.name.startswith("last_") or item.name in ("index_of", "index")):

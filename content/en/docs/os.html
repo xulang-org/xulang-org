@@ -1,22 +1,23 @@
 <!--title: Operating system development with Xu-->
 <h1>Operating system development</h1>
-<p class="lead">Use Xu's freestanding profile to build kernel, driver, and firmware code with native AOT compilation. The kernel example covers memory layout, hardware I/O, synchronization, interrupts, and task context switching.</p>
-<p class="banner">Freestanding ELF64 &amp; UEFI targets, interrupt/naked attributes, and firmware drivers are available in the Xu 0.14.3 SDK.</p>
+<p class="lead">Use Xu's freestanding and UEFI profiles to build kernels, bootloaders, drivers, and firmware with native AOT compilation. The core substrate covers memory layout, hardware I/O, ACPI/FDT/PCI, UEFI, interrupts, and task context switching.</p>
+<p class="banner">Freestanding ELF64 and UEFI targets are available in the Xu {{xu_version}} SDK.</p>
 
-<h2 id="build">Build the kernel example</h2>
-<p>Install the <a href="/download">Xu SDK</a> and run these commands from the root of the <a href="https://github.com/xulang-org/xu/tree/v0.14.3">Xu 0.14.3 source checkout</a>.</p>
+<h2 id="build">Build the kernel &amp; UEFI examples</h2>
+<p>Install the <a href="/download">Xu SDK</a> and run these commands from the root of the <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}">Xu {{xu_version}} source checkout</a>:</p>
 <pre><code>xu build --profile=freestanding --target=x64-none examples/baremetal/kernel_poc/main.xu -o kernel-x64.elf
 xu build --profile=freestanding --target=arm64-none examples/baremetal/kernel_poc/main.xu -o kernel-arm64.elf
-xu build --profile=freestanding --target=riscv64-none examples/baremetal/kernel_poc/main.xu -o kernel-riscv64.elf</code></pre>
-<p>Use <code>file kernel-*.elf</code> to inspect the output architecture. The <a href="https://github.com/xulang-org/xu/tree/v0.14.3/examples/baremetal/kernel_poc">kernel example</a> documents its x86-64 QEMU workflow. UEFI targets <code>--target=x64-uefi</code> and <code>--target=arm64-uefi</code> are also supported. Match the boot environment, board support, and hardware setup to the target you intend to run.</p>
+xu build --profile=freestanding --target=riscv64-none examples/baremetal/kernel_poc/main.xu -o kernel-riscv64.elf
+xu build --profile=freestanding --target=x64-uefi --no-sse --stack-size=65536 main.xu -o BOOTX64.EFI
+xu build --profile=freestanding --target=arm64-uefi main.xu -o BOOTAA64.EFI</code></pre>
+<p>Use <code>file kernel-*.elf</code> to inspect output architectures. The <a href="https://github.com/xulang-org/xu/tree/v{{xu_version}}/examples/baremetal/kernel_poc">kernel example</a> documents its x86-64 QEMU workflow. Compiler options include <code>--no-sse</code>, <code>--stack-size</code>, and relocatable DWARF debug info.</p>
 
-<h2 id="hardware">Hardware access and core APIs</h2>
+<h2 id="hardware">Hardware access and <code>#core/*</code> APIs</h2>
 <p>The freestanding profile builds without host operating system services or libc. Source modules can declare <code>$freestanding</code>. For project and compiler settings, see the <a href="/docs/faq#freestanding-profile">freestanding profile reference</a>.</p>
 <ul>
-  <li>Use <code>*raw T</code> for hardware addresses and <code>unsafe { … }</code> for raw pointer dereferencing. Use <code>volatile_read</code> and <code>volatile_write</code> for memory-mapped I/O; attributes/flags include <code>@interrupt</code>, <code>@weak</code>, <code>@naked</code>, <code>@section</code>, <code>@align</code>, <code>@export</code>, <code>@noreturn</code>, <code>@panic_handler</code>, <code>extern static</code>, strict <code>--no-sse</code>, <code>--stack-size</code>, and parameterized inline asm across x64/ARM64/RV64. See the <a href="/docs/lang/memory">memory model</a>.</li>
-  <li>Use <code>@repr("C", align: N)</code> or <code>@repr("C", packed)</code> for explicit layout when modeling page tables or hardware descriptors.</li>
-  <li>Use <a href="/api/core/arch"><code>#core/arch</code></a> for architecture-specific control and <a href="/api/core/mem"><code>#core/mem</code></a> for low-level memory operations. <a href="/api/core/alloc"><code>#core/alloc</code></a> defines allocator interfaces.</li>
-  <li>Use <a href="/api/core/sync"><code>#core/sync</code></a> for spinlocks and interrupt guards and <a href="/api/core/task"><code>#core/task</code></a> for task contexts and trap frames.</li>
-  <li>Added in 0.14.2–0.14.3: <a href="/api/core/acpi"><code>#core/acpi</code></a>, <a href="/api/core/addr"><code>#core/addr</code></a>, <a href="/api/core/ds"><code>#core/ds</code></a>, <a href="/api/core/elf"><code>#core/elf</code></a>, <a href="/api/core/fdt"><code>#core/fdt</code></a>, <a href="/api/core/fmt"><code>#core/fmt</code></a>, <a href="/api/core/mmio"><code>#core/mmio</code></a>, <a href="/api/core/pci"><code>#core/pci</code></a>, and <a href="/api/core/uefi"><code>#core/uefi</code></a>, plus VirtIO 1.0 Modern MMIO, HPET, and UEFI MemMap support.</li>
+  <li>Use <code>*raw T</code> for hardware addresses and <code>unsafe { … }</code> for raw pointer dereferencing; use <code>volatile_read</code> / <code>volatile_write</code> for MMIO alongside <code>@interrupt</code>, <code>@panic_handler</code>, <code>@weak</code>, <code>@naked</code>, <code>extern static</code>, and parameterized inline assembly. See the <a href="/docs/lang/memory">memory model</a>.</li>
+  <li>Use <code>@repr("C", align: N)</code> or <code>@repr("C", packed)</code> for explicit layout when modeling page tables and hardware descriptors.</li>
+  <li>Core CPU, memory &amp; concurrency: <a href="/api/core/arch"><code>#core/arch</code></a>, <a href="/api/core/mem"><code>#core/mem</code></a>, <a href="/api/core/alloc"><code>#core/alloc</code></a>, <a href="/api/core/sync"><code>#core/sync</code></a>, <a href="/api/core/task"><code>#core/task</code></a>.</li>
+  <li>Firmware, buses &amp; devices: <a href="/api/core/uefi"><code>#core/uefi</code></a>, <a href="/api/core/acpi"><code>#core/acpi</code></a>, <a href="/api/core/pci"><code>#core/pci</code></a>, <a href="/api/core/fdt"><code>#core/fdt</code></a>, <a href="/api/core/elf"><code>#core/elf</code></a>, <a href="/api/core/mmio"><code>#core/mmio</code></a>, and VirtIO 1.0 Modern (<a href="/api/core/virtio"><code>#core/virtio</code></a>).</li>
 </ul>
 <p>For target support and current acceptance coverage, see <a href="/docs/status">implementation status</a>.</p>

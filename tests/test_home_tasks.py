@@ -112,7 +112,7 @@ class HomeTaskTests(unittest.TestCase):
                 self.assertIn(unknown, cells[-1], (lang, name))
                 unknowns[lang][name] = [unknown in cell for cell in cells[5:]]
             self.assertIn('tls_connect_config', page)
-            self.assertIn('1.0.0', page)
+            self.assertIn('1.17.0', page)
             self.assertIn('1.0.2', page)
             self.assert_links_resolve(table, lang)
         self.assertEqual(unknowns['en'], unknowns['zh'])

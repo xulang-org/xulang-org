@@ -33,7 +33,7 @@ XU vereint zur Kompilierzeit geprüfte Ownership- und Borrowing-Regeln mit leich
 | :--- | :--- |
 | **Ownership ohne GC** | Move- und Borrow-Prüfungen zur Kompilierzeit, inferierte Lebensdauern und deterministische Ressourcenfreigabe. |
 | **Nebenläufigkeit in der Sprache** | Starten Sie eine Koroutine mit `xu` und tauschen Sie Werte über typisierte `chan`-Kanäle aus. |
-| **Sichtbarer Kontrollfluss** | `<<` gibt einen Wert zurück, `>>` meldet einen Fehler und `>>> (err) { … }` behandelt ihn direkt am Aufrufort. |
+| **Sichtbarer Kontrollfluss** | `<<` gibt einen Wert zurück, `>>>` meldet einen Fehler und `>>> (err) { … }` behandelt ihn direkt am Aufrufort. |
 | **Integrierte Toolchain** | Bauen, ausführen, prüfen, testen, formatieren, Dokumentation erzeugen und Sprachdienste nutzen – alles über `xu`. |
 
 ## Ein wenig XU lesen

@@ -44,15 +44,15 @@
   <article class="research-card research-card-os">
     <div class="research-card-top"><i class="xi xi-chip" aria-hidden="true"></i><span>正式版工具链</span></div>
     <h2>操作系统研发</h2>
-    <p>构建独立运行的内核，检查 ELF 产物，并通过示例了解硬件 I/O、中断和任务上下文切换。</p>
-    <ul class="research-tags"><li><code>x64-none</code></li><li><code>arm64-none</code></li><li><code>riscv64-none</code></li></ul>
+    <p>构建独立运行的内核与 UEFI 固件，掌握 <code>#core/{acpi,uefi,pci,fdt}</code>、中断门、<code>unsafe</code> 硬件 MMIO 与上下文切换。</p>
+    <ul class="research-tags"><li><code>x64-none</code></li><li><code>arm64-none</code></li><li><code>riscv64-none</code></li><li><code>x64-uefi</code></li></ul>
     <a class="research-link" href="/docs/os">内核研发指南 <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
   </article>
   <article class="research-card research-card-ai">
     <div class="research-card-top"><i class="xi xi-layers" aria-hidden="true"></i><span>正式发布 AI 栈</span></div>
     <h2>AI 研发</h2>
-    <p>全栈纯 Xu 原生 AI 研发体系：集成 <code>#tensor</code> 低精度数值原语、编译器张量融合与 <code>vmul</code> SIMD 内核、<code>Metal GPU</code> 算子及 OpenAI 兼容 HTTP 服务。</p>
-    <ul class="research-tags"><li><code>GGUF</code></li><li><code>Safetensors</code></li><li><code>#tensor</code></li><li><code>Metal GPU</code></li></ul>
+    <p>纯 Xu 多线程 CPU（<code>--threads N</code>）与多后端 GPU AI 栈：覆盖 <code>#tensor</code>、MIR K-quant SIMD 融合、<code>llm_metal</code> / <code>gpu</code> / <code>cuda_native</code> / <code>vulkan_native</code> 与多协议服务。</p>
+    <ul class="research-tags"><li><code>GGUF</code></li><li><code>Safetensors</code></li><li><code>#tensor</code></li><li><code>Metal / CUDA / Vulkan</code></li></ul>
     <a class="research-link" href="/docs/ai">AI 研发与推理指南 <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
   </article>
 </section>
@@ -64,11 +64,11 @@
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-ownership xi-green"></i></span> 所有权与确定性回收</h2>
-    <p>通过所有权与借用检查管理内存，在作用域结束时确定性释放资源；没有垃圾回收器，也无需显式生命周期标注。</p>
+    <p>通过所有权、共享（<code>&amp;T</code>）与独占（<code>$&amp;T</code>）借用检查管理内存，在作用域结束时确定性释放资源，无垃圾回收停顿。</p>
   </article>
   <article class="pillar">
-    <h2><span><i class="xi xi-channel xi-blue"></i></span> 轻量协程与类型安全信道</h2>
-    <p>使用 <code>xu f()</code> 启动轻量协程，以 <code>chan T</code> 传递数据和同步任务，将并发直接融入语言。</p>
+    <h2><span><i class="xi xi-channel xi-blue"></i></span> M:N 多核协程与类型安全信道</h2>
+    <p>使用 <code>xu f()</code> 启动轻量协程，依托 Linux/macOS M:N 多核调度与 <code>#sync/pool</code> 并行扩展，以 <code>chan T</code> 安全同步任务。</p>
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-code xi-purple"></i></span> 简洁语法与类型推导</h2>
@@ -76,11 +76,11 @@
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-xupkg xi-gold"></i></span> 模块管理与扩展生态</h2>
-    <p>以 <code>xu.xun</code>、<code>xu.lock</code> 与 vendor 管理依赖，支持离线与冻结构建；标准库与官方扩展包覆盖网络、密码、数据库和消息服务。</p>
+    <p>以 <code>xu.xun</code>、<code>xu.lock</code> 与 vendor 管理依赖，支持离线与冻结构建；标准库与官方扩展包覆盖网络、密码、数据库、AI 与多后端 GPU。</p>
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-shield-check xi-cyan"></i></span> 显式错误处理</h2>
-    <p><code>&lt;&lt;</code> 返回，<code>&gt;&gt;</code> 抛错，<code>&gt;&gt;&gt; (err) {}</code> 就地处理或传播错误，让失败路径与正常控制流一起清晰可见。</p>
+    <p><code>&lt;&lt;</code> 返回，<code>&gt;&gt;</code> 抛出错误，<code>&gt;&gt;&gt;</code> 传播错误，<code>&gt;&gt;&gt; (err) {}</code> 就地处理，让失败路径与正常控制流一起清晰可见。</p>
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-xuui xi-brand"></i></span> 原生 UI 与 WebView</h2>
@@ -146,6 +146,34 @@ fn main() int {
   <a class="btn ghost" href="/docs/tutorial/13">高并发 HTTP 服务</a>
   <a class="btn ghost" href="/docs/ui">原生 UI / WebView</a>
 </div>
+
+<div class="ecosystem-section-head">
+  <h2><i class="xi xi-layers xi-brand"></i> 开源生态与真实项目案例</h2>
+  <p>基于纯 Xu 标准库、GPU / 窗口系统与网络协议栈打造的代表性应用</p>
+</div>
+<section class="ecosystem-grid" id="ecosystem" aria-label="生态项目">
+  <article class="ecosystem-card ecosystem-card-nexus">
+    <div class="ecosystem-card-top"><i class="xi xi-monitor" aria-hidden="true"></i><span>3D 游戏引擎与编辑器</span></div>
+    <h3>Nexus Engine</h3>
+    <p>纯 Xu 编写的跨平台 2D/3D 游戏引擎，基于 <code>#gpu</code> 与 <code>#window</code> 构建，支持场景树、PBR 渲染与 CSM/PCF 阴影、3D 三角形任意碰撞与刚体物理、GLB/OBJ/STL 导入、音频混音及原生工程编辑器。</p>
+    <ul class="ecosystem-tags"><li><code>#gpu</code></li><li><code>PBR + CSM</code></li><li><code>3D 物理</code></li><li><code>原生编辑器</code></li></ul>
+    <a class="ecosystem-link" href="https://github.com/xulang-org/nexus" target="_blank" rel="noopener noreferrer">查看 GitHub 仓库 <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
+  </article>
+  <article class="ecosystem-card ecosystem-card-fatext">
+    <div class="ecosystem-card-top"><i class="xi xi-shield-check" aria-hidden="true"></i><span>加密原生 Agent 广场与私信</span></div>
+    <h3>Fatext</h3>
+    <p>面向 AI 智能体与开发者的无数据库、零前端 JS 单二进制服务：集成内建纯 Xu TLS 1.3 + ACME v2 Auto-TLS、SSR/SSE 实时推送、Agent 广场、端到端加密（E2EE）私信/房间中继与 P2P 信令中心。</p>
+    <ul class="ecosystem-tags"><li><code>单二进制服务</code></li><li><code>TLS 1.3 + ACME</code></li><li><code>E2EE 中继</code></li><li><code>零外部 DB / JS</code></li></ul>
+    <a class="ecosystem-link" href="https://fatext.com" target="_blank" rel="noopener noreferrer">访问 fatext.com <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
+  </article>
+  <article class="ecosystem-card ecosystem-card-packages">
+    <div class="ecosystem-card-top"><i class="xi xi-xupkg" aria-hidden="true"></i><span>官方扩展库 · 50 个包</span></div>
+    <h3>Official Packages</h3>
+    <p>官方 <code>github.com/xulang-org/packages</code> 仓库（v1.17.0），涵盖数据库/缓存/消息中间件、OpenAI/Anthropic/Gemini/网关、MCP/A2A/Agent/GraphRAG，以及 <code>gpu</code>/<code>llm_metal</code>/<code>cuda_native</code>/<code>vulkan_native</code> 多后端计算。</p>
+    <ul class="ecosystem-tags"><li><code>gpu / llm_metal</code></li><li><code>cuda / vulkan</code></li><li><code>gateway / rag</code></li><li><code>agent / mcp / a2a</code></li></ul>
+    <a class="ecosystem-link" href="/docs/packages">浏览 50 个扩展包 <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
+  </article>
+</section>
 
 <h2>原生与 WebAssembly 编译目标</h2>
 <p>编译器可为下列目标发射代码。可下载的 SDK 见<a href="/download">下载页</a>。</p>
