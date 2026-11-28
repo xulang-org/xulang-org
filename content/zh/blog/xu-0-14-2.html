@@ -1,0 +1,29 @@
+<!--title: Xu 0.14.2 发布 · 128 位 SLP 自动向量化、Ext-TSP 布局、SwissTable 哈希表与裸机/GPU 增强-->
+<!--summary: Xu 0.14.2 带来 128 位基本块内 SLP 自动向量化、Ext-TSP 代码布局与跳跃线程化、SwissTable 紧凑运行时哈希表、#core/{addr,ds,elf,fmt,mmio} 裸机原语、#tensor 低精度存储、现代 GPU MRT/间接绘制以及无宿主 #ui/widgets 支持。-->
+<p class="crumb"><a href="/blog">博客</a></p>
+<h1>Xu 0.14.2 发布 · 128 位 SLP 自动向量化、Ext-TSP 布局、SwissTable 哈希表与裸机/GPU 增强</h1>
+<p class="meta"><time datetime="2026-11-26">2026-11-26</time> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.2">Xu v0.14.2</a></p>
+
+<p>Xu 0.14.2 于 2026-11-26 正式发布。该版本聚焦<strong>编译器后端向量化与布局调度</strong>、<strong>运行时数据结构重构</strong>、<strong>裸机内核与 ELF 工具链完善</strong>，以及 <strong><code>#tensor</code> 低精度原语和现代 GPU 接口</strong>。</p>
+
+<h2>1. 编译器自动向量化、布局与优化器升级</h2>
+<ul>
+  <li><strong>128 位基本块内 SLP 自动向量化（<code>opt_slp</code>）</strong>：将展开后的同构数组访存/算术树及 4 路关联整数归约打包为 128 位 SIMD 指令，分别面向 ARM64 NEON（<code>LDUR</code>/<code>LDR Q</code>、<code>.2D</code>/<code>.16B</code>、<code>ADDP</code>）与基线 x86-64 SSE2（<code>movupd</code>、<code>addpd</code>–<code>divpd</code>、<code>paddq</code>），在非逃逸 <code>MI_ADDR</code> 别名分析下严格保持 IEEE-754 从左到右计算语义（可通过 <code>XU_NO_SLP=1</code> 关闭）。</li>
+  <li><strong>Ext-TSP 基本块布局与相关跳跃线程化</strong>：在 <code>opt_cfg</code> 中引入 Wu–Larus 静态边权与 <code>cfg_exttsp_hot_order</code> 链合并并结合循环旋转；新增基于支配树与符号值域的相关跳跃线程化（<code>opt_jump_thread</code>，可用 <code>XU_NO_JT=1</code> 关闭）。</li>
+  <li><strong>寄存器分配与循环/标量流水线升级</strong>：线性扫描寄存器分配引入空洞复用、Ball–Larus 调用点权重、冷调用优先 Caller-Save 与常量/<code>MI_ADDR</code> 零溢出槽重物化；进一步增强 GVN 跨调用复用、作用域互斥 LICM、SROA（<code>opt_sroa</code>）及 <code>float64_bits</code>/<code>float64_from_bits</code> MIR 降级。</li>
+</ul>
+
+<h2>2. 运行时 SwissTable 与裸机 <code>#core</code> 扩展</h2>
+<ul>
+  <li><strong>SwissTable 哈希表（<code>core/map</code>）</strong>：将运行时哈希表重构为紧凑型 8 槽 SWAR（<code>CTRL_LANE_MUL</code>）分组探测结构（7/8 负载因子），并同步优化 <code>core/chan</code>、<code>compress/lzw</code> 与 <code>core/intrin</code> 机器字扫描路径。</li>
+  <li><strong>裸机内核与多节 ELF 发射</strong>：新增 <code>usize</code>/<code>isize</code>、紧缩/联合/位域 C 结构体、无宿主静态段（<code>.bss</code>/<code>.data</code>/<code>.rodata</code>/<code>@section</code>/<code>@align</code>/<code>@export</code>）、<code>sizeof</code>/<code>alignof</code>/<code>offsetof</code>、<code>static_assert</code>、<code>@noreturn</code>、<code>@panic_handler</code>、<code>cpuid</code>/<code>syscall4</code> 内建原语及面向 <code>x64-none</code>/<code>arm64-none</code>/<code>riscv64-none</code> 的多节 ELF <code>ET_EXEC</code>/<code>ET_REL</code> 输出。</li>
+  <li><strong>新 <code>#core</code> 子模块</strong>：新增 <code>#core/addr</code>、<code>#core/ds</code>、<code>#core/elf</code>、<code>#core/fmt</code>、<code>#core/mmio</code>，并扩展 <code>#core/virtio</code> 多扇区 <code>virtio-blk</code> 读取。</li>
+</ul>
+
+<h2>3. <code>#tensor</code>、现代 GPU 与无宿主 <code>#ui/widgets</code></h2>
+<ul>
+  <li><strong>低精度张量与推理内核</strong>：引入 <code>src/tensor</code>（<code>float</code>、<code>quant</code>、<code>view</code>）与 P4K4 有符号 Q4/Q8 内核、<code>M=12</code> GEMM 及分页 SIMD 注意力内核。</li>
+  <li><strong>现代 GPU 与无宿主 UI</strong>：扩展 <code>#gpu</code>/SDL <code>R32_UINT</code>、MRT <code>begin_render_targets</code>、存储纹理/缓冲绑定与间接绘制/派发；为 <code>#ui/widgets</code> 新增无宿主 <code>Screen</code>/<code>Context</code> 支持以及 <code>TreeView</code> 多选与光标跟踪修复。</li>
+</ul>
+
+<p><a href="/download">前往下载中心</a> · <a href="/zh/docs/os">操作系统研发指南</a> · <a href="https://github.com/xulang-org/xu/releases/tag/v0.14.2">GitHub Release 页面</a> · <a href="https://github.com/xulang-org/xu/blob/v0.14.2/RELEASES.zh-CN.md#xu-0142">完整中文发行说明</a></p>

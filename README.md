@@ -82,7 +82,7 @@ xu build main.xu -o hello
 
 Continue with the [getting started guide](https://xulang.org/docs/start), [language reference](https://xulang.org/docs/lang/syntax), or [runnable examples](https://github.com/xulang-org/examples).
 
-XU is actively evolving in the **0.x series**. See [Releases](https://github.com/xulang-org/xu/releases) for published SDKs and [status and limitations](https://xulang.org/docs/status) for platform and runtime coverage. The [benchmark dashboard](https://xulang.org/benchmarks) records measured workloads, compiler versions, and source provenance.
+XU is actively evolving in the **0.x series** (latest: **0.14.3** with M:N multi-core scheduling & `#sync/pool`, finalized `>>`/`>>>` error syntax, `--threads N` LLM & K-quant SIMD, Phase 5–7 optimizations, built-in Mach-O signing, and UEFI/ACPI/PCI/FDT OS primitives). See [Releases](https://github.com/xulang-org/xu/releases) for published SDKs and [status and limitations](https://xulang.org/docs/status) for platform and runtime coverage. The [benchmark dashboard](https://xulang.org/benchmarks) records measured workloads, compiler versions, and source provenance.
 
 Use [Search API](https://xulang.org/api/) to find a package or jump to a declaration on the current page. Press `/` outside an input to open search; arrows and Enter navigate results, and Escape closes it. The API directory collapses on phones so content stays within reach. Declaration headings are permanent links, and Copy link shares the current page or declaration.
 
@@ -94,7 +94,9 @@ The API index offers common-task shortcuts, topic descriptions, and inline packa
 | :--- | :--- |
 | **Language & compiler** | [xu](https://github.com/xulang-org/xu) — self-hosted compiler, standard library, and CLI tools. |
 | **Learn by running** | [examples](https://github.com/xulang-org/examples) — language basics, concurrency, networking, databases, and UI examples. |
-| **Libraries & integrations** | [packages](https://github.com/xulang-org/packages) — database drivers, messaging, storage, and service integrations. |
+| **Libraries & integrations** | [packages](https://github.com/xulang-org/packages) — 50 official packages (`v1.17.0`) covering database drivers, AI/Agent/RAG protocols, and multi-backend GPU (`gpu`, `llm_metal`, `metal`, `cuda_native`, `vulkan_native`). |
+| **2D/3D Game Engine** | [nexus](https://github.com/xulang-org/nexus) — pure-Xu 2D/3D game engine (`#gpu` + `#window`, PBR + CSM shadows, 3D collision & physics, GLB/OBJ/STL, native editor). |
+| **Crypto-Native Network** | [Fatext](https://fatext.com) — API-first zero-DB, zero-JS AI agent social square, E2EE DM/Room relay & P2P signaling server built with pure-Xu TLS 1.3 + ACME v2 Auto-TLS. |
 | **Editor support** | [vscode-xu](https://github.com/xulang-org/vscode-xu) — syntax highlighting and XU language services for VS Code and Cursor. |
 | **Performance** | [bench](https://github.com/xulang-org/bench) — cross-language workloads and reproducible benchmark sources. |
 | **Website & documentation** | [xulang-org](https://github.com/xulang-org/xulang-org) — xulang.org, documentation, and the WebAssembly playground. |

@@ -149,7 +149,8 @@ DOC_LABELS_LANGS = {
 
 _CURATED_API_GROUPS = [
     ('xi-api', 'API', 'API', ['']),
-    ('xi-cpu', '核心', 'Core', 'errors fmt flag cmp context sync time runtime maps slices sort testing testing/fstest xacp'.split()),
+    ('xi-cpu', '核心', 'Core', 'errors fmt flag cmp context sync sync/pool time runtime maps slices sort testing testing/fstest xacp'.split()),
+    ('xi-chip', '裸机与内核', 'Bare-metal & OS', 'core/acpi core/addr core/alloc core/arch core/ds core/elf core/fdt core/fmt core/mem core/mmio core/pci core/sync core/task core/uefi core/virtio'.split()),
     ('xi-file', '文本', 'Text', 'strings bytes strconv unicode regexp html'.split()),
     ('xi-terminal', 'IO / OS', 'IO / OS', 'io io/fs os os/exec os/signal os/user bufio path log'.split()),
     ('xi-globe', '网络', 'Net', 'net net/http net/http/cookiejar net/http/httptest net/netip net/url'.split()),
@@ -159,7 +160,7 @@ _CURATED_API_GROUPS = [
     ('xi-database', '数据库', 'Database', 'database/sql database/sql/driver'.split()),
     ('xi-package', '图形与窗口', 'Graphics & Window', 'gpu gpu/layout window window/events'.split()),
     ('xi-package', '扩展包', 'Extensions', ['packages/' + name for name in
-        'a2a agent anthropic cassandra chroma clickhouse cohere consul dns elasticsearch etcd eval gateway gemini grpc guardrails influxdb kafka mcp meilisearch memcached metal milvus mongodb mqtt mysql nacos nats neo4j openai postgres prometheus prompt qdrant rabbitmq rag redis s3 smtp sqlite synth transport websocket zookeeper'.split()]),
+        'a2a agent anthropic cassandra chroma clickhouse cohere consul cuda_native dns elasticsearch etcd eval gateway gemini gpu grpc guardrails influxdb kafka llm_metal mcp meilisearch memcached metal metal_native milvus mongodb mqtt mysql nacos nats neo4j openai postgres prometheus prompt qdrant rabbitmq rag redis s3 smtp sqlite sqlite_native synth transport vulkan_native websocket zookeeper'.split()]),
     ('xi-xuui', 'UI', 'UI', 'ui ui/draw ui/layout ui/chart ui/phone ui/widgets ui/webview'.split()),
 ]
 
@@ -543,13 +544,14 @@ def api_index_presentation(body: str, en: bool) -> str:
     if 'class="api-section-nav"' not in body:
         return body
     descriptions = {
-        '核心': ('错误处理、集合、时间与并发', 'Errors, collections, time and concurrency'),
+        '核心': ('错误处理、集合、时间与多核并发', 'Errors, collections, time and multi-core concurrency'),
+        '裸机与内核': ('裸机硬件接口、UEFI、ACPI、PCI、ELF 与自旋锁', 'Bare-metal hardware, UEFI, ACPI, PCI, ELF and spinlocks'),
         '文本': ('查找、拆分、转换与匹配文本', 'Find, split, convert and match text'),
         'IO / OS': ('读写文件、路径与系统进程', 'Files, paths and system processes'),
         '网络': ('HTTP 服务、连接与网络协议', 'HTTP services, connections and protocols'),
         '编码': ('JSON、二进制与数据格式转换', 'JSON, binary and data formats'),
         '密码与国密': ('加密、签名、摘要与安全连接', 'Encryption, signatures, hashes and TLS'),
-        '压缩 / 图像 / 数学': ('压缩数据、处理图像与数值计算', 'Compression, images and numeric operations'),
+        '压缩 / 图像 / 数学 / 张量': ('压缩数据、处理图像、数值与张量计算', 'Compression, images, math and tensor primitives'),
         '数据库': ('数据库连接、查询与驱动接口', 'Database connections, queries and drivers'),
         '图形与窗口': ('GPU 渲染、窗口与输入事件', 'GPU rendering, windows and input events'),
         '其他': ('容器、嵌入式与更多工具', 'Containers, embedded systems and more'),
@@ -678,16 +680,16 @@ def get_seo_meta(route: str, title: str, en: bool | str, xu_version: str, body: 
 
     if not bare_path:
         desc = {
-            'en': 'Xu is a systems language for operating system and AI development. Build freestanding kernels and explore local CPU inference with native AOT and inferred ownership.',
-            'zh': 'Xu 是面向操作系统与 AI 研发的系统编程语言。使用原生 AOT 与所有权推断构建裸机内核，探索本地 CPU 推理。',
-            'zh-tw': 'Xu 是面向作業系統與 AI 研發的系統程式語言。使用原生 AOT 與所有權推斷建置裸機核心，探索本機 CPU 推論。',
-            'ja': 'Xu は OS と AI 開発のためのシステム言語です。ネイティブ AOT と所有権推論でベアメタルカーネルを構築し、ローカル CPU 推論を試せます。',
-            'ko': 'Xu는 운영체제와 AI 개발을 위한 시스템 언어입니다. 네이티브 AOT와 소유권 추론으로 베어메탈 커널을 빌드하고 로컬 CPU 추론을 살펴보세요.',
-            'es': 'Xu es un lenguaje de sistemas para desarrollar sistemas operativos e IA. Explora núcleos autónomos e inferencia local en CPU con AOT nativo y propiedad inferida.',
-            'fr': 'Xu est un langage système pour les systèmes d’exploitation et l’IA. Explorez les noyaux autonomes et l’inférence CPU locale avec AOT natif et inférence de propriété.',
-            'de': 'Xu ist eine Systemsprache für Betriebssysteme und KI. Erkunde freistehende Kernel und lokale CPU-Inferenz mit nativem AOT und Eigentumsinferenz.',
-            'ru': 'Xu — системный язык для разработки ОС и ИИ. Собирайте автономные ядра и изучайте локальный инференс на CPU с нативной AOT-компиляцией и выводом владения.',
-            'pt-br': 'Xu é uma linguagem de sistemas para desenvolvimento de sistemas operacionais e IA. Explore núcleos independentes e inferência local em CPU com AOT nativo e propriedade inferida.',
+            'en': 'Xu is a systems language for OS kernels, multi-core concurrency, and AI. Build freestanding UEFI/ELF64 kernels and run multi-core CPU & GPU inference with native AOT and inferred ownership.',
+            'zh': 'Xu 是面向操作系统、多核并发与 AI 研发的系统编程语言。使用原生 AOT 与所有权推断构建 UEFI/ELF64 裸机内核，并运行多核 CPU 与多后端 GPU 推理。',
+            'zh-tw': 'Xu 是面向作業系統、多核並行與 AI 研發的系統程式語言。使用原生 AOT 與所有權推斷建置 UEFI/ELF64 裸機核心，並執行多核 CPU 與 GPU 推論。',
+            'ja': 'Xu は OS、マルチコア並行処理、AI 開発のためのシステム言語です。ネイティブ AOT と所有権推論でベアメタルカーネルとローカル AI 推論を構築できます。',
+            'ko': 'Xu는 운영체제, 멀티코어 동시성 및 AI 개발을 위한 시스템 언어입니다. 네이티브 AOT와 소유권 추론으로 베어메탈 커널과 로컬 AI 추론을 구축하세요.',
+            'es': 'Xu es un lenguaje de sistemas para sistemas operativos, concurrencia multinúcleo e IA. Construye núcleos autónomos e inferencia local con AOT nativo y propiedad inferida.',
+            'fr': 'Xu est un langage système pour les OS, la concurrence multicœur et l’IA. Développez des noyaux autonomes et l’inférence locale avec AOT natif et propriété inférée.',
+            'de': 'Xu ist eine Systemsprache für Betriebssysteme, Mehrkern-Nebenläufigkeit und KI mit nativem AOT und Eigentumsinferenz.',
+            'ru': 'Xu — системный язык для разработки ОС, многоядерной конкурентности и ИИ с нативной AOT-компиляцией и выводом владения.',
+            'pt-br': 'Xu é uma linguagem de sistemas para sistemas operacionais, concorrência multicore e IA com AOT nativo e propriedade inferida.',
         }[lang]
     elif bare_path == 'benchmarks':
         desc = (f"{title} — Cross-language runtime, CPU time, peak memory and binary-size measurements across Linux, macOS and Windows."
@@ -702,11 +704,11 @@ def get_seo_meta(route: str, title: str, en: bool | str, xu_version: str, body: 
         desc = (f"Get started with Xu v{xu_version}: language introduction, environment setup, writing and compiling your first zero-GC program."
                 if lang == 'en' else f"Xu (v{xu_version}) 快速起步：语言介绍、环境配置与第一个零 GC 程序。")
     elif bare_path == 'docs/os':
-        desc = ('Build a freestanding Xu kernel for x64, ARM64, or RISC-V 64. Explore ELF output, memory-mapped I/O, and core hardware APIs.'
-                if lang == 'en' else '使用 Xu 构建 x64、ARM64 或 RISC-V 64 裸机内核，了解 ELF 产物、内存映射 I/O 与核心硬件 API。')
+        desc = ('Build a freestanding Xu kernel for x64, ARM64, RISC-V 64, or UEFI. Explore ELF output, memory-mapped I/O, ACPI/PCI, and core hardware APIs.'
+                if lang == 'en' else '使用 Xu 构建 x64、ARM64、RISC-V 64 或 UEFI 裸机内核，了解 ELF 产物、内存映射 I/O、ACPI/PCI 与核心硬件 API。')
     elif bare_path == 'docs/ai':
-        desc = ('Run local models with the Xu development CPU engine. Explore GGUF and Safetensors support, paged KV cache, and compiler tensor optimizations.'
-                if lang == 'en' else '用 Xu 开发版 CPU 引擎运行本地模型，了解 GGUF、Safetensors、分页 KV 缓存与编译器张量优化。')
+        desc = ('Pure-Xu AI stack in Xu v' + xu_version + ': #tensor primitives, MIR SIMD fusion, multi-core CPU (--threads N) & Metal/CUDA/Vulkan GPU inference, VLM, GBNF, training, and Agent/RAG packages.'
+                if lang == 'en' else 'Xu v' + xu_version + ' 纯 Xu 全栈 AI 体系：#tensor 数值原语、MIR SIMD 融合、多核 CPU (--threads N) 与 Metal/CUDA/Vulkan GPU 推理、VLM、GBNF、微调及 Agent/RAG 扩展包。')
     elif bare_path.startswith('docs/faq'):
         desc = ("Xu FAQ: bare-metal OS & kernel development, ownership, borrow checking, shared-state synchronization, native/FFI safety boundaries, and toolchain features."
                 if lang == 'en' else "Xu 常见问题：操作系统与裸机开发、所有权与借用检查、共享状态同步、原生 / FFI 安全边界与工具链特性。")
@@ -738,7 +740,9 @@ def get_seo_meta(route: str, title: str, en: bool | str, xu_version: str, body: 
     keywords = (
         "Xu, xulang, systems programming, operating system development, bare-metal kernels, AI inference, AOT compiler, zero GC, WebAssembly"
         if lang not in ('zh', 'zh-tw') else
-        "Xu, Xu語言, 系統編程, 作業系統研發, 裸機內核, AI 推理, AOT 編譯器, 零 GC, WebAssembly"
+        ("Xu, Xu语言, 系统编程, 操作系统研发, 裸机内核, AI 推理, AOT 编译器, 零 GC, WebAssembly"
+         if lang == 'zh' else
+         "Xu, Xu語言, 系統編程, 作業系統研發, 裸機內核, AI 推理, AOT 編譯器, 零 GC, WebAssembly")
     )
 
     og_type = "website" if bare_path in ('', 'playground', 'benchmarks', 'download', '404') else "article"

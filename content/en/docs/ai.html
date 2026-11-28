@@ -1,7 +1,7 @@
 ---
 ---
 <h1>AI development and local inference</h1>
-<p class="lead">Build pure-Xu AI systems end-to-end without external C/C++ inference bindings: low-precision <code>#tensor</code> storage &amp; numerical primitives, compiler MIR SIMD tensor fusion (ARM64 NEON/SDOT &amp; x86-64 SSE2/SSSE3), the modularized <code>examples/llm_engine/{main.xu,models,vision,gbnf,quantize}</code> Transformer/MoE/MLA/Mamba-SSM engine with VLM (PNG/JPEG + bilinear resize + inline <code>&lt;image&gt;</code>), HuggingFace &amp; GGUF offline <code>quantize</code> (<code>q4_0</code>..<code>q6_k</code>/<code>q4_k_m</code>/<code>q5_k_m</code>), <code>VocabIndex</code> GBNF + <code>--json-schema</code>, optimizer checkpoints, online <code>train-rlvr</code>, local <code>models</code> cache, and OpenAI/Anthropic/Ollama serving, Metal GPU compute, and pure-Xu <code>openai</code>, <code>cohere</code>, <code>gateway</code> (cross-provider sync+SSE), <code>prompt</code>, <code>anthropic</code>, <code>gemini</code>, <code>mcp</code>, <code>a2a</code> (concurrent live SSE), <code>agent</code> (4-runtime parity, <code>AgentSwarm</code>, progressive <code>load_skill</code>, parallel HITL <code>StateGraph</code>, OTLP/Prometheus), Hybrid &amp; GraphRAG <code>rag</code> (live <code>PgVectorClient</code> / <code>SqliteVectorStore</code> / <code>QdrantVectorStore</code> + auto <code>KnowledgeGraph</code>), <code>guardrails</code>, <code>eval</code>, and vector database packages.</p>
+<p class="lead">Build pure-Xu AI systems end-to-end without external C/C++ inference bindings: low-precision <code>#tensor</code> storage &amp; numerical primitives, compiler MIR SIMD tensor fusion (ARM64 NEON/SDOT &amp; x86-64 SSE2/SSSE3), modularized multi-threaded <code>examples/llm_engine</code> (GGUF / SafeTensors / VLM / GBNF / LoRA / DPO / GRPO / RLVR / Distill + OpenAI/Anthropic/Ollama serving), multi-backend GPU compute (<code>gpu</code> / <code>llm_metal</code> / <code>metal</code> / <code>cuda_native</code> / <code>vulkan_native</code>), and 50 official pure-Xu packages for LLM clients, gateways, Agent/MCP/A2A, GraphRAG, guardrails, and evaluation.</p>
 
 <div class="doc-process-flow">
   <div class="flow-header">
@@ -9,14 +9,14 @@
       <i class="xi xi-layers"></i>
       <span>4-Layer Pure-Xu AI Architecture</span>
     </div>
-    <div class="flow-subtitle">From compact scalar encodings and pure-Xu primitives to compiler-lowered SIMD kernels, LLM HTTP serving, and Metal GPU shaders</div>
+    <div class="flow-subtitle">From low-precision primitives and compiler MIR fusion kernels to multi-threaded local serving and multi-backend GPU</div>
   </div>
   <div class="flow-steps-grid">
     <div class="flow-step-card">
       <div class="step-badge">1</div>
       <div class="step-body">
         <div class="step-name"><code>#tensor</code> Storage &amp; Primitives</div>
-        <div class="step-meta"><code>F16</code>, <code>BF16</code>, four <code>FP8</code> formats, GGML <code>Q4_0</code>/<code>Q5_0</code>/<code>Q8_0</code>/<code>Q4_K</code>/<code>Q5_K</code>/<code>Q6_K</code>/<code>Q8_K</code> blocks, integer K-quant dots, strided <code>TensorView</code>, and 47 pure-Xu ops (incl. <code>conv2d_patch_embed_f32</code>, <code>mha_sdpa_f32</code>, <code>avg_pool2d_f32</code>, <code>add_rmsnorm_f32</code>, <code>moe_router_f32</code>, <code>rope_yarn_f32</code>, <code>topk_cosine_f32</code>, <code>conv1d_causal_step_f32</code>, <code>ssm_scan_step_f32</code>, <code>linear_attn_step_f32</code>, <code>ppo_clip_grad_f32</code>, <code>cross_entropy_grad_f32</code>, <code>adamw_step_f32</code>, <code>lora_add_f32</code>, <code>lora_backward_f32</code>, <code>rmsnorm_backward_f32</code>, <code>layernorm_backward_f32</code>, <code>swiglu_backward_f32</code>, <code>softmax_backward_f32</code>, <code>grad_clip_norm_f32</code>, <code>kl_div_grad_f32</code>, <code>dpo_loss_grad_f32</code>, <code>grpo_advantages_f32</code>)</div>
+        <div class="step-meta"><code>F16</code> / <code>BF16</code> / <code>FP8</code>, GGML <code>Q4_0</code>–<code>Q8_K</code> blocks, strided <code>TensorView</code>, and 47 pure-Xu inference &amp; backward training ops</div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
@@ -24,76 +24,124 @@
       <div class="step-badge">2</div>
       <div class="step-body">
         <div class="step-name">Compiler MIR Tensor Fusion</div>
-        <div class="step-meta"><code>--tensor-fusion</code> / <code>XU_TENSOR_FUSION=1</code> lowers pure-Xu loops directly to ARM64 NEON/SDOT &amp; x86-64 SSE2/SSSE3 kernels (<code>vsub</code>/<code>vmul</code>, <code>gemm4x8_q8_0_p4k4</code>, paged attention)</div>
+        <div class="step-meta"><code>--tensor-fusion</code> lowers pure-Xu loops directly to ARM64 NEON/SDOT &amp; x86-64 SSE2/SSSE3 kernels (including K-quant SIMD)</div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
     <div class="flow-step-card">
       <div class="step-badge">3</div>
       <div class="step-body">
-        <div class="step-name">Local Engine &amp; OpenAI/Anthropic/Ollama <code>serve</code></div>
-        <div class="step-meta"><code>llm_engine</code> runs <code>inspect</code>, <code>models pull|list|rm</code> (<code>hf://</code>), <code>quantize</code> (<code>--type q4_0|q8_0</code>), HF sharded directories, <code>perplexity</code> evaluation (<code>--stride</code>), GBNF constrained decoding (<code>--grammar</code> &amp; JSON <code>grammar</code>), PEFT <code>--lora</code> &amp; <code>merge-lora</code>, pure-Xu SFT <code>train-lora</code> (<code>--dataset</code> JSONL, assistant masking, <code>--grad-accum</code>, <code>--warmup-steps</code>, <code>--lr-schedule cosine</code>, <code>--save-ckpt</code>/<code>--resume-ckpt</code>), <code>train-dpo</code> (<code>--dpo-beta</code>), <code>train-grpo</code> (<code>--clip-eps</code>, <code>--kl-beta</code>), online <code>train-rlvr</code> (<code>--verifier</code>, <code>--group-size</code>), <code>train-distill</code> (<code>--teacher</code>, <code>--distill-temp</code>, <code>--distill-alpha</code>), lossless <code>--draft</code> speculative decode, Mamba SSM &amp; Hybrid Attention+SSM GGUF, DeepSeek MLA, MoE, mixed <code>Q4_K_M</code> &amp; <code>Q5_K</code> (<code>--q8k-act</code>), YaRN RoPE, <code>&lt;think&gt;</code> <code>reasoning_content</code>, SSE <code>delta.tool_calls</code>, OpenAI <code>/v1/responses</code>, Anthropic <code>/v1/messages</code>, Ollama <code>/api/*</code>, and Prometheus <code>/metrics</code></div>
+        <div class="step-name"><code>llm_engine</code> Multi-Threaded Engine &amp; <code>serve</code></div>
+        <div class="step-meta"><code>--threads N</code> CPU inference, VLM (<code>mmproj.gguf</code> / SafeTensors), GBNF/Schema, LoRA/RLVR training &amp; OpenAI/Anthropic/Ollama HTTP serving</div>
       </div>
     </div>
     <div class="flow-step-arrow"><i class="xi xi-arrow-down"></i></div>
     <div class="flow-step-card flow-step-highlight">
       <div class="step-badge">4</div>
       <div class="step-body">
-        <div class="step-name">Metal GPU &amp; AI/Agent/RAG Platform</div>
-        <div class="step-meta"><code>metal</code> (<code>v1.13.0</code> packages release, 176 symbols / 6 <code>.xulib</code> slices, <code>Q5KMatrix</code>/MoE <code>Q5_K</code>, PagedAttention F16, GPU backprop), plus pure-Xu <code>openai</code> (11 provider presets incl. Qwen/Mistral/MiniMax, Files/Batches API, Whisper, TTS, Images, Rerank), <code>cohere</code> (native <code>/v2/chat</code>, <code>/v2/embed</code>, <code>/v2/rerank</code>), <code>gateway</code> (fallback, cost, semantic cache), <code>prompt</code> (versioned templates, few-shot, JSON block extract), <code>anthropic</code>, <code>gemini</code>, <code>mcp</code>, <code>a2a</code> (Agent-to-Agent discovery + JSON-RPC 2.0 tasks), <code>agent</code> (<code>SKILL.md</code> directory discovery, <code>AgentMemory</code> update/forget, HITL <code>StateGraph</code> interrupts/checkpoints/resume, approval hook, compaction + LLM summarization, guardrails, OTLP HTTP &amp; Prometheus tracing, <code>run_json_checked</code>), <code>rag</code> (<code>PgVectorStore</code> SQL adapter, GraphRAG <code>KnowledgeGraph</code>, <code>chunk_code</code>, <code>rerank_with_cohere</code>, <code>chunk_parent_child</code>, Multi-Query, HyDE, compression, citations), <code>guardrails</code> (canary leak + RAG chunk sanitization + LLM safety classifier), <code>eval</code> (<code>pass_at_k</code>, pairwise judge, JSONL loader, Ragas triad + OpenAI/Anthropic/Gemini judges), <code>postgres</code> (<code>pgvector</code>), <code>qdrant</code>, <code>milvus</code>, <code>chroma</code>, and <code>XACP</code></div>
+        <div class="step-name">Multi-Backend GPU &amp; <code>packages v1.17.0</code></div>
+        <div class="step-meta">Unified <code>gpu</code> / <code>llm_metal</code> / <code>cuda_native</code> / <code>vulkan_native</code> plus <code>openai</code>, <code>gateway</code>, <code>mcp</code>, <code>a2a</code>, <code>agent</code>, <code>rag</code>, <code>guardrails</code>, and <code>eval</code></div>
       </div>
     </div>
   </div>
 </div>
 
-<h2 id="run">Build and run the local LLM engine</h2>
-<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> (modularized into pure-stdlib subpackages <code>models</code>, <code>vision</code>, <code>gbnf</code>, and <code>quantize</code> while preserving all MIR tensor-fusion kernels in <code>main.xu</code>) is a self-contained Transformer, <strong>Multimodal VLM</strong> (<code>--mmproj</code> ViT+MLP projector with PNG/JPEG/PPM/BMP/base64/<code>rgb:</code> decoding, center-aligned bilinear resize, configurable <code>image_mean</code>/<code>image_std</code>, <code>http(s)://</code> <code>image_url</code> parts, and inline multi-segment <code>&lt;image&gt;</code> interleaving), DeepSeek MLA, Mixture-of-Experts (MoE), and <strong>Mamba SSM / Hybrid Attention+SSM</strong> inference and fine-tuning engine supporting <code>inspect</code> model metadata &amp; KV-footprint inspection, local <code>models list|rm|pull</code> cache management (supporting <code>hf://org/repo/file</code> downloads and <code>--models-dir</code>), offline HF-sharded/single SafeTensors &amp; GGUF requantization <code>quantize</code> (<code>--type q4_0|q8_0|q4_k|q5_k|q6_k|q4_k_m|q5_k_m</code>), <strong>HuggingFace model directories</strong> (<code>config.json</code> + single <code>model.safetensors</code> or sharded <code>model.safetensors.index.json</code> + <code>tokenizer.json</code> / <code>tokenizer_config.json</code> with <code>F32</code>/<code>F16</code>/<code>BF16</code>/<code>F8_E4M3</code> tensors), single-file <strong>Safetensors</strong>, sliding-window <code>perplexity</code> evaluation (<code>--stride</code>), indexed generic <strong>GBNF &amp; JSON Schema grammar constrained decoding</strong> (<code>VocabIndex</code> first-byte buckets + <code>json_schema_to_gbnf</code>, CLI <code>--grammar</code> / <code>--json-schema</code>, and HTTP <code>grammar</code> / <code>response_format</code> / <code>text.format</code>), <strong>PEFT LoRA adapters</strong> (<code>--lora &lt;dir_or_safetensors&gt;</code>, <code>--lora-scale</code>, &amp; offline <code>merge-lora</code> SafeTensors export across <code>q</code>/<code>k</code>/<code>v</code>/<code>o</code>/<code>w1</code>/<code>w2</code>/<code>w3</code>/<code>lm_head</code> in F32/F16/BF16, pure-Xu SFT <code>train-lora</code> with <code>--dataset</code> JSONL loading, assistant-only loss masking, <code>--grad-accum</code>, <code>--warmup-steps</code>, <code>--lr-schedule constant|cosine</code>, <code>--max-grad-norm</code>, optimizer+weight checkpoint <code>--save-ckpt</code> / <code>--resume-ckpt</code>, preference alignment via <code>train-dpo</code> / <code>--dpo-beta</code>, clipped reward-group alignment via <code>train-grpo</code> / <code>--clip-eps</code> / <code>--kl-beta</code>, online verifiable-reward rollouts via <code>train-rlvr</code> / <code>--verifier</code> / <code>--group-size</code> / <code>--gen-tokens</code> / <code>--temp</code>, and teacher-student logit distillation via <code>train-distill</code> / <code>--teacher</code> / <code>--distill-temp</code> / <code>--distill-alpha</code>), <strong>lossless speculative decoding</strong> (<code>--draft &lt;model&gt;</code> / <code>--draft-k &lt;N&gt;</code> with batched verification and exact KV-cache rollback), and <strong>GGUF v2/v3</strong> (Mamba <code>ssm_*</code> recurrent + Hybrid Attention/SSM blocks, mixed-quantization <code>Q4_K_M</code> &amp; <code>Q5_K</code> with <code>Q4_K</code>/<code>Q5_K</code>/<code>Q6_K</code> + <code>--q8k-act</code> integer K-quant activation dots, plus <code>F32</code>, <code>F16</code>, <code>BF16</code>, <code>FP8 E4M3</code>, <code>Q4_0</code>, <code>Q5_0</code>, <code>Q8_0</code> layer weights packed to <code>p4k4</code> SIMD, and zero-copy <code>#tensor</code> compacted weights), <strong>DeepSeek-V2/V3/R1 Multi-head Latent Attention (MLA)</strong> (<code>kv_lora_rank</code>, <code>q_lora_rank</code>, <code>qk_nope_head_dim</code>, <code>qk_rope_head_dim</code>, <code>v_head_dim</code>), full <strong>MoE routing &amp; shared experts</strong>, YaRN NTK-by-parts RoPE scaling, Gemma-2/Qwen3 extensions, auto-detected chat templates (<strong>ChatML</strong>, <strong>Llama-3</strong>, <strong>Gemma</strong>, <code>Mistral</code>) with multi-turn tool formatting, compact paged KV caches, SentencePiece + GPT-2 BPE merges, $O(L)$ sampling with <code>logit_bias</code>, and a multi-slot continuous-batching <code>#net/http</code> server exposing OpenAI endpoints (<code>/v1/completions</code>, <code>/v1/chat/completions</code> with <code>&lt;think&gt;</code> <code>reasoning_content</code> sync+SSE and SSE <code>delta.tool_calls</code>, stateful <code>POST /v1/responses</code>, batch <code>/v1/embeddings</code>), Anthropic Messages API <code>/v1/messages</code>, Ollama-compatible endpoints (<code>GET /api/tags</code>, <code>POST /api/generate</code>, <code>POST /api/chat</code> sync &amp; <code>application/x-ndjson</code> stream), and Prometheus <code>GET /metrics</code>.</p>
+<h2 id="run">Build and run the local LLM engine (<code>llm_engine</code>)</h2>
+<p><a href="https://github.com/xulang-org/xu/blob/main/examples/llm_engine/main.xu"><code>examples/llm_engine/main.xu</code></a> modularizes model loaders, vision projectors, GBNF grammars, and quantization into pure-stdlib subpackages (<code>models</code>, <code>vision</code>, <code>gbnf</code>, <code>quantize</code>) while preserving all MIR tensor-fusion kernels in <code>main.xu</code>. Since <code>Xu v0.14.3+</code> embeds Mach-O <code>LC_CODE_SIGNATURE</code> ad-hoc signing directly on Apple Silicon builds, no manual <code>codesign</code> step is required.</p>
+
+<h3>1. Model Formats, Architectures &amp; Quantization</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="Model formats and quantization support">
+<table>
+  <thead>
+    <tr><th>Area</th><th>Supported Scope</th><th>Key Capabilities</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>GGUF v2/v3</strong></td><td><code>F32</code>, <code>F16</code>, <code>BF16</code>, <code>FP8 E4M3</code>, <code>Q4_0</code>, <code>Q4_1</code>, <code>Q5_0</code>, <code>Q5_1</code>, <code>Q8_0</code>, <code>Q2_K</code>, <code>Q3_K</code>, <code>Q4_K</code>, <code>Q5_K</code>, <code>Q6_K</code>, <code>Q4_K_M</code>, <code>Q5_K_M</code></td><td>Streaming <code>p4k4</code> packing, K-quant SIMD kernels with <code>--q8k-act</code> integer activation dots, and zero-copy <code>#tensor</code> layout</td></tr>
+    <tr><td><strong>HuggingFace / SafeTensors</strong></td><td>Single <code>model.safetensors</code> or sharded <code>model.safetensors.index.json</code> + <code>config.json</code> + <code>tokenizer.json</code></td><td><code>F32</code> / <code>F16</code> / <code>BF16</code> / <code>F8_E4M3</code> loading plus offline <code>quantize</code> export to GGUF</td></tr>
+    <tr><td><strong>Model Families &amp; Attention</strong></td><td>Llama / Qwen / Gemma-2 / Mistral / DeepSeek-V2/V3/R1 MLA / MoE / Mamba SSM / Hybrid Attention+SSM</td><td>YaRN NTK-by-parts RoPE, ChatML/Llama-3/Gemma/Mistral templates, multi-turn tool formatting, and paged KV caches</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>2. Inference, VLM &amp; Constrained Decoding</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="Inference, VLM, and constrained decoding features">
+<table>
+  <thead>
+    <tr><th>Subsystem</th><th>Key Flags / Components</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>Multi-threaded CPU</strong></td><td><code>--threads &lt;N&gt;</code>, <code>--kv-dtype &lt;f32|f16|bf16|fp8_*&gt;</code></td><td>Parallelizes CPU GEMV/GEMM execution over Xu's M:N scheduler with FP16/BF16/FP8 paged KV compression</td></tr>
+    <tr><td><strong>Multimodal VLM</strong></td><td><code>--mmproj &lt;path&gt;</code>, <code>--image &lt;path|url|data_uri|rgb:...&gt;</code></td><td>Supports both native <code>mmproj.gguf</code> (F32/F16/BF16) and SafeTensors ViT+MLP projectors, PNG/JPEG/PPM/BMP decoding, bilinear resize &amp; inline <code>&lt;image&gt;</code></td></tr>
+    <tr><td><strong>GBNF &amp; JSON Schema</strong></td><td><code>--grammar</code>, <code>--json-schema</code>, <code>--gbnf-max-branches &lt;N&gt;</code></td><td><code>VocabIndex</code> Trie + <code>GbnfMaskCache</code> acceleration; JSON Schema supports <code>$ref</code>/<code>$defs</code>, <code>allOf</code>, regex <code>pattern</code> &amp; <code>additionalProperties: false</code></td></tr>
+    <tr><td><strong>Speculative Decoding</strong></td><td><code>--draft &lt;model&gt;</code>, <code>--draft-k &lt;N&gt;</code></td><td>Lossless target verification with exact KV-cache rollback across greedy and stochastic sampling</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>3. Fine-Tuning, Alignment &amp; Model Utilities</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="Fine-tuning and CLI utility subcommands">
+<table>
+  <thead>
+    <tr><th>Subcommand</th><th>Key Flags</th><th>Capabilities</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>models</code> / <code>inspect</code> / <code>perplexity</code></td><td><code>pull hf://...</code>, <code>list</code>, <code>rm</code>, <code>--models-dir</code>, <code>--stride</code></td><td>Local HuggingFace model cache management, tensor/KV-footprint diagnostics, and sliding-window perplexity evaluation</td></tr>
+    <tr><td><code>quantize</code> / <code>merge-lora</code></td><td><code>--type q4_0|q8_0|q4_k|q5_k|q6_k|q4_k_m|q5_k_m</code></td><td>Offline SafeTensors/GGUF requantization and PEFT LoRA merging (<code>q/k/v/o/w1/w2/w3/lm_head</code>) in F32/F16/BF16</td></tr>
+    <tr><td><code>train-lora</code></td><td><code>--dataset</code>, <code>--grad-accum</code>, <code>--warmup-steps</code>, <code>--lr-schedule cosine</code>, <code>--save-ckpt</code> / <code>--resume-ckpt</code></td><td>Pure-Xu CPU <code>f32</code> SFT fine-tuning with assistant-only loss masking, grad clipping, and AdamW checkpoints</td></tr>
+    <tr><td><code>train-dpo</code> / <code>train-grpo</code> / <code>train-rlvr</code> / <code>train-distill</code></td><td><code>--dpo-beta</code>, <code>--clip-eps</code>, <code>--kl-beta</code>, <code>--verifier</code>, <code>--group-size</code>, <code>--teacher</code></td><td>Preference alignment, clipped GRPO, online verifiable-reward rollouts (<code>contains|exact|json|math</code>), and logit distillation</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4. Serving Endpoints (<code>serve</code>)</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="HTTP serving endpoints">
+<table>
+  <thead>
+    <tr><th>API Family</th><th>Endpoints</th><th>Features</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><strong>OpenAI-compatible</strong></td><td><code>POST /v1/completions</code>, <code>/v1/chat/completions</code>, <code>/v1/responses</code>, <code>/v1/embeddings</code>, <code>GET /v1/models</code></td><td>Continuous batching (<code>--max-slots N</code>), Bearer <code>--api-key</code>, SSE streaming, <code>delta.tool_calls</code>, <code>&lt;think&gt;</code> <code>reasoning_content</code>, and HTTP <code>response_format</code>/<code>grammar</code></td></tr>
+    <tr><td><strong>Anthropic &amp; Ollama</strong></td><td><code>POST /v1/messages</code>, <code>GET /api/tags</code>, <code>POST /api/generate</code>, <code>POST /api/chat</code></td><td>Claude Messages API compatibility plus Ollama sync &amp; <code>application/x-ndjson</code> streaming</td></tr>
+    <tr><td><strong>Health &amp; Telemetry</strong></td><td><code>GET /health</code>, <code>GET /metrics</code></td><td>Unauthenticated health check and Prometheus latency/KV/throughput metrics</td></tr>
+  </tbody>
+</table>
+</div>
+
 <pre><code>./bin/xu build --tensor-fusion --tensor-fast-math examples/llm_engine/main.xu -o llm_engine
-# (or XU_TENSOR_FUSION=1 XU_TENSOR_FAST_MATH=1 ./bin/xu build ...; Xu 0.14.3 embeds built-in Mach-O LC_CODE_SIGNATURE ad-hoc signing)
+# Xu v0.14.3+ embeds Mach-O ad-hoc signatures automatically on Apple Silicon
 
-# Manage cached local models, inspect architecture &amp; KV footprint, verify parity, and compute perplexity
+# Manage cached local models, inspect architecture &amp; KV footprint, and compute perplexity
 ./llm_engine models pull hf://Qwen/Qwen2.5-0.5B-Instruct-GGUF/qwen2.5-0.5b-instruct-q4_k_m.gguf qwen.gguf
-./llm_engine models list
-./llm_engine inspect model.gguf
-./llm_engine verify model.gguf --kv-dtype fp8_e4m3fn
-./llm_engine perplexity model.gguf "ids:1,2,3,4,5,6" --stride 2
+./llm_engine inspect qwen.gguf
+./llm_engine perplexity qwen.gguf "ids:1,2,3,4,5,6" --stride 2
 
-# Generate text with BPE merges, GBNF grammar constraints, LoRA adapter, and lossless draft speculative decode
-./llm_engine generate model.gguf "Hi Paris" 64 700 40 \
-  --kv-dtype f16 --top-p 900 --min-p 50 --repeat-penalty 1100 \
-  --presence-penalty 100 --frequency-penalty 50 --seed 42
-./llm_engine generate model.gguf "Reply JSON" 64 0 40 --grammar 'root ::= "{\"ok\":true}"'
-./llm_engine generate model.gguf "Hi Paris" 64 0 40 --lora ./lora_adapter --draft ./draft.gguf --draft-k 4
+# Multi-threaded CPU inference (--threads), GBNF/JSON Schema, VLM (mmproj.gguf), and speculative decode
+./llm_engine generate qwen.gguf "Hi Paris" 64 700 40 --threads 4 --kv-dtype f16 --top-p 900 --min-p 50 --seed 42
+./llm_engine generate qwen.gguf "Reply JSON" 64 0 40 --json-schema '{"type":"object","properties":{"ok":{"type":"boolean"}},"required":["ok"]}'
+./llm_engine generate vlm.gguf "Describe &lt;image&gt;" 32 0 40 --mmproj ./mmproj.gguf --image ./photo.png --threads 4
+./llm_engine generate qwen.gguf "Hi Paris" 64 0 40 --lora ./lora_adapter --draft ./draft.gguf --draft-k 4
 
-# Pure-Xu SFT LoRA (with checkpoints), offline merge, offline quantize, DPO, GRPO, online RLVR, and Knowledge Distillation
-./llm_engine train-lora model.safetensors ./out_lora --dataset sft.jsonl --lora-rank 4 --steps 20 --lr 0.05 --grad-accum 2 --warmup-steps 4 --lr-schedule cosine --max-grad-norm 1.0 --save-ckpt sft.ckpt.safetensors
+# Pure-Xu SFT LoRA (with checkpoints), offline merge, and offline quantize
+./llm_engine train-lora model.safetensors ./out_lora --dataset sft.jsonl --lora-rank 4 --steps 20 --lr 0.05 --save-ckpt sft.ckpt.safetensors
 ./llm_engine merge-lora model.safetensors ./out_lora ./merged_f32.safetensors
 ./llm_engine quantize ./merged_f32.safetensors ./merged_q4k.gguf --type q4_k
-./llm_engine generate ./model.gguf "Describe this image" 16 0 40 --mmproj ./mmproj.safetensors --image ./photo.ppm
-./llm_engine train-dpo model.safetensors ./out_dpo --dataset dpo.jsonl --lora-rank 4 --steps 10 --dpo-beta 0.1
-./llm_engine train-grpo model.safetensors ./out_grpo --dataset grpo.jsonl --lora-rank 4 --steps 10 --clip-eps 0.2 --kl-beta 0.04
-./llm_engine train-rlvr model.safetensors tasks.jsonl ./out_rlvr --verifier contains --group-size 4 --gen-tokens 8 --temp 800 --steps 8 --lr 0.05
-./llm_engine train-distill student.safetensors ./out_distill --teacher teacher.safetensors --dataset sft.jsonl --distill-temp 2.0 --distill-alpha 0.5 --steps 10
 
-# Start an HTTP server (/health, /metrics, OpenAI /v1/*, Anthropic /v1/messages, Ollama /api/*)
-./llm_engine serve model.gguf 127.0.0.1:8080 --kv-dtype bf16 --max-slots 4 --api-key secret</code></pre>
-<p>Supported CLI flags across modes:</p>
+# Start HTTP server (/health, /metrics, OpenAI /v1/*, Anthropic /v1/messages, Ollama /api/*)
+./llm_engine serve qwen.gguf 127.0.0.1:8080 --threads 4 --kv-dtype bf16 --max-slots 4 --api-key secret</code></pre>
+
+<p>Common CLI flags across modes:</p>
 <ul>
-  <li><code>--ctx &lt;N&gt;</code> — override maximum sequence length / context window.</li>
-  <li><code>--stride &lt;N&gt;</code> — configure sliding-window step size for <code>perplexity</code> evaluation.</li>
-  <li><code>--grammar &lt;path_or_inline&gt;</code>, <code>--json-schema &lt;path_or_json&gt;</code> — constrain <code>generate</code> sampling (or HTTP <code>grammar</code>, <code>response_format</code>, and <code>text.format</code> in <code>serve</code>) to any GBNF grammar or JSON Schema.</li>
-  <li><code>--models-dir &lt;dir&gt;</code> — override the local model cache directory (<code>~/.xu/models</code> or <code>XU_MODELS_DIR</code>) for <code>models list|rm|pull</code>.</li>
-  <li><code>--kv-dtype &lt;f32|f16|bf16|fp8_e4m3fn|fp8_e5m2|fp8_e4m3fnuz|fp8_e5m2fnuz&gt;</code> — choose paged KV-cache storage precision (halving or quartering KV memory).</li>
-  <li><code>--lora &lt;path&gt;</code>, <code>--lora-scale &lt;f&gt;</code>, <code>--lora-rank &lt;N&gt;</code>, <code>--lora-alpha &lt;f&gt;</code>, <code>--dataset &lt;path&gt;</code>, <code>--grad-accum &lt;N&gt;</code>, <code>--warmup-steps &lt;N&gt;</code>, <code>--lr-schedule &lt;constant|cosine&gt;</code>, <code>--save-ckpt &lt;path&gt;</code>, <code>--resume-ckpt &lt;path&gt;</code>, <code>--type &lt;q4_0|q8_0|q4_k|q5_k|q6_k|q4_k_m|q5_k_m&gt;</code>, <code>--mmproj &lt;path&gt;</code>, <code>--image &lt;path|url|data_uri|rgb:...&gt;</code>, <code>--verifier &lt;contains|exact|json|math&gt;</code>, <code>--group-size &lt;K&gt;</code>, <code>--gen-tokens &lt;N&gt;</code>, <code>--temp &lt;milli&gt;</code>, <code>--dpo-beta &lt;f&gt;</code>, <code>--clip-eps &lt;f&gt;</code>, <code>--kl-beta &lt;f&gt;</code>, <code>--teacher &lt;path&gt;</code>, <code>--distill-temp &lt;f&gt;</code>, <code>--distill-alpha &lt;f&gt;</code>, <code>--steps &lt;N&gt;</code>, <code>--lr &lt;f&gt;</code>, <code>--max-grad-norm &lt;f&gt;</code> — load/merge PEFT SafeTensors LoRA adapters, quantize HF directories/SafeTensors/GGUF to GGUF (<code>quantize</code>), or run pure-Xu SFT <code>train-lora</code> (with AdamW checkpoint resume), <code>train-dpo</code>, <code>train-grpo</code>, online verifiable-reward <code>train-rlvr</code>, and <code>train-distill</code> fine-tuning.</li>
-  <li><code>--draft &lt;model&gt;</code>, <code>--draft-k &lt;N&gt;</code> — enable lossless target-verified speculative decoding with exact KV rollback across greedy and stochastic sampling.</li>
-  <li><code>--top-p &lt;milli&gt;</code>, <code>--min-p &lt;milli&gt;</code>, <code>--repeat-penalty &lt;milli&gt;</code>, <code>--presence-penalty &lt;milli&gt;</code>, <code>--frequency-penalty &lt;milli&gt;</code>, <code>--seed &lt;int&gt;</code> — deterministic filtering and repetition/presence/frequency penalties (<code>1000</code> = <code>1.0</code>; unbounded <code>top_k</code> supported).</li>
-  <li><code>--max-slots &lt;N&gt;</code>, <code>--api-key &lt;K&gt;</code> — configure concurrent continuous-batching scheduler slots and optional Bearer authentication (excluding <code>/health</code>) in <code>serve</code> mode.</li>
-  <li><code>--rope-type &lt;auto|norm|neox&gt;</code> — select RoPE pairing layout (norm interleaved pairs vs split-half NeoX; auto-detected from GGUF/architecture).</li>
-  <li><code>--ignore-eos</code> — continue generation past EOS stop tokens for fixed-length evaluation.</li>
+  <li><code>--threads &lt;N&gt;</code>, <code>--ctx &lt;N&gt;</code>, <code>--kv-dtype &lt;f32|f16|bf16|fp8_e4m3fn|fp8_e5m2|fp8_e4m3fnuz|fp8_e5m2fnuz&gt;</code> — control multi-threaded CPU execution, context window, and paged KV-cache storage precision.</li>
+  <li><code>--grammar &lt;path_or_inline&gt;</code>, <code>--json-schema &lt;path_or_json&gt;</code>, <code>--gbnf-max-branches &lt;N&gt;</code> — constrain decoding via <code>VocabIndex</code> Trie grammars or JSON Schema with tunable NFA branch bounds.</li>
+  <li><code>--mmproj &lt;path&gt;</code>, <code>--image &lt;path|url|data_uri|rgb:...&gt;</code> — attach <code>mmproj.gguf</code> or SafeTensors vision encoders with inline <code>&lt;image&gt;</code> interleaving.</li>
+  <li><code>--draft &lt;model&gt;</code>, <code>--draft-k &lt;N&gt;</code>, <code>--lora &lt;path&gt;</code>, <code>--lora-scale &lt;f&gt;</code> — combine lossless target-verified speculative decoding and LoRA adapters.</li>
+  <li><code>--top-p &lt;milli&gt;</code>, <code>--min-p &lt;milli&gt;</code>, <code>--repeat-penalty &lt;milli&gt;</code>, <code>--presence-penalty &lt;milli&gt;</code>, <code>--frequency-penalty &lt;milli&gt;</code>, <code>--seed &lt;int&gt;</code>, <code>--rope-type &lt;auto|norm|neox&gt;</code>, <code>--ignore-eos</code> — sampling penalties (<code>1000</code> = <code>1.0</code>), RoPE layout, and stop control.</li>
+  <li><code>--max-slots &lt;N&gt;</code>, <code>--api-key &lt;K&gt;</code>, <code>--models-dir &lt;dir&gt;</code>, <code>--stride &lt;N&gt;</code> — continuous-batching slots, Bearer auth, cache path, and perplexity stride.</li>
 </ul>
 
 <h2 id="tensor-ops"><code>#tensor</code> module &amp; numerical primitives</h2>
-<p>The standard library module <code>#tensor</code> provides safe, pure-Xu low-precision scalar types, strided views, GGML block layouts, and 47 canonical compute &amp; training primitives in <a href="https://github.com/xulang-org/xu/blob/main/src/tensor/ops.xu"><code>src/tensor/ops.xu</code></a>:</p>
+<p>The standard library module <a href="/api/tensor"><code>#tensor</code></a> provides safe, pure-Xu low-precision scalar types, strided views, GGML block decoders, and 47 canonical compute &amp; training primitives in <a href="https://github.com/xulang-org/xu/blob/main/src/tensor/ops.xu"><code>src/tensor/ops.xu</code></a>:</p>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="#tensor primitive layers">
 <table>
   <thead>
     <tr><th>Layer</th><th>Public APIs</th><th>Purpose</th></tr>
@@ -117,10 +165,11 @@
     <tr>
       <td>Transformer, SSM, Vision &amp; alignment ops</td>
       <td><code>silu_f32</code>, <code>gelu_f32</code>, <code>rmsnorm_f32</code>, <code>add_rmsnorm_f32</code>, <code>layernorm_f32</code>, <code>softmax_f32</code>, <code>log_softmax_f32</code>, <code>swiglu_f32</code>, <code>geglu_f32</code>, <code>moe_router_f32</code>, <code>conv1d_causal_step_f32</code>, <code>ssm_scan_step_f32</code>, <code>linear_attn_step_f32</code>, <code>conv2d_patch_embed_f32</code>, <code>mha_sdpa_f32</code>, <code>avg_pool2d_f32</code>, <code>rope_f32</code>, <code>rope_interleaved_f32</code>, <code>rope_yarn_f32</code>, <code>matvec_f32</code>, <code>matmul_f32</code>, <code>quantize_q8_0</code>, <code>quantize_q5_0_row</code>, <code>quantize_q4_0_row</code>, <code>cross_entropy_grad_f32</code>, <code>adamw_step_f32</code>, <code>lora_add_f32</code>, <code>lora_backward_f32</code>, <code>rmsnorm_backward_f32</code>, <code>layernorm_backward_f32</code>, <code>swiglu_backward_f32</code>, <code>softmax_backward_f32</code>, <code>grad_clip_norm_f32</code>, <code>kl_div_grad_f32</code>, <code>dpo_loss_grad_f32</code>, <code>ppo_clip_grad_f32</code>, <code>grpo_advantages_f32</code></td>
-      <td>Activations, SwiGLU/GeGLU, Mamba/RWKV causal <code>conv1d</code>/<code>ssm_scan</code>/<code>linear_attn</code> steps, ViT/SigLIP <code>conv2d_patch_embed_f32</code>/<code>mha_sdpa_f32</code>/<code>avg_pool2d_f32</code>, fused <code>add_rmsnorm_f32</code>, LayerNorm, Softmax/LogSoftmax, <code>moe_router_f32</code>, NeoX/interleaved/YaRN RoPE, GEMV/GEMM, quantization, and LoRA/AdamW/DPO/PPO/GRPO/KL alignment training</td>
+      <td>Activations, SwiGLU/GeGLU, Mamba/RWKV causal <code>conv1d</code>/<code>ssm_scan</code>/<code>linear_attn</code> steps, ViT/SigLIP vision ops, fused <code>add_rmsnorm_f32</code>, LayerNorm, Softmax/LogSoftmax, <code>moe_router_f32</code>, NeoX/interleaved/YaRN RoPE, GEMV/GEMM, quantization, and LoRA/AdamW/DPO/PPO/GRPO/KL training backward ops</td>
     </tr>
   </tbody>
 </table>
+</div>
 <pre><code>@main
 #tensor
 
@@ -136,11 +185,12 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
     tensor.vscale_f32($&amp;normed, f32(0.5), n)
     tensor.softmax_f32($&amp;normed, n, f32(1))
     tensor.vmul_f32($&amp;out, &amp;normed, x, n)
-    << out
+    &lt;&lt; out
 }</code></pre>
 
 <h2 id="tensor-fusion">Compiler options &amp; MIR tensor fusion</h2>
-<p>When building with <code>--tensor-fusion</code> (or <code>XU_TENSOR_FUSION=1</code>), the compiler's MIR tensor-lowering pass pattern-matches idiomatic pure-Xu numerical loops (including the primitives in <code>#tensor</code> and custom kernels in user code) and lowers them directly into hand-tuned <strong>ARM64 NEON / SDOT</strong> and <strong>x86-64 SSE2 / SSSE3</strong> runtime kernels, while keeping the frozen C/runtime ABI unchanged:</p>
+<p>When building with <code>--tensor-fusion</code> (or <code>XU_TENSOR_FUSION=1</code>), the compiler's MIR tensor-lowering pass pattern-matches idiomatic pure-Xu numerical loops (including the primitives in <code>#tensor</code> and custom user kernels) and lowers them directly into hand-tuned <strong>ARM64 NEON / SDOT</strong> and <strong>x86-64 SSE2 / SSSE3</strong> runtime kernels (including <code>v0.14.3</code> K-quant SIMD kernels), while keeping the frozen runtime ABI unchanged:</p>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="MIR tensor fusion kernel families">
 <table>
   <thead>
     <tr><th>Kernel family</th><th>MIR runtime symbol(s)</th><th>Hardware instructions</th></tr>
@@ -158,8 +208,8 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
     </tr>
     <tr>
       <td>Dense &amp; quantized GEMV/GEMM</td>
-      <td><code>__xu_tensor_gemv4_f32</code>, <code>__xu_tensor_gemm4x4_f32</code>, <code>__xu_tensor_gemv4_q4_0_p4k4_signed_f16_q8_0_f32</code>, <code>__xu_tensor_gemm4x8_q8_0_p4k4_f16_q8_0_f32</code></td>
-      <td>4×8 tiled microkernels with ARM64 <code>sdot.4s</code> &amp; x64 SSE2/SSSE3 parity</td>
+      <td><code>__xu_tensor_gemv4_f32</code>, <code>__xu_tensor_gemm4x4_f32</code>, <code>__xu_tensor_gemv4_q4_0_p4k4_signed_f16_q8_0_f32</code>, <code>__xu_tensor_gemm4x8_q8_0_p4k4_f16_q8_0_f32</code> + K-quant SIMD</td>
+      <td>4×8 tiled microkernels with ARM64 <code>sdot.4s</code> &amp; x64 SSE2/SSSE3 parity plus K-quant SIMD dot paths</td>
     </tr>
     <tr>
       <td>Paged attention &amp; RoPE</td>
@@ -168,70 +218,133 @@ fn run_block(w &amp;[]f32, x &amp;[]f32) []f32 {
     </tr>
   </tbody>
 </table>
+</div>
 <ul>
   <li><code>--tensor-fusion</code> / <code>XU_TENSOR_FUSION=1</code> — enable pattern-matched SIMD / quantized matrix lowering (verified bit-exact in <code>fusion-strict</code> mode).</li>
   <li><code>--tensor-fast-math</code> / <code>XU_TENSOR_FAST_MATH=1</code> — unlock fast reassociated reductions, fast exponential approximations, and unrolled <code>sdot</code> pipelines.</li>
 </ul>
 
-<h2 id="gpu-metal">GPU compute via <code>packages/metal</code></h2>
-<p>For Apple Silicon GPUs, the official <a href="https://github.com/xulang-org/packages"><code>packages/metal</code></a> (<code>v1.11.0</code> packages bundle, exporting 176 native symbols across all 6 <code>.xulib</code> slices) module provides <code>F32Matrix</code>, <code>F16Matrix</code> (<code>MPSDataTypeFloat16</code>), raw byte uploads (<code>write_bytes</code>), and six quantized matrix formats — <code>Q4Matrix</code> (<code>matrix_q4_0</code>), <code>Q5Matrix</code> (<code>matrix_q5_0</code>), <code>Q8Matrix</code> (<code>matrix_q8_0</code>), <code>Q4KMatrix</code> (<code>matrix_q4_k</code>), <code>Q5KMatrix</code> (<code>matrix_q5_k</code>), and <code>Q6KMatrix</code> (<code>matrix_q6_k</code>) — with limits raised to <code>262,144</code> per dimension / <code>536,870,912</code> cells, read/write lock separation for concurrent readers, and multi-op <code>Batch</code> command encoding synchronized with non-blocking <code>Fence</code> handles and compile-time borrow + runtime shape/alias/device guards:</p>
+<h2 id="gpu-metal">Multi-Backend GPU Compute &amp; GPU LLM Inference (<code>packages v1.17.0</code>)</h2>
+<p>The official <a href="https://github.com/xulang-org/packages"><code>github.com/xulang-org/packages</code></a> <code>v1.17.0</code> release adds multi-backend GPU support across Apple Silicon Metal, NVIDIA CUDA, cross-platform Vulkan (with a pure-Xu SPIR-V 1.0 generator), and CPU fallback, plus end-to-end Apple Silicon GPU Transformer inference in <code>llm_metal</code>:</p>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="Multi-backend GPU comparison">
+<table>
+  <thead>
+    <tr><th>Package</th><th>Target Hardware / OS</th><th>Binding / Loader Mechanism</th><th>Core Capabilities</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>packages/gpu</code></td><td>Metal / CUDA / Vulkan / CPU auto-fallback</td><td>Unified facade (<code>detect_backends</code>, <code>open_auto</code>, <code>open_backend</code>)</td><td>Portable <code>BACKEND_METAL</code> / <code>CUDA</code> / <code>VULKAN</code> / <code>CPU</code> <code>Device</code>, <code>F32Matrix</code> &amp; <code>Q4</code>–<code>Q6KMatrix</code> APIs across backends</td></tr>
+    <tr><td><code>packages/llm_metal</code></td><td>Apple Silicon macOS GPU</td><td>Built over <code>metal</code> / <code>metal_native</code></td><td>End-to-end GPU Transformer inference &amp; LoRA training: <code>load_gguf</code> / <code>load_safetensors</code> / <code>load_model</code>, <code>MetalKVCache</code> / <code>MetalPagedKVCache</code>, <code>generate_paged</code> &amp; <code>MetalLoRA</code> (<code>train_lora_step</code>)</td></tr>
+    <tr><td><code>packages/metal</code> + <code>metal_native</code></td><td>Apple Silicon macOS GPU</td><td>Dynamic <code>dlopen</code> of <code>libxu_metal.dylib</code> (<code>XU_METAL_LIBRARY</code> override)</td><td>176 Metal GPU symbols: <code>F32/F16/Q4–Q6KMatrix</code> (up to <code>262,144</code> dim), Metal K-quant SIMD GEMV, FlashAttention/FlashDecode, PagedAttention F16, MoE &amp; LoRA backprop</td></tr>
+    <tr><td><code>packages/cuda_native</code></td><td>NVIDIA GPUs (Linux / Windows)</td><td>Pure-Xu <code>dlopen</code> (<code>libcuda</code> / <code>libnvrtc</code> / <code>libcublas</code>; <code>XU_CUDA_LIBRARY</code> overrides)</td><td>Direct CUDA Driver API, NVRTC runtime kernel compilation &amp; cuBLAS GEMM with zero C wrapper</td></tr>
+    <tr><td><code>packages/vulkan_native</code></td><td>Vulkan 1.1 GPUs (Linux / Windows / MoltenVK)</td><td>Pure-Xu <code>dlopen</code> (<code>XU_VULKAN_LIBRARY</code>) + <code>spirv.xu</code></td><td>Generates SPIR-V 1.0 compute binaries directly in pure Xu for portable GPU compute without external <code>glslc</code></td></tr>
+  </tbody>
+</table>
+</div>
 <pre><code>@main
-metal #"github.com/xulang-org/packages/metal"
-#errors
+gpu #"github.com/xulang-org/packages/gpu"
+llm_metal #"github.com/xulang-org/packages/llm_metal"
 
-fn gpu_ffn_batch(d &amp;metal.Device, x &amp;metal.F32Matrix, w &amp;metal.F32Matrix,
-                 w_gate &amp;metal.Q4Matrix, w_up &amp;metal.Q4Matrix) metal.F32Matrix {
-    $normed := d.matrix_f32(x.rows(), x.columns()) >>>
-    $g := d.matrix_f32(x.rows(), w_gate.rows()) >>>
-    $u := d.matrix_f32(x.rows(), w_up.rows()) >>>
-    $out := d.matrix_f32(x.rows(), w_gate.rows()) >>>
-
-    $b := d.begin_batch() >>>
-    _ := b.rmsnorm_f32($&amp;normed, x, w, 0.00001) >>>
-    _ := b.gemv_q4_0_f32($&amp;g, &amp;normed, w_gate) >>>
-    _ := b.gemv_q4_0_f32($&amp;u, &amp;normed, w_up) >>>
-    _ := b.swiglu_f32($&amp;out, &amp;g, &amp;u) >>>
-    $f := b.commit() >>>
-    _ := f.wait() >>>
-    << out
+fn run_gpu_inference(model_path string) {
+    println(gpu.detect_backends().join(", "))
+    $model := llm_metal.load_model(model_path, 2048) &gt;&gt;&gt;
+    $kv := llm_metal.new_paged_kv_cache(&amp;model, 2048, 16) &gt;&gt;&gt;
+    tokens := llm_metal.generate_paged(&amp;model, &amp;[1, 2, 3], 32, 16)
+    println(llm_metal.decode_tokens(&amp;model, &amp;tokens))
+    _ := kv.close()
+    _ := model.close()
 }</code></pre>
-<p>Available GPU ops across standalone dispatches and <code>Batch</code> methods: <code>gemm_f32</code>, <code>gemm_f32_nt</code>, <code>gemm_f32_tn</code>, <code>rmsnorm_f32</code>, <code>add_rmsnorm_f32</code>, <code>layernorm_f32</code>, <code>softmax_f32</code>, <code>log_softmax_f32</code>, <code>silu_f32</code>, <code>gelu_f32</code>, <code>swiglu_f32</code>, <code>geglu_f32</code>, <code>add_f32</code>, <code>mul_f32</code>, <code>scale_f32</code>, <code>rope_f32</code>, <code>rope_interleaved_f32</code>, <code>rope_yarn_f32</code>, <code>qk_norm_f32</code>, <code>kv_cache_append_f32</code>, <code>kv_cache_append_f16</code>, <code>paged_kv_cache_append_f16</code>, <code>paged_attention_decode_f16</code>, <code>moe_topk_f32</code>, <code>moe_weighted_add_f32</code>, fused MoE GEMV kernels (<code>moe_gemv_q4_0_f32</code>, <code>moe_gemv_q8_0_f32</code>, <code>moe_gemv_q4_k_f32</code>, <code>moe_gemv_q5_k_f32</code>, <code>moe_gemv_q6_k_f32</code>), LoRA/training forward &amp; backprop kernels (<code>lora_add_f32</code>, <code>adamw_step_f32</code>, <code>cross_entropy_grad_f32</code>, <code>rmsnorm_backward_f32</code>, <code>swiglu_backward_f32</code>), single-pass online FlashAttention (<code>causal_attention_f32</code>, <code>causal_attention_f16</code>) &amp; FlashDecode (<code>attention_decode_f32</code>, <code>attention_decode_f16</code>) with <code>simd_sum</code>/<code>simd_max</code> warp reductions, <code>embedding_f32</code>, <code>argmax_f32</code>, <code>gemm_f16</code>, <code>gemm_f16_nt</code>, <code>f16_to_f32</code>, <code>f32_to_f16</code>, and fused quantized GEMV kernels (<code>gemv_q4_0_f32</code>, <code>gemv_q5_0_f32</code>, <code>gemv_q8_0_f32</code>, <code>gemv_q4_k_f32</code>, <code>gemv_q5_k_f32</code>, <code>gemv_q6_k_f32</code>) computing $x \cdot \mathrm{dequant}(W)^T$ on-the-fly in GPU registers.</p>
+
+<h2 id="ecosystem">AI, Agent, RAG, Guardrails &amp; Eval Platform (<code>packages v1.17.0</code> · 50 packages)</h2>
+<p>Beyond tensor kernels and GPU backends, <a href="/docs/packages"><code>packages v1.17.0</code></a> (50 official pure-Xu packages, incorporating <code>v1.16.0</code> production hardening) delivers full-stack LLM clients, distributed gateways, agent runtimes, protocols, vector stores, and evaluation suites:</p>
+
+<h3>1. LLM Clients, Gateway &amp; Prompt Engineering</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="LLM clients, gateway, and prompt packages">
+<table>
+  <thead>
+    <tr><th>Package</th><th>Role</th><th>Key APIs &amp; <code>v1.16.0+</code> Enhancements</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>openai</code></td><td>OpenAI-compatible client</td><td>11 presets (DeepSeek, OpenRouter, Groq, Qwen, Mistral, MiniMax, etc.), Chat/Responses API, Files/Batches, Whisper/TTS, Images, Rerank</td></tr>
+    <tr><td><code>anthropic</code> / <code>gemini</code> / <code>cohere</code></td><td>Native provider SDKs</td><td>Anthropic Messages (Prompt Caching, extended thinking, <code>tool_use</code>), Gemini REST (schema JSON, <code>thinking_budget</code>, <code>batchEmbedContents</code>), Cohere v2 (chat/embed/rerank)</td></tr>
+    <tr><td><code>gateway</code></td><td>Multi-provider LLM router</td><td>Weighted routing &amp; sync/SSE failover, circuit breakers &amp; RPM limits, Prometheus metrics, cost accounting, semantic cache; <code>v1.16.0</code> adds Redis distributed state (<code>set_redis_pool</code> / <code>set_redis_url</code> / <code>set_cache_ttl</code>) &amp; <code>ProviderPassthrough</code></td></tr>
+    <tr><td><code>prompt</code></td><td>Templates &amp; extraction</td><td><code>PromptTemplate</code> / <code>PromptRegistry</code>, <code>#tensor</code>-powered dynamic few-shot selection (<code>select_few_shot</code>), Markdown JSON extraction</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>2. Agent Orchestration, MCP / A2A Protocols &amp; XACP</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="Agent and protocol packages">
+<table>
+  <thead>
+    <tr><th>Package</th><th>Role</th><th>Key APIs &amp; <code>v1.16.0+</code> Enhancements</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>agent</code></td><td>4-runtime agent framework</td><td>Full feature parity across OpenAI Chat/Responses, Anthropic, and Gemini; <code>v1.16.0</code> adds cross-provider <code>AgentSwarm</code> (<code>add_anthropic_member</code> / <code>add_gemini_member</code> / <code>add_responses_member</code>), pluggable <code>set_token_counter</code>, SQLite persistence (<code>save_sqlite</code> / <code>load_session_checkpoint_sqlite</code> / <code>load_graph_checkpoint_sqlite</code>), <code>SKILL.md</code> skills, HITL <code>StateGraph</code>, and OTLP/Prometheus tracing</td></tr>
+    <tr><td><code>mcp</code></td><td>Model Context Protocol</td><td>Bidirectional JSON-RPC 2.0 (<code>2025-03-26</code>) stdio &amp; Streamable HTTP servers/clients (<code>tools</code>, <code>resources</code>, <code>resourceTemplates</code>, <code>prompts</code>, completions, logging, SSE negotiation)</td></tr>
+    <tr><td><code>a2a</code></td><td>Agent-to-Agent protocol</td><td><code>AgentCard</code> discovery, JSON-RPC 2.0 <code>tasks/send|get|cancel</code>, live SSE <code>tasks/sendSubscribe</code>; <code>v1.16.0</code> adds auth (<code>set_api_key</code> / <code>set_auth_hook</code>) and SQLite persistence (<code>set_sqlite_store</code>)</td></tr>
+    <tr><td><code>#xacp</code> (stdlib)</td><td>Desktop app agent control</td><td>Built-in <code>--xacp</code> / <code>--xacp-port</code> discovery &amp; token-authenticated UI tree inspection, actions, and bounded sampling</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>3. Hybrid RAG &amp; Vector Databases</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="RAG and vector database packages">
+<table>
+  <thead>
+    <tr><th>Package</th><th>Role</th><th>Key APIs &amp; <code>v1.16.0+</code> Enhancements</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>rag</code></td><td><code>#tensor</code> Hybrid &amp; GraphRAG</td><td>Pooled <code>PgVectorPool</code> (<code>v1.16.0</code> <code>open_pgvector_pool</code>), <code>PgVectorClient</code>, cached <code>SqliteVectorStore</code> (<code>cached_len</code> / <code>refresh_cache</code>), <code>QdrantVectorStore</code>, automated GraphRAG <code>KnowledgeGraph</code>, Parent-Child/Contextual/HyDE/BM25/RRF/Cohere rerank</td></tr>
+    <tr><td><code>postgres</code> / <code>sqlite</code></td><td>SQL &amp; storage drivers</td><td>Unbounded <code>#database/sql</code> parameters; pure-Xu <code>sqlite_native</code> dynamic <code>dlopen</code> (built-in <code>winsqlite3.dll</code> on Windows); <code>postgres</code> includes <code>pgvector</code> helpers</td></tr>
+    <tr><td><code>qdrant</code> / <code>milvus</code> / <code>chroma</code></td><td>Vector DB clients</td><td>Pure-Xu REST v2 / HTTP JSON clients for collection setup, vector upserts, metadata filtering, and ANN search</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>4. Safety Guardrails, Evaluation &amp; Dataset Synthesis</h3>
+<div class="doc-table-wrap" role="region" tabindex="0" aria-label="Safety, evaluation, and synthesis packages">
+<table>
+  <thead>
+    <tr><th>Package</th><th>Role</th><th>Key APIs &amp; <code>v1.16.0+</code> Enhancements</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>guardrails</code></td><td>AI safety defenses</td><td>PII/secret redaction, canary leak detection, RAG chunk sanitization, model safety checks; <code>v1.16.0</code> adds <code>strict_policy</code>, <code>normalize_for_detection</code> &amp; <code>check_input_strict</code></td></tr>
+    <tr><td><code>eval</code></td><td>Model &amp; RAG evaluation</td><td><code>exact_match</code>, F1, ROUGE, BLEU, <code>pass_at_k</code>, ECE calibration, Ragas Triad, LLM-as-a-Judge; <code>v1.16.0</code> adds <code>evaluate_json_schema_raw</code> for Draft-style JSON Schema validation &amp; CI regression gating</td></tr>
+    <tr><td><code>synth</code></td><td>Synthetic data curation</td><td><code>generate_sft_openai</code> / <code>generate_dpo_pair_openai</code> / <code>distill_dataset_openai</code>, exact &amp; Jaccard deduplication, quality filters, and <code>llm_engine</code> JSONL export</td></tr>
+  </tbody>
+</table>
+</div>
 
 <h2 id="limitations">Known Limitations &amp; Engineering Trade-offs</h2>
-<p class="note"><strong>Developer caveat:</strong> Xu's AI stack optimizes for zero external C/C++ runtime bindings and compact standalone binaries, which entails clear scope limits and performance trade-offs.</p>
+<p class="note"><strong>Developer caveat:</strong> Xu's AI stack optimizes for zero external C/C++ inference bindings and compact standalone binaries, which carries explicit scope limits:</p>
 <ul>
-  <li><strong>Multi-threaded CPU inference &amp; standalone GPU packages:</strong> <code>examples/llm_engine</code> supports parallel CPU execution via <code>--threads N</code> alongside continuous-batch coroutine serving, while the standalone <code>packages</code> repository (<code>v1.17.0</code>) provides <code>llm_metal</code>, <code>cuda_native</code>, <code>vulkan_native</code>, and the unified <code>gpu</code> facade for GPU acceleration.</li>
-  <li><strong>Quantization speed asymmetry &amp; unsupported GGUF types:</strong> <code>#tensor</code> and <code>llm_engine</code> now support <code>F32</code>, <code>Q4_0</code>, <code>Q5_0</code>, <code>Q8_0</code>, <code>Q4_1</code>, <code>Q5_1</code>, and K-quants <code>Q2_K</code>/<code>Q3_K</code>/<code>Q4_K</code>/<code>Q5_K</code>/<code>Q6_K</code>/<code>Q8_K</code>. ARM64 SDOT / <code>p4k4</code> SIMD fast paths focus on <code>F32</code>, <code>Q4_0</code>, and <code>Q8_0</code>, whereas higher-arity/legacy quants run slower block paths, and imatrix <code>IQ1</code>–<code>IQ4</code> GGUF types remain unsupported.</li>
-  <li><strong>VLM <code>--mmproj</code> &amp; image format limits:</strong> <code>vision/mod.xu</code> now supports both <code>mmproj.gguf</code> and Xu's <code>F32</code> SafeTensors ViT+MLP layout (<code>vision.*</code>, <code>v.patch_embd.weight</code>, <code>v.blk.*</code>, <code>mm.0</code>/<code>mm.2</code>); image decoding covers PNG, JPEG, PPM, and uncompressed 24-bit BMP (no WebP, AVIF, or HEIC).</li>
-  <li><strong>GBNF &amp; <code>--json-schema</code> constraints:</strong> NFA normalization caps active branches at 64 (work queue <code>512</code>, nesting depth <code>48</code>). <code>json_schema_to_gbnf</code> handles <code>type</code>, <code>properties</code>, <code>required</code>, <code>items</code>, <code>enum</code>, <code>const</code>, <code>anyOf</code>, and <code>oneOf</code> in fixed key order (required then optional keys); <code>$ref</code>/<code>$defs</code>, <code>allOf</code>, regex <code>pattern</code>, numeric/length bounds, and arbitrary key order under <code>additionalProperties: false</code> are unsupported. Step masking on 128k+ vocabularies is slower than precompiled DFA/bitmask engines.</li>
-  <li><strong>Training scope &amp; built-in macOS signing:</strong> <code>train-lora</code>/<code>train-dpo</code>/<code>train-grpo</code>/<code>train-rlvr</code>/<code>train-distill</code> perform CPU <code>f32</code> LoRA updates only (<code>merge-lora</code> exports <code>F32</code> SafeTensors). Starting in <code>Xu 0.14.3</code>, release and debug macOS Mach-O binaries embed built-in ad-hoc <code>LC_CODE_SIGNATURE</code> directly from the compiler.</li>
-  <li><strong><code>packages</code> operational boundaries:</strong> <code>rag.SqliteVectorStore</code> scans loaded rows in memory ($O(N)$ exact search — best under ~10k chunks, use <code>PgVectorClient</code> HNSW or <code>QdrantVectorStore</code> beyond that); <code>PgVectorClient</code> wraps a single <code>driver.Conn</code> without pooling (though both <code>postgres</code> and <code>sqlite</code> bind arbitrary numbers of <code>NamedValue</code> parameters); <code>a2a</code> and single-node <code>gateway</code> hold state in memory unless Redis distributed state is configured, and SSE failover applies only before the first chunk arrives; <code>AgentSwarm</code> composes OpenAI-compatible <code>Agent</code>s; local <code>guardrails</code> heuristics should be paired with <code>check_safety_openai</code> against obfuscated/non-ASCII attacks; <code>eval.evaluate_json_schema</code> validates flat <code>[]SchemaFieldRule</code> specs rather than full Draft-2020-12 JSON Schema.</li>
+  <li><strong><code>llm_engine</code> is multi-threaded CPU-only (use <code>llm_metal</code> / <code>gpu</code> for GPU):</strong> <code>examples/llm_engine</code> supports multi-threaded CPU execution via <code>--threads N</code> without calling CUDA or Metal directly; end-to-end Apple Silicon GPU LLM inference lives in <code>packages/llm_metal</code>, and cross-backend GPU kernels live in <code>packages/gpu</code> (<code>metal</code> / <code>cuda_native</code> / <code>vulkan_native</code> / CPU fallback).</li>
+  <li><strong>Quantization, training &amp; media bounds:</strong> GGUF supports <code>F32</code>/<code>F16</code>/<code>BF16</code>/<code>FP8</code>/<code>Q4_0</code>/<code>Q4_1</code>/<code>Q5_0</code>/<code>Q5_1</code>/<code>Q8_0</code> and K-quants (<code>Q2_K</code>–<code>Q8_K</code>), while imatrix <code>IQ1</code>–<code>IQ4</code> formats are unsupported; <code>llm_engine train-*</code> and <code>llm_metal.train_lora_step</code> focus on single-node <code>f32</code> LoRA fine-tuning/alignment rather than distributed pretraining; image decoding covers PNG, JPEG, PPM, and uncompressed 24-bit BMP (no WebP/AVIF/HEIC).</li>
+  <li><strong>Vector store scale &amp; production gateway notes:</strong> <code>rag.SqliteVectorStore</code> caches rows in memory for exact $O(N)$ scoring (best under ~10k chunks; use pooled <code>PgVectorPool</code> HNSW or <code>QdrantVectorStore</code> beyond that); <code>gateway</code> supports Redis-backed shared state in <code>v1.16.0+</code>, while SSE failover still applies only before the first chunk arrives; terminate TLS/RBAC in front of <code>a2a</code> and pair <code>guardrails.strict_policy</code> with <code>check_safety_openai</code> in high-risk flows.</li>
+  <li><strong>Built-in Apple Silicon signing:</strong> Since <code>Xu v0.14.3</code>, <code>xu build</code> embeds Mach-O <code>LC_CODE_SIGNATURE</code> ad-hoc signatures automatically—no manual <code>codesign</code> step is required before running generated binaries.</li>
 </ul>
 
 <h2 id="verification">Verify and measure inference</h2>
-<pre><code># Pure-Xu compiler MIR &amp; tensor primitive suites
+<pre><code># Pure-Xu compiler MIR, #tensor &amp; llm_engine suites (xu repository)
 python3 scripts/test_tensor_opt.py --compiler bin/xu
 python3 scripts/test_tensor_types.py --compiler bin/xu
 python3 scripts/test_llm_engine.py --compiler bin/xu
 
-# Packages Metal GPU, OpenAI/Cohere/MCP/A2A/Agent/Synth, Anthropic/RAG, Gemini &amp; v1.8.0–v1.15.0 AI workflow tests (from packages/)
+# Packages v1.17.0 GPU backends &amp; v1.4.0–v1.16.0 AI suites (packages repository)
 XU_ROOT=../xu python3 metal/native/build.py --target macos-arm64
-XU_ROOT=../xu XU=../xu/bin/xu python3 -m unittest tests/test_metal_ai.py tests/test_openai_mcp.py tests/test_anthropic_rag.py tests/test_gemini_rag_agent.py tests/test_v18_ai_ecosystem.py tests/test_v19_ai_ecosystem.py tests/test_v110_ai_platform.py tests/test_v111_ai_workflows.py tests/test_v112_ai_ecosystem.py tests/test_v113_ai_agents_protocols.py tests/test_v114_ai_vlm_synth_swarm.py tests/test_v115_ecosystem_hardening.py -v</code></pre>
-<p>Every test verifies numerical parity against independent Python references, confirms paged KV cache block reclamation (<code>kv_free_after</code>), validates VLM <code>--mmproj</code> + <code>--image</code> / HTTP <code>image_url</code> parity, offline <code>quantize</code> (<code>Q4_0</code>/<code>Q8_0</code>/<code>Q4_K</code>), <code>inspect</code>, <code>models pull|list|rm</code>, <code>perplexity</code> scoring, GBNF <code>--grammar</code> constrained decoding (CLI + HTTP), PEFT <code>--lora</code> &amp; <code>merge-lora</code>, pure-Xu SFT <code>train-lora</code> (<code>--dataset</code> JSONL, assistant masking, <code>--grad-accum</code>, <code>--warmup-steps</code>, cosine decay, <code>--save-ckpt</code>/<code>--resume-ckpt</code>), alignment via <code>train-dpo</code> / <code>train-grpo</code> / online <code>train-rlvr</code> / <code>train-distill</code>, lossless <code>--draft</code> speculative decode, Mamba SSM &amp; Hybrid Attention+SSM GGUF, GGUF <code>Q5_K</code>, MoE routing + YaRN RoPE scaling + DeepSeek MLA + HF sharded Safetensors loading, and exercises HTTP <code>/health</code>, <code>/metrics</code> (Prometheus), <code>/v1/models</code>, <code>/v1/completions</code>, <code>/v1/chat/completions</code>, <code>/v1/responses</code>, Anthropic <code>/v1/messages</code>, Ollama <code>/api/tags</code> / <code>/api/generate</code> / <code>/api/chat</code>, and batch <code>/v1/embeddings</code> endpoints (alongside <code>synth</code> dataset synthesis -> live <code>train-lora</code> SFT, <code>a2a</code> Agent-to-Agent discovery/RPC &amp; <code>tasks/sendSubscribe</code> SSE streaming, Swarm <code>HandoffTeam</code>, <code>cohere</code> native v2 APIs, <code>openai</code> Files/Batches, <code>gateway</code> weighted routing/circuit breaker/rate limit/Prometheus, <code>prompt</code>, <code>guardrails</code> canary leak &amp; LLM safety checks, <code>eval</code> <code>evaluate_json_schema</code> / ECE / regression gate / <code>pass_at_k</code> / pairwise judge / Ragas triad, <code>rag</code> <code>contextualize_chunks_openai</code> / <code>hybrid_graph_vector_search</code> / <code>PgVectorStore</code> / GraphRAG <code>KnowledgeGraph</code> / <code>chunk_code</code> / <code>rerank_with_cohere</code>, <code>SKILL.md</code> directory discovery, <code>AgentMemory</code> CRUD, HITL <code>StateGraph</code> interrupt/checkpoint/resume, compaction + LLM summarization, and OTLP + Prometheus tracing). Multi-architecture compiler and kernel timings live on <a href="/benchmarks">Benchmarks</a>.</p>
-
-<h2 id="ecosystem">OpenAI, Cohere, Gateway, Prompt, Anthropic, Gemini, MCP, A2A, Synth, Guardrails, Eval, Agent, RAG, vector DBs &amp; XACP</h2>
-<p>Beyond tensor kernels and local inference, the Xu ecosystem includes pure-Xu client/server packages and built-in compiler protocols for complete AI applications:</p>
-<ul>
-  <li><strong>OpenAI, Cohere, Gateway, Prompt, Anthropic, Gemini, MCP &amp; A2A (<a href="/docs/packages">packages</a>):</strong> <code>github.com/xulang-org/packages/openai</code> provides a typed pure-Xu OpenAI-compatible client with 11 one-line provider presets (<code>new_deepseek_client</code>, <code>new_openrouter_client</code>, <code>new_groq_client</code>, <code>new_xai_client</code>, <code>new_together_client</code>, <code>new_fireworks_client</code>, <code>new_ollama_client</code>, <code>new_cohere_client</code>, <code>new_qwen_client</code>, <code>new_mistral_client</code>, <code>new_minimax_client</code>), Chat Completions, Responses API <code>/v1/responses</code> sync+SSE, Files API (<code>upload_file</code>, <code>get_file</code>, <code>list_files</code>, <code>get_file_content</code>, <code>delete_file</code>), Batches API (<code>create_batch</code>, <code>get_batch</code>, <code>cancel_batch</code>, <code>list_batches</code>), audio Whisper/TTS (<code>audio_transcriptions</code>, <code>audio_speech</code>), <code>images_generate</code>, <code>rerank</code>, vision <code>ContentPart</code>, <code>json_schema_format</code>, retries, streaming tool-call merging, and embeddings; <code>cohere #github.com/xulang-org/packages/cohere</code> adds native Cohere v2 endpoints (<code>chat</code> <code>/v2/chat</code>, <code>embed</code> <code>/v2/embed</code>, <code>rerank</code> <code>/v2/rerank</code>); <code>gateway</code> adds weighted routing (<code>add_weighted_route</code>, <code>chat_weighted</code>), circuit breakers &amp; rate limiting (<code>set_circuit_breaker</code>, <code>reset_circuits</code>, <code>set_rate_limit</code>), Prometheus metrics (<code>format_metrics_prometheus</code>), fallback routing (<code>chat_with_fallback</code>), cost estimation (<code>estimate_cost_usd</code>, <code>get_stats</code>), and semantic vector caching (<code>chat_cached</code>); <code>prompt</code> adds versioned template registries (<code>PromptRegistry</code>), <code>#tensor</code>-based dynamic few-shot selection (<code>select_few_shot</code>), and structured JSON block extraction (<code>extract_json_block</code>); <code>anthropic</code> implements <code>/v1/messages</code> (vision, prompt caching, <code>thinking_delta</code>, <code>tool_use</code>); <code>gemini</code> implements Google Gemini REST (<code>generate*</code>, function calling, <code>embed</code>, <code>batch_embed</code>); <code>mcp</code> implements full bidirectional Model Context Protocol JSON-RPC 2.0 (<code>2025-03-26</code>) across stdio and Streamable HTTP; and <code>a2a #github.com/xulang-org/packages/a2a</code> implements the Agent-to-Agent Protocol with <code>AgentCard</code> discovery (<code>/.well-known/agent.json</code>), typed <code>TaskArtifact</code> outputs, JSON-RPC 2.0 <code>tasks/send</code>, <code>tasks/get</code>, <code>tasks/cancel</code>, and SSE streaming <code>tasks/sendSubscribe</code> (<code>send_task_stream</code>) server + client APIs.</li>
-  <li><strong>Synthetic Data, Agent Runtime, Safety Guardrails &amp; Evaluation (<a href="/docs/packages">packages</a>):</strong> <code>github.com/xulang-org/packages/synth</code> synthesizes &amp; distills SFT/DPO/RLVR datasets (<code>generate_sft_openai</code>, <code>generate_dpo_pair_openai</code>, <code>distill_dataset_openai</code>), runs exact/Jaccard n-gram deduplication &amp; quality filtering (<code>dedup_exact</code>, <code>dedup_near_jaccard</code>, <code>filter_sft_quality</code>), and formats/parses <code>llm_engine</code>-compatible JSONL (<code>format_sft_jsonl</code>, <code>parse_sft_jsonl</code>, <code>format_dpo_jsonl</code>, <code>format_rlvr_jsonl</code>, <code>save_jsonl</code>); <code>github.com/xulang-org/packages/agent</code> adds multi-turn orchestration across OpenAI Chat/Responses, Anthropic, and Gemini with stateful checkpointed sessions (<code>Session.save_checkpoint_json</code>, <code>load_session_checkpoint</code>), Swarm agent handoffs (<code>HandoffTeam</code>, <code>new_handoff_team</code>, <code>add_agent</code>, <code>run_handoff_openai</code>) and remote A2A delegation (<code>discover_a2a_skills_prompt</code>, <code>delegate_to_a2a</code>), human-in-the-loop tool gating (<code>set_approval_hook</code>), recursive/flat <code>SKILL.md</code> directory discovery &amp; injection (<code>discover_skills_dir</code>, <code>load_skills_dir</code>, <code>parse_skill_markdown</code>, <code>load_skill_file</code>, <code>add_skill</code>), persistent <code>AgentMemory</code> (<code>remember</code>, <code>recall</code>, <code>update</code>, <code>forget</code>, <code>save_json</code>/<code>load_memory_json</code>), context compaction &amp; summarization (<code>estimate_tokens</code>, <code>compact_messages</code>, <code>summarize_messages_openai</code>, <code>set_context_budget</code>), structured telemetry &amp; OTLP/Prometheus export (<code>TraceSpan</code>, <code>set_trace_hook</code>, <code>format_trace_jsonl</code>, <code>format_trace_otlp_json</code>, <code>export_traces_otlp_http</code>, <code>format_trace_prometheus</code>), declarative HITL graph workflows (<code>StateGraph</code>, <code>add_interrupt_before</code>, <code>checkpoint_from_result</code>, <code>save_graph_checkpoint</code>, <code>load_graph_checkpoint</code>, <code>resume</code>), sequential/router/parallel/evaluator-optimizer orchestrators, schema-checked JSON retries (<code>run_json_checked</code>), parallel tools, and guardrails hooks; <code>github.com/xulang-org/packages/guardrails</code> adds PII/secret redaction, prompt injection detection, canary prompt-leak guards (<code>inject_canary</code>, <code>detect_canary_leak</code>), indirect RAG chunk sanitization (<code>sanitize_rag_chunks</code>), model-backed safety checks (<code>check_safety_openai</code>), input/output/tool policies, groundedness scoring, and red-team suites; and <code>github.com/xulang-org/packages/eval</code> adds <code>exact_match</code>, <code>token_f1</code>, <code>rouge_n</code>, <code>rouge_l</code>, <code>bleu_score</code>, <code>json_valid_score</code>, <code>evaluate_json_schema</code>, calibration <code>expected_calibration_error</code>, regression gating &amp; Markdown/JSON reporting (<code>compare_summaries</code>, <code>format_summary_markdown</code>, <code>format_summary_json</code>), unbiased <code>pass_at_k</code>, Ragas RAG Triad deterministic &amp; judge evaluation (<code>evaluate_rag_triad</code>, <code>evaluate_rag_judge_openai</code>), pointwise &amp; pairwise LLM-as-a-Judge (<code>judge_openai</code>, <code>judge_anthropic</code>, <code>judge_gemini</code>, <code>compare_openai</code>), <code>load_cases_jsonl</code>, and <code>run_suite</code>.</li>
-  <li><strong>RAG &amp; Vector databases (<a href="/docs/packages">packages</a>):</strong> <code>github.com/xulang-org/packages/rag</code> supplies <code>chunk_text</code>, <code>chunk_markdown</code>, code-aware chunking (<code>chunk_code</code>), recursive splitting (<code>chunk_recursive</code>), Parent-Child indexing &amp; expansion (<code>chunk_parent_child</code>, <code>expand_to_parents</code>), Contextual Retrieval chunk situating (<code>contextualize_chunks_openai</code>), query expansion &amp; HyDE (<code>expand_queries_openai</code>, <code>hyde_document_openai</code>), context compression &amp; citations (<code>compress_context</code>, <code>format_context_cited</code>), API &amp; native Cohere reranking (<code>rerank_with_api</code>, <code>rerank_with_cohere</code>), GraphRAG knowledge graphs (<code>KnowledgeGraph</code>, <code>add_triple</code>, multi-hop <code>query_neighbors</code>, <code>format_subgraph</code>, <code>save_json</code>/<code>load_knowledge_graph_json</code>) and unified <code>hybrid_graph_vector_search</code>, <code>MemoryStore</code> with <code>delete_doc</code>, <code>tensor.topk_cosine_f32</code>, metadata filtering (<code>search_by_meta</code>, <code>search_hybrid_by_meta</code>), <code>rerank_hits</code>, MMR <code>search_mmr</code>, Okapi BM25, RRF hybrid search, and the PostgreSQL pgvector SQL builder (<code>PgVectorStore</code>, <code>new_pgvector_store</code>, <code>create_table_sql</code>, <code>create_index_sql</code>, <code>upsert_chunk_sql</code>, <code>search_sql</code>), complemented by low-level <code>postgres</code> helpers (<code>vector_encode</code>, <code>vector_decode</code>, <code>pgvector_create_index_sql</code>, <code>pgvector_search_sql</code>) plus native Xu clients for <code>qdrant</code>, <code>milvus</code>, and <code>chroma</code>.</li>
-  <li><strong>Agent automation (<a href="/docs/cli#xacp">XACP</a> &amp; <a href="/api/xacp"><code>#xacp</code> API</a>):</strong> structured capability introspection, bounded event/frame recording, and audited UI interaction for local desktop applications built with Xu.</li>
-</ul>
+XU_ROOT=../xu XU=../xu/bin/xu python3 -m unittest \
+  tests/test_metal_ai.py tests/test_openai_mcp.py tests/test_anthropic_rag.py tests/test_gemini_rag_agent.py \
+  tests/test_v18_ai_ecosystem.py tests/test_v19_ai_ecosystem.py tests/test_v110_ai_platform.py \
+  tests/test_v111_ai_workflows.py tests/test_v112_ai_ecosystem.py tests/test_v113_ai_agents_protocols.py \
+  tests/test_v114_ai_vlm_synth_swarm.py tests/test_v115_ecosystem_hardening.py \
+  tests/test_v116_batch1_hardening.py tests/test_v116_batch2_gateway.py \
+  tests/test_v117_llm_metal.py tests/test_v118_gpu_backends.py -v</code></pre>
+<p>These suites verify numerical parity against independent Python references, paged KV reclamation, <code>--threads N</code> inference, <code>mmproj.gguf</code> VLM parity, <code>VocabIndex</code> Trie + Schema decoding, <code>train-*</code> checkpoints, OpenAI/Anthropic/Ollama/Prometheus HTTP endpoints, Redis <code>gateway</code>, <code>PgVectorPool</code>, <code>a2a</code> auth+SQLite, cross-provider <code>AgentSwarm</code>, <code>llm_metal</code>, and <code>gpu</code>/<code>cuda_native</code>/<code>vulkan_native</code> parity. Multi-architecture compiler and kernel timings live on <a href="/benchmarks">Benchmarks</a>.</p>
 
 <h2 id="api">Key APIs &amp; links</h2>
 <ul class="link-list">
-  <li><a href="/api">Standard library API reference</a> — including <code>#tensor</code> scalar types, views, and vector/matrix primitives, plus <code>#net/http</code> and <code>#encoding/json</code>.</li>
-  <li><a href="/benchmarks">Multi-architecture benchmarks</a> — baseline vs MIR tensor-fused throughput on ARM64 and x86-64.</li>
-  <li><a href="/docs/packages">External packages guide</a> — setup instructions for <code>metal</code>, <code>qdrant</code>, <code>milvus</code>, and <code>chroma</code>.</li>
-  <li><a href="/docs/faq#ai-inference">AI &amp; GPU FAQ</a> — quick answers on quantization, fusion, Metal shaders, and XACP security boundaries.</li>
+  <li><a href="/api">Standard library API reference</a> — <code>#tensor</code>, <code>#sync/pool</code>, <code>#net/http</code>, <code>#encoding/json</code>, and all other stdlib modules.</li>
+  <li><a href="/benchmarks">Multi-architecture benchmarks</a> — baseline vs MIR tensor-fused throughput across six ARM64 and x86-64 platforms.</li>
+  <li><a href="/docs/packages">External packages guide</a> — full 50-package catalog, SDK matrix, and setup instructions for <code>gpu</code>, <code>llm_metal</code>, <code>cuda_native</code>, and <code>vulkan_native</code>.</li>
+  <li><a href="/docs/faq#ai-inference">AI &amp; GPU FAQ</a> — quick answers on quantization, multi-threaded CPU inference, multi-backend GPU, and trade-offs.</li>
 </ul>

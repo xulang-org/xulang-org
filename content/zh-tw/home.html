@@ -44,15 +44,15 @@
   <article class="research-card research-card-os">
     <div class="research-card-top"><i class="xi xi-chip" aria-hidden="true"></i><span>正式版工具鏈</span></div>
     <h2>作業系統研發</h2>
-    <p>建置可獨立執行的核心，檢查 ELF 產物，並從範例了解硬體 I/O、中斷和工作內容切換。</p>
-    <ul class="research-tags"><li><code>x64-none</code></li><li><code>arm64-none</code></li><li><code>riscv64-none</code></li></ul>
+    <p>建置獨立執行的核心與 UEFI 韌體，掌握 <code>#core/{acpi,uefi,pci,fdt}</code>、中斷處理、受控 <code>unsafe</code> MMIO 與上下文切換。</p>
+    <ul class="research-tags"><li><code>x64-none</code></li><li><code>arm64-none</code></li><li><code>riscv64-none</code></li><li><code>x64-uefi</code></li></ul>
     <a class="research-link" href="/zh/docs/os">核心研發指南 <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
   </article>
   <article class="research-card research-card-ai">
     <div class="research-card-top"><i class="xi xi-layers" aria-hidden="true"></i><span>正式發佈 AI 棧</span></div>
     <h2>AI 研發</h2>
-    <p>全棧純 Xu 原生 AI 研發體系：整合 <code>#tensor</code> 低精度數值原語、編譯器張量融合、<code>Metal GPU</code> 算子與 OpenAI 相容 HTTP 服務。</p>
-    <ul class="research-tags"><li><code>GGUF</code></li><li><code>Safetensors</code></li><li><code>#tensor</code></li><li><code>Metal GPU</code></li></ul>
+    <p>純 Xu 多執行緒 CPU（<code>--threads N</code>）與多後端 GPU AI 棧：整合 <code>#tensor</code>、MIR K-quant SIMD 融合、<code>llm_metal</code> / <code>gpu</code> / <code>cuda_native</code> / <code>vulkan_native</code> 與多協議服務。</p>
+    <ul class="research-tags"><li><code>GGUF</code></li><li><code>Safetensors</code></li><li><code>#tensor</code></li><li><code>Metal / CUDA / Vulkan</code></li></ul>
     <a class="research-link" href="/zh/docs/ai">AI 研發與推論指南 <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
   </article>
 </section>
@@ -64,11 +64,11 @@
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-ownership xi-green"></i></span> 所有權與確定性回收</h2>
-    <p>透過所有權與借用檢查管理記憶體，在作用域結束時確定性釋放資源；沒有垃圾回收器，也無需顯式生命週期標註。</p>
+    <p>透過所有權、共享（<code>&amp;T</code>）與獨佔（<code>$&amp;T</code>）借用檢查管理記憶體，在作用域結束時確定性釋放資源，無垃圾回收停頓。</p>
   </article>
   <article class="pillar">
-    <h2><span><i class="xi xi-channel xi-blue"></i></span> 輕量協程與型別安全通道</h2>
-    <p>使用 <code>xu f()</code> 啟動輕量協程，以 <code>chan T</code> 傳遞資料和同步任務，將併發直接融入語言。</p>
+    <h2><span><i class="xi xi-channel xi-blue"></i></span> M:N 多核協程與型別安全通道</h2>
+    <p>使用 <code>xu f()</code> 啟動輕量協程，依託 Linux/macOS M:N 多核排程與 <code>#sync/pool</code> 平行擴充，以 <code>chan T</code> 安全同步任務。</p>
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-code xi-purple"></i></span> 簡潔語法與型別推導</h2>
@@ -76,11 +76,11 @@
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-xupkg xi-gold"></i></span> 模組管理與擴充套件生態</h2>
-    <p>以 <code>xu.xun</code>、<code>xu.lock</code> 與 vendor 管理相依性，支援離線與凍結構建；標準庫與官方擴充套件包覆蓋網路、密碼、資料庫和訊息服務。</p>
+    <p>以 <code>xu.xun</code>、<code>xu.lock</code> 與 vendor 管理相依性，支援離線與凍結構建；標準庫與官方擴充套件包覆蓋網路、密碼、資料庫、AI 與多後端 GPU。</p>
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-shield-check xi-cyan"></i></span> 顯式錯誤處理</h2>
-    <p><code>&lt;&lt;</code> 返回，<code>&gt;&gt;</code> 拋錯，<code>&gt;&gt;&gt; (err) {}</code> 就地處理或傳播錯誤，讓失敗路徑與正常控制流一起清晰可見。</p>
+    <p><code>&lt;&lt;</code> 返回，<code>&gt;&gt;</code> 拋錯，<code>&gt;&gt;&gt;</code> 傳播錯誤，<code>&gt;&gt;&gt; (err) {}</code> 就地處理，讓失敗路徑與正常控制流一起清晰可見。</p>
   </article>
   <article class="pillar">
     <h2><span><i class="xi xi-xuui xi-brand"></i></span> 原生 UI 與 WebView</h2>
@@ -147,6 +147,34 @@ fn main() int {
   <a class="btn ghost" href="/docs/ui">原生 UI / WebView</a>
 </div>
 
+<div class="ecosystem-section-head">
+  <h2><i class="xi xi-layers xi-brand"></i> 開源生態與代表案例</h2>
+  <p>基於純 Xu 標準庫、GPU / 視窗系統與網路協定棧打造的代表性應用</p>
+</div>
+<section class="ecosystem-grid" id="ecosystem" aria-label="生態專案">
+  <article class="ecosystem-card ecosystem-card-nexus">
+    <div class="ecosystem-card-top"><i class="xi xi-monitor" aria-hidden="true"></i><span>3D 遊戲引擎與編輯器</span></div>
+    <h3>Nexus Engine</h3>
+    <p>純 Xu 編寫的跨平臺 2D/3D 遊戲引擎，基於 <code>#gpu</code> 與 <code>#window</code> 構建，支援場景樹、PBR 渲染與 CSM/PCF 陰影、3D 任意三角形碰撞與剛體物理、GLB/OBJ/STL 匯入、音訊混音及原生工程編輯器。</p>
+    <ul class="ecosystem-tags"><li><code>#gpu</code></li><li><code>PBR + CSM</code></li><li><code>3D 物理</code></li><li><code>原生編輯器</code></li></ul>
+    <a class="ecosystem-link" href="https://github.com/xulang-org/nexus" target="_blank" rel="noopener noreferrer">檢視 GitHub 倉庫 <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
+  </article>
+  <article class="ecosystem-card ecosystem-card-fatext">
+    <div class="ecosystem-card-top"><i class="xi xi-shield-check" aria-hidden="true"></i><span>加密原生 Agent 廣場與私訊</span></div>
+    <h3>Fatext</h3>
+    <p>面向 AI 智能體與開發者的無資料庫、零前端 JS 單二進位服務：整合內建純 Xu TLS 1.3 + ACME v2 Auto-TLS、SSR/SSE 即時推送、Agent 廣場、端到端加密（E2EE）私訊/房間中繼與 P2P 信令中心。</p>
+    <ul class="ecosystem-tags"><li><code>單二進位服務</code></li><li><code>TLS 1.3 + ACME</code></li><li><code>E2EE 中繼</code></li><li><code>零外部 DB / JS</code></li></ul>
+    <a class="ecosystem-link" href="https://fatext.com" target="_blank" rel="noopener noreferrer">造訪 fatext.com <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
+  </article>
+  <article class="ecosystem-card ecosystem-card-packages">
+    <div class="ecosystem-card-top"><i class="xi xi-xupkg" aria-hidden="true"></i><span>官方擴充套件庫 · 50 個套件</span></div>
+    <h3>Official Packages</h3>
+    <p>官方 <code>github.com/xulang-org/packages</code> 倉庫（v1.17.0），涵蓋資料庫/快取/訊息中介軟體、OpenAI/Anthropic/Gemini/閘道器、MCP/A2A/Agent/GraphRAG，以及 <code>gpu</code>/<code>llm_metal</code>/<code>cuda_native</code>/<code>vulkan_native</code> 多後端計算。</p>
+    <ul class="ecosystem-tags"><li><code>gpu / llm_metal</code></li><li><code>cuda / vulkan</code></li><li><code>gateway / rag</code></li><li><code>agent / mcp / a2a</code></li></ul>
+    <a class="ecosystem-link" href="/zh/docs/packages">瀏覽 50 個擴充套件 <i class="xi xi-arrow-right" aria-hidden="true"></i></a>
+  </article>
+</section>
+
 <h2>原生與 WebAssembly 編譯目標</h2>
 <p>編譯器可為下列目標發射程式碼。可下載的 SDK 見<a href="/download">下載頁</a>。</p>
 <p class="note">程式碼可發射、SDK 可下載、執行行為已實測是不同層級的支援。沒有目標機驗收結果的執行時與 GUI 路徑仍屬待驗。詳見<a href="/docs/status">狀態與限制</a>和<a href="/docs/packages">逐包說明</a>；原生模組與桌面構建可能需要宿主庫和工具鏈。</p>
@@ -188,7 +216,7 @@ fn main() int {
   </details>
 </section>
 <div class="faq-more-wrap">
-  <a class="hero-btn secondary" href="/docs/faq"><i class="xi xi-book"></i> 檢視全部 23 個常見問題解答 →</a>
+  <a class="hero-btn secondary" href="/docs/faq"><i class="xi xi-book"></i> 檢視全部 28 個常見問題解答 →</a>
   <div class="faq-more-topics">
     <a class="faq-more-chip" href="/docs/faq#memory-safety"><i class="xi xi-ownership xi-green"></i> 零 GC 記憶體模型</a>
     <a class="faq-more-chip" href="/docs/faq#baremetal-support"><i class="xi xi-chip xi-gold"></i> 作業系統與核心</a>
